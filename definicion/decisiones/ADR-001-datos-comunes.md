@@ -3,7 +3,7 @@ tipo: adr
 app: Hormiguero (todas)
 numero: 1
 fecha: 2026-10-03
-estado: propuesta # propuesta | aprobada | reemplazada
+estado: aprobada # propuesta | aprobada | reemplazada
 ---
 
 # ADR-001: Cómo comparten datos las apps de Hormiguero
@@ -27,7 +27,7 @@ Hechos verificados en la documentación oficial de SQLite:
 
 ## Decisión
 
-**Propuesta: opción A.**
+**Opción A** (aprobada por Javier, D-47).
 
 - El núcleo (`Datos`) es el único código que abre la base. Ninguna app escribe SQL contra tablas que no son suyas.
 - Tablas **comunes** (las administra el núcleo): documentos, emisores (clientes y proveedores), plantillas de reconocimiento, configuración general, feriados.

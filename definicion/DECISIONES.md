@@ -50,6 +50,7 @@ Las citas entre comillas son textuales de Javier.
 | D-44 | 2026-10-03 | Integración de bloques | Claude integra a `main` cada bloque que aprueba y sube a GitHub; Javier no revisa bloque por bloque, prueba en hitos. Al tercer intento fallido de OpenCode con el mismo error, el bloque pasa a Claude | (elegido: "Claude, y tú pruebas en hitos") |
 | D-45 | 2026-10-03 | Modelos de OpenCode | Rutina: glm-5.3-flash; normal: glm-5.3; difícil: kimi-k3 | (elegido: "Sí") |
 | D-46 | 2026-10-03 | Documentos de prueba | Viven en `C:\JV\pruebas`, fuera de todo repositorio | (elegido: "Sí, en C:\JV\pruebas") |
+| D-47 | 2026-10-03 | Datos comunes | Se aprueba ADR-001 opción A: una base SQLite común, local en cada equipo, modo WAL, administrada solo por el núcleo; compartir entre equipos queda abierto | "sí, opción A" |
 | D-27 | 2026-10-03 | Licencia | GPL v3 para todo Hormiguero. Consecuencia: toda dependencia debe ser compatible con GPL v3 (MIT, BSD y Apache 2.0 lo son) | "GPL v3" |
 
 ## Herramientas evaluadas
