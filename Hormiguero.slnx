@@ -1,0 +1,5 @@
+<Solution>
+  <Folder Name="/src/">
+    <Project Path="src/Hormiguero.Nucleo/Hormiguero.Nucleo.csproj" />
+  </Folder>
+</Solution>
