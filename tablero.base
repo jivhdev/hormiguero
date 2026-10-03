@@ -1,0 +1,46 @@
+filters:
+  and:
+    - file.inFolder("bloques")
+
+properties:
+  note.bloque:
+    displayName: Bloque
+  note.app:
+    displayName: App
+  note.nivel:
+    displayName: Nivel
+  note.juego:
+    displayName: Juego
+  note.estado:
+    displayName: Estado
+  note.agente:
+    displayName: Agente
+  note.modelo:
+    displayName: Modelo
+  note.intentos:
+    displayName: Intentos
+
+views:
+  - type: table
+    name: Por estado
+    groupBy:
+      property: note.estado
+      direction: ASC
+    order:
+      - note.bloque
+      - note.app
+      - note.nivel
+      - note.juego
+      - note.agente
+      - note.modelo
+      - note.intentos
+  - type: table
+    name: Por app
+    groupBy:
+      property: note.app
+      direction: ASC
+    order:
+      - note.bloque
+      - note.estado
+      - note.nivel
+      - note.juego
