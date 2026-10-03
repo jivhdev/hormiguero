@@ -7,5 +7,6 @@
     <PackageReference Include="Microsoft.Data.Sqlite" />
     <PackageReference Include="PdfPig" />
     <PackageReference Include="PDFtoImage" />
+    <PackageReference Include="System.Drawing.Common" />
   </ItemGroup>
 </Project>
