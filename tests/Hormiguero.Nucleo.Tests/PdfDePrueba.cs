@@ -1,3 +1,4 @@
+using UglyToad.PdfPig.Content;
 using UglyToad.PdfPig.Core;
 using UglyToad.PdfPig.Fonts.Standard14Fonts;
 using UglyToad.PdfPig.Writer;
@@ -31,6 +32,24 @@ public static class PdfDePrueba
             PdfPageBuilder pagina = constructor.AddPage(595, 842);
             pagina.DrawRectangle(new PdfPoint(100, 400), 200, 100, 1, false);
         }
+
+        return constructor.Build();
+    }
+
+    public static byte[] Rotada90()
+    {
+        using var constructor = new PdfDocumentBuilder();
+        PdfDocumentBuilder.AddedFont fuente = constructor.AddStandard14Font(
+            Standard14Font.Helvetica
+        );
+        PdfPageBuilder pagina = constructor.AddPage(595, 842);
+        pagina.SetRotation(new PageRotationDegrees(90));
+        pagina.AddText(
+            "Orden de compra OCC 104523 recibida conforme",
+            12,
+            new PdfPoint(50, 750),
+            fuente
+        );
 
         return constructor.Build();
     }
