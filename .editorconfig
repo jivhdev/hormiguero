@@ -1,0 +1,18 @@
+root = true
+
+[*]
+charset = utf-8
+end_of_line = crlf
+insert_final_newline = true
+
+# Código C#
+[*.cs]
+indent_style = space
+indent_size = 4
+csharp_style_namespace_declarations = file_scoped:suggestion
+dotnet_sort_system_directives_first = true
+
+# Archivos de datos y de proyecto
+[*.{json,xml,props,csproj,slnx,yml}]
+indent_style = space
+indent_size = 2
