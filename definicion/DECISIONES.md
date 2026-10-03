@@ -31,6 +31,7 @@ Las citas entre comillas son textuales de Javier.
 | D-24 | 2026-10-03 | Nombre del ambiente de oficina | Obrera. Jerarquía: Hormiguero (ecosistema) → Obrera (ambiente de oficina) → Archivero, Buscadero, Mensajero | (elegido: "Obrera") |
 | D-25 | 2026-10-03 | Orden de desarrollo | No se decide a mano: MQD v2 debe definir el procedimiento con el que se decide el orden de desarrollo | "esque eso lo vamos a definir en mqd po el orden de desarrollo de las cosas" |
 | D-26 | 2026-10-03 | Repositorio público | El monorepo `hormiguero` es público desde el primer commit | (elegido: "Sí, público desde ya") |
+| D-27 | 2026-10-03 | Licencia | GPL v3 para todo Hormiguero. Consecuencia: toda dependencia debe ser compatible con GPL v3 (MIT, BSD y Apache 2.0 lo son) | "GPL v3" |
 
 ## Herramientas evaluadas
 

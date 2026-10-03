@@ -20,4 +20,8 @@ Hormiguero                 ecosistema
 - [Plan del ecosistema](definicion/PLAN-ECOSISTEMA.md)
 - [Pendientes funcionales](definicion/PENDIENTES-FUNCIONALES.md)
 
+## Licencia
+
+[GPL v3](LICENSE): cualquiera puede usar, estudiar, modificar y compartir Hormiguero gratis, y todo lo que derive de él también debe ser libre.
+
 Desarrollado con apoyo de IA (Claude Code y OpenCode).
