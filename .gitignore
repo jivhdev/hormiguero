@@ -1,0 +1,21 @@
+# Documentos reales: nunca se suben (D-10, D-11)
+*.pdf
+documentos-reales/
+
+# Obsidian: estado local de cada equipo
+.obsidian/workspace*.json
+.obsidian/cache
+
+# .NET
+bin/
+obj/
+*.user
+.vs/
+
+# Sistema
+Thumbs.db
+desktop.ini
+
+# Secretos
+.env
+*.env
