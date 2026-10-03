@@ -1,6 +1,6 @@
 # Análisis: requisitos que aparecen al usar la app
 
-**Fecha:** 2026-10-03. **Estado:** análisis terminado; la propuesta de la sección 3 espera la decisión de Javier.
+**Fecha:** 2026-10-03. **Estado:** propuesta de la sección 3 aprobada completa (D-28).
 
 Origen del problema, en palabras de Javier: "el coso sirvio pero al usar la ap muchos requisitos salian a la luz :c eso parece que es inevitable, pero talvez podemos mejorar nuestro sistema, buscando recursos que nos sirvan".
 
@@ -28,7 +28,7 @@ Clasificación aproximada de los ~55 requisitos que aparecieron después de empe
 | Inevitables (16 %) | Contar con el cambio desde el diseño, no tratarlo como un fracaso | Brooks, *The Mythical Man-Month*, cap. 11 "Plan to Throw One Away" |
 | Errores (18 %) | Especificaciones ejecutables: cada Given/When/Then se vuelve una prueba automática que se corre siempre | Smart, *BDD in Action*, cap. 5 |
 
-## 3. Propuesta para MQD v2 (pendiente de decisión)
+## 3. Cambios adoptados en MQD v2 (D-28)
 
 1. **Mantener lo que funcionó:** idea vaga (qué sí / qué no), Given/When/Then, "¿Qué tal si...?", sección "qué NO construir" y el ciclo de Casos (capturó ordenadamente lo emergente).
 2. **Agregar prototipo de pantallas antes de programar:** Javier ve y aprueba las pantallas (con datos de ejemplo, sin lógica) antes de construir. Ataca el 31 %.
