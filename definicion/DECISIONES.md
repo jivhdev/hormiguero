@@ -56,10 +56,17 @@ Las citas entre comillas son textuales de Javier.
 | uv 0.12.22 | Instalado (requisito de Spec Kit) | Instalado |
 | Spec Kit (specify) 1.0.13 | Para evaluar como pieza de MQD v2 | Instalado, sin activar |
 | OpenSpec 1.14.0 | Para evaluar como pieza de MQD v2 | Instalado, sin activar |
-| .NET 10 SDK, csharp-lsp, MarkItDown, frontend-design, CSharpier, Context7 | Recomendados | Pendiente de aprobación |
-| Grill Me (solo esa skill) | Conviene | Pendiente |
-| Ponytail | Conviene | Pendiente |
-| RTK | Conviene cuando haya código | Pendiente |
+| .NET 10 SDK 10.0.401 | Obligatorio (D-04) | Instalado 2026-10-03 (winget) |
+| csharp-ls 0.28.0 + plugin `csharp-lsp` | Navegación de código C# sin leer archivos enteros | Instalado 2026-10-03 (activo al reiniciar Claude Code) |
+| CSharpier 1.3.0 | Formato uniforme del código | Instalado 2026-10-03 |
+| Plugin `frontend-design` | Sistema de diseño antes de pantallas (D-35, D-36) | Instalado 2026-10-03 (activo al reiniciar Claude Code) |
+| Grill Me + grilling (mattpocock, MIT) | Interrogatorio de diseño; se adaptará a MQD (una pregunta a la vez, sin subagentes) | Instalado 2026-10-03 en `~/.claude/skills` |
+| Ponytail (Claude Code) | Mínimo código necesario | Instalado 2026-10-03 (activo al reiniciar Claude Code). En OpenCode 1.x su plugin no funciona: sus reglas irán en `AGENTS.md` |
+| RTK 0.51.0 | Comprime la salida de comandos | Instalado 2026-10-03: hook de Claude Code (solo hook, sin RTK.md) y plugin de OpenCode. Telemetría apagada por defecto |
+| gitleaks 8.30.1 | Bloquear secretos antes de cada commit | Instalado 2026-10-03 (scoop); el hook se configura en el esqueleto |
+| FlaUI, nuget-license | Capturas de pantallas WPF para revisión; licencias compatibles con GPL v3 | Van en el esqueleto del monorepo (paso 4) |
+| Nager.Date | Descartado: la librería exige clave pagada | Feriados en archivo editable, Chile precargado |
+| MarkItDown, Context7, ccusage | No necesarios por ahora | — |
 | Graphify | Más adelante | — |
 | agent-skills (Osmani) | Solo como referencia | Clonado en `_recursos` |
 | Caveman | No | — |
