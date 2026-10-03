@@ -37,6 +37,7 @@ Fuente: `AP06\Programas futuros.txt`, `AP02\Legajo 1\Legajobsidian\Cambios que i
 2. "Funcionalidad de algunos de los programas que enlace documentos entre si. Asi, al facturar, al poner la occ de la factura, me muestra de que cliente es, su nvv, y el numero de la guia de despacho, y el de la obra, todo listo para procesar".
 3. Enlazar a un cliente antes de guardar (en Archivar), mientras el enlace completo no exista: "Talvez para archivero, crear la opcion de poner o enlazar a algun cliente antes de guardar".
 4. Botones según el documento abierto, y una pestaña con todos juntos en pequeño; incluir ahí las herramientas de Ofisuiza que correspondan.
+5. Plazos de vencimiento (lo que hacía **ficheri**, D-41): a partir de una fecha ingresada (por ejemplo, el día en que llegó un documento), sumar N días hábiles (sin fines de semana ni feriados) o corridos para saber cuándo vence, y enlazar ese vencimiento a una alerta. Javier: "yo necesitaba hacer que el documento X, por ejemplo, me llegó el día 12, entonces yo tenía que ver cuántos días más [...] tenía que sumarle para que se venciera [...] siempre sumaba mentalmente 7". El cálculo de fechas va al núcleo (Utilidades, nivel 0); la alerta, a Seguimiento.
 
 ## Programas futuros (todavía sin app asignada)
 
