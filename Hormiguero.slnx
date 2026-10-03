@@ -1,9 +1,11 @@
 <Solution>
   <Folder Name="/src/">
+    <Project Path="src/Hormiguero.Buscadero.Logica/Hormiguero.Buscadero.Logica.csproj" />
     <Project Path="src/Hormiguero.Diseno/Hormiguero.Diseno.csproj" />
     <Project Path="src/Hormiguero.Nucleo/Hormiguero.Nucleo.csproj" />
   </Folder>
   <Folder Name="/tests/">
+    <Project Path="tests/Hormiguero.Buscadero.Tests/Hormiguero.Buscadero.Tests.csproj" />
     <Project Path="tests/Hormiguero.Diseno.Tests/Hormiguero.Diseno.Tests.csproj" />
     <Project Path="tests/Hormiguero.Nucleo.Tests/Hormiguero.Nucleo.Tests.csproj" />
   </Folder>
