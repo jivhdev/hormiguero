@@ -2,7 +2,7 @@
 tipo: idea
 app: Mensajero
 fecha: 2026-10-03
-estado: borrador
+estado: cerrada
 ---
 
 # Idea — Mensajero
@@ -44,3 +44,5 @@ Lee PDF de carpetas de Drive o de red. No se conecta a internet ni guarda contra
 ## Cierre
 
 <!-- Regla de cierre (D-28): al menos un "no quiero" y un "sí quiero", confirmados por Javier. -->
+
+Fase 1 cerrada el 2026-10-03 junto con la aprobación del boceto (D-58).

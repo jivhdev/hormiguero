@@ -60,6 +60,8 @@ Las citas entre comillas son textuales de Javier.
 | D-54 | 2026-10-03 | Envío en Mensajero | Mensajero solo prepara correos y mensajes (texto, adjuntos, portapapeles); el usuario los envía. Sin internet ni contraseñas de correo en la app | (elegido: "Solo prepara, tú envías") |
 | D-55 | 2026-10-03 | Atajos de teclado | En todas las apps de Hormiguero los atajos son Alt + una letra de la fila central izquierda (A, S, D, F, G), cerca de la mano | "QUE SEAN ALT+D O F O G COSAS QUE ESTEN MAS CERCA" |
 | D-56 | 2026-10-03 | Funciones de Mensajero | Se aprueban las 14 funciones (Ofisuiza, ClickFactura, acciones de salida del Tren y Alertas de Motores, reporte semanal, planillas, certificados) con su reparto en pasos 3, 6 y 9 | "SI DALE REDIBUJA" |
+| D-57 | 2026-10-03 | Funciones faltantes en los bocetos | Se agregan a Buscadero (10) y Archivero (14) las funciones encontradas en los Casos de la v1, Motores y Facturas JCV, con sus pasos; Mensajero M4 lleva su propio buscador de OCC en la misma pantalla | "SI DALE AGREGA TODO Y REDIBUJA Y EN MENSAJERO M4 FALTA EL BUSCAR AHI MISMO" |
+| D-58 | 2026-10-03 | Bocetos aprobados | Se aprueban los bocetos completos (versión final) de Buscadero, Archivero y Mensajero, registrados en sus `PROTOTIPO.md`; con eso se cierran también las Ideas de Archivero y Mensajero | "si apruebo los tres, dale sigamos" |
 | D-27 | 2026-10-03 | Licencia | GPL v3 para todo Hormiguero. Consecuencia: toda dependencia debe ser compatible con GPL v3 (MIT, BSD y Apache 2.0 lo son) | "GPL v3" |
 
 ## Herramientas evaluadas

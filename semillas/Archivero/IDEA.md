@@ -2,7 +2,7 @@
 tipo: idea
 app: Archivero
 fecha: 2026-10-03
-estado: borrador
+estado: cerrada
 ---
 
 # Idea — Archivero
@@ -50,3 +50,5 @@ Sí: guarda en carpetas de Drive, de red o del servidor del ERP, y puede vigilar
 ## Cierre
 
 <!-- Regla de cierre (D-28): al menos un "no quiero" y un "sí quiero", confirmados por Javier. -->
+
+Fase 1 cerrada el 2026-10-03 junto con la aprobación del boceto (D-58).
