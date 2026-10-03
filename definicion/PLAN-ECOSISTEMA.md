@@ -24,13 +24,23 @@ Regla para ubicar cualquier función nueva: ¿el documento **entra**, se **consu
 
 El detalle de arreglos e ideas de cada una está en `PENDIENTES-FUNCIONALES.md`.
 
-## 3. Orden de desarrollo (solo referencia: se decide con el procedimiento de MQD v2, D-25)
+## 3. Orden de desarrollo (D-30, D-33)
 
-1. **Archivero:** es la puerta de entrada; al construirlo nacen las piezas comunes (PDF, reconocimiento, datos de documentos).
-2. **Buscadero:** consume lo que Archivero guardó y suma el visor.
-3. **Mensajero:** ClickFactura y Ofisuiza siguen funcionando hoy, así que pueden esperar sin perjudicar el trabajo diario; cuando le toque ya existirán el reconocimiento y la búsqueda.
+Regla: primero lo que depende de menos piezas (o de ninguna), después lo que se apoya en lo ya construido.
 
-Mientras una app cumple su mes de uso se desarrolla la siguiente (D-17). Las apps antiguas siguen en uso hasta que su reemplazo esté completo.
+| Nivel | Pieza | Usa |
+|---|---|---|
+| 0 | Diseño, Utilidades, Lectura de PDF, Datos comunes | nada |
+| 1 | Visor | lectura de PDF, diseño |
+| 1 | Reconocimiento | lectura de PDF, datos |
+| 2 | Buscadero · apertura | visor, datos |
+| 3 | Archivero · apertura | reconocimiento, utilidades, datos |
+| 4 | Mensajero · apertura | reconocimiento, búsqueda de documentos |
+| 5 | Seguimiento (dentro de Buscadero) | todo lo anterior |
+
+- De cada pieza del núcleo se construye solo lo que pide la app de encima.
+- Primero las aperturas (versión mínima usable de cada app, D-28); después cada app se completa en el mismo orden y parte su mes de uso (D-16, D-17).
+- No se usan los .exe antiguos como puente (D-32): todas las funciones son urgentes (D-31).
 
 ## 4. Integración desde el principio (D-18)
 
