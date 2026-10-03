@@ -49,7 +49,8 @@ Antes de escribir código, quédate en el primer escalón que sirva:
 
 ## Reglas que nunca se rompen
 
-- Español neutro en código visible, textos, comentarios y documentos (nada de voseo).
+- Español neutro en textos visibles, comentarios y documentos (nada de voseo), con tildes correctas.
+- Identificadores de código (variables, clases, métodos, archivos) en español pero **sin tildes ni eñes**: `ensamblado`, `numero`, `Senal`.
 - Nunca pegues ni subas documentos reales (`C:\JV\pruebas`). Las pruebas usan PDF generados.
 - Solo dependencias con licencia compatible con GPL v3 (MIT, BSD, Apache 2.0…). Nunca PyMuPDF ni nada AGPL sin aprobación.
 - Solo el núcleo abre la base de datos (ADR-001). La base vive en el disco local, nunca en red.
