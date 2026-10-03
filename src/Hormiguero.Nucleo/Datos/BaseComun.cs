@@ -23,19 +23,38 @@ public static class BaseComun
         var conexion = new SqliteConnection(constructor.ToString());
         conexion.Open();
 
-        using (var comando = conexion.CreateCommand())
+        try
         {
-            comando.CommandText = "PRAGMA journal_mode=WAL;";
-            comando.ExecuteScalar();
+            using (var comando = conexion.CreateCommand())
+            {
+                comando.CommandText = "PRAGMA journal_mode=WAL;";
+                comando.ExecuteScalar();
+            }
+
+            using (var comando = conexion.CreateCommand())
+            {
+                comando.CommandText = "PRAGMA busy_timeout=5000;";
+                comando.ExecuteNonQuery();
+            }
+
+            Migraciones.Aplicar(conexion, Migraciones.Todas);
+        }
+        catch
+        {
+            conexion.Dispose();
+            throw;
         }
 
-        using (var comando = conexion.CreateCommand())
+        try
         {
-            comando.CommandText = "PRAGMA busy_timeout=5000;";
-            comando.ExecuteNonQuery();
+            // Un fallo del respaldo no puede impedir usar la base: se ignora y se sigue.
+            Respaldo.HacerSiCorresponde(
+                conexion,
+                Path.Combine(carpeta ?? ".", "respaldos"),
+                DateTime.Now
+            );
         }
-
-        Migraciones.Aplicar(conexion, Migraciones.Todas);
+        catch { }
 
         return conexion;
     }
