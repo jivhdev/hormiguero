@@ -41,7 +41,7 @@ estado: boceto aprobado
 
 ### P3. Configuración
 
-Carpetas (paso 1); feriados y plazos de alerta por tipo de documento o proveedor (paso 7).
+Carpetas e impresión: directa por defecto, otra impresora fija o cuadro de Windows (paso 1); feriados y plazos de alerta por tipo de documento o proveedor (paso 7).
 
 **Aprobada por Javier:** sí (boceto)
 

@@ -3,12 +3,12 @@ tipo: spec
 app: Núcleo (nivel 0 y visor, para la apertura de Buscadero)
 version: 0.1
 fecha: 2026-10-03
-estado: borrador
+estado: aprobada
 ---
 
 # SPEC — Núcleo compartido (lo que pide la apertura de Buscadero)
 
-<!-- Fase 4 (MQD, sección 3). Solo se especifica lo que la apertura de Buscadero necesita (D-33). Criterios y medidas propuestos por Claude; ninguno vale hasta que Javier lo apruebe (D-09). Proyectos: Hormiguero.Nucleo (lógica) y Hormiguero.Diseno (estilo, ADR-003). -->
+<!-- Fase 4 (MQD, sección 3). Solo se especifica lo que la apertura de Buscadero necesita (D-33). Criterios y medidas propuestos por Claude; aprobados por Javier el 2026-10-03 (D-60). Proyectos: Hormiguero.Nucleo (lógica) y Hormiguero.Diseno (estilo, ADR-003). -->
 
 ## 1. Intención
 
@@ -24,13 +24,13 @@ Piezas comunes que cualquier app de Hormiguero usa para guardar datos, leer PDF 
 - **Given** una base creada por una versión anterior · **When** se abre con una versión nueva · **Then** solo se agregan tablas o columnas; no se borra ni renombra nada.
 - **Given** dos procesos abiertos a la vez · **When** uno escribe mientras el otro lee · **Then** ninguno falla.
 
-Aprobado por Javier: no
+Aprobado por Javier: sí (D-60)
 
 ### N-002 Respaldo diario de la base
 
 - **Given** la última copia tiene más de 24 h · **When** se abre la base · **Then** se crea una copia con fecha en `%LOCALAPPDATA%\Hormiguero\respaldos\` y se borran las que excedan 7.
 
-Aprobado por Javier: no
+Aprobado por Javier: sí (D-60)
 
 ### N-003 Leer información de un PDF
 
@@ -40,7 +40,7 @@ Aprobado por Javier: no
 - **Given** un PDF escaneado (sin texto) · **When** se lee · **Then** `tieneTexto = false`, sin error.
 - **Given** un PDF dañado o protegido con clave · **When** se lee · **Then** devuelve el estado "dañado" o "protegido", sin lanzar excepción ni cerrar la app.
 
-Aprobado por Javier: no
+Aprobado por Javier: sí (D-60)
 
 ### N-004 Dibujar una página
 
@@ -50,14 +50,14 @@ Aprobado por Javier: no
 - **Given** zoom 200 % · **When** se dibuja · **Then** la imagen mide el doble que a 100 %.
 - **Given** dos pedidos de dibujo al mismo tiempo · **When** se ejecutan · **Then** ambos terminan bien (se atienden en orden).
 
-Aprobado por Javier: no
+Aprobado por Javier: sí (D-60)
 
 ### N-005 Imprimir páginas
 
 - **Given** un PDF de 5 páginas · **When** se pide imprimir "las 2 primeras" · **Then** se envían solo las páginas 1 y 2 a la impresora predeterminada de Windows.
 - **Given** un PDF de 1 página · **When** se pide imprimir "las 2 primeras" · **Then** se imprime solo esa página, sin error.
 
-Aprobado por Javier: no
+Aprobado por Javier: sí (D-60)
 
 ### N-006 Números en el nombre de un archivo
 
@@ -68,13 +68,13 @@ Aprobado por Javier: no
 - **Given** `104523 recibida.pdf` · **Then** número `104523`, sufijo `recibida`.
 - **Given** `informe.pdf` · **Then** sin número, sin error.
 
-Aprobado por Javier: no
+Aprobado por Javier: sí (D-60)
 
 ### N-007 Huella de un archivo
 
 - **Given** dos archivos con el mismo contenido y distinto nombre · **When** se calcula su SHA-256 · **Then** la huella es igual (C1). El archivo se lee por partes, sin cargarlo entero en memoria.
 
-Aprobado por Javier: no
+Aprobado por Javier: sí (D-60)
 
 ### N-008 Diseño común
 
@@ -85,7 +85,7 @@ Aprobado por Javier: no
 - **Given** el usuario cambia el modo dentro de la app · **When** elige claro u oscuro · **Then** la app cambia sin reiniciarse y lo recuerda.
 - Tamaños mínimos: texto normal 14 px, botones de al menos 40 px de alto (pantallas amplias, D-35).
 
-Aprobado por Javier: no
+Aprobado por Javier: sí (D-60)
 
 ## 3. Requisitos no funcionales
 
@@ -97,10 +97,10 @@ Aprobado por Javier: no
 
 ## 4. Lista de listo para construir
 
-- [ ] Cada requisito tiene al menos un Given/When/Then, propuesto por la IA y aprobado por Javier (D-09). Cada uno se convierte en prueba automática.
-- [ ] Cada requisito no funcional tiene una medida numérica (atributo, estímulo, entorno, respuesta y medida).
+- [x] Cada requisito tiene al menos un Given/When/Then, propuesto por la IA y aprobado por Javier (D-09). Cada uno se convierte en prueba automática.
+- [x] Cada requisito no funcional tiene una medida numérica (atributo, estímulo, entorno, respuesta y medida).
 - [x] La sección "Qué NO construir" no está vacía.
-- [ ] Una vuelta completa de "¿Qué tal si...?" no encontró nada nuevo.
+- [x] Una vuelta completa de "¿Qué tal si...?" no encontró nada nuevo.
 - [x] Toda decisión con ventajas y desventajas reales tiene su ADR en `decisiones/`.
 - [x] Ningún nombre visible para el usuario quedó elegido por la IA.
 
