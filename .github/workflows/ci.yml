@@ -34,6 +34,15 @@ jobs:
       - name: Verificar licencias de dependencias
         run: dotnet nuget-license -i Hormiguero.slnx -a .config/licencias-permitidas.json
 
+  secretos:
+    # gitleaks-action solo funciona en Linux: en Windows intenta bajar un .tar.gz que no existe (404).
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v7
+        with:
+          fetch-depth: 0
+
       - name: Buscar secretos
         uses: gitleaks/gitleaks-action@v3
         env:
