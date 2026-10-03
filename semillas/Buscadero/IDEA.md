@@ -2,7 +2,7 @@
 tipo: idea
 app: Buscadero
 fecha: 2026-10-03
-estado: borrador
+estado: cerrada
 ---
 
 # Idea — Buscadero
@@ -44,7 +44,7 @@ Rol en Obrera: **consulta y control** — lo que se tiene (D-22). Absorbe Buscad
 
 ## Quién la usa
 
-<!-- Pendiente de confirmar con Javier. -->
+Un oficinista en su propio equipo: primero Javier, después cualquier oficinista que lo instale. Cada uno trabaja con sus propias carpetas (locales, de red o Drive). No hay usuarios ni contraseñas dentro de la app.
 
 ## ¿Toca algo fuera del equipo? (red, carpetas compartidas, internet)
 
@@ -53,3 +53,5 @@ Sí: puede observar carpetas de red o servidor compartido (por ejemplo, las del 
 ## Cierre
 
 <!-- Regla de cierre (D-28): al menos un "no quiero" y un "sí quiero", confirmados por Javier. -->
+
+Fase 1 cerrada el 2026-10-03: Javier confirmó la lista completa (D-48) y quién la usa.
