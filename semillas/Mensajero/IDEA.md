@@ -7,7 +7,7 @@ estado: borrador
 
 # Idea — Mensajero
 
-<!-- Fase 1 (MQD, sección 3). Borrador armado con lo que hacían ClickFactura y Ofisuiza, sus arreglos pendientes y los programas futuros. Los puntos marcados ⚠️ esperan decisión de Javier. -->
+<!-- Fase 1 (MQD, sección 3). Borrador armado con lo que hacían ClickFactura y Ofisuiza, sus arreglos pendientes y los programas futuros. Choque resuelto por Javier en D-54. -->
 
 Rol en Obrera: **salida** — lo que se envía o se entrega (D-22). Absorbe ClickFactura, Ofisuiza, la ayuda para pasar datos al ERP, las herramientas de planillas y el pedido de certificados.
 
@@ -17,7 +17,7 @@ Rol en Obrera: **salida** — lo que se envía o se entrega (D-22). Absorbe Clic
 - Que se mezclen los correos cuando un cliente tiene dos (arreglo pendiente).
 - Que el programa decida dónde dejar los PDF temporales: lo decide el usuario (arreglo pendiente).
 - Lógica de negocio precargada: proveedores, bodegas, plantillas de mensaje y clientes son configurables.
-- ⚠️ Que envíe correos por su cuenta: en ClickFactura el envío final lo hacías tú a mano.
+- Que envíe correos o mensajes por su cuenta: solo los prepara y el usuario los envía (D-54).
 
 ## Lo que más o menos SÍ quiero
 
@@ -39,7 +39,7 @@ Un oficinista en su propio equipo: primero Javier, después cualquiera que lo in
 
 ## ¿Toca algo fuera del equipo? (red, carpetas compartidas, internet)
 
-Lee PDF de carpetas de Drive o de red. ⚠️ Enviar correos o WhatsApp directamente sí tocaría internet; hoy solo se preparan y se copian.
+Lee PDF de carpetas de Drive o de red. No se conecta a internet ni guarda contraseñas de correo: prepara y copia; el usuario envía (D-54).
 
 ## Cierre
 

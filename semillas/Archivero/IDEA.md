@@ -7,7 +7,7 @@ estado: borrador
 
 # Idea — Archivero
 
-<!-- Fase 1 (MQD, sección 3). Borrador armado con la idea de Archivero de MQD v1 (2026-09-12), los arreglos pendientes, el Caso-7 y lo que hacía Facturas JCV. Los puntos marcados ⚠️ esperan decisión de Javier. -->
+<!-- Fase 1 (MQD, sección 3). Borrador armado con la idea de Archivero de MQD v1 (2026-09-12), los arreglos pendientes, el Caso-7 y lo que hacía Facturas JCV. Choques resueltos por Javier en D-52 y D-53. -->
 
 Rol en Obrera: **entrada** — lo que llega (D-22). Absorbe Archivero, Facturas JCV / ExtractorCobelcar (pasa a ser una configuración), la impresión automática al archivar y la carga de certificados.
 
@@ -36,8 +36,8 @@ Rol en Obrera: **entrada** — lo que llega (D-22). Absorbe Archivero, Facturas 
 - Que reconozca los datos que Buscadero necesita para enlazar (emisor, tipo, fecha, número enlazante) y los deje en la base común (D-18, ADR-001).
 - Carpetas locales, de red o de Drive.
 - Gratis, profesional, rápido en equipos de gama baja, con algo de personalización visual.
-- ⚠️ Vigilar carpetas de red de un proveedor (lo que hacía Facturas JCV, que revisaba el servidor cada 30 segundos). Choca con la regla del "vecino silencioso" (MQD, sección 9).
-- ⚠️ ¿Un "modo simple" para quien solo quiere archivar, sin la configuración extra que alimenta a Buscadero? (Idea de Motores, v1.)
+- Vigilar carpetas de red de un proveedor (lo que hacía Facturas JCV) como el mejor vecino silencioso: usa los avisos de cambio de Windows (no consulta a cada rato), revisa al abrir la app lo que llegó mientras estaba cerrada y ofrece "Revisar ahora"; si los avisos fallan, revisa solo los archivos nuevos (D-52).
+- Dos modos: simple, para quien solo quiere archivar, y completo, que además configura lo que Buscadero necesita para enlazar (D-53).
 
 ## Quién la usa
 
