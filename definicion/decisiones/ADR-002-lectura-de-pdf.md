@@ -3,7 +3,7 @@ tipo: adr
 app: Hormiguero (núcleo)
 numero: 2
 fecha: 2026-10-03
-estado: propuesta # propuesta | aprobada | reemplazada
+estado: aprobada # propuesta | aprobada | reemplazada
 ---
 
 # ADR-002: Librerías para leer y mostrar PDF
@@ -31,7 +31,7 @@ Datos verificados en GitHub el 2026-10-03:
 
 ## Decisión
 
-**Propuesta: opción A.** Ambas se usan solo desde el núcleo (`Hormiguero.Nucleo`), detrás de una interfaz propia, para poder cambiarlas sin tocar las apps.
+**Opción A** (aprobada por Javier, D-59). Ambas se usan solo desde el núcleo (`Hormiguero.Nucleo`), detrás de una interfaz propia, para poder cambiarlas sin tocar las apps.
 
 ## Consecuencias
 

@@ -3,7 +3,7 @@ tipo: adr
 app: Hormiguero (diseño)
 numero: 3
 fecha: 2026-10-03
-estado: propuesta # propuesta | aprobada | reemplazada
+estado: aprobada # propuesta | aprobada | reemplazada
 ---
 
 # ADR-003: Cómo se construye el estilo visual
@@ -24,7 +24,7 @@ Desde .NET 9, WPF trae el tema Fluent de Windows 11 incluido, con `ThemeMode` qu
 
 ## Decisión
 
-**Propuesta: opción A.** Un proyecto `Hormiguero.Diseno` con el diccionario de recursos común (colores por modo según D-36, tamaños grandes, espaciados, tipografía) que todas las apps usan.
+**Opción A** (aprobada por Javier, D-59). Un proyecto `Hormiguero.Diseno` con el diccionario de recursos común (colores por modo según D-36, tamaños grandes, espaciados, tipografía) que todas las apps usan.
 
 ## Consecuencias
 

@@ -3,7 +3,7 @@ tipo: adr
 app: Buscadero
 numero: 1
 fecha: 2026-10-03
-estado: propuesta # propuesta | aprobada | reemplazada
+estado: aprobada # propuesta | aprobada | reemplazada
 ---
 
 # ADR-001 (Buscadero): Índice de búsqueda y "vecino silencioso"
@@ -22,7 +22,7 @@ En la v1 una búsqueda en carpetas de red tardaba minutos. La apertura debe busc
 
 ## Decisión
 
-**Propuesta: opción B.**
+**Opción B** (aprobada por Javier, D-59).
 
 - Por cada archivo se guarda: ruta, nombre, números del nombre (con prefijo y sufijo separados, para C5 y C7), tamaño, fecha de modificación, hash (C1), si tiene texto (C2) y los números de su texto (C6).
 - El índice se arma la primera vez y después se actualiza solo con lo nuevo o modificado (por fecha de modificación); nunca se relee lo que no cambió.
