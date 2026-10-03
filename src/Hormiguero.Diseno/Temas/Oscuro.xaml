@@ -1,0 +1,60 @@
+<ResourceDictionary
+  xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+  xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+  xmlns:sys="clr-namespace:System;assembly=mscorlib"
+>
+  <ResourceDictionary.MergedDictionaries>
+    <ResourceDictionary Source="pack://application:,,,/PresentationFramework.Fluent;component/Themes/Fluent.Dark.xaml" />
+  </ResourceDictionary.MergedDictionaries>
+
+  <!-- Colores y pinceles -->
+  <Color x:Key="Hormiguero.PrincipalColor">#6CC08B</Color>
+  <Color x:Key="Hormiguero.PrincipalTextoColor">#1F2937</Color>
+  <Color x:Key="Hormiguero.AcentoColor">#7FB0E0</Color>
+  <Color x:Key="Hormiguero.FondoColor">#141B16</Color>
+  <Color x:Key="Hormiguero.SuperficieColor">#1D2621</Color>
+  <Color x:Key="Hormiguero.BordeColor">#2F3A33</Color>
+  <Color x:Key="Hormiguero.TextoColor">#F1F5F9</Color>
+  <Color x:Key="Hormiguero.TextoSecundarioColor">#CBD5E1</Color>
+  <Color x:Key="Hormiguero.ExitoColor">#4CAF7C</Color>
+  <Color x:Key="Hormiguero.AvisoColor">#F59E0B</Color>
+  <Color x:Key="Hormiguero.ErrorColor">#F87171</Color>
+
+  <SolidColorBrush
+    x:Key="Hormiguero.Principal"
+    Color="{StaticResource Hormiguero.PrincipalColor}"
+  />
+  <SolidColorBrush
+    x:Key="Hormiguero.PrincipalTexto"
+    Color="{StaticResource Hormiguero.PrincipalTextoColor}"
+  />
+  <SolidColorBrush x:Key="Hormiguero.Acento" Color="{StaticResource Hormiguero.AcentoColor}" />
+  <SolidColorBrush x:Key="Hormiguero.Fondo" Color="{StaticResource Hormiguero.FondoColor}" />
+  <SolidColorBrush
+    x:Key="Hormiguero.Superficie"
+    Color="{StaticResource Hormiguero.SuperficieColor}"
+  />
+  <SolidColorBrush x:Key="Hormiguero.Borde" Color="{StaticResource Hormiguero.BordeColor}" />
+  <SolidColorBrush x:Key="Hormiguero.Texto" Color="{StaticResource Hormiguero.TextoColor}" />
+  <SolidColorBrush
+    x:Key="Hormiguero.TextoSecundario"
+    Color="{StaticResource Hormiguero.TextoSecundarioColor}"
+  />
+  <SolidColorBrush x:Key="Hormiguero.Exito" Color="{StaticResource Hormiguero.ExitoColor}" />
+  <SolidColorBrush x:Key="Hormiguero.Aviso" Color="{StaticResource Hormiguero.AvisoColor}" />
+  <SolidColorBrush x:Key="Hormiguero.Error" Color="{StaticResource Hormiguero.ErrorColor}" />
+
+  <!-- Tamaños -->
+  <sys:Double x:Key="Hormiguero.TextoNormal">14</sys:Double>
+  <sys:Double x:Key="Hormiguero.TextoTitulo">20</sys:Double>
+  <sys:Double x:Key="Hormiguero.AltoBoton">40</sys:Double>
+  <sys:Double x:Key="Hormiguero.Espacio">12</sys:Double>
+  <CornerRadius x:Key="Hormiguero.Radio">8</CornerRadius>
+
+  <!-- Estilo base para Button -->
+  <Style TargetType="Button" BasedOn="{StaticResource {x:Type Button}}">
+    <Setter Property="MinHeight" Value="{StaticResource Hormiguero.AltoBoton}" />
+    <Setter Property="Background" Value="{StaticResource Hormiguero.Principal}" />
+    <Setter Property="Foreground" Value="{StaticResource Hormiguero.PrincipalTexto}" />
+  </Style>
+</ResourceDictionary>
