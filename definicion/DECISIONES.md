@@ -52,6 +52,7 @@ Las citas entre comillas son textuales de Javier.
 | D-46 | 2026-10-03 | Documentos de prueba | Viven en `C:\JV\pruebas`, fuera de todo repositorio | (elegido: "Sí, en C:\JV\pruebas") |
 | D-47 | 2026-10-03 | Datos comunes | Se aprueba ADR-001 opción A: una base SQLite común, local en cada equipo, modo WAL, administrada solo por el núcleo; compartir entre equipos queda abierto | "sí, opción A" |
 | D-48 | 2026-10-03 | Enlaces en Buscadero | Buscadero enlaza documentos solo cuando el dato calza con certeza; los dudosos quedan en una lista para que el usuario decida. Reemplaza el "solo manual" de la v1. Los demás puntos de la Idea v1 de Buscadero se confirman | (elegido: "Automático si es seguro, dudosos a mano"; "Sí, todos (salvo el de enlaces)") |
+| D-49 | 2026-10-03 | Casos difíciles de Buscadero | Se aprueban las 9 propuestas de `semillas/Buscadero/DESCUBRIMIENTO.md` (C1 a C9). OCR: en el medio juego, no en la apertura, por ser lo que conviene según el plan de juegos (D-28, D-33) | "Sí, todas"; "LO QUE CONVIENE PO SEGUN EL PLAN" |
 | D-27 | 2026-10-03 | Licencia | GPL v3 para todo Hormiguero. Consecuencia: toda dependencia debe ser compatible con GPL v3 (MIT, BSD y Apache 2.0 lo son) | "GPL v3" |
 
 ## Herramientas evaluadas

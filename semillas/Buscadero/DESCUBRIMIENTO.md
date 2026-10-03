@@ -2,7 +2,7 @@
 tipo: descubrimiento
 app: Buscadero
 fecha: 2026-10-03
-estado: borrador
+estado: cerrada
 ---
 
 # Descubrimiento — Buscadero
@@ -39,24 +39,26 @@ estado: borrador
 
 | Caso | Qué tiene de raro | Qué debe pasar (propuesta) | Decisión de Javier |
 |---|---|---|---|
-| C1. Copias exactas | El mismo documento está en dos carpetas | Mostrar el resultado una vez, indicando todas las carpetas donde está | |
-| C2. Escaneado sin texto | No se puede buscar dentro de su contenido | Encontrarlo solo por el número del nombre del archivo; sin OCR en la apertura | |
-| C3. Escaneado con par de texto | Una guía firmada escaneada y su original con texto comparten número | Mostrar ambos como el mismo documento en dos versiones | |
-| C4. Copia cedible | `FCV123` y `FCV123_CEDIBLE` son el mismo documento | Mostrar el original primero y la cedible como versión secundaria | |
-| C5. Prefijos y sufijos en el nombre | `OCC123`, `F123`, `123 recibida` | Buscar "123" encuentra todos; el prefijo sirve como filtro de tipo | |
-| C6. Nombre sin número | No se encuentra buscando por número en el nombre | Buscar también el número dentro del texto del PDF (solo si tiene texto) | |
-| C7. Número dentro de otro | Buscar "123" no debe traer "41234" | Coincidencia exacta del número completo, nunca parcial | |
-| C8. Archivos que no son PDF | Imágenes PNG mezcladas en las carpetas | Ignorarlas en la apertura | |
-| C9. Página rotada | Escaneados girados 90° | El visor respeta la rotación del PDF | |
+| C1. Copias exactas | El mismo documento está en dos carpetas | Mostrar el resultado una vez, indicando todas las carpetas donde está | Aprobada (D-49) |
+| C2. Escaneado sin texto | No se puede buscar dentro de su contenido | Encontrarlo solo por el número del nombre del archivo; sin OCR en la apertura | Aprobada (D-49) |
+| C3. Escaneado con par de texto | Una guía firmada escaneada y su original con texto comparten número | Mostrar ambos como el mismo documento en dos versiones | Aprobada (D-49) |
+| C4. Copia cedible | `FCV123` y `FCV123_CEDIBLE` son el mismo documento | Mostrar el original primero y la cedible como versión secundaria | Aprobada (D-49) |
+| C5. Prefijos y sufijos en el nombre | `OCC123`, `F123`, `123 recibida` | Buscar "123" encuentra todos; el prefijo sirve como filtro de tipo | Aprobada (D-49) |
+| C6. Nombre sin número | No se encuentra buscando por número en el nombre | Buscar también el número dentro del texto del PDF (solo si tiene texto) | Aprobada (D-49) |
+| C7. Número dentro de otro | Buscar "123" no debe traer "41234" | Coincidencia exacta del número completo, nunca parcial | Aprobada (D-49) |
+| C8. Archivos que no son PDF | Imágenes PNG mezcladas en las carpetas | Ignorarlas en la apertura | Aprobada (D-49) |
+| C9. Página rotada | Escaneados girados 90° | El visor respeta la rotación del PDF | Aprobada (D-49) |
 
 ## Puntos calientes
 
 | Punto | Por qué preocupa | Cómo se resuelve |
 |---|---|---|
 | Velocidad en carpetas de red | En la v1 una búsqueda tardaba minutos; buscar dentro del texto lo hace más lento | Índice local en la base común (ADR-001) que se adelanta mientras no se busca, sin sobrecargar la red (vecino silencioso) |
-| Escaneados sin OCR | 4 de 5 escaneados solo se encuentran por el nombre | Decidir si la apertura usa OCR o no (C2) |
+| Escaneados sin OCR | 4 de 5 escaneados solo se encuentran por el nombre | OCR en el medio juego, no en la apertura (D-49) |
 | Copias en varias carpetas | Resultados repetidos confunden | C1 |
 
 ## Cierre
 
 <!-- Regla de cierre (D-28): cada documento de prueba clasificado y cada caso difícil con una decisión de Javier. -->
+
+Fase 2 cerrada el 2026-10-03: los 9 casos aprobados por Javier (D-49).
