@@ -46,6 +46,7 @@ Las citas entre comillas son textuales de Javier.
 | D-40 | 2026-10-03 | Repositorio de MQD | MQD vive en su propio repositorio público nuevo, `jivhdev/mqd`, en `C:\JV\MQD`. `jivhdev/mqd-vault` (privado) queda como archivo de la v1. Reemplaza a D-06 (MQD ya no vive dentro del monorepo de Hormiguero) | (elegido: "Repo nuevo para la v2", "Público, como Hormiguero") |
 | D-41 | 2026-10-03 | Función de ficheri | ficheri calcula vencimientos: fecha ingresada + N días hábiles (sin feriados) o corridos, enlazado a una alerta. Se reparte: el cálculo de fechas va al núcleo (Utilidades, nivel 0) y la alerta de vencimiento a Seguimiento (Buscadero) | "FICHERI ME DECIA LAS FECHA INGRESADA POR EL USUARIO Y RESTABA SEGUN DIAS FERIADOS IGUAL HABILES O DE CORRIDOS Y ESO QUE SE ENLACE A LA ALAERTA" |
 | D-42 | 2026-10-03 | Cierre de MQD v1 | Se subieron a `mqd-vault` los últimos cambios locales (especificación de Buscadero, CONTEXTO-MQD.md, MQD MODIFICACIONES.txt), sin libros, y se marcó la etiqueta `v1.0` | "SI OBVIO SUBELOS PORF" |
+| D-43 | 2026-10-03 | Licencia de MQD | CC BY-SA 4.0 (licencia libre para documentos, mismo espíritu que la GPL v3 de Hormiguero) | "La que convenga para lo que quiero [...] Yo creo que sea gratis para todo el mundo [...] que quien quiera usarlo, lo quiere usar" |
 | D-27 | 2026-10-03 | Licencia | GPL v3 para todo Hormiguero. Consecuencia: toda dependencia debe ser compatible con GPL v3 (MIT, BSD y Apache 2.0 lo son) | "GPL v3" |
 
 ## Herramientas evaluadas
