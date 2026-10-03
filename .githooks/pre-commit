@@ -1,0 +1,11 @@
+#!/bin/sh
+# Revisa los cambios por confirmar contra secretos con gitleaks.
+# Si gitleaks no está instalado, avisa y deja pasar el commit.
+
+if ! command -v gitleaks >/dev/null 2>&1; then
+  echo "Aviso: gitleaks no está instalado; no se revisó el commit contra secretos." >&2
+  echo "Instálalo con: https://github.com/gitleaks/gitleaks#installing" >&2
+  exit 0
+fi
+
+gitleaks git --pre-commit --staged --redact --no-banner
