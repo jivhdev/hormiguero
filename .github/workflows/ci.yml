@@ -1,0 +1,40 @@
+name: CI
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+
+jobs:
+  revision:
+    runs-on: windows-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v7
+        with:
+          fetch-depth: 0
+
+      - name: Configurar .NET
+        uses: actions/setup-dotnet@v6
+        with:
+          global-json-file: global.json
+
+      - name: Restaurar herramientas
+        run: dotnet tool restore
+
+      - name: Compilar
+        run: dotnet build Hormiguero.slnx -c Release
+
+      - name: Probar
+        run: dotnet test Hormiguero.slnx -c Release --no-build
+
+      - name: Verificar formato
+        run: dotnet csharpier check .
+
+      - name: Verificar licencias de dependencias
+        run: dotnet nuget-license -i Hormiguero.slnx -a .config/licencias-permitidas.json
+
+      - name: Buscar secretos
+        uses: gitleaks/gitleaks-action@v3
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}

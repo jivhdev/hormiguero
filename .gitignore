@@ -19,3 +19,12 @@ desktop.ini
 # Secretos
 .env
 *.env
+
+# .NET
+TestResults/
+*.suo
+*.cache
+artifacts/
+
+# Capturas temporales
+capturas-temp/
