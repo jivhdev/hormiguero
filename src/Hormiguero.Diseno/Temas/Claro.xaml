@@ -50,7 +50,7 @@
   <sys:Double x:Key="Hormiguero.AltoBoton">40</sys:Double>
   <sys:Double x:Key="Hormiguero.Espacio">12</sys:Double>
   <CornerRadius x:Key="Hormiguero.Radio">8</CornerRadius>
-    <Thickness x:Key="Hormiguero.Margen">12</Thickness>
+  <Thickness x:Key="Hormiguero.Margen">12</Thickness>
 
   <!-- Estilo base para Button -->
   <Style TargetType="Button" BasedOn="{StaticResource {x:Type Button}}">
