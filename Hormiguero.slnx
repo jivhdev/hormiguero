@@ -5,6 +5,7 @@
     <Project Path="src/Hormiguero.Buscadero.Core/Hormiguero.Buscadero.Core.csproj" />
     <Project Path="src/Hormiguero.Diseno/Hormiguero.Diseno.csproj" />
     <Project Path="src/Hormiguero.Mensajero.Core/Hormiguero.Mensajero.Core.csproj" />
+    <Project Path="src/Hormiguero.Mensajero/Hormiguero.Mensajero.csproj" />
     <Project Path="src/Hormiguero.Nucleo/Hormiguero.Nucleo.csproj" />
   </Folder>
   <Folder Name="/tests/">

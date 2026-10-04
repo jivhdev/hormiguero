@@ -1,0 +1,306 @@
+<Window
+  x:Class="Hormiguero.Mensajero.App.VentanaPrincipal"
+  xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+  xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+  xmlns:core="clr-namespace:Hormiguero.Mensajero.Core;assembly=Hormiguero.Mensajero.Core"
+  Title="Mensajero"
+  Width="1050"
+  Height="850"
+  ResizeMode="NoResize"
+  WindowStartupLocation="CenterScreen"
+  PreviewKeyDown="Ventana_PreviewKeyDown"
+>
+  <Grid>
+    <Grid.RowDefinitions>
+      <RowDefinition Height="58" />
+      <RowDefinition Height="*" />
+      <RowDefinition Height="30" />
+    </Grid.RowDefinitions>
+    <Border Grid.Row="0" Background="{DynamicResource Hormiguero.Principal}" Padding="18,8">
+      <DockPanel LastChildFill="True">
+        <TextBlock
+          DockPanel.Dock="Left"
+          Text="◈  Mensajero"
+          FontSize="18"
+          FontWeight="Bold"
+          Foreground="{DynamicResource Hormiguero.PrincipalTexto}"
+          VerticalAlignment="Center"
+          Margin="0,0,24,0"
+        />
+        <Button
+          DockPanel.Dock="Right"
+          Content="Cambiar"
+          Click="CambiarCarpeta_Click"
+          Padding="14,5"
+        />
+        <TextBlock
+          x:Name="TextoCarpeta"
+          Text="Sin carpeta configurada"
+          FontSize="13"
+          Foreground="{DynamicResource Hormiguero.PrincipalTexto}"
+          VerticalAlignment="Center"
+          Margin="0,0,10,0"
+        />
+      </DockPanel>
+    </Border>
+    <ScrollViewer Grid.Row="1" VerticalScrollBarVisibility="Auto">
+      <Grid Margin="14,12">
+        <Grid.ColumnDefinitions>
+          <ColumnDefinition Width="*" />
+          <ColumnDefinition Width="*" />
+        </Grid.ColumnDefinitions>
+        <StackPanel Grid.Column="0" Margin="0,0,7,0">
+          <GroupBox Header="📄 Extractor OCC" Padding="10" Margin="0,0,0,10">
+            <StackPanel>
+              <WrapPanel Margin="0,0,0,8">
+                <Button
+                  x:Name="BotonUltimoAsunto"
+                  Content="📋 Asunto (Ctrl+1)"
+                  Click="UltimoAsunto_Click"
+                  Margin="0,0,6,5"
+                />
+                <Button
+                  x:Name="BotonUltimoCuerpo"
+                  Content="📋 Cuerpo (Ctrl+2)"
+                  Click="UltimoCuerpo_Click"
+                  Margin="0,0,6,5"
+                />
+                <Button
+                  x:Name="BotonActivar"
+                  Content="▶ Activar"
+                  Click="Activar_Click"
+                  Margin="0,0,6,5"
+                />
+                <Button
+                  x:Name="BotonDetener"
+                  Content="⏹ Detener"
+                  Click="Detener_Click"
+                  IsEnabled="False"
+                  Margin="0,0,6,5"
+                />
+                <TextBlock
+                  x:Name="TextoEstadoAuto"
+                  Text="⚪ Auto: Inactivo"
+                  VerticalAlignment="Center"
+                />
+              </WrapPanel>
+              <DockPanel>
+                <Button
+                  DockPanel.Dock="Right"
+                  Content="🔍 Buscar"
+                  Click="BuscarExtractor_Click"
+                  Margin="6,0,0,0"
+                />
+                <TextBox
+                  x:Name="CampoBuscarExtractor"
+                  ToolTip="N° OCC..."
+                  KeyDown="BuscarExtractor_KeyDown"
+                />
+              </DockPanel>
+              <TextBlock
+                x:Name="TextoArchivoEncontrado"
+                Text=""
+                Margin="0,5,0,3"
+                TextWrapping="Wrap"
+              />
+              <WrapPanel>
+                <Button
+                  x:Name="BotonAsuntoEncontrado"
+                  Content="Asunto"
+                  Click="AsuntoEncontrado_Click"
+                  IsEnabled="False"
+                  Margin="0,0,6,0"
+                />
+                <Button
+                  x:Name="BotonCuerpoEncontrado"
+                  Content="Cuerpo"
+                  Click="CuerpoEncontrado_Click"
+                  IsEnabled="False"
+                />
+              </WrapPanel>
+            </StackPanel>
+          </GroupBox>
+          <GroupBox Header="👥 Clientes NVV (COBELCAR)" Padding="10">
+            <StackPanel>
+              <DockPanel Margin="0,0,0,6">
+                <Button
+                  DockPanel.Dock="Right"
+                  Content="✏️ Editar"
+                  Click="EditarClientes_Click"
+                  Margin="6,0,0,0"
+                />
+                <TextBox
+                  x:Name="CampoBuscarCliente"
+                  ToolTip="Escribe para buscar..."
+                  TextChanged="BuscarCliente_TextChanged"
+                  KeyDown="BuscarCliente_KeyDown"
+                />
+              </DockPanel>
+              <ListBox x:Name="ListaClientes" Height="160" MouseDoubleClick="Cliente_DoubleClick" />
+              <Button
+                Content="📋 Copiar selección (Enter = copiar 1° resultado)"
+                Click="CopiarCliente_Click"
+                Margin="0,7,0,0"
+              />
+            </StackPanel>
+          </GroupBox>
+        </StackPanel>
+        <StackPanel Grid.Column="1" Margin="7,0,0,0">
+          <GroupBox Header="🚚 Generar mensaje de retiro" Padding="10" Margin="0,0,0,10">
+            <Grid>
+              <Grid.RowDefinitions>
+                <RowDefinition Height="Auto" />
+                <RowDefinition Height="Auto" />
+                <RowDefinition Height="Auto" />
+                <RowDefinition Height="Auto" />
+                <RowDefinition Height="Auto" />
+                <RowDefinition Height="*" />
+                <RowDefinition Height="Auto" />
+              </Grid.RowDefinitions>
+              <DockPanel Grid.Row="0" Margin="0,0,0,6">
+                <Button
+                  DockPanel.Dock="Left"
+                  Content="📄 Último PDF"
+                  Click="UltimoPdfRetiro_Click"
+                  Margin="0,0,6,0"
+                />
+                <Button
+                  DockPanel.Dock="Right"
+                  Content="🔍 Buscar"
+                  Click="BuscarRetiro_Click"
+                  Margin="6,0,0,0"
+                />
+                <TextBox
+                  x:Name="CampoBuscarRetiro"
+                  ToolTip="N° OCC..."
+                  KeyDown="BuscarRetiro_KeyDown"
+                />
+              </DockPanel>
+              <TextBlock
+                x:Name="TextoProveedor"
+                Grid.Row="1"
+                Text="🏢 Proveedor: —"
+                Margin="0,2,0,5"
+              />
+              <StackPanel x:Name="PanelHoffens" Grid.Row="2" Visibility="Collapsed">
+                <DockPanel Margin="0,0,0,5">
+                  <TextBlock
+                    DockPanel.Dock="Left"
+                    Text="Día:"
+                    VerticalAlignment="Center"
+                    Margin="0,0,8,0"
+                  />
+                  <TextBox x:Name="CampoDiaHoffens" Text="_______________" />
+                </DockPanel>
+                <DockPanel Margin="0,0,0,6">
+                  <TextBlock
+                    DockPanel.Dock="Left"
+                    Text="Bloque:"
+                    VerticalAlignment="Center"
+                    Margin="0,0,8,0"
+                  />
+                  <ComboBox
+                    x:Name="ListaBloques"
+                    ItemsSource="{x:Static core:MensajesRetiro.BloquesHoffens}"
+                    SelectedIndex="0"
+                  />
+                </DockPanel>
+              </StackPanel>
+              <TextBlock Grid.Row="3" Text="Vista previa:" FontWeight="Bold" Margin="0,4,0,4" />
+              <TextBox
+                x:Name="VistaRetiro"
+                Grid.Row="4"
+                Grid.RowSpan="2"
+                IsReadOnly="True"
+                TextWrapping="Wrap"
+                VerticalScrollBarVisibility="Auto"
+                MinHeight="235"
+                MaxHeight="280"
+                FontFamily="Consolas"
+                Background="{DynamicResource Hormiguero.Superficie}"
+              />
+              <WrapPanel Grid.Row="6" Margin="0,7,0,0">
+                <Button
+                  Content="🔄 Actualizar vista"
+                  Click="ActualizarRetiro_Click"
+                  Margin="0,0,6,0"
+                />
+                <Button Content="📋 Copiar mensaje (Ctrl+3)" Click="CopiarRetiro_Click" />
+              </WrapPanel>
+            </Grid>
+          </GroupBox>
+          <GroupBox Header="📮 Envío de guías (Hoffens)" Padding="10">
+            <StackPanel>
+              <DockPanel Margin="0,0,0,5">
+                <Button
+                  DockPanel.Dock="Right"
+                  Content="🔍 Buscar OCC"
+                  Click="BuscarGuia_Click"
+                  Margin="6,0,0,0"
+                />
+                <TextBox
+                  x:Name="CampoBuscarGuia"
+                  ToolTip="N° OCC..."
+                  KeyDown="BuscarGuia_KeyDown"
+                />
+              </DockPanel>
+              <TextBlock x:Name="TextoArchivoGuia" Text="" Margin="0,0,0,4" TextWrapping="Wrap" />
+              <TextBlock Text="Obra:" FontWeight="Bold" />
+              <TextBox x:Name="CampoObra" Margin="0,2,0,5" />
+              <TextBlock Text="Comuna:" FontWeight="Bold" />
+              <TextBox x:Name="CampoComuna" Margin="0,2,0,5" />
+              <TextBlock Text="Día de emisión:" FontWeight="Bold" />
+              <StackPanel Orientation="Horizontal" Margin="0,2,0,4">
+                <RadioButton
+                  x:Name="DiaHoy"
+                  Content="Hoy"
+                  IsChecked="True"
+                  GroupName="DiaGuia"
+                  Checked="DiaGuia_Checked"
+                  Margin="0,0,12,0"
+                />
+                <RadioButton
+                  x:Name="DiaAyer"
+                  Content="Ayer"
+                  GroupName="DiaGuia"
+                  Checked="DiaGuia_Checked"
+                  Margin="0,0,12,0"
+                />
+                <RadioButton
+                  x:Name="DiaOtro"
+                  Content="Otro:"
+                  GroupName="DiaGuia"
+                  Checked="DiaGuia_Checked"
+                />
+                <TextBox x:Name="CampoDiaGuia" Width="145" Margin="8,0,0,0" IsEnabled="False" />
+              </StackPanel>
+              <TextBox
+                x:Name="VistaGuia"
+                IsReadOnly="True"
+                TextWrapping="Wrap"
+                MinHeight="68"
+                MaxHeight="90"
+                VerticalScrollBarVisibility="Auto"
+                FontFamily="Consolas"
+                Background="{DynamicResource Hormiguero.Superficie}"
+              />
+              <WrapPanel Margin="0,7,0,0">
+                <Button Content="🔄 Generar mensaje" Click="GenerarGuia_Click" Margin="0,0,6,0" />
+                <Button Content="📋 Copiar mensaje (Ctrl+4)" Click="CopiarGuia_Click" />
+              </WrapPanel>
+            </StackPanel>
+          </GroupBox>
+        </StackPanel>
+      </Grid>
+    </ScrollViewer>
+    <Border Grid.Row="2" Background="{DynamicResource Hormiguero.Principal}" Padding="8,3">
+      <TextBlock
+        x:Name="TextoToast"
+        Text="● Listo"
+        HorizontalAlignment="Center"
+        FontWeight="Bold"
+        Foreground="{DynamicResource Hormiguero.PrincipalTexto}"
+      />
+    </Border>
+  </Grid>
+</Window>
