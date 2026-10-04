@@ -38,8 +38,21 @@ public class TemaTests
 
         Assert.Equal(claro, oscuro);
         Assert.Contains("Hormiguero.Principal", claro);
-        // El estilo base de Button no lleva clave: se registra por tipo.
-        Assert.Contains(typeof(Button).FullName!, claro);
+        Assert.Contains("Hormiguero.PrincipalSuave", claro);
+    }
+
+    [Fact]
+    public void Los_controles_tienen_su_estilo_comun()
+    {
+        Uri controles = new(
+            "pack://application:,,,/Hormiguero.Diseno;component/Temas/Controles.xaml"
+        );
+        List<string> claves = EnSta(_ => ClavesDe(controles));
+
+        // Los estilos sin clave se registran por tipo.
+        Assert.Contains(typeof(Button).FullName!, claves);
+        Assert.Contains(typeof(TabItem).FullName!, claves);
+        Assert.Contains(typeof(TextBox).FullName!, claves);
     }
 
     [Fact]
@@ -56,8 +69,10 @@ public class TemaTests
                 .Resources.MergedDictionaries.OfType<ResourceDictionary>()
                 .Where(diccionario => diccionario.Source != null)
                 .ToList();
-            Assert.Single(temas);
+            // Queda un solo tema de colores y, después, la hoja de controles.
+            Assert.Equal(2, temas.Count);
             Assert.Equal(Tema.DiccionarioPara(ModoTema.Oscuro, false), temas[0].Source);
+            Assert.EndsWith("Controles.xaml", temas[1].Source!.ToString());
         });
     }
 
