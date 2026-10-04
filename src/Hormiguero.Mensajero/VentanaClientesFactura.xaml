@@ -1,0 +1,132 @@
+<Window
+  x:Class="Hormiguero.Mensajero.App.VentanaClientesFactura"
+  xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+  xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+  Title="ClickFactura - Gestión de Clientes"
+  Background="{DynamicResource Hormiguero.Superficie}"
+  Foreground="{DynamicResource Hormiguero.Texto}"
+  Width="850"
+  Height="540"
+  MinWidth="700"
+  MinHeight="420"
+  WindowStartupLocation="CenterOwner"
+>
+  <Grid Margin="14">
+    <Grid.RowDefinitions>
+      <RowDefinition Height="Auto" />
+      <RowDefinition Height="Auto" />
+      <RowDefinition Height="*" />
+      <RowDefinition Height="Auto" />
+    </Grid.RowDefinitions>
+    <TextBlock Text="📋 Gestión de Clientes" FontSize="18" FontWeight="Bold" Margin="0,0,0,12" />
+    <Grid Grid.Row="1" Margin="0,0,0,10">
+      <Grid.ColumnDefinitions>
+        <ColumnDefinition Width="1*" />
+        <ColumnDefinition Width="1.5*" />
+        <ColumnDefinition Width="1.5*" />
+        <ColumnDefinition Width="Auto" />
+      </Grid.ColumnDefinitions>
+      <StackPanel Margin="0,0,8,0">
+        <TextBlock Text="RUT:" />
+        <Grid>
+          <TextBox x:Name="CampoRut" />
+          <TextBlock
+            Text="76123456-7"
+            Margin="6,2"
+            VerticalAlignment="Center"
+            IsHitTestVisible="False"
+            Foreground="{DynamicResource Hormiguero.TextoSecundario}"
+          >
+            <TextBlock.Style>
+              <Style TargetType="TextBlock">
+                <Setter Property="Visibility" Value="Collapsed" />
+                <Style.Triggers>
+                  <DataTrigger Binding="{Binding Text, ElementName=CampoRut}" Value="">
+                    <Setter Property="Visibility" Value="Visible" />
+                  </DataTrigger>
+                </Style.Triggers>
+              </Style>
+            </TextBlock.Style>
+          </TextBlock>
+        </Grid>
+      </StackPanel>
+      <StackPanel Grid.Column="1" Margin="0,0,8,0">
+        <TextBlock Text="Razón Social:" />
+        <Grid>
+          <TextBox x:Name="CampoRazon" />
+          <TextBlock
+            Text="Empresa Ejemplo Ltda."
+            Margin="6,2"
+            VerticalAlignment="Center"
+            IsHitTestVisible="False"
+            Foreground="{DynamicResource Hormiguero.TextoSecundario}"
+          >
+            <TextBlock.Style>
+              <Style TargetType="TextBlock">
+                <Setter Property="Visibility" Value="Collapsed" />
+                <Style.Triggers>
+                  <DataTrigger Binding="{Binding Text, ElementName=CampoRazon}" Value="">
+                    <Setter Property="Visibility" Value="Visible" />
+                  </DataTrigger>
+                </Style.Triggers>
+              </Style>
+            </TextBlock.Style>
+          </TextBlock>
+        </Grid>
+      </StackPanel>
+      <StackPanel Grid.Column="2" Margin="0,0,8,0">
+        <TextBlock Text="Correo:" />
+        <Grid>
+          <TextBox x:Name="CampoCorreo" />
+          <TextBlock
+            Text="facturas@empresa.cl"
+            Margin="6,2"
+            VerticalAlignment="Center"
+            IsHitTestVisible="False"
+            Foreground="{DynamicResource Hormiguero.TextoSecundario}"
+          >
+            <TextBlock.Style>
+              <Style TargetType="TextBlock">
+                <Setter Property="Visibility" Value="Collapsed" />
+                <Style.Triggers>
+                  <DataTrigger Binding="{Binding Text, ElementName=CampoCorreo}" Value="">
+                    <Setter Property="Visibility" Value="Visible" />
+                  </DataTrigger>
+                </Style.Triggers>
+              </Style>
+            </TextBlock.Style>
+          </TextBlock>
+        </Grid>
+      </StackPanel>
+      <Button
+        Grid.Column="3"
+        Content="💾 Guardar"
+        Click="Guardar_Click"
+        VerticalAlignment="Bottom"
+      />
+    </Grid>
+    <DataGrid
+      x:Name="TablaClientes"
+      Grid.Row="2"
+      IsReadOnly="True"
+      AutoGenerateColumns="False"
+      CanUserAddRows="False"
+      SelectionUnit="FullRow"
+      MouseDoubleClick="Cliente_DoubleClick"
+    >
+      <DataGrid.Columns>
+        <DataGridTextColumn Header="RUT" Binding="{Binding Rut}" />
+        <DataGridTextColumn Header="Razón Social" Binding="{Binding RazonSocial}" Width="*" />
+        <DataGridTextColumn Header="Correo" Binding="{Binding Correo}" Width="*" />
+      </DataGrid.Columns>
+    </DataGrid>
+    <Button
+      Grid.Row="3"
+      Content="Cerrar"
+      Click="Cerrar_Click"
+      HorizontalAlignment="Right"
+      Margin="0,10,0,0"
+      Padding="18,6"
+    />
+  </Grid>
+</Window>

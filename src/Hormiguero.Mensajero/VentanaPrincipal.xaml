@@ -32,6 +32,13 @@
           Click="CambiarCarpeta_Click"
           Padding="14,5"
         />
+        <Button
+          DockPanel.Dock="Right"
+          Content="🧾 Facturas"
+          Click="AbrirFacturas_Click"
+          Padding="14,5"
+          Margin="0,0,8,0"
+        />
         <TextBlock
           x:Name="TextoCarpeta"
           Text="Sin carpeta configurada"
@@ -54,19 +61,19 @@
               <WrapPanel Margin="0,0,0,8">
                 <Button
                   x:Name="BotonUltimoAsunto"
-                  Content="📋 Asunto (Ctrl+1)"
+                  Content="📋 Asunto (Alt+S)"
                   Click="UltimoAsunto_Click"
                   Margin="0,0,6,5"
                 />
                 <Button
                   x:Name="BotonUltimoCuerpo"
-                  Content="📋 Cuerpo (Ctrl+2)"
+                  Content="📋 Cuerpo (Alt+D)"
                   Click="UltimoCuerpo_Click"
                   Margin="0,0,6,5"
                 />
                 <Button
                   x:Name="BotonCopiarPdf"
-                  Content="📄 Copiar PDF (Ctrl+5)"
+                  Content="📄 Copiar PDF (Alt+X)"
                   ToolTip="Copia la última OCC agregada a la carpeta, para pegarla como adjunto"
                   Click="CopiarPdf_Click"
                   Margin="0,0,6,5"
@@ -231,7 +238,7 @@
                   Click="ActualizarRetiro_Click"
                   Margin="0,0,6,0"
                 />
-                <Button Content="📋 Copiar mensaje (Ctrl+3)" Click="CopiarRetiro_Click" />
+                <Button Content="📋 Copiar mensaje (Alt+F)" Click="CopiarRetiro_Click" />
               </WrapPanel>
             </Grid>
           </GroupBox>
@@ -292,7 +299,7 @@
               />
               <WrapPanel Margin="0,7,0,0">
                 <Button Content="🔄 Generar mensaje" Click="GenerarGuia_Click" Margin="0,0,6,0" />
-                <Button Content="📋 Copiar mensaje (Ctrl+4)" Click="CopiarGuia_Click" />
+                <Button Content="📋 Copiar mensaje (Alt+G)" Click="CopiarGuia_Click" />
               </WrapPanel>
             </StackPanel>
           </GroupBox>
