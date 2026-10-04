@@ -1,5 +1,7 @@
 # Documentos reales: nunca se suben (D-10, D-11)
 *.pdf
+# PDF sintéticos de las pruebas de equivalencia (nunca documentos reales, D-10/D-11).
+!tests/**/Equivalencia/**/*.pdf
 documentos-reales/
 
 # Obsidian: estado local de cada equipo
