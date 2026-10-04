@@ -1,0 +1,339 @@
+{
+  "extraccion": [
+    {
+      "archivo": "OCC000104523.pdf",
+      "occ": "104523",
+      "nvv": "55123",
+      "ocl": "4500012345",
+      "asunto": "OCC 104523 NVV 55123 OCL 4500012345",
+      "despacho": "INFORMACIÓN PARA EL DESPACHO\nObra: Edificio Las Lilas\nDirección: Av. Siempre Viva 123\nComuna: Maipú\nContacto: Juan Perez",
+      "proveedor": "HOFFENS"
+    },
+    {
+      "archivo": "OCC104524.pdf",
+      "occ": "104524",
+      "nvv": "55124",
+      "ocl": "4500012346",
+      "asunto": "OCC 104524 NVV 55124 OCL 4500012346",
+      "despacho": "INFORMACIÓN PARA EL DESPACHO\nRETIRA CLIENTE EN BODEGA\nSantiago",
+      "proveedor": "COBELCAR"
+    },
+    {
+      "archivo": "OCC104525.pdf",
+      "occ": "104525",
+      "nvv": "55125",
+      "ocl": "OC-778",
+      "asunto": "OCC 104525 NVV 55125 OCL OC-778",
+      "despacho": "INFORMACIÓN PARA EL DESPACHO\nObra: Planta Norte\nComuna: Quilicura",
+      "proveedor": "SENSUS"
+    },
+    {
+      "archivo": "OCC104526.pdf",
+      "occ": "104526",
+      "nvv": "",
+      "ocl": "4500099",
+      "asunto": "OCC 104526 OCL 4500099",
+      "despacho": "INFORMACIÓN PARA EL DESPACHO\nCondominio El Roble\nAvenida Principal 45, Lampa",
+      "proveedor": "CHILE HDPE"
+    },
+    {
+      "archivo": "OCC104527.pdf",
+      "occ": "104527",
+      "nvv": "1",
+      "ocl": "X-1",
+      "asunto": "OCC 104527 NVV 1 OCL X-1",
+      "despacho": "INFORMACIÓN PARA EL DESPACHO\n",
+      "proveedor": "FERRETERIA PEREZ"
+    }
+  ],
+  "mensajes_retiro": [
+    {
+      "proveedor": "COBELCAR",
+      "occ": "104523",
+      "ocl": "4500012345",
+      "mensaje": "Retiro en BODEGA FRAY CAMILO 889:\nImportante: Al presentarse en el lugar de retiro, favor identificarse como: \"Retiro JCV\". \nOrden de retiro JCV: OCC 104523\nDirección: Fray Camilo Henríquez 889, Santiago\nHorario: Lunes a viernes de 09:00 a 17:00 hrs\nOrden de compra: OCL 4500012345"
+    },
+    {
+      "proveedor": "HOFFENS",
+      "occ": "104523",
+      "ocl": "4500012345",
+      "mensaje": "Retiro en HOFFENS:\nA continuación, detallo los datos necesarios para realizar el retiro:\nImportante: Al presentarse en el lugar de retiro, favor identificarse como: \"Retiro JCV\". \nNota de Venta para retiro Hoffens: \nOrden de compra: OCL 4500012345\nOrden de JCV: OCC 104523\n\nBodega HOFFENS\nDirección: Camino Lonquen 10707, Maipú\nhttps://maps.app.goo.gl/smWJQSwCrq2vfCcx7\nDia: _______________\nBloque: _______________\n\nEn caso de no presentarse el día indicado, el retiro queda armado y disponible los proximos 3 dias hábiles en el mismo horario."
+    },
+    {
+      "proveedor": "HOFFENS",
+      "occ": "104523",
+      "ocl": "4500012345",
+      "dia": "Martes 7",
+      "bloque": "09:00 - 11:00",
+      "mensaje": "Retiro en HOFFENS:\nA continuación, detallo los datos necesarios para realizar el retiro:\nImportante: Al presentarse en el lugar de retiro, favor identificarse como: \"Retiro JCV\". \nNota de Venta para retiro Hoffens: \nOrden de compra: OCL 4500012345\nOrden de JCV: OCC 104523\n\nBodega HOFFENS\nDirección: Camino Lonquen 10707, Maipú\nhttps://maps.app.goo.gl/smWJQSwCrq2vfCcx7\nDia: Martes 7\nBloque: 09:00 - 11:00\n\nEn caso de no presentarse el día indicado, el retiro queda armado y disponible los proximos 3 dias hábiles en el mismo horario."
+    },
+    {
+      "proveedor": "SENSUS",
+      "occ": "104523",
+      "ocl": "4500012345",
+      "mensaje": "Retiro en SENSUS:\nImportante: Al presentarse en el lugar de retiro, favor identificarse como: \"Retiro JCV\".\nDetallo retiro de la OC OCL 4500012345\nOrden JCV: OCC 104523\n\nBodega SENSUS \nDirección: Camino del cerro 290 Quilicura Bodega E1 INVAC\nhttps://maps.app.goo.gl/Eg8LzVUWXCSym7Yp7\nHorarios:\nLunes a Jueves \n08:00 a 13:00 y 14:00 a 16:00 \nViernes solo AM 08:00 a 13:00\n\nImportante: Indicar nombre y teléfono de quien retira. Es importante estos datos, pues se emite un código QR para el ingreso a las instalaciones. Avisar con anticipación el día para notificar a bodega."
+    },
+    {
+      "proveedor": "CHILE HDPE",
+      "occ": "104523",
+      "ocl": "4500012345",
+      "mensaje": "Retiro en CHILE HDPE:\nImportante: Al presentarse en el lugar de retiro, favor identificarse como: \"Retiro JCV\".\nDetallo retiro de la OC OCL 4500012345\nOrden de retiro: OCC 104523\n\nBodega HDPE\nDirección: Cacique Colín 11950, Lampa\nhttps://maps.app.goo.gl/HwHhbufKS8cBGboG9\nHorario: 08:30 - 17:30"
+    },
+    {
+      "proveedor": "FERRETERIA PEREZ",
+      "occ": "104523",
+      "ocl": "4500012345",
+      "mensaje": "Proveedor no reconocido: FERRETERIA PEREZ\nOCC 104523\nOCL 4500012345"
+    }
+  ],
+  "guias": [
+    {
+      "archivo": "OCC000104523.pdf",
+      "obra": "Edificio Las Lilas",
+      "comuna": "Maipú",
+      "opcion_dia": "hoy",
+      "dia_manual": "",
+      "mensaje": "Buenos días. Para su conocimiento, envío guía emitida el día de hoy hacia Obra Edificio Las Lilas, Maipú. De recibir guías adicionales durante la jornada, se las haré llegar oportunamente. Desde Hoffens se comunicarán con usted para coordinar la entrega. Saludos."
+    },
+    {
+      "archivo": "OCC000104523.pdf",
+      "obra": "Edificio Las Lilas",
+      "comuna": "Maipú",
+      "opcion_dia": "ayer",
+      "dia_manual": "",
+      "mensaje": "Buenos días. Para su conocimiento, envío guía emitida el día de ayer hacia Obra Edificio Las Lilas, Maipú. De recibir guías adicionales durante la jornada, se las haré llegar oportunamente. Desde Hoffens se comunicarán con usted para coordinar la entrega. Saludos."
+    },
+    {
+      "archivo": "OCC000104523.pdf",
+      "obra": "Edificio Las Lilas",
+      "comuna": "Maipú",
+      "opcion_dia": "manual",
+      "dia_manual": "lunes 6",
+      "mensaje": "Buenos días. Para su conocimiento, envío guía emitida el día lunes 6 hacia Obra Edificio Las Lilas, Maipú. De recibir guías adicionales durante la jornada, se las haré llegar oportunamente. Desde Hoffens se comunicarán con usted para coordinar la entrega. Saludos."
+    },
+    {
+      "archivo": "OCC000104523.pdf",
+      "obra": "Edificio Las Lilas",
+      "comuna": "Maipú",
+      "opcion_dia": "manual",
+      "dia_manual": "",
+      "mensaje": "Buenos días. Para su conocimiento, envío guía emitida el día de hoy hacia Obra Edificio Las Lilas, Maipú. De recibir guías adicionales durante la jornada, se las haré llegar oportunamente. Desde Hoffens se comunicarán con usted para coordinar la entrega. Saludos."
+    },
+    {
+      "archivo": "OCC104524.pdf",
+      "obra": "RETIRA CLIENTE EN BODEGA",
+      "comuna": "Santiago",
+      "opcion_dia": "hoy",
+      "dia_manual": "",
+      "mensaje": "Buenos días. Para su conocimiento, envío guía emitida el día de hoy hacia Obra RETIRA CLIENTE EN BODEGA, Santiago. De recibir guías adicionales durante la jornada, se las haré llegar oportunamente. Desde Hoffens se comunicarán con usted para coordinar la entrega. Saludos."
+    },
+    {
+      "archivo": "OCC104524.pdf",
+      "obra": "RETIRA CLIENTE EN BODEGA",
+      "comuna": "Santiago",
+      "opcion_dia": "ayer",
+      "dia_manual": "",
+      "mensaje": "Buenos días. Para su conocimiento, envío guía emitida el día de ayer hacia Obra RETIRA CLIENTE EN BODEGA, Santiago. De recibir guías adicionales durante la jornada, se las haré llegar oportunamente. Desde Hoffens se comunicarán con usted para coordinar la entrega. Saludos."
+    },
+    {
+      "archivo": "OCC104524.pdf",
+      "obra": "RETIRA CLIENTE EN BODEGA",
+      "comuna": "Santiago",
+      "opcion_dia": "manual",
+      "dia_manual": "lunes 6",
+      "mensaje": "Buenos días. Para su conocimiento, envío guía emitida el día lunes 6 hacia Obra RETIRA CLIENTE EN BODEGA, Santiago. De recibir guías adicionales durante la jornada, se las haré llegar oportunamente. Desde Hoffens se comunicarán con usted para coordinar la entrega. Saludos."
+    },
+    {
+      "archivo": "OCC104524.pdf",
+      "obra": "RETIRA CLIENTE EN BODEGA",
+      "comuna": "Santiago",
+      "opcion_dia": "manual",
+      "dia_manual": "",
+      "mensaje": "Buenos días. Para su conocimiento, envío guía emitida el día de hoy hacia Obra RETIRA CLIENTE EN BODEGA, Santiago. De recibir guías adicionales durante la jornada, se las haré llegar oportunamente. Desde Hoffens se comunicarán con usted para coordinar la entrega. Saludos."
+    },
+    {
+      "archivo": "OCC104525.pdf",
+      "obra": "Planta Norte",
+      "comuna": "Quilicura",
+      "opcion_dia": "hoy",
+      "dia_manual": "",
+      "mensaje": "Buenos días. Para su conocimiento, envío guía emitida el día de hoy hacia Obra Planta Norte, Quilicura. De recibir guías adicionales durante la jornada, se las haré llegar oportunamente. Desde Hoffens se comunicarán con usted para coordinar la entrega. Saludos."
+    },
+    {
+      "archivo": "OCC104525.pdf",
+      "obra": "Planta Norte",
+      "comuna": "Quilicura",
+      "opcion_dia": "ayer",
+      "dia_manual": "",
+      "mensaje": "Buenos días. Para su conocimiento, envío guía emitida el día de ayer hacia Obra Planta Norte, Quilicura. De recibir guías adicionales durante la jornada, se las haré llegar oportunamente. Desde Hoffens se comunicarán con usted para coordinar la entrega. Saludos."
+    },
+    {
+      "archivo": "OCC104525.pdf",
+      "obra": "Planta Norte",
+      "comuna": "Quilicura",
+      "opcion_dia": "manual",
+      "dia_manual": "lunes 6",
+      "mensaje": "Buenos días. Para su conocimiento, envío guía emitida el día lunes 6 hacia Obra Planta Norte, Quilicura. De recibir guías adicionales durante la jornada, se las haré llegar oportunamente. Desde Hoffens se comunicarán con usted para coordinar la entrega. Saludos."
+    },
+    {
+      "archivo": "OCC104525.pdf",
+      "obra": "Planta Norte",
+      "comuna": "Quilicura",
+      "opcion_dia": "manual",
+      "dia_manual": "",
+      "mensaje": "Buenos días. Para su conocimiento, envío guía emitida el día de hoy hacia Obra Planta Norte, Quilicura. De recibir guías adicionales durante la jornada, se las haré llegar oportunamente. Desde Hoffens se comunicarán con usted para coordinar la entrega. Saludos."
+    },
+    {
+      "archivo": "OCC104526.pdf",
+      "obra": "Condominio El Roble",
+      "comuna": "Lampa",
+      "opcion_dia": "hoy",
+      "dia_manual": "",
+      "mensaje": "Buenos días. Para su conocimiento, envío guía emitida el día de hoy hacia Obra Condominio El Roble, Lampa. De recibir guías adicionales durante la jornada, se las haré llegar oportunamente. Desde Hoffens se comunicarán con usted para coordinar la entrega. Saludos."
+    },
+    {
+      "archivo": "OCC104526.pdf",
+      "obra": "Condominio El Roble",
+      "comuna": "Lampa",
+      "opcion_dia": "ayer",
+      "dia_manual": "",
+      "mensaje": "Buenos días. Para su conocimiento, envío guía emitida el día de ayer hacia Obra Condominio El Roble, Lampa. De recibir guías adicionales durante la jornada, se las haré llegar oportunamente. Desde Hoffens se comunicarán con usted para coordinar la entrega. Saludos."
+    },
+    {
+      "archivo": "OCC104526.pdf",
+      "obra": "Condominio El Roble",
+      "comuna": "Lampa",
+      "opcion_dia": "manual",
+      "dia_manual": "lunes 6",
+      "mensaje": "Buenos días. Para su conocimiento, envío guía emitida el día lunes 6 hacia Obra Condominio El Roble, Lampa. De recibir guías adicionales durante la jornada, se las haré llegar oportunamente. Desde Hoffens se comunicarán con usted para coordinar la entrega. Saludos."
+    },
+    {
+      "archivo": "OCC104526.pdf",
+      "obra": "Condominio El Roble",
+      "comuna": "Lampa",
+      "opcion_dia": "manual",
+      "dia_manual": "",
+      "mensaje": "Buenos días. Para su conocimiento, envío guía emitida el día de hoy hacia Obra Condominio El Roble, Lampa. De recibir guías adicionales durante la jornada, se las haré llegar oportunamente. Desde Hoffens se comunicarán con usted para coordinar la entrega. Saludos."
+    },
+    {
+      "archivo": "OCC104527.pdf",
+      "obra": "",
+      "comuna": "",
+      "opcion_dia": "hoy",
+      "dia_manual": "",
+      "mensaje": "Buenos días. Para su conocimiento, envío guía emitida el día de hoy hacia Obra _______________. De recibir guías adicionales durante la jornada, se las haré llegar oportunamente. Desde Hoffens se comunicarán con usted para coordinar la entrega. Saludos."
+    },
+    {
+      "archivo": "OCC104527.pdf",
+      "obra": "",
+      "comuna": "",
+      "opcion_dia": "ayer",
+      "dia_manual": "",
+      "mensaje": "Buenos días. Para su conocimiento, envío guía emitida el día de ayer hacia Obra _______________. De recibir guías adicionales durante la jornada, se las haré llegar oportunamente. Desde Hoffens se comunicarán con usted para coordinar la entrega. Saludos."
+    },
+    {
+      "archivo": "OCC104527.pdf",
+      "obra": "",
+      "comuna": "",
+      "opcion_dia": "manual",
+      "dia_manual": "lunes 6",
+      "mensaje": "Buenos días. Para su conocimiento, envío guía emitida el día lunes 6 hacia Obra _______________. De recibir guías adicionales durante la jornada, se las haré llegar oportunamente. Desde Hoffens se comunicarán con usted para coordinar la entrega. Saludos."
+    },
+    {
+      "archivo": "OCC104527.pdf",
+      "obra": "",
+      "comuna": "",
+      "opcion_dia": "manual",
+      "dia_manual": "",
+      "mensaje": "Buenos días. Para su conocimiento, envío guía emitida el día de hoy hacia Obra _______________. De recibir guías adicionales durante la jornada, se las haré llegar oportunamente. Desde Hoffens se comunicarán con usted para coordinar la entrega. Saludos."
+    }
+  ],
+  "numeros_en_nombre": [
+    {
+      "nombre": "OCC000104523.pdf",
+      "numero": "104523"
+    },
+    {
+      "nombre": "occ-104524 v2.pdf",
+      "numero": "104524"
+    },
+    {
+      "nombre": "Factura 0012 de 2026.pdf",
+      "numero": "12"
+    },
+    {
+      "nombre": "sin numero.pdf",
+      "numero": ""
+    },
+    {
+      "nombre": "00000.pdf",
+      "numero": "0"
+    }
+  ],
+  "buscar_clientes": [
+    {
+      "lista": [
+        "76000000-1 EMPRESA UNO RETIRA CLIENTE",
+        "77000000-2 Constructora Dos RETIRA CLIENTE",
+        "78000000-K OTRA EMPRESA RETIRA CLIENTE"
+      ],
+      "texto": "",
+      "resultado": [
+        "76000000-1 EMPRESA UNO RETIRA CLIENTE",
+        "77000000-2 Constructora Dos RETIRA CLIENTE",
+        "78000000-K OTRA EMPRESA RETIRA CLIENTE"
+      ]
+    },
+    {
+      "lista": [
+        "76000000-1 EMPRESA UNO RETIRA CLIENTE",
+        "77000000-2 Constructora Dos RETIRA CLIENTE",
+        "78000000-K OTRA EMPRESA RETIRA CLIENTE"
+      ],
+      "texto": "uno",
+      "resultado": [
+        "76000000-1 EMPRESA UNO RETIRA CLIENTE"
+      ]
+    },
+    {
+      "lista": [
+        "76000000-1 EMPRESA UNO RETIRA CLIENTE",
+        "77000000-2 Constructora Dos RETIRA CLIENTE",
+        "78000000-K OTRA EMPRESA RETIRA CLIENTE"
+      ],
+      "texto": " constructora ",
+      "resultado": [
+        "77000000-2 Constructora Dos RETIRA CLIENTE"
+      ]
+    },
+    {
+      "lista": [
+        "76000000-1 EMPRESA UNO RETIRA CLIENTE",
+        "77000000-2 Constructora Dos RETIRA CLIENTE",
+        "78000000-K OTRA EMPRESA RETIRA CLIENTE"
+      ],
+      "texto": "77000000",
+      "resultado": [
+        "77000000-2 Constructora Dos RETIRA CLIENTE"
+      ]
+    },
+    {
+      "lista": [
+        "76000000-1 EMPRESA UNO RETIRA CLIENTE",
+        "77000000-2 Constructora Dos RETIRA CLIENTE",
+        "78000000-K OTRA EMPRESA RETIRA CLIENTE"
+      ],
+      "texto": "nada",
+      "resultado": []
+    }
+  ],
+  "clientes_por_defecto": [
+    "76290565-5 FYRA RETIRA CLIENTE",
+    "84394000-5 INCA RETIRA CLIENTE",
+    "77362545-K SAN ISIDRO RETIRA CLIENTE",
+    "76427264-1 HYDRO RETIRA CLIENTE",
+    "93343000-6 CONSTRUCTORA BIO BIO RETIRA CLIENTE",
+    "76838441-K EPAC RETIRA CLIENTE",
+    "83534300-6 CONSTRUCTORA BAQUEDANO RETIRA CLIENTE"
+  ]
+}
