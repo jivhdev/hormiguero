@@ -36,8 +36,9 @@ public sealed class Indexador
         int actualizados = 0;
         int sinCambios = 0;
         var enDisco = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
+        var sinLeer = new List<string>();
 
-        foreach (string ruta in PdfsEn(raiz, control, cancelar))
+        foreach (string ruta in PdfsEn(raiz, sinLeer, control, cancelar))
         {
             cancelar.ThrowIfCancellationRequested();
 
@@ -72,10 +73,17 @@ public sealed class Indexador
             }
         }
 
+        // Una carpeta que no se pudo leer (red caída, sin permiso) no significa
+        // que sus archivos se borraron: se conservan hasta poder revisarla (REQ-002).
+        if (sinLeer.Contains(raiz, StringComparer.OrdinalIgnoreCase))
+        {
+            throw new DirectoryNotFoundException($"No se pudo leer la carpeta {raiz}");
+        }
+
         int quitados = 0;
         foreach (string ruta in firmas.Keys)
         {
-            if (!enDisco.Contains(ruta))
+            if (!enDisco.Contains(ruta) && !DentroDeAlguna(ruta, sinLeer))
             {
                 _documentos.Quitar(ruta);
                 quitados++;
@@ -150,8 +158,9 @@ public sealed class Indexador
 
     private static IEnumerable<string> PdfsEn(
         string raiz,
-        ControlIndice? control = null,
-        CancellationToken cancelar = default
+        List<string> sinLeer,
+        ControlIndice? control,
+        CancellationToken cancelar
     )
     {
         var pendientes = new Stack<string>();
@@ -176,6 +185,7 @@ public sealed class Indexador
             {
                 // Una subcarpeta sin permiso, caída o que ya no existe no puede
                 // detener el índice: se sigue con las demás (REQ-002).
+                sinLeer.Add(carpeta);
                 continue;
             }
 
@@ -199,6 +209,14 @@ public sealed class Indexador
             }
         }
     }
+
+    private static bool DentroDeAlguna(string ruta, List<string> carpetas) =>
+        carpetas.Exists(carpeta =>
+            ruta.StartsWith(
+                carpeta + Path.DirectorySeparatorChar,
+                StringComparison.OrdinalIgnoreCase
+            )
+        );
 
     private static IEnumerable<string> NumerosDelTexto(InfoPdf info)
     {
