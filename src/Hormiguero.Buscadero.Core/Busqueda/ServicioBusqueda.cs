@@ -9,18 +9,21 @@ public sealed class ServicioBusqueda
     private readonly Indexador _indexador;
     private readonly RepositorioIndice _repositorio;
     private readonly IndexadoEnSegundoPlano? _enSegundoPlano;
+    private readonly ImportadorDeGuardados? _importador;
 
     public ServicioBusqueda(
         ServicioCarpetas servicioCarpetas,
         Indexador indexador,
         RepositorioIndice repositorio,
-        IndexadoEnSegundoPlano? enSegundoPlano = null
+        IndexadoEnSegundoPlano? enSegundoPlano = null,
+        ImportadorDeGuardados? importador = null
     )
     {
         _servicioCarpetas = servicioCarpetas;
         _indexador = indexador;
         _repositorio = repositorio;
         _enSegundoPlano = enSegundoPlano;
+        _importador = importador;
     }
 
     public IReadOnlyList<ResultadoBusqueda> Buscar(
@@ -32,6 +35,7 @@ public sealed class ServicioBusqueda
         IProgress<ProgresoIndexado>? progreso = null
     )
     {
+        _importador?.Importar();
         var carpetasMadre = _servicioCarpetas.ObtenerTodas().Select(c => c.Ruta).ToList();
         if (!string.IsNullOrWhiteSpace(filtroCarpeta))
         {

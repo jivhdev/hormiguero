@@ -10,4 +10,8 @@
     <PackageReference Include="Microsoft.Data.Sqlite" />
     <PackageReference Include="PDFtoImage" />
   </ItemGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="..\Hormiguero.Nucleo\Hormiguero.Nucleo.csproj" />
+  </ItemGroup>
 </Project>

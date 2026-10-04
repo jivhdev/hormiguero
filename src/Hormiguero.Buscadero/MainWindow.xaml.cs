@@ -91,11 +91,17 @@ public partial class MainWindow : Window
             _indexador,
             () => _servicioCarpetas.ObtenerTodas().Select(c => c.Ruta).ToList()
         );
+        var importadorDeGuardados = new ImportadorDeGuardados(
+            repositorioIndice,
+            () => _servicioCarpetas.ObtenerTodas().Select(c => c.Ruta).ToList(),
+            Hormiguero.Nucleo.Datos.DocumentosGuardados.RutaBaseComun
+        );
         _servicioBusqueda = new ServicioBusqueda(
             _servicioCarpetas,
             _indexador,
             repositorioIndice,
-            _indexadoEnSegundoPlano
+            _indexadoEnSegundoPlano,
+            importadorDeGuardados
         );
         Closed += (_, _) => _indexadoEnSegundoPlano.Dispose();
         _repositorioMarcas = new RepositorioMarcas(rutaBaseDeDatos);
