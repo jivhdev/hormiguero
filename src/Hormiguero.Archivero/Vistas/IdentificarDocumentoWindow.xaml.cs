@@ -389,9 +389,9 @@ public partial class IdentificarDocumentoWindow : Window
         {
             if (camposEnOrden[i] == campoActivo)
             {
-                botones[i].Background = System.Windows.Media.Brushes.LightGoldenrodYellow;
+                botones[i].SetResourceReference(BackgroundProperty, "Hormiguero.AvisoSuave");
                 botones[i].FontWeight = FontWeights.Bold;
-                botones[i].BorderBrush = System.Windows.Media.Brushes.DarkOrange;
+                botones[i].SetResourceReference(BorderBrushProperty, "Hormiguero.Aviso");
                 botones[i].BorderThickness = new Thickness(2);
             }
             else

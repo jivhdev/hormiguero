@@ -48,14 +48,14 @@
       Grid.Row="6"
       Name="TxtVistaPrevia"
       Margin="0,8,0,0"
-      Foreground="Gray"
+      Foreground="{DynamicResource Hormiguero.TextoSecundario}"
       TextWrapping="Wrap"
     />
     <TextBlock
       Grid.Row="7"
       Name="TxtError"
       Margin="0,8,0,0"
-      Foreground="Red"
+      Foreground="{DynamicResource Hormiguero.Error}"
       TextWrapping="Wrap"
       Visibility="Collapsed"
     />

@@ -17,7 +17,7 @@
       Margin="0,0,0,4"
     />
     <TextBlock
-      Foreground="Gray"
+      Foreground="{DynamicResource Hormiguero.TextoSecundario}"
       TextWrapping="Wrap"
       Margin="0,0,0,12"
       Text="La carpeta, el tipo de organización y los botones de limpieza de nombre usados esta vez quedan guardados como un botón, para aplicarlos de un click la próxima vez."
@@ -26,7 +26,7 @@
     <TextBox Name="TxtNombreAtajo" Margin="0,0,0,8" />
     <TextBlock
       Name="TxtError"
-      Foreground="Red"
+      Foreground="{DynamicResource Hormiguero.Error}"
       TextWrapping="Wrap"
       Visibility="Collapsed"
       Margin="0,0,0,8"

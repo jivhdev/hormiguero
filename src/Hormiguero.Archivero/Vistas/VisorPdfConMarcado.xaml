@@ -10,7 +10,12 @@
       <RowDefinition Height="Auto" />
     </Grid.RowDefinitions>
 
-    <Border Grid.Row="0" BorderBrush="Gray" BorderThickness="1" Background="White">
+    <Border
+      Grid.Row="0"
+      BorderBrush="{DynamicResource Hormiguero.Borde}"
+      BorderThickness="1"
+      Background="{DynamicResource Hormiguero.Superficie}"
+    >
       <!-- LienzoPagina se escala con un ScaleTransform (LayoutTransform, no RenderTransform,
                  para que el ScrollViewer sepa el tamaño real y habilite las barras de desplazamiento).
                  Los clics siguen llegando en coordenadas de pixel nativas de la pagina: WPF

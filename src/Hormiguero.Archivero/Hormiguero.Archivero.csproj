@@ -19,6 +19,10 @@
   </ItemGroup>
 
   <ItemGroup>
+    <ProjectReference Include="..\Hormiguero.Diseno\Hormiguero.Diseno.csproj" />
+  </ItemGroup>
+
+  <ItemGroup>
     <Resource Include="Recursos\icono.ico" />
   </ItemGroup>
 </Project>

@@ -4,6 +4,7 @@ using System.Windows;
 using Archivero.Datos;
 using Archivero.Servicios;
 using Archivero.Vistas;
+using Hormiguero.Diseno;
 
 namespace Archivero;
 
@@ -17,6 +18,9 @@ public partial class App : System.Windows.Application
     protected override void OnStartup(StartupEventArgs e)
     {
         base.OnStartup(e);
+
+        // Fase B-1 (D-66): diseño común de Hormiguero, claro u oscuro según Windows.
+        Tema.Aplicar(this, ModoTema.Sistema);
 
         // Hormiguero (D-65): ARCHIVERO_DATOS abre la app con datos de prueba en otra carpeta,
         // sin tocar los reales ni chocar con la instancia que el usuario tenga abierta.

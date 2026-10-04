@@ -14,7 +14,7 @@
       <TextBlock
         Name="TxtSinAccesosRapidos"
         Visibility="Collapsed"
-        Foreground="Gray"
+        Foreground="{DynamicResource Hormiguero.TextoSecundario}"
         TextWrapping="Wrap"
         Margin="0,0,0,8"
         Text="Todavía no tenés accesos rápidos configurados. Elegí un tipo en &quot;Ver todas las opciones&quot; y va a quedar a mano para la próxima."
@@ -48,7 +48,7 @@
     <StackPanel Name="PanelEnlazar" Visibility="Collapsed">
       <TextBlock
         Name="TxtTipoPendienteEnlazar"
-        Foreground="Gray"
+        Foreground="{DynamicResource Hormiguero.TextoSecundario}"
         TextWrapping="Wrap"
         Margin="0,0,0,4"
       />
@@ -89,7 +89,7 @@
       <TextBlock
         Name="TxtAvisoFechaHoy"
         Visibility="Collapsed"
-        Foreground="Gray"
+        Foreground="{DynamicResource Hormiguero.TextoSecundario}"
         TextWrapping="Wrap"
         Margin="0,0,0,8"
         Text="Estos ejemplos usan la fecha de hoy — marcá la fecha del documento abajo para ver el ejemplo real."
@@ -100,7 +100,7 @@
         <TextBlock Text="Escribí el patrón a mano:" FontWeight="Bold" Margin="0,0,0,4" />
         <TextBox Name="TxtPatronPersonalizado" TextChanged="TxtPatronPersonalizado_TextChanged" />
         <TextBlock
-          Foreground="Gray"
+          Foreground="{DynamicResource Hormiguero.TextoSecundario}"
           FontSize="11"
           TextWrapping="Wrap"
           Margin="0,4,0,4"
