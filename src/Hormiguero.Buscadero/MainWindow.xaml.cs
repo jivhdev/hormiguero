@@ -10,7 +10,6 @@ using Buscadero.App.Marcas;
 using Buscadero.App.Pdf;
 using Buscadero.Core.Busqueda;
 using Buscadero.Core.Carpetas;
-using Buscadero.Core.Datos;
 using Buscadero.Core.Indexado;
 using Buscadero.Core.Lineas;
 using Buscadero.Core.Marcas;
@@ -75,7 +74,13 @@ public partial class MainWindow : Window
     {
         InitializeComponent();
 
-        var rutaBaseDeDatos = RutasDeDatos.ObtenerRutaBaseDeDatos(AppContext.BaseDirectory);
+        // Fase B-3 (D-66): los datos viven en la carpeta común de Hormiguero, no junto al
+        // programa (cada copia o actualización del programa empezaba vacía). La primera vez
+        // se copian solos desde la carpeta Datos de junto al programa, que queda intacta.
+        var rutaBaseDeDatos = Hormiguero.Nucleo.Datos.DatosDeApp.Preparar(
+            "buscadero",
+            System.IO.Path.Combine(AppContext.BaseDirectory, "Datos", "buscadero.db")
+        );
         _servicioCarpetas = new ServicioCarpetas(new RepositorioCarpetas(rutaBaseDeDatos));
 
         var repositorioIndice = new RepositorioIndice(rutaBaseDeDatos);
