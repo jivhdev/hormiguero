@@ -22,6 +22,19 @@ Javier, 2026-10-04: "al final todo quedara perfecto tal como ya funciona hoy en 
 2. Buscadero A → B (lo primero de B es su punto débil: la lentitud, con el índice nuevo).
 3. Mensajero: mismo método, partiendo de ClickFactura, Ofisuiza, Motores y Facturas JCV.
 
+## Fase B, en orden (D-66: fase A aprobada)
+
+Cada pieza es un hito chico: las pruebas antiguas siguen pasando, Claude la prueba usando la app y Javier la confirma.
+
+| # | Pieza | App | Qué gana Javier |
+|---|---|---|---|
+| B-1 | Diseño común (tema Hormiguero claro/oscuro, colores D-35/36) | Ambas | Se ven como familia y siguen el modo de Windows |
+| B-2 | Índice de Buscadero en la base común (núcleo `Documentos`), con el índice silencioso nuevo | Buscadero | Búsquedas en milisegundos aunque crezcan las carpetas; base para integrar |
+| B-3 | Datos de Archivero en la base común (configuraciones → `identificaciones`, auditoría → `auditoria`), copiados solos la primera vez y con respaldo del archivo antiguo | Archivero | Lo que le enseña a Archivero queda disponible para las otras apps |
+| B-4 | Archivero registra cada documento guardado en el índice común | Ambas | Buscadero lo encuentra al instante |
+| B-5 | Piezas comunes del núcleo donde sumen (mover sin perder, lectura de PDF) | Ambas | Una sola versión probada para todo |
+| B-6 | Marcas y cadenas de Buscadero en la base común; enlaces con las configuraciones de Archivero | Buscadero | Base para Mensajero y para las cadenas automáticas |
+
 ## Qué pasa con lo construido en la apertura nueva
 
 - **Núcleo** (base común, PDF, mover sin perder, huella, zonas) se queda: es la base de la fase B.
