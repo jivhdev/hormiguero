@@ -33,6 +33,27 @@ public static class Migraciones
                 + "CREATE INDEX IF NOT EXISTS idx_documentos_huella ON documentos(huella); "
                 + "CREATE INDEX IF NOT EXISTS idx_documentos_carpeta_raiz ON documentos(carpeta_raiz);"
         ),
+        (
+            3,
+            // ADR-001 de Archivero: configuraciones de identificación y registro de auditoría.
+            "CREATE TABLE IF NOT EXISTS identificaciones("
+                + "id INTEGER PRIMARY KEY, "
+                + "tipo TEXT NOT NULL COLLATE NOCASE, "
+                + "emisor TEXT NOT NULL COLLATE NOCASE, "
+                + "datos TEXT NOT NULL, "
+                + "actualizada TEXT NOT NULL, "
+                + "UNIQUE(tipo, emisor)); "
+                + "CREATE TABLE IF NOT EXISTS auditoria("
+                + "id INTEGER PRIMARY KEY, "
+                + "fecha TEXT NOT NULL, "
+                + "app TEXT NOT NULL, "
+                + "accion TEXT NOT NULL, "
+                + "origen TEXT NOT NULL, "
+                + "destino TEXT, "
+                + "huella TEXT, "
+                + "resultado TEXT NOT NULL); "
+                + "CREATE INDEX IF NOT EXISTS idx_auditoria_fecha ON auditoria(fecha);"
+        ),
     ];
 
     public static void Aplicar(
