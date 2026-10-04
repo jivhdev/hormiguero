@@ -1,0 +1,14 @@
+<Project Sdk="Microsoft.NET.Sdk">
+  <PropertyGroup>
+    <OutputType>WinExe</OutputType>
+    <TargetFramework>net10.0-windows</TargetFramework>
+    <UseWPF>true</UseWPF>
+    <AssemblyName>Mensajero</AssemblyName>
+    <RootNamespace>Hormiguero.Mensajero.App</RootNamespace>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="..\Hormiguero.Diseno\Hormiguero.Diseno.csproj" />
+    <ProjectReference Include="..\Hormiguero.Mensajero.Core\Hormiguero.Mensajero.Core.csproj" />
+  </ItemGroup>
+</Project>
