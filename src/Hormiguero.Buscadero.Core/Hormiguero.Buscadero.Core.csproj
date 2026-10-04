@@ -1,0 +1,13 @@
+<Project Sdk="Microsoft.NET.Sdk">
+  <!-- Fase A de D-65: lógica del Buscadero antiguo, sin cambios de comportamiento. -->
+  <PropertyGroup>
+    <TargetFramework>net10.0-windows</TargetFramework>
+    <RootNamespace>Buscadero.Core</RootNamespace>
+    <AssemblyName>Buscadero.Core</AssemblyName>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <PackageReference Include="Microsoft.Data.Sqlite" />
+    <PackageReference Include="PDFtoImage" />
+  </ItemGroup>
+</Project>

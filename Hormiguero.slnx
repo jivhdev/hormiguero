@@ -3,12 +3,14 @@
     <Project Path="src/Hormiguero.Buscadero/Hormiguero.Buscadero.csproj" />
     <Project Path="src/Hormiguero.Archivero.Logica/Hormiguero.Archivero.Logica.csproj" />
     <Project Path="src/Hormiguero.Archivero/Hormiguero.Archivero.csproj" />
+    <Project Path="src/Hormiguero.Buscadero.Core/Hormiguero.Buscadero.Core.csproj" />
     <Project Path="src/Hormiguero.Buscadero.Logica/Hormiguero.Buscadero.Logica.csproj" />
     <Project Path="src/Hormiguero.Diseno/Hormiguero.Diseno.csproj" />
     <Project Path="src/Hormiguero.Nucleo/Hormiguero.Nucleo.csproj" />
   </Folder>
   <Folder Name="/tests/">
     <Project Path="tests/Hormiguero.Archivero.Tests/Hormiguero.Archivero.Tests.csproj" />
+    <Project Path="tests/Hormiguero.Buscadero.Core.Tests/Hormiguero.Buscadero.Core.Tests.csproj" />
     <Project Path="tests/Hormiguero.Buscadero.Tests/Hormiguero.Buscadero.Tests.csproj" />
     <Project Path="tests/Hormiguero.Diseno.Tests/Hormiguero.Diseno.Tests.csproj" />
     <Project Path="tests/Hormiguero.Nucleo.Tests/Hormiguero.Nucleo.Tests.csproj" />

@@ -1,0 +1,135 @@
+<UserControl
+  x:Class="Buscadero.App.VisorComparacion"
+  xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+  xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+  PreviewMouseLeftButtonUp="Control_PreviewMouseLeftButtonUp"
+>
+  <DockPanel>
+    <WrapPanel DockPanel.Dock="Top" Margin="4">
+      <TextBlock
+        x:Name="TextoDocumento"
+        FontWeight="Bold"
+        VerticalAlignment="Center"
+        Margin="0,0,12,4"
+        TextTrimming="CharacterEllipsis"
+        MaxWidth="280"
+      />
+      <Button
+        x:Name="BotonAnterior"
+        Content="Anterior"
+        Padding="6,2"
+        Margin="0,0,4,4"
+        Click="BotonAnterior_Click"
+      />
+      <TextBlock x:Name="TextoPagina" VerticalAlignment="Center" Margin="0,0,4,4" />
+      <Button
+        x:Name="BotonSiguiente"
+        Content="Siguiente"
+        Padding="6,2"
+        Margin="0,0,12,4"
+        Click="BotonSiguiente_Click"
+      />
+      <Button
+        x:Name="BotonAlejar"
+        Content="Alejar"
+        Padding="6,2"
+        Margin="0,0,4,4"
+        Click="BotonAlejar_Click"
+      />
+      <Button
+        x:Name="BotonAcercar"
+        Content="Acercar"
+        Padding="6,2"
+        Margin="0,0,4,4"
+        Click="BotonAcercar_Click"
+      />
+      <Button
+        x:Name="BotonAjustar"
+        Content="Ajustar"
+        Padding="6,2"
+        Margin="0,0,12,4"
+        Click="BotonAjustar_Click"
+      />
+      <CheckBox
+        x:Name="CheckMarcas"
+        Content="Mostrar marcas"
+        IsChecked="True"
+        VerticalAlignment="Center"
+        Margin="0,0,0,4"
+        Click="CheckMarcas_Click"
+      />
+    </WrapPanel>
+
+    <WrapPanel x:Name="PanelMarcas" DockPanel.Dock="Top" Visibility="Collapsed" Margin="4,0,4,4">
+      <TextBlock Text="Marca:" VerticalAlignment="Center" Margin="0,0,4,0" />
+      <CheckBox
+        x:Name="CheckEditable"
+        Content="Habilitar marcas"
+        VerticalAlignment="Center"
+        Margin="0,0,12,0"
+        Click="CheckEditable_Click"
+      />
+      <ComboBox
+        x:Name="ComboHerramienta"
+        Width="120"
+        SelectedIndex="0"
+        Margin="0,0,8,0"
+        VerticalContentAlignment="Center"
+      >
+        <ComboBoxItem Content="Tick" />
+        <ComboBoxItem Content="X" />
+        <ComboBoxItem Content="Raya" />
+        <ComboBoxItem Content="Círculo" />
+        <ComboBoxItem Content="Texto" />
+      </ComboBox>
+      <Button
+        x:Name="BotonDeshacer"
+        Content="Deshacer"
+        Padding="6,2"
+        Margin="0,0,4,0"
+        Click="BotonDeshacer_Click"
+      />
+      <Button
+        x:Name="BotonRehacer"
+        Content="Rehacer"
+        Padding="6,2"
+        Margin="0,0,4,0"
+        Click="BotonRehacer_Click"
+      />
+      <Button
+        x:Name="BotonBorrarMarcas"
+        Content="Borrar marcas"
+        Padding="6,2"
+        Click="BotonBorrarMarcas_Click"
+      />
+    </WrapPanel>
+
+    <Border BorderBrush="LightGray" BorderThickness="1" Background="#FFEFEFEF">
+      <Grid>
+        <ScrollViewer
+          x:Name="Lienzo"
+          HorizontalScrollBarVisibility="Auto"
+          VerticalScrollBarVisibility="Auto"
+          PreviewMouseWheel="Lienzo_PreviewMouseWheel"
+        >
+          <Grid x:Name="Contenedor" HorizontalAlignment="Left" VerticalAlignment="Top">
+            <Image x:Name="Imagen" Stretch="None" RenderOptions.BitmapScalingMode="HighQuality" />
+            <Canvas
+              x:Name="Capa"
+              Background="Transparent"
+              MouseLeftButtonDown="Capa_MouseLeftButtonDown"
+              MouseMove="Capa_MouseMove"
+            />
+          </Grid>
+        </ScrollViewer>
+        <TextBlock
+          x:Name="TextoVacio"
+          Text="Sin documento"
+          HorizontalAlignment="Center"
+          VerticalAlignment="Center"
+          Foreground="Gray"
+        />
+      </Grid>
+    </Border>
+  </DockPanel>
+</UserControl>
