@@ -10,6 +10,29 @@ public static class Migraciones
             1,
             "CREATE TABLE IF NOT EXISTS configuracion(clave TEXT PRIMARY KEY, valor TEXT NOT NULL);"
         ),
+        (
+            2,
+            "CREATE TABLE IF NOT EXISTS documentos("
+                + "id INTEGER PRIMARY KEY, "
+                + "ruta TEXT NOT NULL UNIQUE COLLATE NOCASE, "
+                + "carpeta_raiz TEXT NOT NULL COLLATE NOCASE, "
+                + "nombre TEXT NOT NULL, "
+                + "tamano INTEGER NOT NULL, "
+                + "modificado TEXT NOT NULL, "
+                + "huella TEXT, "
+                + "estado TEXT NOT NULL, "
+                + "tiene_texto INTEGER NOT NULL, "
+                + "indexado_en TEXT NOT NULL); "
+                + "CREATE TABLE IF NOT EXISTS numeros_documento("
+                + "documento_id INTEGER NOT NULL REFERENCES documentos(id) ON DELETE CASCADE, "
+                + "numero TEXT NOT NULL, "
+                + "prefijo TEXT NOT NULL, "
+                + "sufijo TEXT NOT NULL, "
+                + "origen TEXT NOT NULL); "
+                + "CREATE INDEX IF NOT EXISTS idx_numeros_documento_numero ON numeros_documento(numero); "
+                + "CREATE INDEX IF NOT EXISTS idx_documentos_huella ON documentos(huella); "
+                + "CREATE INDEX IF NOT EXISTS idx_documentos_carpeta_raiz ON documentos(carpeta_raiz);"
+        ),
     ];
 
     public static void Aplicar(
