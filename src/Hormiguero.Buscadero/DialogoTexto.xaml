@@ -1,0 +1,25 @@
+<Window
+  x:Class="Buscadero.App.DialogoTexto"
+  xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+  xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+  Title="Texto de la marca"
+  SizeToContent="WidthAndHeight"
+  WindowStartupLocation="CenterOwner"
+  ResizeMode="NoResize"
+  ShowInTaskbar="False"
+>
+  <StackPanel Margin="12">
+    <TextBlock x:Name="Etiqueta" Text="Texto:" />
+    <TextBox x:Name="TextoEntrada" Width="320" Margin="0,6,0,12" />
+    <StackPanel Orientation="Horizontal" HorizontalAlignment="Right">
+      <Button
+        Content="Aceptar"
+        IsDefault="True"
+        Width="90"
+        Margin="0,0,8,0"
+        Click="Aceptar_Click"
+      />
+      <Button Content="Cancelar" IsCancel="True" Width="90" />
+    </StackPanel>
+  </StackPanel>
+</Window>

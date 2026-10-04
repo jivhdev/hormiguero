@@ -1,0 +1,121 @@
+<Window
+  x:Class="Buscadero.App.DialogoVincularCadena"
+  xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+  xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+  Title="Vincular documento a cadena documental"
+  Height="560"
+  Width="780"
+  WindowStartupLocation="CenterOwner"
+  ShowInTaskbar="False"
+>
+  <DockPanel Margin="12">
+    <StackPanel DockPanel.Dock="Top" Orientation="Horizontal" Margin="0,0,0,8">
+      <TextBlock Text="Modelo de cadena:" VerticalAlignment="Center" Margin="0,0,6,0" />
+      <ComboBox
+        x:Name="ComboModelo"
+        Width="300"
+        DisplayMemberPath="Nombre"
+        SelectionChanged="ComboModelo_SelectionChanged"
+      />
+    </StackPanel>
+
+    <TextBlock
+      DockPanel.Dock="Top"
+      TextWrapping="Wrap"
+      Margin="0,0,0,6"
+      Text="Busque otro documento que sepa que pertenece a la cadena correcta, o cree una cadena nueva."
+    />
+    <WrapPanel DockPanel.Dock="Top" Margin="0,0,0,6">
+      <TextBox
+        x:Name="TextoBusqueda"
+        Width="170"
+        Margin="0,0,6,0"
+        VerticalContentAlignment="Center"
+        KeyDown="TextoBusqueda_KeyDown"
+      />
+      <ComboBox
+        x:Name="ComboModo"
+        Width="140"
+        SelectedIndex="0"
+        Margin="0,0,6,0"
+        VerticalContentAlignment="Center"
+      >
+        <ComboBoxItem Content="Todos" />
+        <ComboBoxItem Content="Exacto" />
+        <ComboBoxItem Content="Alfanumérico" />
+        <ComboBoxItem Content="Solo número" />
+        <ComboBoxItem Content="Solo letras" />
+      </ComboBox>
+      <ComboBox
+        x:Name="ComboFiltroCarpeta"
+        Width="190"
+        IsEditable="True"
+        VerticalContentAlignment="Center"
+        Margin="0,0,6,0"
+      />
+      <Button
+        x:Name="BotonBuscar"
+        Content="Buscar"
+        Padding="8,4"
+        Margin="0,0,12,0"
+        Click="BotonBuscar_Click"
+      />
+      <Button
+        x:Name="BotonCrearCadena"
+        Content="Crear cadena nueva"
+        Padding="8,4"
+        Click="BotonCrearCadena_Click"
+      />
+    </WrapPanel>
+    <ListBox
+      x:Name="ListaResultados"
+      DockPanel.Dock="Top"
+      Height="120"
+      DisplayMemberPath="Etiqueta"
+      Margin="0,0,0,8"
+      MouseDoubleClick="ListaResultados_MouseDoubleClick"
+    />
+
+    <StackPanel DockPanel.Dock="Top" Margin="0,4,0,0">
+      <TextBlock Text="Ubicar el documento observado en:" Margin="0,0,0,4" />
+      <ComboBox
+        x:Name="ComboDestino"
+        Width="480"
+        HorizontalAlignment="Left"
+        DisplayMemberPath="Etiqueta"
+      />
+      <StackPanel x:Name="PanelSegundo" Visibility="Collapsed" Margin="0,8,0,0">
+        <TextBlock Text="Ubicar el documento buscado en:" Margin="0,0,0,4" />
+        <ComboBox
+          x:Name="ComboDestinoSegundo"
+          Width="480"
+          HorizontalAlignment="Left"
+          DisplayMemberPath="Etiqueta"
+        />
+      </StackPanel>
+    </StackPanel>
+
+    <TextBlock
+      x:Name="TextoEstado"
+      DockPanel.Dock="Bottom"
+      TextWrapping="Wrap"
+      Foreground="DarkRed"
+      Margin="0,8,0,0"
+    />
+    <StackPanel
+      DockPanel.Dock="Bottom"
+      Orientation="Horizontal"
+      HorizontalAlignment="Right"
+      Margin="0,8,0,0"
+    >
+      <Button
+        Content="Vincular"
+        IsDefault="True"
+        Width="110"
+        Margin="0,0,8,0"
+        Click="Aceptar_Click"
+      />
+      <Button Content="Cancelar" IsCancel="True" Width="90" />
+    </StackPanel>
+  </DockPanel>
+</Window>

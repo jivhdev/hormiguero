@@ -1,0 +1,81 @@
+<Window
+  x:Class="Buscadero.App.DialogoBuscarDocumento"
+  xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+  xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+  Title="Buscar documento"
+  Height="460"
+  Width="900"
+  WindowStartupLocation="CenterOwner"
+  ShowInTaskbar="False"
+>
+  <DockPanel Margin="12">
+    <WrapPanel DockPanel.Dock="Top" Margin="0,0,0,8">
+      <TextBlock Text="Número:" VerticalAlignment="Center" Margin="0,0,6,0" />
+      <TextBox
+        x:Name="TextoNumero"
+        Width="180"
+        Margin="0,0,12,0"
+        VerticalContentAlignment="Center"
+        KeyDown="TextoNumero_KeyDown"
+      />
+      <TextBlock Text="Alcance:" VerticalAlignment="Center" Margin="0,0,6,0" />
+      <ComboBox
+        x:Name="ComboAlcance"
+        Width="160"
+        Margin="0,0,12,0"
+        SelectedIndex="0"
+        VerticalContentAlignment="Center"
+        SelectionChanged="ComboAlcance_SelectionChanged"
+        ToolTip="En qué carpetas buscar — se decide primero porque condiciona los demás controles"
+      >
+        <ComboBoxItem Content="Primera coincidencia" />
+        <ComboBoxItem Content="Todas las carpetas" />
+        <ComboBoxItem Content="Carpeta específica" />
+      </ComboBox>
+      <TextBlock Text="Carpeta:" VerticalAlignment="Center" Margin="0,0,6,0" />
+      <ComboBox
+        x:Name="ComboFiltroCarpeta"
+        Width="200"
+        Margin="0,0,12,0"
+        IsEditable="True"
+        IsEnabled="False"
+        VerticalContentAlignment="Center"
+        IsTextSearchEnabled="False"
+        TextBoxBase.TextChanged="ComboFiltroCarpeta_TextChanged"
+        ToolTip="Solo se usa con el alcance 'Carpeta específica'; escriba 3 o más letras para buscar por nombre"
+      />
+      <TextBlock Text="Modo:" VerticalAlignment="Center" Margin="0,0,6,0" />
+      <ComboBox
+        x:Name="ComboModo"
+        Width="140"
+        Margin="0,0,12,0"
+        SelectedIndex="0"
+        VerticalContentAlignment="Center"
+      >
+        <ComboBoxItem Content="Todos" />
+        <ComboBoxItem Content="Exacto" />
+        <ComboBoxItem Content="Alfanumérico" />
+        <ComboBoxItem Content="Solo número" />
+        <ComboBoxItem Content="Solo letras" />
+      </ComboBox>
+      <Button x:Name="BotonBuscar" Content="Buscar" Padding="10,4" Click="BotonBuscar_Click" />
+    </WrapPanel>
+    <TextBlock x:Name="TextoEstado" DockPanel.Dock="Top" TextWrapping="Wrap" Margin="0,0,0,8" />
+    <StackPanel
+      DockPanel.Dock="Bottom"
+      Orientation="Horizontal"
+      HorizontalAlignment="Right"
+      Margin="0,8,0,0"
+    >
+      <Button
+        Content="Vincular"
+        IsDefault="True"
+        Width="110"
+        Margin="0,0,8,0"
+        Click="Aceptar_Click"
+      />
+      <Button Content="Cancelar" IsCancel="True" Width="90" />
+    </StackPanel>
+    <ListBox x:Name="Lista" DisplayMemberPath="Etiqueta" />
+  </DockPanel>
+</Window>

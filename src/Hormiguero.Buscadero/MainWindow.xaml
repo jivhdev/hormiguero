@@ -1,0 +1,725 @@
+<Window
+  x:Class="Buscadero.App.MainWindow"
+  xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+  xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+  xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
+  xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
+  xmlns:local="clr-namespace:Buscadero.App"
+  mc:Ignorable="d"
+  Title="Buscadero"
+  Height="720"
+  Width="1000"
+  MinHeight="520"
+  MinWidth="760"
+  PreviewMouseLeftButtonUp="Ventana_PreviewMouseLeftButtonUp"
+>
+  <TabControl x:Name="Pestanas" Margin="8">
+    <TabItem Header="Documento">
+      <Grid Margin="8">
+        <Grid.RowDefinitions>
+          <RowDefinition Height="Auto" />
+          <RowDefinition Height="Auto" />
+          <RowDefinition Height="Auto" />
+          <RowDefinition Height="Auto" />
+          <RowDefinition Height="Auto" />
+          <RowDefinition Height="*" />
+        </Grid.RowDefinitions>
+
+        <WrapPanel Grid.Row="0" Margin="0,0,0,8">
+          <TextBlock Text="Número de documento:" VerticalAlignment="Center" Margin="0,0,6,0" />
+          <TextBox
+            x:Name="TextoNumero"
+            Width="200"
+            Margin="0,0,16,0"
+            VerticalContentAlignment="Center"
+            KeyDown="TextoNumero_KeyDown"
+          />
+          <TextBlock Text="Alcance:" VerticalAlignment="Center" Margin="0,0,6,0" />
+          <ComboBox
+            x:Name="ComboAlcance"
+            Width="170"
+            Margin="0,0,16,0"
+            SelectedIndex="0"
+            VerticalContentAlignment="Center"
+            SelectionChanged="ComboAlcance_SelectionChanged"
+            ToolTip="En qué carpetas buscar — se decide primero porque condiciona los demás controles"
+          >
+            <ComboBoxItem Content="Primera coincidencia" />
+            <ComboBoxItem Content="Todas las carpetas" />
+            <ComboBoxItem Content="Carpeta específica" />
+          </ComboBox>
+          <TextBlock Text="Carpeta:" VerticalAlignment="Center" Margin="0,0,6,0" />
+          <ComboBox
+            x:Name="ComboFiltroCarpeta"
+            Width="280"
+            Margin="0,0,16,0"
+            IsEditable="True"
+            IsEnabled="False"
+            VerticalContentAlignment="Center"
+            IsTextSearchEnabled="False"
+            TextBoxBase.TextChanged="ComboFiltroCarpeta_TextChanged"
+            ToolTip="Solo se usa con el alcance 'Carpeta específica'; escriba 3 o más letras para buscar por nombre"
+          />
+          <TextBlock Text="Modo:" VerticalAlignment="Center" Margin="0,0,6,0" />
+          <ComboBox
+            x:Name="ComboModo"
+            Width="150"
+            Margin="0,0,16,0"
+            SelectedIndex="0"
+            VerticalContentAlignment="Center"
+            ToolTip="Todos prueba las estrategias en orden; también puede forzar una"
+          >
+            <ComboBoxItem Content="Todos" />
+            <ComboBoxItem Content="Exacto" />
+            <ComboBoxItem Content="Alfanumérico" />
+            <ComboBoxItem Content="Solo número" />
+            <ComboBoxItem Content="Solo letras" />
+          </ComboBox>
+          <Button x:Name="BotonBuscar" Content="Buscar" Padding="10,4" Click="BotonBuscar_Click" />
+        </WrapPanel>
+
+        <StackPanel Grid.Row="1" Margin="0,0,0,8">
+          <ProgressBar
+            x:Name="BarraProgreso"
+            Height="6"
+            IsIndeterminate="True"
+            Visibility="Collapsed"
+          />
+          <StackPanel Orientation="Horizontal" Margin="0,6,0,0">
+            <TextBlock
+              x:Name="TextoEstadoBusqueda"
+              TextWrapping="Wrap"
+              VerticalAlignment="Center"
+            />
+            <Button
+              x:Name="BotonCancelarBusqueda"
+              Content="Cancelar búsqueda"
+              Padding="6,2"
+              Margin="12,0,0,0"
+              Visibility="Collapsed"
+              Click="BotonCancelarBusqueda_Click"
+            />
+          </StackPanel>
+          <StackPanel
+            x:Name="PanelSinResultados"
+            Orientation="Horizontal"
+            Visibility="Collapsed"
+            Margin="0,6,0,0"
+          >
+            <Button
+              Content="Agregar carpeta"
+              Padding="8,4"
+              Margin="0,0,8,0"
+              Click="BotonIrACarpetas_Click"
+            />
+            <Button Content="Modificar número" Padding="8,4" Click="BotonModificarNumero_Click" />
+          </StackPanel>
+          <ListView
+            x:Name="ListaResultados"
+            Height="110"
+            Margin="0,6,0,0"
+            Visibility="Collapsed"
+            SelectionMode="Single"
+            MouseDoubleClick="ListaResultados_MouseDoubleClick"
+          >
+            <ListView.View>
+              <GridView>
+                <GridViewColumn
+                  Header="Carpeta"
+                  Width="380"
+                  DisplayMemberBinding="{Binding Carpeta}"
+                />
+                <GridViewColumn
+                  Header="Archivo"
+                  Width="260"
+                  DisplayMemberBinding="{Binding Nombre}"
+                />
+                <GridViewColumn
+                  Header="Modificado"
+                  Width="150"
+                  DisplayMemberBinding="{Binding Modificado}"
+                />
+              </GridView>
+            </ListView.View>
+          </ListView>
+        </StackPanel>
+
+        <StackPanel
+          Grid.Row="2"
+          x:Name="BarraVisor"
+          Orientation="Horizontal"
+          Visibility="Collapsed"
+          Margin="0,0,0,6"
+        >
+          <TextBlock
+            x:Name="TextoDocumentoAbierto"
+            FontWeight="Bold"
+            VerticalAlignment="Center"
+            Margin="0,0,8,0"
+            MaxWidth="260"
+            TextTrimming="CharacterEllipsis"
+          />
+          <Button
+            x:Name="BotonVerEnCarpeta"
+            Content="Ver en carpeta"
+            Padding="8,4"
+            Margin="0,0,16,0"
+            Click="BotonVerEnCarpeta_Click"
+            ToolTip="Abrir el Explorador de Windows en la carpeta del documento, con el archivo seleccionado"
+          />
+          <Button
+            x:Name="BotonPaginaAnterior"
+            Content="Anterior"
+            Padding="8,4"
+            Margin="0,0,6,0"
+            Click="BotonPaginaAnterior_Click"
+          />
+          <TextBlock x:Name="TextoPagina" VerticalAlignment="Center" Margin="0,0,6,0" />
+          <Button
+            x:Name="BotonPaginaSiguiente"
+            Content="Siguiente"
+            Padding="8,4"
+            Margin="0,0,16,0"
+            Click="BotonPaginaSiguiente_Click"
+          />
+          <Button
+            x:Name="BotonAlejar"
+            Content="Alejar"
+            Padding="8,4"
+            Margin="0,0,6,0"
+            Click="BotonAlejar_Click"
+          />
+          <Button
+            x:Name="BotonAcercar"
+            Content="Acercar"
+            Padding="8,4"
+            Margin="0,0,6,0"
+            Click="BotonAcercar_Click"
+          />
+          <TextBlock x:Name="TextoZoom" VerticalAlignment="Center" Margin="0,0,6,0" />
+          <Button
+            x:Name="BotonAjustar"
+            Content="Ajustar"
+            Padding="8,4"
+            Click="BotonAjustar_Click"
+          />
+          <Button
+            x:Name="BotonComparar"
+            Content="Comparar"
+            Padding="8,4"
+            Margin="16,0,0,0"
+            Click="BotonComparar_Click"
+            ToolTip="Comparar el documento observado con otro, lado a lado"
+          />
+          <Button
+            x:Name="BotonVincularVisualizado"
+            Content="Vincular a cadena documental"
+            Padding="8,4"
+            Margin="16,0,0,0"
+            Click="BotonVincularVisualizado_Click"
+            ToolTip="Vincula el documento observado a una cadena documental"
+          />
+        </StackPanel>
+
+        <Border
+          Grid.Row="4"
+          x:Name="PanelPrevisualizacion"
+          Visibility="Collapsed"
+          BorderBrush="LightGray"
+          BorderThickness="1"
+          Background="#FFF7F7F7"
+          Padding="6"
+          Margin="0,0,0,6"
+        >
+          <StackPanel>
+            <TextBlock
+              Text="Cadena documental (clic = vista rápida, doble clic = ver completa):"
+              FontSize="11"
+              Foreground="DimGray"
+              Margin="0,0,0,4"
+            />
+            <ScrollViewer
+              HorizontalScrollBarVisibility="Auto"
+              VerticalScrollBarVisibility="Disabled"
+            >
+              <ItemsControl x:Name="ListaPrevisualizacion">
+                <ItemsControl.ItemsPanel>
+                  <ItemsPanelTemplate>
+                    <StackPanel Orientation="Horizontal" />
+                  </ItemsPanelTemplate>
+                </ItemsControl.ItemsPanel>
+                <ItemsControl.ItemTemplate>
+                  <DataTemplate>
+                    <StackPanel Orientation="Horizontal">
+                      <Border
+                        BorderBrush="{Binding ColorBorde}"
+                        BorderThickness="1"
+                        Background="{Binding ColorFondo}"
+                        CornerRadius="3"
+                        Padding="6,3"
+                        Margin="0,0,4,0"
+                        Tag="{Binding}"
+                        Cursor="Hand"
+                        MouseLeftButtonDown="CasillaPrevisualizacion_MouseLeftButtonDown"
+                      >
+                        <TextBlock Text="{Binding Texto}" />
+                      </Border>
+                      <TextBlock
+                        Text="{Binding Conector}"
+                        VerticalAlignment="Center"
+                        Margin="0,0,4,0"
+                        Foreground="DimGray"
+                      />
+                    </StackPanel>
+                  </DataTemplate>
+                </ItemsControl.ItemTemplate>
+              </ItemsControl>
+            </ScrollViewer>
+          </StackPanel>
+        </Border>
+
+        <WrapPanel Grid.Row="3" x:Name="BarraMarcas" Visibility="Collapsed" Margin="0,0,0,6">
+          <ToggleButton
+            x:Name="BotonModoMarcas"
+            Content="Modo marcas"
+            Padding="8,4"
+            Margin="0,0,6,0"
+            Click="BotonModoMarcas_Click"
+            ToolTip="Mientras esté activo, un clic sobre el documento coloca la marca elegida"
+          />
+          <ToggleButton
+            x:Name="BotonModoSeleccionarTexto"
+            Content="Modo seleccionar texto"
+            Padding="8,4"
+            Margin="0,0,16,0"
+            Click="BotonModoSeleccionarTexto_Click"
+            ToolTip="Ningún clic crea marcas mientras esté activo (selección/copia de texto no disponible aún para PDF escaneados/renderizados como imagen)"
+          />
+          <TextBlock Text="Marcas:" VerticalAlignment="Center" Margin="0,0,6,0" FontWeight="Bold" />
+          <ComboBox
+            x:Name="ComboHerramienta"
+            Width="130"
+            Margin="0,0,12,0"
+            SelectedIndex="0"
+            VerticalContentAlignment="Center"
+            SelectionChanged="ComboHerramienta_SelectionChanged"
+            ToolTip="Elija una herramienta y haga clic o arrastre sobre el documento"
+          >
+            <ComboBoxItem Content="Tick" />
+            <ComboBoxItem Content="X" />
+            <ComboBoxItem Content="Raya" />
+            <ComboBoxItem Content="Círculo" />
+            <ComboBoxItem Content="Texto" />
+          </ComboBox>
+          <CheckBox
+            x:Name="CheckMostrarMarcas"
+            Content="Mostrar marcas"
+            IsChecked="True"
+            VerticalAlignment="Center"
+            Margin="0,0,12,0"
+            Click="CheckMostrarMarcas_Click"
+          />
+          <Button
+            x:Name="BotonDeshacer"
+            Content="Deshacer"
+            Padding="8,4"
+            Margin="0,0,6,0"
+            Click="BotonDeshacer_Click"
+          />
+          <Button
+            x:Name="BotonRehacer"
+            Content="Rehacer"
+            Padding="8,4"
+            Margin="0,0,12,0"
+            Click="BotonRehacer_Click"
+          />
+          <Button
+            x:Name="BotonBorrarMarcas"
+            Content="Borrar marcas"
+            Padding="8,4"
+            Click="BotonBorrarMarcas_Click"
+          />
+        </WrapPanel>
+
+        <Border
+          Grid.Row="3"
+          x:Name="BarraEspiar"
+          Visibility="Collapsed"
+          Background="#FFFDF1D6"
+          BorderBrush="#FFE0B44C"
+          BorderThickness="1"
+          CornerRadius="3"
+          Padding="8,6"
+          Margin="0,0,0,6"
+        >
+          <WrapPanel>
+            <TextBlock
+              Text="Vista rápida — no es el documento activo."
+              VerticalAlignment="Center"
+              Margin="0,0,12,0"
+              FontStyle="Italic"
+            />
+            <Button
+              x:Name="BotonVolverEspiar"
+              Content="Volver"
+              Padding="8,4"
+              Margin="0,0,6,0"
+              Click="BotonVolverEspiar_Click"
+            />
+            <Button
+              x:Name="BotonObservarEspiado"
+              Content="Observar"
+              Padding="8,4"
+              Click="BotonObservarEspiado_Click"
+            />
+          </WrapPanel>
+        </Border>
+
+        <Border Grid.Row="5" BorderBrush="LightGray" BorderThickness="1" Background="#FFEFEFEF">
+          <Grid>
+            <ScrollViewer
+              x:Name="LienzoVisor"
+              HorizontalScrollBarVisibility="Auto"
+              VerticalScrollBarVisibility="Auto"
+              PreviewMouseWheel="LienzoVisor_PreviewMouseWheel"
+            >
+              <Grid x:Name="ContenedorPagina" HorizontalAlignment="Left" VerticalAlignment="Top">
+                <Image
+                  x:Name="ImagenPdf"
+                  Stretch="None"
+                  RenderOptions.BitmapScalingMode="HighQuality"
+                />
+                <Canvas
+                  x:Name="CanvasMarcas"
+                  Background="Transparent"
+                  MouseLeftButtonDown="CanvasMarcas_MouseLeftButtonDown"
+                  MouseMove="CanvasMarcas_MouseMove"
+                />
+              </Grid>
+            </ScrollViewer>
+            <TextBlock
+              x:Name="TextoVisorVacio"
+              Text="Busque un documento para visualizarlo."
+              HorizontalAlignment="Center"
+              VerticalAlignment="Center"
+              Foreground="Gray"
+            />
+          </Grid>
+        </Border>
+      </Grid>
+    </TabItem>
+
+    <TabItem Header="Cadenas documentales">
+      <Grid Margin="8">
+        <DockPanel x:Name="PanelModelos" Visibility="Collapsed">
+          <StackPanel DockPanel.Dock="Top" Orientation="Horizontal" Margin="0,0,0,8">
+            <Button
+              x:Name="BotonModeloGuiado"
+              Content="Crear nuevo modelo (guiado)"
+              Padding="8,4"
+              Margin="0,0,6,0"
+              Click="BotonModeloGuiado_Click"
+            />
+            <Button
+              x:Name="BotonVolverModelos"
+              Content="Volver"
+              Padding="8,4"
+              Click="BotonVolverModelos_Click"
+            />
+          </StackPanel>
+          <StackPanel DockPanel.Dock="Top" Orientation="Horizontal" Margin="0,0,0,8">
+            <Button
+              x:Name="BotonNuevaPlantilla"
+              Content="Nuevo modelo (manual)"
+              Padding="8,4"
+              Margin="0,0,6,0"
+              Click="BotonNuevaPlantilla_Click"
+            />
+            <Button
+              x:Name="BotonRenombrarPlantilla"
+              Content="Renombrar"
+              Padding="8,4"
+              Margin="0,0,6,0"
+              Click="BotonRenombrarPlantilla_Click"
+            />
+            <Button
+              x:Name="BotonBorrarPlantilla"
+              Content="Borrar modelo"
+              Padding="8,4"
+              Click="BotonBorrarPlantilla_Click"
+            />
+          </StackPanel>
+          <ListBox
+            x:Name="ListaPlantillas"
+            Height="110"
+            DisplayMemberPath="Nombre"
+            Margin="0,0,0,8"
+            SelectionChanged="ListaPlantillas_SelectionChanged"
+          />
+          <WrapPanel DockPanel.Dock="Top" Margin="0,0,0,8">
+            <Button
+              x:Name="BotonAgregarVagon"
+              Content="Agregar documento"
+              Padding="8,4"
+              Margin="0,0,6,6"
+              Click="BotonAgregarVagon_Click"
+            />
+            <Button
+              x:Name="BotonEditarVagon"
+              Content="Editar documento"
+              Padding="8,4"
+              Margin="0,0,6,6"
+              Click="BotonEditarVagon_Click"
+            />
+            <Button
+              x:Name="BotonBorrarVagon"
+              Content="Borrar documento"
+              Padding="8,4"
+              Margin="0,0,6,6"
+              Click="BotonBorrarVagon_Click"
+            />
+          </WrapPanel>
+          <TextBlock
+            x:Name="TextoEstadoPlantilla"
+            DockPanel.Dock="Bottom"
+            TextWrapping="Wrap"
+            Foreground="DarkRed"
+            Margin="0,8,0,0"
+          />
+          <TreeView
+            x:Name="ArbolPlantilla"
+            SelectedItemChanged="ArbolPlantilla_SelectedItemChanged"
+          >
+            <TreeView.ItemTemplate>
+              <HierarchicalDataTemplate ItemsSource="{Binding Hijos}">
+                <TextBlock Text="{Binding Texto}" />
+              </HierarchicalDataTemplate>
+            </TreeView.ItemTemplate>
+          </TreeView>
+        </DockPanel>
+
+        <StackPanel x:Name="PanelEntrada" VerticalAlignment="Top">
+          <TextBlock Text="Cadenas documentales" FontSize="16" FontWeight="Bold" Margin="0,0,0,8" />
+          <TextBlock
+            x:Name="TextoEntrada"
+            TextWrapping="Wrap"
+            MaxWidth="560"
+            Margin="0,0,0,12"
+            Text="Abra un documento y vínclelo a una cadena documental."
+          />
+          <Button
+            x:Name="BotonVincularCadena"
+            Content="Vincular documento a cadena documental"
+            Padding="14,10"
+            Margin="0,0,0,10"
+            HorizontalAlignment="Left"
+            Click="BotonVincularCadena_Click"
+          />
+          <Button
+            x:Name="BotonAbrirModelos"
+            Content="Crear o editar modelos de cadena documental"
+            Padding="14,10"
+            HorizontalAlignment="Left"
+            Click="BotonAbrirModelos_Click"
+          />
+        </StackPanel>
+
+        <DockPanel x:Name="PanelCadena" Visibility="Collapsed">
+          <StackPanel DockPanel.Dock="Top" Margin="0,0,0,8">
+            <TextBlock
+              x:Name="TextoCadenaActiva"
+              FontWeight="Bold"
+              TextWrapping="Wrap"
+              Margin="0,0,0,6"
+            />
+            <WrapPanel>
+              <Button
+                x:Name="BotonVincularDocumentoAVacio"
+                Content="Vincular documento observado..."
+                Padding="8,4"
+                Margin="0,0,6,6"
+                Click="BotonVincularDocumentoAVacio_Click"
+              />
+              <Button
+                x:Name="BotonCerrarCadena"
+                Content="Cerrar cadena"
+                Padding="8,4"
+                Margin="0,0,6,6"
+                Click="BotonCerrarCadena_Click"
+              />
+              <Button
+                x:Name="BotonBorrarCadena"
+                Content="Borrar cadena"
+                Padding="8,4"
+                Margin="0,0,6,6"
+                Click="BotonBorrarCadena_Click"
+              />
+              <Button
+                x:Name="BotonAbrirModelos2"
+                Content="Modelos..."
+                Padding="8,4"
+                Margin="0,0,6,6"
+                Click="BotonAbrirModelos_Click"
+              />
+            </WrapPanel>
+          </StackPanel>
+          <TextBlock
+            x:Name="TextoEstadoCadena"
+            DockPanel.Dock="Bottom"
+            TextWrapping="Wrap"
+            Foreground="DarkRed"
+            Margin="0,8,0,0"
+          />
+          <ScrollViewer VerticalScrollBarVisibility="Auto" HorizontalScrollBarVisibility="Auto">
+            <ItemsControl x:Name="ListaFilasCadena">
+              <ItemsControl.ItemTemplate>
+                <DataTemplate>
+                  <StackPanel Orientation="Horizontal" Margin="0,0,0,10">
+                    <TextBlock
+                      Text="{Binding Prefijo}"
+                      VerticalAlignment="Center"
+                      FontFamily="Consolas"
+                      Margin="0,0,6,0"
+                    />
+                    <ItemsControl ItemsSource="{Binding Cajas}">
+                      <ItemsControl.ItemsPanel>
+                        <ItemsPanelTemplate>
+                          <StackPanel Orientation="Horizontal" />
+                        </ItemsPanelTemplate>
+                      </ItemsControl.ItemsPanel>
+                      <ItemsControl.ItemTemplate>
+                        <DataTemplate>
+                          <StackPanel Orientation="Horizontal">
+                            <Border
+                              BorderBrush="{Binding ColorBorde}"
+                              BorderThickness="1"
+                              Background="{Binding ColorFondo}"
+                              CornerRadius="3"
+                              Padding="6"
+                              Margin="0,0,4,0"
+                              Tag="{Binding}"
+                              MouseLeftButtonDown="CajaCadena_MouseLeftButtonDown"
+                              Cursor="Hand"
+                            >
+                              <StackPanel>
+                                <Image Source="{Binding Imagen}" Height="70" Stretch="Uniform" />
+                                <TextBlock
+                                  Text="{Binding Texto}"
+                                  TextWrapping="Wrap"
+                                  MaxWidth="200"
+                                  Margin="0,4,0,0"
+                                />
+                                <ItemsControl ItemsSource="{Binding Acciones}">
+                                  <ItemsControl.ItemTemplate>
+                                    <DataTemplate>
+                                      <Button
+                                        Content="{Binding Texto}"
+                                        Tag="{Binding}"
+                                        Click="BotonAccionCadena_Click"
+                                        Padding="2,0"
+                                        HorizontalAlignment="Left"
+                                        Background="Transparent"
+                                        BorderThickness="0"
+                                        Foreground="SteelBlue"
+                                        Cursor="Hand"
+                                      />
+                                    </DataTemplate>
+                                  </ItemsControl.ItemTemplate>
+                                </ItemsControl>
+                              </StackPanel>
+                            </Border>
+                            <TextBlock
+                              Text="{Binding Conector}"
+                              VerticalAlignment="Center"
+                              FontSize="18"
+                              Margin="0,0,4,0"
+                            />
+                          </StackPanel>
+                        </DataTemplate>
+                      </ItemsControl.ItemTemplate>
+                    </ItemsControl>
+                  </StackPanel>
+                </DataTemplate>
+              </ItemsControl.ItemTemplate>
+            </ItemsControl>
+          </ScrollViewer>
+        </DockPanel>
+      </Grid>
+    </TabItem>
+
+    <TabItem Header="Carpetas">
+      <DockPanel Margin="8">
+        <TextBlock
+          DockPanel.Dock="Top"
+          Text="Carpetas observadas"
+          FontSize="18"
+          FontWeight="Bold"
+          Margin="0,0,0,12"
+        />
+
+        <StackPanel DockPanel.Dock="Top" Orientation="Horizontal" Margin="0,0,0,12">
+          <TextBox
+            x:Name="TextoRuta"
+            Width="380"
+            Margin="0,0,8,0"
+            VerticalContentAlignment="Center"
+            ToolTip="Pegue la ruta de una carpeta local o de red"
+          />
+          <Button
+            x:Name="BotonExaminar"
+            Content="Examinar..."
+            Padding="8,4"
+            Margin="0,0,8,0"
+            Click="BotonExaminar_Click"
+          />
+          <Button
+            x:Name="BotonAgregar"
+            Content="Agregar carpeta"
+            Padding="8,4"
+            Click="BotonAgregar_Click"
+          />
+        </StackPanel>
+
+        <StackPanel DockPanel.Dock="Bottom" Orientation="Horizontal" Margin="0,12,0,0">
+          <Button
+            x:Name="BotonQuitar"
+            Content="Quitar"
+            Padding="8,4"
+            Margin="0,0,8,0"
+            Click="BotonQuitar_Click"
+          />
+          <Button
+            x:Name="BotonActualizarUbicacion"
+            Content="Actualizar ubicación..."
+            Padding="8,4"
+            Margin="0,0,8,0"
+            Click="BotonActualizarUbicacion_Click"
+          />
+          <Button
+            x:Name="BotonVerificar"
+            Content="Verificar accesibilidad"
+            Padding="8,4"
+            Click="BotonVerificar_Click"
+          />
+        </StackPanel>
+
+        <TextBlock
+          x:Name="TextoMensaje"
+          DockPanel.Dock="Bottom"
+          Margin="0,8,0,0"
+          TextWrapping="Wrap"
+          Foreground="DarkRed"
+        />
+
+        <ListView x:Name="ListaCarpetas" SelectionMode="Single">
+          <ListView.View>
+            <GridView>
+              <GridViewColumn Header="Ruta" Width="450" DisplayMemberBinding="{Binding Ruta}" />
+              <GridViewColumn Header="Estado" Width="150" DisplayMemberBinding="{Binding Estado}" />
+            </GridView>
+          </ListView.View>
+        </ListView>
+      </DockPanel>
+    </TabItem>
+  </TabControl>
+</Window>
