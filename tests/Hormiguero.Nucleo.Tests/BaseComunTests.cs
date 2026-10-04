@@ -84,7 +84,10 @@ public class BaseComunTests
             {
                 using var comando = conexion.CreateCommand();
                 comando.CommandText = "SELECT COUNT(*) FROM migraciones;";
-                Assert.Equal((long)Migraciones.Todas.Count, Convert.ToInt64(comando.ExecuteScalar()));
+                Assert.Equal(
+                    (long)Migraciones.Todas.Count,
+                    Convert.ToInt64(comando.ExecuteScalar())
+                );
             }
         }
         finally
@@ -117,7 +120,10 @@ public class BaseComunTests
             using (var comando = conexion.CreateCommand())
             {
                 comando.CommandText = "SELECT COUNT(*) FROM migraciones;";
-                Assert.Equal((long)Migraciones.Todas.Count, Convert.ToInt64(comando.ExecuteScalar()));
+                Assert.Equal(
+                    (long)Migraciones.Todas.Count,
+                    Convert.ToInt64(comando.ExecuteScalar())
+                );
             }
             using (var comando = conexion.CreateCommand())
             {

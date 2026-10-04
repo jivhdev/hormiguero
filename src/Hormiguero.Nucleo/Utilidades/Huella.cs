@@ -17,4 +17,7 @@ public static class Huella
 
         return Convert.ToHexString(SHA256.HashData(flujo)).ToLowerInvariant();
     }
+
+    public static string DeContenido(ReadOnlySpan<byte> contenido) =>
+        Convert.ToHexString(SHA256.HashData(contenido)).ToLowerInvariant();
 }
