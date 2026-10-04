@@ -40,6 +40,7 @@ public partial class MainWindow : Window
     private readonly ServicioCarpetas _servicioCarpetas;
     private readonly Indexador _indexador;
     private readonly ServicioBusqueda _servicioBusqueda;
+    private readonly IndexadoEnSegundoPlano _indexadoEnSegundoPlano;
     private readonly RepositorioMarcas _repositorioMarcas;
     private readonly ServicioLineas _lineas;
 
@@ -79,13 +80,26 @@ public partial class MainWindow : Window
 
         var repositorioIndice = new RepositorioIndice(rutaBaseDeDatos);
         _indexador = new Indexador(repositorioIndice);
-        _servicioBusqueda = new ServicioBusqueda(_servicioCarpetas, _indexador, repositorioIndice);
+        // Fase B-2a: el índice se mantiene al día en segundo plano; buscar ya no
+        // recorre todas las carpetas cada vez.
+        _indexadoEnSegundoPlano = new IndexadoEnSegundoPlano(
+            _indexador,
+            () => _servicioCarpetas.ObtenerTodas().Select(c => c.Ruta).ToList()
+        );
+        _servicioBusqueda = new ServicioBusqueda(
+            _servicioCarpetas,
+            _indexador,
+            repositorioIndice,
+            _indexadoEnSegundoPlano
+        );
+        Closed += (_, _) => _indexadoEnSegundoPlano.Dispose();
         _repositorioMarcas = new RepositorioMarcas(rutaBaseDeDatos);
         _lineas = new ServicioLineas(new RepositorioLineas(rutaBaseDeDatos));
 
         CargarCarpetas();
         ActualizarSugerenciasCarpeta();
         RefrescarLineas();
+        _indexadoEnSegundoPlano.Pedir();
     }
 
     private void CargarCarpetas()
@@ -942,6 +956,7 @@ public partial class MainWindow : Window
                 TextoRuta.Clear();
                 MostrarMensaje(string.Empty);
                 CargarCarpetas();
+                _indexadoEnSegundoPlano.Pedir();
                 break;
             case ResultadoAgregarCarpeta.YaConfigurada:
                 MostrarMensaje("Esa carpeta ya está configurada.");

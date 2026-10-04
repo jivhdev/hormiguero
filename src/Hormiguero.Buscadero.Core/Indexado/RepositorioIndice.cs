@@ -18,6 +18,13 @@ public sealed class RepositorioIndice
     private void Inicializar()
     {
         using var conexion = AbrirConexion();
+        // Fase B-2a: modo WAL para que buscar y actualizar el índice en segundo plano
+        // puedan ocurrir a la vez (queda guardado en la base).
+        using (var wal = conexion.CreateCommand())
+        {
+            wal.CommandText = "PRAGMA journal_mode=WAL;";
+            wal.ExecuteScalar();
+        }
         using var comando = conexion.CreateCommand();
         comando.CommandText = """
             CREATE TABLE IF NOT EXISTS ArchivosIndexados (
