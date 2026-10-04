@@ -112,12 +112,15 @@ public static class Agrupador
         string buscado
     )
     {
-        var grupos = new Dictionary<(string Numero, string Tipo), List<VersionDocumento>>();
+        // Coincidencias por nombre: se juntan por número y tipo (C3, C4). Si el
+        // número solo está en el texto, cada documento es otro (por ejemplo,
+        // varias guías que mencionan la misma orden) y va por separado.
+        var grupos = new Dictionary<(string Tipo, string Documento), List<VersionDocumento>>();
 
         foreach (var version in versiones)
         {
-            string tipo = TipoDe(version.Principal, buscado);
-            var clave = (buscado, tipo);
+            string? tipo = TipoDe(version.Principal, buscado);
+            var clave = tipo is null ? ("", version.Principal.Ruta) : (tipo, "");
             if (!grupos.ContainsKey(clave))
             {
                 grupos[clave] = [];
@@ -129,7 +132,7 @@ public static class Agrupador
 
         foreach (var grupo in grupos)
         {
-            var (numero, tipo) = grupo.Key;
+            var (tipo, documento) = grupo.Key;
             var versionesGrupo = grupo.Value;
 
             var carpetas = versionesGrupo
@@ -142,12 +145,15 @@ public static class Agrupador
 
             var versionesOrdenadas = OrdenarVersiones(versionesGrupo);
 
-            string titulo = string.IsNullOrEmpty(tipo) ? numero : $"{tipo} {numero}";
+            string titulo =
+                documento.Length > 0 ? Path.GetFileNameWithoutExtension(documento)
+                : tipo.Length > 0 ? $"{tipo} {buscado}"
+                : buscado;
 
             resultados.Add(
                 new ResultadoBusqueda(
                     titulo,
-                    numero,
+                    buscado,
                     tipo,
                     versionesOrdenadas,
                     carpetas,
@@ -160,8 +166,8 @@ public static class Agrupador
     }
 
     // El tipo es el prefijo que acompaña al número buscado en el nombre
-    // (OCC, FCV...). Si el número solo aparece en el texto, no hay tipo.
-    private static string TipoDe(DocumentoIndexado doc, string buscado)
+    // (OCC, FCV...). null si el número no está en el nombre (solo en el texto).
+    private static string? TipoDe(DocumentoIndexado doc, string buscado)
     {
         foreach (var numero in doc.Numeros)
         {
@@ -171,7 +177,7 @@ public static class Agrupador
             }
         }
 
-        return "";
+        return null;
     }
 
     private static IReadOnlyList<VersionDocumento> OrdenarVersiones(

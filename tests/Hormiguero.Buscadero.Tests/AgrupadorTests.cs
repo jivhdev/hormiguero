@@ -220,7 +220,7 @@ public class AgrupadorTests
 
         Assert.Single(resultado);
         Assert.Equal("", resultado[0].Tipo);
-        Assert.Equal("104523", resultado[0].Titulo);
+        Assert.Equal("documento", resultado[0].Titulo);
     }
 
     [Fact]
@@ -281,5 +281,32 @@ public class AgrupadorTests
         Assert.Single(resultado);
         Assert.Equal("OCC", resultado[0].Tipo);
         Assert.Equal("104523", resultado[0].Numero);
+    }
+
+    [Fact]
+    public void Encontrados_solo_por_texto_van_separados()
+    {
+        var guia1 = CrearDocumento(
+            @"C:\carpeta\GD100.pdf",
+            "GD100.pdf",
+            "huella1",
+            "correcto",
+            true,
+            new[] { ("100", "GD", "", "nombre"), ("104523", "", "", "texto") }
+        );
+        var guia2 = CrearDocumento(
+            @"C:\carpeta\GD101.pdf",
+            "GD101.pdf",
+            "huella2",
+            "correcto",
+            true,
+            new[] { ("101", "GD", "", "nombre"), ("104523", "", "", "texto") }
+        );
+
+        var resultado = Agrupador.Agrupar([guia1, guia2], "104523");
+
+        Assert.Equal(2, resultado.Count);
+        Assert.Contains(resultado, r => r.Titulo == "GD100");
+        Assert.Contains(resultado, r => r.Titulo == "GD101");
     }
 }
