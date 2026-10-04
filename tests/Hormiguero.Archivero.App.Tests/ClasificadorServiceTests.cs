@@ -202,6 +202,54 @@ public class ClasificadorServiceTests : IDisposable
         Assert.Equal(Path.Combine(_carpetaDestino, "Año_ 2026", "factura.pdf"), ruta);
     }
 
+    // ----- Fase B-4 (D-66): el evento DocumentoGuardado avisa cada guardado exitoso. -----
+
+    [Fact]
+    public void Al_guardar_avisa_la_ruta_final()
+    {
+        var origen = CrearArchivo(_carpetaOrigen, "factura.pdf");
+        var rutasAvisadas = new List<string>();
+
+        void Escuchar(string ruta) => rutasAvisadas.Add(ruta);
+        ClasificadorService.DocumentoGuardado += Escuchar;
+        try
+        {
+            ClasificadorService.Clasificar(origen, Configuracion(), null, null);
+        }
+        finally
+        {
+            ClasificadorService.DocumentoGuardado -= Escuchar;
+        }
+
+        var rutaEsperada = Path.Combine(_carpetaDestino, "factura.pdf");
+        Assert.Single(rutasAvisadas);
+        Assert.Equal(rutaEsperada, rutasAvisadas[0]);
+    }
+
+    [Fact]
+    public void Si_la_copia_falla_no_avisa()
+    {
+        var origen = CrearArchivo(_carpetaOrigen, "factura.pdf", "nuevo");
+        CrearArchivo(_carpetaDestino, "factura.pdf", "viejo");
+        var avisos = 0;
+
+        void Escuchar(string ruta) => avisos++;
+        ClasificadorService.DocumentoGuardado += Escuchar;
+        try
+        {
+            Assert.Throws<ArchivoDuplicadoException>(() =>
+                ClasificadorService.Clasificar(origen, Configuracion(), null, null)
+            );
+        }
+        finally
+        {
+            ClasificadorService.DocumentoGuardado -= Escuchar;
+        }
+
+        Assert.Equal(0, avisos);
+        Assert.True(File.Exists(origen), "El original no se debe tocar ante un duplicado");
+    }
+
     public void Dispose()
     {
         Directory.Delete(_raiz, recursive: true);

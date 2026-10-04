@@ -17,6 +17,9 @@ public class ArchivoDuplicadoException : Exception
 
 public static class ClasificadorService
 {
+    /// <summary>Se dispara con la ruta final cada vez que un documento quedó guardado (fase B-4).</summary>
+    public static event Action<string>? DocumentoGuardado;
+
     /// <summary>
     /// Calcula dónde iría el archivo (carpeta de fecha + nombre según la configuración), sin
     /// tocar el disco. Se usa tanto para clasificar como para saber, ante un duplicado, qué
@@ -129,6 +132,12 @@ public static class ClasificadorService
         }
 
         File.Delete(origen);
+
+        try
+        {
+            DocumentoGuardado?.Invoke(destino);
+        }
+        catch (Exception) { }
     }
 
     private static bool ArchivosSonIdenticos(string rutaA, string rutaB)
