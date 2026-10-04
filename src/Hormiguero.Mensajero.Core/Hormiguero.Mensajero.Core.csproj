@@ -7,4 +7,8 @@
   <ItemGroup>
     <ProjectReference Include="..\Hormiguero.Nucleo\Hormiguero.Nucleo.csproj" />
   </ItemGroup>
+
+  <ItemGroup>
+    <EmbeddedResource Include="Recursos/tinta-base14.txt" LogicalName="tinta-base14.txt" />
+  </ItemGroup>
 </Project>

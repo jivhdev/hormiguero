@@ -44,6 +44,78 @@
       "asunto": "OCC 104527 NVV 1 OCL X-1",
       "despacho": "INFORMACIÓN PARA EL DESPACHO\n",
       "proveedor": "FERRETERIA PEREZ"
+    },
+    {
+      "archivo": "BORDE1.pdf",
+      "occ": ":0000020999",
+      "nvv": "12345",
+      "ocl": "4500077777",
+      "asunto": "OCC :0000020999 NVV 12345 OCL 4500077777",
+      "despacho": "INFORMACIÓN PARA EL DESPACHO\nObra: Borde\nComuna: Renca",
+      "proveedor": "HOFFENS"
+    },
+    {
+      "archivo": "BORDE2.pdf",
+      "occ": "n:0000020999",
+      "nvv": ":NVV-12345",
+      "ocl": ":4500077777",
+      "asunto": "OCC n:0000020999 NVV :NVV-12345 OCL :4500077777",
+      "despacho": "INFORMACIÓN PARA EL DESPACHO\nObra: Borde\nComuna: Renca",
+      "proveedor": "HOFFENS"
+    },
+    {
+      "archivo": "BORDE3.pdf",
+      "occ": "n:0000020999",
+      "nvv": ":NVV-12345\nec a 0\n0\n0 6",
+      "ocl": ":4500077777",
+      "asunto": "OCC n:0000020999 NVV :NVV-12345\nec a 0\n0\n0 6 OCL :4500077777",
+      "despacho": "INFORMACIÓN PARA EL DESPACHO\nObra: Borde\nComuna: Renca",
+      "proveedor": "HOFFENS"
+    },
+    {
+      "archivo": "BORDE4.pdf",
+      "occ": "n:0000020999",
+      "nvv": "a:NVV-12345\nFecha 01 10 2026",
+      "ocl": "e:4500077777",
+      "asunto": "OCC n:0000020999 NVV a:NVV-12345\nFecha 01 10 2026 OCL e:4500077777",
+      "despacho": "INFORMACIÓN PARA EL DESPACHO\nObra: Borde\nComuna: Renca",
+      "proveedor": "HOFFENS"
+    },
+    {
+      "archivo": "BORDE5.pdf",
+      "occ": ":0000020999",
+      "nvv": "12345",
+      "ocl": "4500077777",
+      "asunto": "OCC :0000020999 NVV 12345 OCL 4500077777",
+      "despacho": "INFORMACIÓN PARA EL DESPACHO\nObra: Borde\nComuna: Renca",
+      "proveedor": "HOFFENS"
+    },
+    {
+      "archivo": "BORDE6.pdf",
+      "occ": "n:0000020999",
+      "nvv": ":NVV-12345\nFecha 01-10-2026",
+      "ocl": ":4500077777",
+      "asunto": "OCC n:0000020999 NVV :NVV-12345\nFecha 01-10-2026 OCL :4500077777",
+      "despacho": "INFORMACIÓN PARA EL DESPACHO\nObra: Borde\nComuna: Renca",
+      "proveedor": "HOFFENS"
+    },
+    {
+      "archivo": "BORDE7.pdf",
+      "occ": "n:0000020999",
+      "nvv": "a:NVV-12345",
+      "ocl": ":4500077777",
+      "asunto": "OCC n:0000020999 NVV a:NVV-12345 OCL :4500077777",
+      "despacho": "INFORMACIÓN PARA EL DESPACHO\nObra: Borde\nComuna: Renca",
+      "proveedor": "HOFFENS"
+    },
+    {
+      "archivo": "BORDE8.pdf",
+      "occ": ":0000020999",
+      "nvv": "12345\nFecha 01-10-2026",
+      "ocl": "4500077777\nOb\n9",
+      "asunto": "OCC :0000020999 NVV 12345\nFecha 01-10-2026 OCL 4500077777\nOb\n9",
+      "despacho": "INFORMACIÓN PARA EL DESPACHO\nObra: Borde\nComuna: Renca",
+      "proveedor": "HOFFENS"
     }
   ],
   "mensajes_retiro": [
@@ -246,6 +318,262 @@
       "opcion_dia": "manual",
       "dia_manual": "",
       "mensaje": "Buenos días. Para su conocimiento, envío guía emitida el día de hoy hacia Obra _______________. De recibir guías adicionales durante la jornada, se las haré llegar oportunamente. Desde Hoffens se comunicarán con usted para coordinar la entrega. Saludos."
+    },
+    {
+      "archivo": "BORDE1.pdf",
+      "obra": "Borde",
+      "comuna": "Renca",
+      "opcion_dia": "hoy",
+      "dia_manual": "",
+      "mensaje": "Buenos días. Para su conocimiento, envío guía emitida el día de hoy hacia Obra Borde, Renca. De recibir guías adicionales durante la jornada, se las haré llegar oportunamente. Desde Hoffens se comunicarán con usted para coordinar la entrega. Saludos."
+    },
+    {
+      "archivo": "BORDE1.pdf",
+      "obra": "Borde",
+      "comuna": "Renca",
+      "opcion_dia": "ayer",
+      "dia_manual": "",
+      "mensaje": "Buenos días. Para su conocimiento, envío guía emitida el día de ayer hacia Obra Borde, Renca. De recibir guías adicionales durante la jornada, se las haré llegar oportunamente. Desde Hoffens se comunicarán con usted para coordinar la entrega. Saludos."
+    },
+    {
+      "archivo": "BORDE1.pdf",
+      "obra": "Borde",
+      "comuna": "Renca",
+      "opcion_dia": "manual",
+      "dia_manual": "lunes 6",
+      "mensaje": "Buenos días. Para su conocimiento, envío guía emitida el día lunes 6 hacia Obra Borde, Renca. De recibir guías adicionales durante la jornada, se las haré llegar oportunamente. Desde Hoffens se comunicarán con usted para coordinar la entrega. Saludos."
+    },
+    {
+      "archivo": "BORDE1.pdf",
+      "obra": "Borde",
+      "comuna": "Renca",
+      "opcion_dia": "manual",
+      "dia_manual": "",
+      "mensaje": "Buenos días. Para su conocimiento, envío guía emitida el día de hoy hacia Obra Borde, Renca. De recibir guías adicionales durante la jornada, se las haré llegar oportunamente. Desde Hoffens se comunicarán con usted para coordinar la entrega. Saludos."
+    },
+    {
+      "archivo": "BORDE2.pdf",
+      "obra": "Borde",
+      "comuna": "Renca",
+      "opcion_dia": "hoy",
+      "dia_manual": "",
+      "mensaje": "Buenos días. Para su conocimiento, envío guía emitida el día de hoy hacia Obra Borde, Renca. De recibir guías adicionales durante la jornada, se las haré llegar oportunamente. Desde Hoffens se comunicarán con usted para coordinar la entrega. Saludos."
+    },
+    {
+      "archivo": "BORDE2.pdf",
+      "obra": "Borde",
+      "comuna": "Renca",
+      "opcion_dia": "ayer",
+      "dia_manual": "",
+      "mensaje": "Buenos días. Para su conocimiento, envío guía emitida el día de ayer hacia Obra Borde, Renca. De recibir guías adicionales durante la jornada, se las haré llegar oportunamente. Desde Hoffens se comunicarán con usted para coordinar la entrega. Saludos."
+    },
+    {
+      "archivo": "BORDE2.pdf",
+      "obra": "Borde",
+      "comuna": "Renca",
+      "opcion_dia": "manual",
+      "dia_manual": "lunes 6",
+      "mensaje": "Buenos días. Para su conocimiento, envío guía emitida el día lunes 6 hacia Obra Borde, Renca. De recibir guías adicionales durante la jornada, se las haré llegar oportunamente. Desde Hoffens se comunicarán con usted para coordinar la entrega. Saludos."
+    },
+    {
+      "archivo": "BORDE2.pdf",
+      "obra": "Borde",
+      "comuna": "Renca",
+      "opcion_dia": "manual",
+      "dia_manual": "",
+      "mensaje": "Buenos días. Para su conocimiento, envío guía emitida el día de hoy hacia Obra Borde, Renca. De recibir guías adicionales durante la jornada, se las haré llegar oportunamente. Desde Hoffens se comunicarán con usted para coordinar la entrega. Saludos."
+    },
+    {
+      "archivo": "BORDE3.pdf",
+      "obra": "Borde",
+      "comuna": "Renca",
+      "opcion_dia": "hoy",
+      "dia_manual": "",
+      "mensaje": "Buenos días. Para su conocimiento, envío guía emitida el día de hoy hacia Obra Borde, Renca. De recibir guías adicionales durante la jornada, se las haré llegar oportunamente. Desde Hoffens se comunicarán con usted para coordinar la entrega. Saludos."
+    },
+    {
+      "archivo": "BORDE3.pdf",
+      "obra": "Borde",
+      "comuna": "Renca",
+      "opcion_dia": "ayer",
+      "dia_manual": "",
+      "mensaje": "Buenos días. Para su conocimiento, envío guía emitida el día de ayer hacia Obra Borde, Renca. De recibir guías adicionales durante la jornada, se las haré llegar oportunamente. Desde Hoffens se comunicarán con usted para coordinar la entrega. Saludos."
+    },
+    {
+      "archivo": "BORDE3.pdf",
+      "obra": "Borde",
+      "comuna": "Renca",
+      "opcion_dia": "manual",
+      "dia_manual": "lunes 6",
+      "mensaje": "Buenos días. Para su conocimiento, envío guía emitida el día lunes 6 hacia Obra Borde, Renca. De recibir guías adicionales durante la jornada, se las haré llegar oportunamente. Desde Hoffens se comunicarán con usted para coordinar la entrega. Saludos."
+    },
+    {
+      "archivo": "BORDE3.pdf",
+      "obra": "Borde",
+      "comuna": "Renca",
+      "opcion_dia": "manual",
+      "dia_manual": "",
+      "mensaje": "Buenos días. Para su conocimiento, envío guía emitida el día de hoy hacia Obra Borde, Renca. De recibir guías adicionales durante la jornada, se las haré llegar oportunamente. Desde Hoffens se comunicarán con usted para coordinar la entrega. Saludos."
+    },
+    {
+      "archivo": "BORDE4.pdf",
+      "obra": "Borde",
+      "comuna": "Renca",
+      "opcion_dia": "hoy",
+      "dia_manual": "",
+      "mensaje": "Buenos días. Para su conocimiento, envío guía emitida el día de hoy hacia Obra Borde, Renca. De recibir guías adicionales durante la jornada, se las haré llegar oportunamente. Desde Hoffens se comunicarán con usted para coordinar la entrega. Saludos."
+    },
+    {
+      "archivo": "BORDE4.pdf",
+      "obra": "Borde",
+      "comuna": "Renca",
+      "opcion_dia": "ayer",
+      "dia_manual": "",
+      "mensaje": "Buenos días. Para su conocimiento, envío guía emitida el día de ayer hacia Obra Borde, Renca. De recibir guías adicionales durante la jornada, se las haré llegar oportunamente. Desde Hoffens se comunicarán con usted para coordinar la entrega. Saludos."
+    },
+    {
+      "archivo": "BORDE4.pdf",
+      "obra": "Borde",
+      "comuna": "Renca",
+      "opcion_dia": "manual",
+      "dia_manual": "lunes 6",
+      "mensaje": "Buenos días. Para su conocimiento, envío guía emitida el día lunes 6 hacia Obra Borde, Renca. De recibir guías adicionales durante la jornada, se las haré llegar oportunamente. Desde Hoffens se comunicarán con usted para coordinar la entrega. Saludos."
+    },
+    {
+      "archivo": "BORDE4.pdf",
+      "obra": "Borde",
+      "comuna": "Renca",
+      "opcion_dia": "manual",
+      "dia_manual": "",
+      "mensaje": "Buenos días. Para su conocimiento, envío guía emitida el día de hoy hacia Obra Borde, Renca. De recibir guías adicionales durante la jornada, se las haré llegar oportunamente. Desde Hoffens se comunicarán con usted para coordinar la entrega. Saludos."
+    },
+    {
+      "archivo": "BORDE5.pdf",
+      "obra": "Borde",
+      "comuna": "Renca",
+      "opcion_dia": "hoy",
+      "dia_manual": "",
+      "mensaje": "Buenos días. Para su conocimiento, envío guía emitida el día de hoy hacia Obra Borde, Renca. De recibir guías adicionales durante la jornada, se las haré llegar oportunamente. Desde Hoffens se comunicarán con usted para coordinar la entrega. Saludos."
+    },
+    {
+      "archivo": "BORDE5.pdf",
+      "obra": "Borde",
+      "comuna": "Renca",
+      "opcion_dia": "ayer",
+      "dia_manual": "",
+      "mensaje": "Buenos días. Para su conocimiento, envío guía emitida el día de ayer hacia Obra Borde, Renca. De recibir guías adicionales durante la jornada, se las haré llegar oportunamente. Desde Hoffens se comunicarán con usted para coordinar la entrega. Saludos."
+    },
+    {
+      "archivo": "BORDE5.pdf",
+      "obra": "Borde",
+      "comuna": "Renca",
+      "opcion_dia": "manual",
+      "dia_manual": "lunes 6",
+      "mensaje": "Buenos días. Para su conocimiento, envío guía emitida el día lunes 6 hacia Obra Borde, Renca. De recibir guías adicionales durante la jornada, se las haré llegar oportunamente. Desde Hoffens se comunicarán con usted para coordinar la entrega. Saludos."
+    },
+    {
+      "archivo": "BORDE5.pdf",
+      "obra": "Borde",
+      "comuna": "Renca",
+      "opcion_dia": "manual",
+      "dia_manual": "",
+      "mensaje": "Buenos días. Para su conocimiento, envío guía emitida el día de hoy hacia Obra Borde, Renca. De recibir guías adicionales durante la jornada, se las haré llegar oportunamente. Desde Hoffens se comunicarán con usted para coordinar la entrega. Saludos."
+    },
+    {
+      "archivo": "BORDE6.pdf",
+      "obra": "Borde",
+      "comuna": "Renca",
+      "opcion_dia": "hoy",
+      "dia_manual": "",
+      "mensaje": "Buenos días. Para su conocimiento, envío guía emitida el día de hoy hacia Obra Borde, Renca. De recibir guías adicionales durante la jornada, se las haré llegar oportunamente. Desde Hoffens se comunicarán con usted para coordinar la entrega. Saludos."
+    },
+    {
+      "archivo": "BORDE6.pdf",
+      "obra": "Borde",
+      "comuna": "Renca",
+      "opcion_dia": "ayer",
+      "dia_manual": "",
+      "mensaje": "Buenos días. Para su conocimiento, envío guía emitida el día de ayer hacia Obra Borde, Renca. De recibir guías adicionales durante la jornada, se las haré llegar oportunamente. Desde Hoffens se comunicarán con usted para coordinar la entrega. Saludos."
+    },
+    {
+      "archivo": "BORDE6.pdf",
+      "obra": "Borde",
+      "comuna": "Renca",
+      "opcion_dia": "manual",
+      "dia_manual": "lunes 6",
+      "mensaje": "Buenos días. Para su conocimiento, envío guía emitida el día lunes 6 hacia Obra Borde, Renca. De recibir guías adicionales durante la jornada, se las haré llegar oportunamente. Desde Hoffens se comunicarán con usted para coordinar la entrega. Saludos."
+    },
+    {
+      "archivo": "BORDE6.pdf",
+      "obra": "Borde",
+      "comuna": "Renca",
+      "opcion_dia": "manual",
+      "dia_manual": "",
+      "mensaje": "Buenos días. Para su conocimiento, envío guía emitida el día de hoy hacia Obra Borde, Renca. De recibir guías adicionales durante la jornada, se las haré llegar oportunamente. Desde Hoffens se comunicarán con usted para coordinar la entrega. Saludos."
+    },
+    {
+      "archivo": "BORDE7.pdf",
+      "obra": "Borde",
+      "comuna": "Renca",
+      "opcion_dia": "hoy",
+      "dia_manual": "",
+      "mensaje": "Buenos días. Para su conocimiento, envío guía emitida el día de hoy hacia Obra Borde, Renca. De recibir guías adicionales durante la jornada, se las haré llegar oportunamente. Desde Hoffens se comunicarán con usted para coordinar la entrega. Saludos."
+    },
+    {
+      "archivo": "BORDE7.pdf",
+      "obra": "Borde",
+      "comuna": "Renca",
+      "opcion_dia": "ayer",
+      "dia_manual": "",
+      "mensaje": "Buenos días. Para su conocimiento, envío guía emitida el día de ayer hacia Obra Borde, Renca. De recibir guías adicionales durante la jornada, se las haré llegar oportunamente. Desde Hoffens se comunicarán con usted para coordinar la entrega. Saludos."
+    },
+    {
+      "archivo": "BORDE7.pdf",
+      "obra": "Borde",
+      "comuna": "Renca",
+      "opcion_dia": "manual",
+      "dia_manual": "lunes 6",
+      "mensaje": "Buenos días. Para su conocimiento, envío guía emitida el día lunes 6 hacia Obra Borde, Renca. De recibir guías adicionales durante la jornada, se las haré llegar oportunamente. Desde Hoffens se comunicarán con usted para coordinar la entrega. Saludos."
+    },
+    {
+      "archivo": "BORDE7.pdf",
+      "obra": "Borde",
+      "comuna": "Renca",
+      "opcion_dia": "manual",
+      "dia_manual": "",
+      "mensaje": "Buenos días. Para su conocimiento, envío guía emitida el día de hoy hacia Obra Borde, Renca. De recibir guías adicionales durante la jornada, se las haré llegar oportunamente. Desde Hoffens se comunicarán con usted para coordinar la entrega. Saludos."
+    },
+    {
+      "archivo": "BORDE8.pdf",
+      "obra": "Borde",
+      "comuna": "Renca",
+      "opcion_dia": "hoy",
+      "dia_manual": "",
+      "mensaje": "Buenos días. Para su conocimiento, envío guía emitida el día de hoy hacia Obra Borde, Renca. De recibir guías adicionales durante la jornada, se las haré llegar oportunamente. Desde Hoffens se comunicarán con usted para coordinar la entrega. Saludos."
+    },
+    {
+      "archivo": "BORDE8.pdf",
+      "obra": "Borde",
+      "comuna": "Renca",
+      "opcion_dia": "ayer",
+      "dia_manual": "",
+      "mensaje": "Buenos días. Para su conocimiento, envío guía emitida el día de ayer hacia Obra Borde, Renca. De recibir guías adicionales durante la jornada, se las haré llegar oportunamente. Desde Hoffens se comunicarán con usted para coordinar la entrega. Saludos."
+    },
+    {
+      "archivo": "BORDE8.pdf",
+      "obra": "Borde",
+      "comuna": "Renca",
+      "opcion_dia": "manual",
+      "dia_manual": "lunes 6",
+      "mensaje": "Buenos días. Para su conocimiento, envío guía emitida el día lunes 6 hacia Obra Borde, Renca. De recibir guías adicionales durante la jornada, se las haré llegar oportunamente. Desde Hoffens se comunicarán con usted para coordinar la entrega. Saludos."
+    },
+    {
+      "archivo": "BORDE8.pdf",
+      "obra": "Borde",
+      "comuna": "Renca",
+      "opcion_dia": "manual",
+      "dia_manual": "",
+      "mensaje": "Buenos días. Para su conocimiento, envío guía emitida el día de hoy hacia Obra Borde, Renca. De recibir guías adicionales durante la jornada, se las haré llegar oportunamente. Desde Hoffens se comunicarán con usted para coordinar la entrega. Saludos."
     }
   ],
   "numeros_en_nombre": [
