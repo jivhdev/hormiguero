@@ -1,0 +1,22 @@
+<Window x:Class="Archivero.Vistas.VerGuardadoWindow"
+        xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        Title="Archivero — Documento guardado"
+        Height="220" Width="560"
+        WindowStartupLocation="CenterScreen">
+    <Grid Margin="16">
+        <Grid.RowDefinitions>
+            <RowDefinition Height="Auto"/>
+            <RowDefinition Height="*"/>
+            <RowDefinition Height="Auto"/>
+        </Grid.RowDefinitions>
+
+        <TextBlock Grid.Row="0" FontSize="14" FontWeight="Bold" Text="Este documento quedó guardado en:" Margin="0,0,0,8"/>
+        <TextBlock Grid.Row="1" Name="TxtRuta" TextWrapping="Wrap" Foreground="Gray" VerticalAlignment="Top"/>
+
+        <StackPanel Grid.Row="2" Orientation="Horizontal" HorizontalAlignment="Right" Margin="0,16,0,0">
+            <Button Content="Abrir ubicación" Padding="8,6" Margin="0,0,8,0" Click="BtnAbrirUbicacion_Click"/>
+            <Button Content="Editar configuración" Padding="8,6" Click="BtnEditarConfiguracion_Click"/>
+        </StackPanel>
+    </Grid>
+</Window>

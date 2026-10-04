@@ -1,0 +1,43 @@
+<UserControl x:Class="Archivero.Vistas.VisorPdfConMarcado"
+             xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml">
+    <Grid>
+        <Grid.RowDefinitions>
+            <RowDefinition Height="*"/>
+            <RowDefinition Height="Auto"/>
+            <RowDefinition Height="Auto"/>
+        </Grid.RowDefinitions>
+
+        <Border Grid.Row="0" BorderBrush="Gray" BorderThickness="1" Background="White">
+            <!-- LienzoPagina se escala con un ScaleTransform (LayoutTransform, no RenderTransform,
+                 para que el ScrollViewer sepa el tamaño real y habilite las barras de desplazamiento).
+                 Los clics siguen llegando en coordenadas de pixel nativas de la pagina: WPF
+                 deshace la transformacion automaticamente al pedir GetPosition(LienzoPagina). -->
+            <ScrollViewer HorizontalScrollBarVisibility="Auto" VerticalScrollBarVisibility="Auto">
+                <Grid Name="LienzoPagina"
+                      MouseLeftButtonDown="LienzoPagina_MouseLeftButtonDown"
+                      MouseMove="LienzoPagina_MouseMove"
+                      MouseLeftButtonUp="LienzoPagina_MouseLeftButtonUp">
+                    <Grid.LayoutTransform>
+                        <ScaleTransform x:Name="EscalaZoom" ScaleX="0.3" ScaleY="0.3"/>
+                    </Grid.LayoutTransform>
+                    <Image Name="ImagenPagina" Stretch="None"/>
+                    <Canvas Name="CapaMarcas" IsHitTestVisible="False"/>
+                </Grid>
+            </ScrollViewer>
+        </Border>
+
+        <StackPanel Grid.Row="1" Orientation="Horizontal" HorizontalAlignment="Center" Margin="0,8,0,0">
+            <TextBlock Text="Zoom:" VerticalAlignment="Center" Margin="0,0,6,0"/>
+            <Slider Name="SliderZoom" Minimum="10" Maximum="100" Value="30" Width="160"
+                    VerticalAlignment="Center" ValueChanged="SliderZoom_ValueChanged"/>
+            <TextBlock Name="TxtZoom" VerticalAlignment="Center" Margin="6,0,0,0" Width="42"/>
+        </StackPanel>
+
+        <StackPanel Grid.Row="2" Orientation="Horizontal" HorizontalAlignment="Center" Margin="0,4,0,0">
+            <Button Name="BtnAnterior" Content="◀ Página anterior" Padding="8,4" Click="BtnAnterior_Click"/>
+            <TextBlock Name="TxtPagina" VerticalAlignment="Center" Margin="12,0"/>
+            <Button Name="BtnSiguiente" Content="Página siguiente ▶" Padding="8,4" Click="BtnSiguiente_Click"/>
+        </StackPanel>
+    </Grid>
+</UserControl>

@@ -1,12 +1,24 @@
 <Project Sdk="Microsoft.NET.Sdk">
+  <!-- Fase A de D-65: Archivero 0.1 B traído sin cambiar su comportamiento.
+       Conserva su nombre de programa y su espacio de nombres para que use la
+       misma carpeta de datos (%LocalAppData%\Archivero) y las mismas configuraciones. -->
   <PropertyGroup>
     <OutputType>WinExe</OutputType>
     <TargetFramework>net10.0-windows</TargetFramework>
     <UseWPF>true</UseWPF>
+    <UseWindowsForms>true</UseWindowsForms>
+    <AssemblyName>Archivero</AssemblyName>
+    <RootNamespace>Archivero</RootNamespace>
+    <DocnetRuntime>win-x64</DocnetRuntime>
+    <ApplicationIcon>Recursos\icono.ico</ApplicationIcon>
   </PropertyGroup>
 
   <ItemGroup>
-    <ProjectReference Include="..\Hormiguero.Diseno\Hormiguero.Diseno.csproj" />
-    <ProjectReference Include="..\Hormiguero.Archivero.Logica\Hormiguero.Archivero.Logica.csproj" />
+    <PackageReference Include="Microsoft.Data.Sqlite" />
+    <PackageReference Include="Docnet.Core" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <Resource Include="Recursos\icono.ico" />
   </ItemGroup>
 </Project>

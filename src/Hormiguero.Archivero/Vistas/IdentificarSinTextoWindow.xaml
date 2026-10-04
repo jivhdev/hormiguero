@@ -1,0 +1,128 @@
+<Window x:Class="Archivero.Vistas.IdentificarSinTextoWindow"
+        xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        xmlns:local="clr-namespace:Archivero.Vistas"
+        Title="Archivero — Documento sin texto extraíble"
+        Height="720" Width="1080"
+        WindowStartupLocation="CenterScreen">
+    <Grid Margin="16">
+        <Grid.RowDefinitions>
+            <RowDefinition Height="*"/>
+            <RowDefinition Height="Auto"/>
+        </Grid.RowDefinitions>
+        <Grid.ColumnDefinitions>
+            <ColumnDefinition Width="*"/>
+            <ColumnDefinition Width="360"/>
+        </Grid.ColumnDefinitions>
+
+        <Grid Grid.Column="0" Margin="0,0,16,0">
+            <local:VisorPdfConMarcado x:Name="Visor"/>
+
+            <!-- Caso-11, punto 5: si el archivo está dañado, el visor no puede abrirlo; se avisa
+                 en su lugar y el resto de la pantalla funciona igual (ruteo manual sin verlo). -->
+            <Border Name="AvisoSinVista" Visibility="Collapsed" BorderBrush="Gray" BorderThickness="1" Background="#FFF8F8F8">
+                <StackPanel VerticalAlignment="Center" HorizontalAlignment="Center" MaxWidth="420">
+                    <TextBlock Text="⚠ No se pudo leer este archivo" FontSize="16" FontWeight="Bold" HorizontalAlignment="Center" Margin="0,0,0,8"/>
+                    <TextBlock Name="TxtAvisoSinVista" TextWrapping="Wrap" TextAlignment="Center" Foreground="Gray"/>
+                </StackPanel>
+            </Border>
+        </Grid>
+
+        <StackPanel Grid.Column="1">
+            <TextBlock Name="TxtTitulo" Text="Este documento no tiene texto que se pueda leer" FontSize="14" FontWeight="Bold" TextWrapping="Wrap" Margin="0,0,0,4"/>
+            <TextBlock Name="TxtInstruccion" Foreground="Gray" TextWrapping="Wrap" Margin="0,0,0,16"
+                       Text="No se puede marcar ningún dato por coordenadas (ej. es una imagen escaneada)."/>
+
+            <!-- Paso "Elegir": las dos opciones de Caso-4, punto 3, y los accesos rápidos de Caso-11, punto 4 -->
+            <StackPanel Name="PanelElegir">
+                <Button Name="BtnCrearUbicacionNueva" Content="Crear ubicación nueva" Padding="8,6" Margin="0,0,0,8" HorizontalAlignment="Stretch" Click="BtnCrearUbicacionNueva_Click"/>
+                <Button Name="BtnVerUbicaciones" Content="Ver ubicaciones disponibles" Padding="8,6" HorizontalAlignment="Stretch" Click="BtnVerUbicaciones_Click"/>
+
+                <TextBlock Text="Accesos rápidos" FontWeight="Bold" Margin="0,20,0,4"/>
+                <TextBlock Name="TxtSinAtajos" Foreground="Gray" TextWrapping="Wrap"
+                           Text="Todavía no hay accesos rápidos. Se crean al final de &quot;Crear ubicación nueva&quot;."/>
+                <ScrollViewer MaxHeight="300" VerticalScrollBarVisibility="Auto">
+                    <ItemsControl Name="ListaAtajos">
+                        <ItemsControl.ItemTemplate>
+                            <DataTemplate>
+                                <Button Content="{Binding Texto}" ToolTip="{Binding Detalle}" Tag="{Binding Atajo}"
+                                        Padding="8,6" Margin="0,0,0,6" HorizontalContentAlignment="Left" Click="BtnAtajo_Click"/>
+                            </DataTemplate>
+                        </ItemsControl.ItemTemplate>
+                    </ItemsControl>
+                </ScrollViewer>
+            </StackPanel>
+
+            <!-- 3a: elegir carpeta madre -->
+            <StackPanel Name="PanelCarpetaMadre" Visibility="Collapsed">
+                <TextBlock Text="Carpeta madre" FontWeight="Bold"/>
+                <TextBlock Text="La carpeta raíz donde va a vivir todo lo de este tipo de documento." Foreground="Gray" TextWrapping="Wrap" Margin="0,2,0,0"/>
+                <TextBox Name="TxtCarpetaMadre" IsReadOnly="True" Margin="0,8,0,8"/>
+                <Button Name="BtnElegirCarpetaMadre" Content="Elegir carpeta…" Padding="6,4" HorizontalAlignment="Left" Click="BtnElegirCarpetaMadre_Click"/>
+            </StackPanel>
+
+            <!-- 3a: organizacion (Caso-3, reutilizado tal cual) + marcado manual de fecha -->
+            <StackPanel Name="PanelOrganizacion" Visibility="Collapsed">
+                <local:OrganizacionCarpetaControl x:Name="ControlOrganizacion" SeleccionCambiada="ControlOrganizacion_SeleccionCambiada"/>
+
+                <StackPanel Name="PanelMarcarFecha">
+                    <TextBlock Text="Fecha del documento" FontWeight="Bold"/>
+                    <TextBlock Foreground="Gray" TextWrapping="Wrap" Margin="0,2,0,4"
+                               Text="No hay texto para extraer de este documento: escribir la fecha a mano (ej. 15/03/2026)."/>
+                    <TextBox Name="TxtFechaManual" TextChanged="TxtFechaManual_TextChanged"/>
+                    <TextBlock Name="TxtFechaOpcional" Visibility="Collapsed" Foreground="Gray" TextWrapping="Wrap" Margin="0,4,0,0"
+                               Text="Para este tipo de organización la fecha es opcional: si se deja vacía, se usa la fecha de hoy."/>
+                </StackPanel>
+
+                <Button Content="Continuar" Padding="6,4" Margin="0,16,0,0" HorizontalAlignment="Left" Click="BtnContinuarOrganizacion_Click"/>
+            </StackPanel>
+
+            <!-- 3b: lista de ubicaciones ya usadas antes -->
+            <StackPanel Name="PanelVerUbicaciones" Visibility="Collapsed">
+                <TextBlock Text="Ubicaciones ya usadas antes" FontWeight="Bold" Margin="0,0,0,8"/>
+                <TextBlock Name="TxtSinUbicaciones" Visibility="Collapsed" Foreground="Gray" TextWrapping="Wrap" Margin="0,0,0,8"
+                           Text="Todavía no se creó ninguna ubicación desde &quot;Crear ubicación nueva&quot;."/>
+                <ListBox Name="ListaUbicaciones" DisplayMemberPath="Texto" Height="260" MouseDoubleClick="ListaUbicaciones_MouseDoubleClick"/>
+                <Button Content="Volver" Padding="6,4" Margin="0,8,0,0" HorizontalAlignment="Left" Click="BtnVolverAElegir_Click"/>
+            </StackPanel>
+
+            <!-- 3b: navegación por niveles dentro de una ubicación organizada -->
+            <StackPanel Name="PanelNavegar" Visibility="Collapsed">
+                <TextBlock Name="TxtRutaNavegacion" Foreground="Gray" TextWrapping="Wrap" Margin="0,0,0,8"/>
+                <TextBlock Name="TxtSinSubcarpetas" Visibility="Collapsed" Foreground="Gray" TextWrapping="Wrap" Margin="0,0,0,8"
+                           Text="Esta carpeta todavía no tiene ninguna subcarpeta creada."/>
+                <ListBox Name="ListaNavegacion" Height="260" MouseDoubleClick="ListaNavegacion_MouseDoubleClick"/>
+                <Button Content="Volver" Padding="6,4" Margin="0,8,0,0" HorizontalAlignment="Left" Click="BtnVolverNavegacion_Click"/>
+            </StackPanel>
+
+            <!-- Paso final: editar el nombre de archivo, antes de guardar -->
+            <StackPanel Name="PanelNombreArchivo" Visibility="Collapsed">
+                <TextBlock Text="Nombre con el que se guarda el archivo" FontWeight="Bold" Margin="0,0,0,4"/>
+                <TextBlock Name="TxtCarpetaDestinoFinal" Foreground="Gray" TextWrapping="Wrap" Margin="0,0,0,8"/>
+
+                <!-- Caso-11, punto 4: un acceso rápido organizado por fecha necesita la fecha de este documento -->
+                <StackPanel Name="PanelFechaAtajo" Visibility="Collapsed" Margin="0,0,0,8">
+                    <TextBlock Text="Fecha del documento" FontWeight="Bold"/>
+                    <TextBlock Name="TxtAyudaFechaAtajo" Foreground="Gray" TextWrapping="Wrap" Margin="0,2,0,4"/>
+                    <TextBox Name="TxtFechaAtajo" TextChanged="TxtFechaAtajo_TextChanged"/>
+                </StackPanel>
+
+                <TextBox Name="TxtNombreArchivo" Margin="0,0,0,8"/>
+                <StackPanel Orientation="Horizontal" Margin="0,0,0,8">
+                    <Button Content="Borrar" Padding="6,4" Margin="0,0,8,0" Click="BtnBorrarNombre_Click"/>
+                    <Button Content="Dejar solo los números" Padding="6,4" Margin="0,0,8,0" Click="BtnSoloNumeros_Click"/>
+                    <Button Content="Quitar ceros a la izquierda" Padding="6,4" Click="BtnQuitarCeros_Click"
+                            ToolTip="Solo para nombres que son un número: 00123 queda 123, 1200 no cambia."/>
+                </StackPanel>
+                <Button Name="BtnGuardar" Content="Guardar" Padding="8,6" HorizontalAlignment="Left" Click="BtnGuardar_Click"/>
+            </StackPanel>
+
+            <TextBlock Name="TxtError" Foreground="Red" TextWrapping="Wrap" Margin="0,16,0,0" Visibility="Collapsed"/>
+        </StackPanel>
+
+        <StackPanel Grid.Row="1" Grid.Column="0" Grid.ColumnSpan="2" Orientation="Horizontal"
+                    HorizontalAlignment="Right" Margin="0,16,0,0">
+            <Button Content="Cerrar" Width="100" Padding="6,6" Click="BtnCerrar_Click"/>
+        </StackPanel>
+    </Grid>
+</Window>

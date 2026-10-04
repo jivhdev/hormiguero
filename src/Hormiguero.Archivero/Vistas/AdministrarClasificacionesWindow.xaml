@@ -1,0 +1,42 @@
+<Window x:Class="Archivero.Vistas.AdministrarClasificacionesWindow"
+        xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        Title="Archivero — Administrar clasificaciones"
+        Height="520" Width="760"
+        WindowStartupLocation="CenterScreen">
+    <Grid Margin="16">
+        <Grid.RowDefinitions>
+            <RowDefinition Height="Auto"/>
+            <RowDefinition Height="Auto"/>
+            <RowDefinition Height="*"/>
+            <RowDefinition Height="Auto"/>
+        </Grid.RowDefinitions>
+
+        <TextBlock Grid.Row="0" FontSize="15" FontWeight="Bold" Text="Clasificaciones guardadas" Margin="0,0,0,12"/>
+
+        <DockPanel Grid.Row="1" Margin="0,0,0,12">
+            <Button DockPanel.Dock="Right" Content="Revisar disponibilidad" Padding="8,4" Margin="8,0,0,0" Click="BtnRevisarDisponibilidad_Click"/>
+            <ComboBox Name="CmbBusqueda" IsEditable="True" TextBoxBase.TextChanged="CmbBusqueda_TextChanged"/>
+        </DockPanel>
+
+        <ListView Grid.Row="2" Name="ListaClasificaciones" MouseDoubleClick="ListaClasificaciones_MouseDoubleClick">
+            <ListView.View>
+                <GridView>
+                    <GridViewColumn Header="Emisor" Width="180" DisplayMemberBinding="{Binding Emisor}"/>
+                    <GridViewColumn Header="Tipo" Width="180" DisplayMemberBinding="{Binding Tipo}"/>
+                    <GridViewColumn Header="Carpeta destino" Width="260" DisplayMemberBinding="{Binding CarpetaDestino}"/>
+                    <GridViewColumn Header="Disponible" Width="100" DisplayMemberBinding="{Binding DisponibleTexto}"/>
+                </GridView>
+            </ListView.View>
+        </ListView>
+
+        <DockPanel Grid.Row="3" Margin="0,12,0,0">
+            <Button DockPanel.Dock="Left" Content="Exportar / respaldar…" Padding="8,4" Click="BtnExportar_Click"/>
+            <StackPanel Orientation="Horizontal" HorizontalAlignment="Right">
+                <Button Content="Borrar" Width="90" Margin="0,0,8,0" Padding="6,4" Click="BtnBorrar_Click"/>
+                <Button Content="Editar" Width="90" Margin="0,0,8,0" Padding="6,4" Click="BtnEditar_Click"/>
+                <Button Content="Cerrar" Width="90" Padding="6,4" Click="BtnCerrar_Click"/>
+            </StackPanel>
+        </DockPanel>
+    </Grid>
+</Window>
