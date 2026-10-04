@@ -1,6 +1,6 @@
 using System.IO;
-using System.Security.Cryptography;
 using Archivero.Datos;
+using Hormiguero.Nucleo.Utilidades;
 
 namespace Archivero.Servicios;
 
@@ -102,8 +102,13 @@ public static class ClasificadorService
     /// <summary>Resolución de duplicado (REQ-002), opción "Reemplazar": borra lo que había y guarda lo nuevo.</summary>
     public static void ReemplazarYClasificar(string rutaArchivoOrigen, string rutaDestino)
     {
-        File.Delete(rutaDestino);
-        CopiarVerificarBorrar(rutaArchivoOrigen, rutaDestino);
+        // Fase B-5 (D-67): antes se borraba lo anterior y después se copiaba lo nuevo; si
+        // la copia fallaba, se perdía el documento que ya estaba guardado. Ahora lo nuevo se
+        // copia y verifica aparte, y recién entonces reemplaza a lo anterior.
+        string temporal = rutaDestino + ".reemplazo";
+        Trasladar(rutaArchivoOrigen, temporal);
+        File.Move(temporal, rutaDestino, overwrite: true);
+        Avisar(rutaDestino);
     }
 
     /// <summary>Resolución de duplicado (REQ-002), opción "Guardar en otra ubicación como excepción".</summary>
@@ -121,33 +126,38 @@ public static class ClasificadorService
 
     private static void CopiarVerificarBorrar(string origen, string destino)
     {
-        File.Copy(origen, destino);
+        Trasladar(origen, destino);
+        Avisar(destino);
+    }
 
-        if (!ArchivosSonIdenticos(origen, destino))
+    // Fase B-5 (D-66): mover = copiar a un temporal, verificar la huella, renombrar y recién
+    // borrar el original (núcleo). Nunca queda un archivo a medias con el nombre final.
+    private static void Trasladar(string origen, string destino)
+    {
+        Traslado traslado = MovedorSeguro.Mover(origen, destino);
+        switch (traslado.Resultado)
         {
-            File.Delete(destino);
-            throw new IOException(
-                "La copia no coincide con el original; no se borró el archivo original."
-            );
+            case ResultadoTraslado.Movido:
+                return;
+
+            case ResultadoTraslado.YaEstabaIgual:
+            case ResultadoTraslado.DestinoConOtroContenido:
+                throw new ArchivoDuplicadoException(destino);
+
+            default:
+                throw new IOException(
+                    "No se pudo guardar; el archivo original quedó donde estaba. "
+                        + (traslado.Detalle ?? string.Empty)
+                );
         }
+    }
 
-        File.Delete(origen);
-
+    private static void Avisar(string destino)
+    {
         try
         {
             DocumentoGuardado?.Invoke(destino);
         }
         catch (Exception) { }
-    }
-
-    private static bool ArchivosSonIdenticos(string rutaA, string rutaB)
-    {
-        using var streamA = File.OpenRead(rutaA);
-        using var streamB = File.OpenRead(rutaB);
-
-        var hashA = SHA256.HashData(streamA);
-        var hashB = SHA256.HashData(streamB);
-
-        return hashA.AsSpan().SequenceEqual(hashB);
     }
 }
