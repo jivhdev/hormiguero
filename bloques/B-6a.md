@@ -2,7 +2,7 @@
 bloque: B-6a
 app: Buscadero (y núcleo)
 fase: B-6 (PLAN-MIGRACION.md)
-estado: pendiente
+estado: hecho
 agente: Codex
 modelo: codex
 archivos_permitidos: [definicion/DISENO-B6-MARCAS-Y-CADENAS.md]
@@ -32,3 +32,5 @@ D-68: Buscadero y Archivero parten de cero (no hay que migrar marcas viejas).
 Reporte al final de esta nota.
 
 ## Reporte del agente
+
+- Codex dejó el reporte dentro de `definicion/DISENO-B6-MARCAS-Y-CADENAS.md`. Revisado por Claude: modelo coherente con D-68 a D-70 (reglas de enlace configurables, sin borrados físicos, auditoría). Faltan las respuestas de Javier (sección 6) antes de B-6c.
