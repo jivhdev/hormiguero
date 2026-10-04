@@ -1,5 +1,6 @@
 using System.IO.Packaging;
 using System.Windows;
+using System.Windows.Controls;
 using Microsoft.Win32;
 
 namespace Hormiguero.Diseno;
@@ -25,6 +26,8 @@ public static class Tema
     private static readonly Uri UriControles = UriDe("Controles");
 
     private static UserPreferenceChangedEventHandler? alCambiarWindows;
+    private static bool ventanasRegistradas;
+    private static bool temaActualOscuro;
 
     private static Uri UriDe(string nombre)
     {
@@ -60,11 +63,25 @@ public static class Tema
     {
         ArgumentNullException.ThrowIfNull(app);
 
+        // HORMIGUERO_TEMA=claro|oscuro fuerza un tema para probar sin cambiar Windows.
+        modo = Environment.GetEnvironmentVariable("HORMIGUERO_TEMA")?.ToLowerInvariant() switch
+        {
+            "claro" => ModoTema.Claro,
+            "oscuro" => ModoTema.Oscuro,
+            _ => modo,
+        };
+
         Quitar(app);
-        app.Resources.MergedDictionaries.Add(
-            new ResourceDictionary { Source = DiccionarioPara(modo, WindowsEstaEnOscuro()) }
-        );
+        Uri diccionario = DiccionarioPara(modo, WindowsEstaEnOscuro());
+        temaActualOscuro = diccionario == UriOscuro;
+        app.Resources.MergedDictionaries.Add(new ResourceDictionary { Source = diccionario });
         app.Resources.MergedDictionaries.Add(new ResourceDictionary { Source = UriControles });
+        PintarTodasLasVentanas();
+        // Las ventanas ya abiertas también cambian su barra de título al cambiar Windows.
+        foreach (Window abierta in app.Windows)
+        {
+            BarraDeTitulo(abierta);
+        }
 
         if (modo == ModoTema.Sistema)
         {
@@ -75,6 +92,61 @@ public static class Tema
             DejarDeEscuchar();
         }
     }
+
+    // Un estilo implícito de Window no se aplica a las ventanas propias de cada app
+    // (MainWindow y diálogos derivan de Window): sin esto quedan con fondo blanco y
+    // texto negro en el modo oscuro. Se pinta cada ventana al cargarse, salvo que
+    // ya traiga su propio fondo o color de texto.
+    private static void PintarTodasLasVentanas()
+    {
+        if (ventanasRegistradas)
+        {
+            return;
+        }
+        ventanasRegistradas = true;
+        EventManager.RegisterClassHandler(
+            typeof(Window),
+            FrameworkElement.LoadedEvent,
+            new RoutedEventHandler((origen, _) => Pintar((Window)origen))
+        );
+    }
+
+    public static void Pintar(Window ventana)
+    {
+        ArgumentNullException.ThrowIfNull(ventana);
+        if (ventana.ReadLocalValue(Control.BackgroundProperty) == DependencyProperty.UnsetValue)
+        {
+            ventana.SetResourceReference(Control.BackgroundProperty, "Hormiguero.Fondo");
+        }
+        if (ventana.ReadLocalValue(Control.ForegroundProperty) == DependencyProperty.UnsetValue)
+        {
+            ventana.SetResourceReference(Control.ForegroundProperty, "Hormiguero.Texto");
+        }
+        BarraDeTitulo(ventana);
+    }
+
+    // La barra de título la dibuja Windows: se le pide el modo oscuro cuando el
+    // tema activo lo es (Windows 10 2004 en adelante; en versiones viejas no hace nada).
+    private static void BarraDeTitulo(Window ventana)
+    {
+        IntPtr ventanaWin32 = new System.Windows.Interop.WindowInteropHelper(ventana).Handle;
+        if (ventanaWin32 == IntPtr.Zero)
+        {
+            return;
+        }
+        int oscuro = temaActualOscuro ? 1 : 0;
+        _ = DwmSetWindowAttribute(ventanaWin32, UsarModoOscuro, ref oscuro, sizeof(int));
+    }
+
+    private const int UsarModoOscuro = 20;
+
+    [System.Runtime.InteropServices.DllImport("dwmapi.dll")]
+    private static extern int DwmSetWindowAttribute(
+        IntPtr ventana,
+        int atributo,
+        ref int valor,
+        int tamano
+    );
 
     private static void Quitar(Application app)
     {

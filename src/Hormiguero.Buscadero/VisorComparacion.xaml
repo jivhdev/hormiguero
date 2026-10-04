@@ -104,7 +104,11 @@
       />
     </WrapPanel>
 
-    <Border BorderBrush="LightGray" BorderThickness="1" Background="#FFEFEFEF">
+    <Border
+      BorderBrush="{DynamicResource Hormiguero.Borde}"
+      BorderThickness="1"
+      Background="{DynamicResource Hormiguero.Encabezado}"
+    >
       <Grid>
         <ScrollViewer
           x:Name="Lienzo"
@@ -127,7 +131,7 @@
           Text="Sin documento"
           HorizontalAlignment="Center"
           VerticalAlignment="Center"
-          Foreground="Gray"
+          Foreground="{DynamicResource Hormiguero.TextoSecundario}"
         />
       </Grid>
     </Border>

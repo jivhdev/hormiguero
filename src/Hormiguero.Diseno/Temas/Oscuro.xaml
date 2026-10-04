@@ -78,6 +78,17 @@
   />
   <SolidColorBrush x:Key="Hormiguero.Resalte" Color="{StaticResource Hormiguero.ResalteColor}" />
 
+  <Color x:Key="Hormiguero.ExitoSuaveColor">#1E3326</Color>
+  <Color x:Key="Hormiguero.AvisoSuaveColor">#3A2F16</Color>
+  <SolidColorBrush
+    x:Key="Hormiguero.ExitoSuave"
+    Color="{StaticResource Hormiguero.ExitoSuaveColor}"
+  />
+  <SolidColorBrush
+    x:Key="Hormiguero.AvisoSuave"
+    Color="{StaticResource Hormiguero.AvisoSuaveColor}"
+  />
+
   <!-- Tamaños -->
   <sys:Double x:Key="Hormiguero.TextoNormal">14</sys:Double>
   <sys:Double x:Key="Hormiguero.TextoTitulo">20</sys:Double>

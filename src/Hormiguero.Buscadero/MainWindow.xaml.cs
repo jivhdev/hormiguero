@@ -27,24 +27,15 @@ public partial class MainWindow : Window
     private const double TamanoTickEquis = 0.024;
     private const double LargoRayaPredeterminada = 0.024;
 
-    private static readonly Brush FondoCajaVacia = new SolidColorBrush(
-        Color.FromRgb(0xE9, 0xEB, 0xEF)
-    );
-    private static readonly Brush BordeCajaVacia = new SolidColorBrush(
-        Color.FromRgb(0xB9, 0xC0, 0xCC)
-    );
-    private static readonly Brush FondoCajaConDocumento = new SolidColorBrush(
-        Color.FromRgb(0xE3, 0xF3, 0xE7)
-    );
-    private static readonly Brush BordeCajaConDocumento = new SolidColorBrush(
-        Color.FromRgb(0x7F, 0xB8, 0x8F)
-    );
-    private static readonly Brush FondoCajaActual = new SolidColorBrush(
-        Color.FromRgb(0xFD, 0xF1, 0xD6)
-    );
-    private static readonly Brush BordeCajaActual = new SolidColorBrush(
-        Color.FromRgb(0xE0, 0xB4, 0x4C)
-    );
+    // Colores de las cajas de la cadena: salen del tema activo (claro u oscuro), fase B-1.
+    private static Brush Pincel(string clave) => (Brush)Application.Current.FindResource(clave);
+
+    private static Brush FondoCajaVacia => Pincel("Hormiguero.Desactivado");
+    private static Brush BordeCajaVacia => Pincel("Hormiguero.Borde");
+    private static Brush FondoCajaConDocumento => Pincel("Hormiguero.ExitoSuave");
+    private static Brush BordeCajaConDocumento => Pincel("Hormiguero.Exito");
+    private static Brush FondoCajaActual => Pincel("Hormiguero.AvisoSuave");
+    private static Brush BordeCajaActual => Pincel("Hormiguero.Aviso");
 
     private readonly ServicioCarpetas _servicioCarpetas;
     private readonly Indexador _indexador;

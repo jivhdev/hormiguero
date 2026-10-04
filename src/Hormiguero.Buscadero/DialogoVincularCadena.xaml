@@ -99,7 +99,7 @@
       x:Name="TextoEstado"
       DockPanel.Dock="Bottom"
       TextWrapping="Wrap"
-      Foreground="DarkRed"
+      Foreground="{DynamicResource Hormiguero.Error}"
       Margin="0,8,0,0"
     />
     <StackPanel

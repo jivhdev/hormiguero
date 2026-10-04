@@ -105,23 +105,8 @@
     </Style.Triggers>
   </Style>
 
-  <!-- Listas desplegables -->
-  <Style TargetType="ComboBox">
-    <Setter Property="Background" Value="{DynamicResource Hormiguero.Superficie}" />
-    <Setter Property="Foreground" Value="{DynamicResource Hormiguero.Texto}" />
-    <Setter Property="BorderBrush" Value="{DynamicResource Hormiguero.Borde}" />
-    <Setter Property="BorderThickness" Value="1" />
-    <Setter Property="Padding" Value="6,4" />
-  </Style>
-
-  <Style TargetType="ComboBoxItem">
-    <Setter Property="Padding" Value="6,4" />
-    <Style.Triggers>
-      <Trigger Property="IsHighlighted" Value="True">
-        <Setter Property="Background" Value="{DynamicResource Hormiguero.PrincipalSuave}" />
-      </Trigger>
-    </Style.Triggers>
-  </Style>
+  <!-- Listas desplegables: se dejan al estilo Fluent del tema, que ya se pinta bien en
+       claro y oscuro (el de WPF clásico ignoraba el fondo y quedaba blanco en oscuro). -->
 
   <!-- Casillas -->
   <Style TargetType="CheckBox">
@@ -131,13 +116,26 @@
   </Style>
 
   <!-- Pestañas -->
+  <!-- Textos que no heredan el color de la ventana -->
+  <Style TargetType="Label">
+    <Setter Property="Foreground" Value="{DynamicResource Hormiguero.Texto}" />
+  </Style>
+
+  <Style TargetType="GroupBox">
+    <Setter Property="Foreground" Value="{DynamicResource Hormiguero.Texto}" />
+    <Setter Property="BorderBrush" Value="{DynamicResource Hormiguero.Borde}" />
+  </Style>
+
   <Style TargetType="TabControl">
+    <Setter Property="Foreground" Value="{DynamicResource Hormiguero.Texto}" />
     <Setter Property="Background" Value="{DynamicResource Hormiguero.Fondo}" />
     <Setter Property="BorderThickness" Value="0" />
     <Setter Property="Padding" Value="0" />
   </Style>
 
   <Style TargetType="TabItem">
+    <!-- El contenido de cada pestaña hereda el color de la pestaña, no el de la ventana. -->
+    <Setter Property="Foreground" Value="{DynamicResource Hormiguero.Texto}" />
     <Setter Property="Padding" Value="14,9" />
     <Setter Property="Margin" Value="0,0,4,0" />
     <Setter Property="FocusVisualStyle" Value="{x:Null}" />
