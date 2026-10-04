@@ -22,6 +22,8 @@ public record InfoPdf(
     IReadOnlyList<PalabraPdf> Palabras
 )
 {
+    public IReadOnlyList<(double Ancho, double Alto)> TamanosPagina { get; init; } = [];
+
     public bool TieneTexto => PaginaTieneTexto.Any(tiene => tiene);
 }
 
@@ -35,8 +37,10 @@ public static class LectorPdf
 
             var paginaTieneTexto = new List<bool>();
             var palabras = new List<PalabraPdf>();
+            var tamanosPagina = new List<(double Ancho, double Alto)>();
             foreach (Page pagina in documento.GetPages())
             {
+                tamanosPagina.Add((pagina.Width, pagina.Height));
                 List<Word> palabrasDeLaPagina = pagina.GetWords().ToList();
                 paginaTieneTexto.Add(
                     palabrasDeLaPagina.Sum(palabra => palabra.Text.Count(char.IsLetterOrDigit)) > 20
@@ -61,7 +65,10 @@ public static class LectorPdf
                 documento.NumberOfPages,
                 paginaTieneTexto,
                 palabras
-            );
+            )
+            {
+                TamanosPagina = tamanosPagina,
+            };
         }
         catch (PdfDocumentEncryptedException)
         {

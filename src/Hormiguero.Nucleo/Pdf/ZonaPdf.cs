@@ -6,6 +6,41 @@ public record Zona(int Pagina, double X, double Y, double Ancho, double Alto);
 
 public static class ZonaPdf
 {
+    public static string TextoEnFraccion(
+        InfoPdf info,
+        int paginaDesdeCero,
+        double x,
+        double y,
+        double ancho,
+        double alto
+    )
+    {
+        ArgumentNullException.ThrowIfNull(info);
+        // Página inexistente o zona sin tamaño (un clic sin arrastrar): sin texto, como
+        // hacía Archivero con su librería anterior.
+        if (
+            paginaDesdeCero < 0
+            || paginaDesdeCero >= info.TamanosPagina.Count
+            || ancho <= 0
+            || alto <= 0
+        )
+        {
+            return "";
+        }
+
+        (double anchoPagina, double altoPagina) = info.TamanosPagina[paginaDesdeCero];
+        return Texto(
+            info,
+            new Zona(
+                paginaDesdeCero + 1,
+                x * anchoPagina,
+                (1 - y - alto) * altoPagina,
+                ancho * anchoPagina,
+                alto * altoPagina
+            )
+        );
+    }
+
     public static string Texto(InfoPdf info, Zona zona)
     {
         ArgumentNullException.ThrowIfNull(info);

@@ -9,13 +9,11 @@
     <UseWindowsForms>true</UseWindowsForms>
     <AssemblyName>Archivero</AssemblyName>
     <RootNamespace>Archivero</RootNamespace>
-    <DocnetRuntime>win-x64</DocnetRuntime>
     <ApplicationIcon>Recursos\icono.ico</ApplicationIcon>
   </PropertyGroup>
 
   <ItemGroup>
     <PackageReference Include="Microsoft.Data.Sqlite" />
-    <PackageReference Include="Docnet.Core" />
   </ItemGroup>
 
   <ItemGroup>

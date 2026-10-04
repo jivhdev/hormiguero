@@ -1,5 +1,5 @@
-using Docnet.Core;
-using Docnet.Core.Models;
+using System.IO;
+using Hormiguero.Nucleo.Pdf;
 
 namespace Archivero.Servicios.Pdf;
 
@@ -9,49 +9,26 @@ public record RectanguloFraccion(double X, double Y, double Ancho, double Alto);
 
 public static class LectorPdf
 {
-    private const int AnchoLienzo = 1240;
-    private const int AltoLienzo = 1754;
-
     public static int ContarPaginas(string rutaPdf)
     {
-        using var docReader = DocLib.Instance.GetDocReader(
-            rutaPdf,
-            new PageDimensions(AnchoLienzo, AltoLienzo)
-        );
-        return docReader.GetPageCount();
+        return DibujoPdf.Paginas(LeerBytes(rutaPdf));
     }
 
     public static PaginaRenderizada RenderizarPagina(string rutaPdf, int numeroPagina)
     {
-        using var docReader = DocLib.Instance.GetDocReader(
-            rutaPdf,
-            new PageDimensions(AnchoLienzo, AltoLienzo)
-        );
-        using var pageReader = docReader.GetPageReader(numeroPagina);
-
-        return new PaginaRenderizada(
-            pageReader.GetImage(),
-            pageReader.GetPageWidth(),
-            pageReader.GetPageHeight()
-        );
+        ImagenPagina pagina = DibujoPdf.Dibujar(LeerBytes(rutaPdf), numeroPagina, 150.0 / 96.0);
+        return new PaginaRenderizada(pagina.PixelesBgra, pagina.Ancho, pagina.Alto);
     }
 
     public static bool TieneTextoExtraible(string rutaPdf)
     {
-        using var docReader = DocLib.Instance.GetDocReader(
-            rutaPdf,
-            new PageDimensions(AnchoLienzo, AltoLienzo)
-        );
-        for (var i = 0; i < docReader.GetPageCount(); i++)
+        InfoPdf info = LeerInfo(rutaPdf);
+        if (info.Estado != EstadoPdf.Correcto)
         {
-            using var pageReader = docReader.GetPageReader(i);
-            if (!string.IsNullOrWhiteSpace(pageReader.GetText()))
-            {
-                return true;
-            }
+            throw new InvalidDataException("El PDF no se pudo leer.");
         }
 
-        return false;
+        return info.Palabras.Count > 0;
     }
 
     public static string ExtraerTexto(
@@ -60,45 +37,35 @@ public static class LectorPdf
         RectanguloFraccion rectangulo
     )
     {
-        using var docReader = DocLib.Instance.GetDocReader(
-            rutaPdf,
-            new PageDimensions(AnchoLienzo, AltoLienzo)
-        );
-        using var pageReader = docReader.GetPageReader(numeroPagina);
-
-        return ExtraerTextoDePagina(
-            pageReader.GetCharacters(),
-            pageReader.GetPageWidth(),
-            pageReader.GetPageHeight(),
-            rectangulo
-        );
+        InfoPdf info = LeerInfo(rutaPdf);
+        return ZonaPdf
+            .TextoEnFraccion(
+                info,
+                numeroPagina,
+                rectangulo.X,
+                rectangulo.Y,
+                rectangulo.Ancho,
+                rectangulo.Alto
+            )
+            .Trim();
     }
 
-    internal static string ExtraerTextoDePagina(
-        IEnumerable<Docnet.Core.Models.Character> caracteres,
-        int anchoPagina,
-        int altoPagina,
-        RectanguloFraccion rectangulo
-    )
+    private static InfoPdf LeerInfo(string rutaPdf)
     {
-        var izquierda = rectangulo.X * anchoPagina;
-        var arriba = rectangulo.Y * altoPagina;
-        var derecha = (rectangulo.X + rectangulo.Ancho) * anchoPagina;
-        var abajo = (rectangulo.Y + rectangulo.Alto) * altoPagina;
+        using var contenido = new MemoryStream(LeerBytes(rutaPdf));
+        return Hormiguero.Nucleo.Pdf.LectorPdf.Leer(contenido);
+    }
 
-        var texto = new System.Text.StringBuilder();
-
-        foreach (var caracter in caracteres)
-        {
-            var centroX = (caracter.Box.Left + caracter.Box.Right) / 2.0;
-            var centroY = (caracter.Box.Top + caracter.Box.Bottom) / 2.0;
-
-            if (centroX >= izquierda && centroX <= derecha && centroY >= arriba && centroY <= abajo)
-            {
-                texto.Append(caracter.Char);
-            }
-        }
-
-        return texto.ToString().Trim();
+    private static byte[] LeerBytes(string rutaPdf)
+    {
+        using var archivo = new FileStream(
+            rutaPdf,
+            FileMode.Open,
+            FileAccess.Read,
+            FileShare.ReadWrite | FileShare.Delete
+        );
+        using var contenido = new MemoryStream();
+        archivo.CopyTo(contenido);
+        return contenido.ToArray();
     }
 }
