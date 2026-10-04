@@ -113,7 +113,8 @@ public class TemaTests
             }
         });
 
-        Assert.True(terminado.Wait(TimeSpan.FromSeconds(30)), "El hilo de WPF no respondió.");
+        // 2 minutos: en GitHub Actions cargar el tema Fluent puede tardar más de 30 s.
+        Assert.True(terminado.Wait(TimeSpan.FromMinutes(2)), "El hilo de WPF no respondió.");
         if (fallo is not null)
         {
             ExceptionDispatchInfo.Capture(fallo).Throw();
