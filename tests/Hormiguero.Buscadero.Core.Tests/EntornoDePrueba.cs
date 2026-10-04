@@ -11,6 +11,7 @@ public sealed class EntornoDePrueba : IDisposable
 {
     public string Raiz { get; }
     public string RutaBaseDeDatos { get; }
+    public string RutaBaseComun { get; }
     public RepositorioIndice RepositorioIndice { get; }
     public RepositorioMarcas RepositorioMarcas { get; }
     public ServicioLineas ServicioLineas { get; }
@@ -24,10 +25,11 @@ public sealed class EntornoDePrueba : IDisposable
         var carpetaDatos = Path.Combine(Raiz, "datos");
         Directory.CreateDirectory(carpetaDatos);
         RutaBaseDeDatos = Path.Combine(carpetaDatos, "buscadero.db");
+        RutaBaseComun = Path.Combine(carpetaDatos, "hormiguero.db");
 
         ServicioCarpetas = new ServicioCarpetas(new RepositorioCarpetas(RutaBaseDeDatos));
         RepositorioIndice = new RepositorioIndice(RutaBaseDeDatos);
-        RepositorioMarcas = new RepositorioMarcas(RutaBaseDeDatos);
+        RepositorioMarcas = new RepositorioMarcas(RutaBaseComun);
         ServicioLineas = new ServicioLineas(new RepositorioLineas(RutaBaseDeDatos));
         Indexador = new Indexador(RepositorioIndice, TimeSpan.Zero, _ => { });
         ServicioBusqueda = new ServicioBusqueda(ServicioCarpetas, Indexador, RepositorioIndice);
@@ -59,8 +61,16 @@ public sealed class EntornoDePrueba : IDisposable
         return ruta;
     }
 
+    public string CrearDocumento(string nombre, string contenido = "PDF de prueba")
+    {
+        var ruta = Path.Combine(Raiz, nombre);
+        File.WriteAllText(ruta, contenido);
+        return ruta;
+    }
+
     public void Dispose()
     {
+        RepositorioMarcas.Dispose();
         SqliteConnection.ClearAllPools();
         try
         {

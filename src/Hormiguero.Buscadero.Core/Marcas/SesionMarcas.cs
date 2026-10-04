@@ -109,5 +109,6 @@ public sealed class SesionMarcas
         Persistir();
     }
 
-    private void Persistir() => _repositorio.ReemplazarDelDocumento(_rutaDocumento, _actuales);
+    private void Persistir() =>
+        _actuales = _repositorio.ReemplazarDelDocumento(_rutaDocumento, _actuales).ToList();
 }

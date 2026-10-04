@@ -255,6 +255,49 @@ public sealed class B6bDatosTests : IDisposable
         Assert.NotEqual(uno.Version.Id, nuevo.Version.Id);
     }
 
+    [Fact]
+    public void Asegurar_documento_reutiliza_ruta_huella_y_crea_version_por_cambio()
+    {
+        string carpeta = Path.Combine(
+            Path.GetTempPath(),
+            "nucleo-b6d-" + Guid.NewGuid().ToString("N")
+        );
+        Directory.CreateDirectory(carpeta);
+        string ruta = Path.Combine(carpeta, "a.pdf");
+        string rutaMovida = Path.Combine(carpeta, "movido.pdf");
+        try
+        {
+            File.WriteAllText(ruta, "contenido uno");
+            var repo = new RepositorioDocumentosDatos(conexion);
+            var nuevo = repo.AsegurarDocumentoYVersionVigente(ruta);
+            var existente = repo.AsegurarDocumentoYVersionVigente(ruta);
+            Assert.Equal(nuevo.DocumentoId, existente.DocumentoId);
+            Assert.Equal(nuevo.Version.Id, existente.Version.Id);
+
+            File.Move(ruta, rutaMovida);
+            var movido = repo.AsegurarDocumentoYVersionVigente(rutaMovida);
+            Assert.Equal(nuevo.DocumentoId, movido.DocumentoId);
+            Assert.Equal(nuevo.Version.Id, movido.Version.Id);
+            Assert.Equal(Path.GetFullPath(rutaMovida), movido.Version.RutaObservada);
+
+            File.WriteAllText(rutaMovida, "contenido dos distinto");
+            var cambiado = repo.AsegurarDocumentoYVersionVigente(rutaMovida);
+            Assert.Equal(nuevo.DocumentoId, cambiado.DocumentoId);
+            Assert.NotEqual(nuevo.Version.Id, cambiado.Version.Id);
+            Assert.Equal("anulada", repo.BuscarVersiones(nuevo.Version.Huella).Single().Estado);
+            Assert.Equal(
+                5L,
+                Convert.ToInt64(
+                    Escalar(conexion, "SELECT COUNT(*) FROM auditoria WHERE app='Buscadero';")
+                )
+            );
+        }
+        finally
+        {
+            Directory.Delete(carpeta, true);
+        }
+    }
+
     private long AgregarDocumento(string huella)
     {
         new Documentos(conexion).Guardar(
