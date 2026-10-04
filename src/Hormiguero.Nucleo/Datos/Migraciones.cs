@@ -54,6 +54,16 @@ public static class Migraciones
                 + "resultado TEXT NOT NULL); "
                 + "CREATE INDEX IF NOT EXISTS idx_auditoria_fecha ON auditoria(fecha);"
         ),
+        (
+            4,
+            // Fase B-4 (D-66): aviso entre apps de cada documento guardado (Archivero lo
+            // escribe; Buscadero lo lee para encontrarlo al instante). Solo se agregan filas.
+            "CREATE TABLE IF NOT EXISTS documentos_guardados("
+                + "id INTEGER PRIMARY KEY, "
+                + "ruta TEXT NOT NULL, "
+                + "app TEXT NOT NULL, "
+                + "guardado_en TEXT NOT NULL);"
+        ),
     ];
 
     public static void Aplicar(
