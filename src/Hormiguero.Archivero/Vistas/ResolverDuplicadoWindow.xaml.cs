@@ -264,7 +264,7 @@ public partial class ResolverDuplicadoWindow : Window
         {
             System.Windows.MessageBox.Show(
                 this,
-                $"También existe un archivo con ese nombre ahí:\n{rutaExcepcion}\nElegí otra carpeta.",
+                $"También existe un archivo con ese nombre ahí:\n{rutaExcepcion}\nElige otra carpeta.",
                 "Archivero",
                 MessageBoxButton.OK,
                 MessageBoxImage.Warning

@@ -139,7 +139,7 @@ public partial class CrearPeriodoWindow : Window
         {
             System.Windows.MessageBox.Show(
                 this,
-                $"Ya existe un archivo con ese nombre ahí:\n{rutaElegida}\nElegí otra carpeta.",
+                $"Ya existe un archivo con ese nombre ahí:\n{rutaElegida}\nElige otra carpeta.",
                 "Archivero",
                 MessageBoxButton.OK,
                 MessageBoxImage.Warning

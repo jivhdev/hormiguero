@@ -7,7 +7,7 @@ namespace Archivero.Vistas;
 
 /// <summary>
 /// Caso-11, punto 1: último paso del guardado automático de una configuración con "Preguntar el
-/// nombre cada vez". La carpeta ya está resuelta; acá solo se escribe o confirma el nombre.
+/// nombre cada vez". La carpeta ya está resuelta; aquí solo se escribe o confirma el nombre.
 /// Cerrar sin guardar deja el documento en pendientes, sin tocarlo.
 /// </summary>
 public partial class ConfirmarNombreWindow : Window

@@ -41,7 +41,7 @@ public partial class ElegirPatronWindow : Window
         {
             System.Windows.MessageBox.Show(
                 this,
-                "Elegí un patrón de la lista.",
+                "Elige un patrón de la lista.",
                 "Archivero",
                 MessageBoxButton.OK,
                 MessageBoxImage.Information

@@ -85,7 +85,7 @@ public partial class AdministrarClasificacionesWindow : Window
         {
             System.Windows.MessageBox.Show(
                 this,
-                "Seleccioná una clasificación de la lista para editar.",
+                "Selecciona una clasificación de la lista para editar.",
                 "Archivero",
                 MessageBoxButton.OK,
                 MessageBoxImage.Information
@@ -151,7 +151,7 @@ public partial class AdministrarClasificacionesWindow : Window
         {
             System.Windows.MessageBox.Show(
                 this,
-                "Seleccioná una clasificación de la lista para borrar.",
+                "Selecciona una clasificación de la lista para borrar.",
                 "Archivero",
                 MessageBoxButton.OK,
                 MessageBoxImage.Information
