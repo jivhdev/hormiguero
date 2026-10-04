@@ -18,7 +18,11 @@ public sealed class Indexador
 
     public Indexador(SqliteConnection conexion) => _documentos = new Documentos(conexion);
 
-    public ResumenIndexado Revisar(string carpetaRaiz, CancellationToken cancelar)
+    public ResumenIndexado Revisar(
+        string carpetaRaiz,
+        CancellationToken cancelar,
+        ControlIndice? control = null
+    )
     {
         ArgumentException.ThrowIfNullOrWhiteSpace(carpetaRaiz);
         cancelar.ThrowIfCancellationRequested();
@@ -33,7 +37,7 @@ public sealed class Indexador
         int sinCambios = 0;
         var enDisco = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
 
-        foreach (string ruta in PdfsEn(raiz))
+        foreach (string ruta in PdfsEn(raiz, control, cancelar))
         {
             cancelar.ThrowIfCancellationRequested();
 
@@ -44,6 +48,7 @@ public sealed class Indexador
             }
 
             enDisco.Add(ruta);
+            control?.ContarArchivo();
 
             if (
                 firmas.TryGetValue(ruta, out var firma)
@@ -143,14 +148,22 @@ public sealed class Indexador
         );
     }
 
-    private static IEnumerable<string> PdfsEn(string raiz)
+    private static IEnumerable<string> PdfsEn(
+        string raiz,
+        ControlIndice? control = null,
+        CancellationToken cancelar = default
+    )
     {
         var pendientes = new Stack<string>();
         pendientes.Push(raiz);
 
         while (pendientes.Count > 0)
         {
+            cancelar.ThrowIfCancellationRequested();
+            control?.EsperarTurno(cancelar);
+
             string carpeta = pendientes.Pop();
+            control?.ContarCarpeta();
 
             string[] archivos;
             string[] subcarpetas;
