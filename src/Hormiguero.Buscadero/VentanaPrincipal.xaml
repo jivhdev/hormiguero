@@ -17,12 +17,31 @@
       Background="{DynamicResource Hormiguero.Principal}"
       Padding="{DynamicResource Hormiguero.Margen}"
     >
-      <TextBlock
-        Text="Buscadero"
-        FontSize="{DynamicResource Hormiguero.TextoTitulo}"
-        Foreground="{DynamicResource Hormiguero.PrincipalTexto}"
-        VerticalAlignment="Center"
-      />
+      <DockPanel LastChildFill="False">
+        <TextBlock
+          DockPanel.Dock="Left"
+          Text="Buscadero"
+          FontSize="{DynamicResource Hormiguero.TextoTitulo}"
+          Foreground="{DynamicResource Hormiguero.PrincipalTexto}"
+          VerticalAlignment="Center"
+        />
+        <Button
+          x:Name="BtnConfiguracion"
+          DockPanel.Dock="Right"
+          Content="Configuración"
+          Padding="16,4"
+          Click="Configuracion_Click"
+          Visibility="Collapsed"
+        />
+        <TextBlock
+          x:Name="TextoIndice"
+          DockPanel.Dock="Right"
+          Margin="0,0,16,0"
+          FontSize="{DynamicResource Hormiguero.TextoNormal}"
+          Foreground="{DynamicResource Hormiguero.PrincipalTexto}"
+          VerticalAlignment="Center"
+        />
+      </DockPanel>
     </Border>
 
     <!-- Aquí se muestra la pantalla actual: P1 (primera configuración) o P2 (buscador). -->
