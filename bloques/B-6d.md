@@ -2,7 +2,7 @@
 bloque: B-6d
 app: Buscadero (y núcleo)
 fase: B-6
-estado: pendiente
+estado: hecho
 agente: Codex
 modelo: codex
 archivos_permitidos: [src/Hormiguero.Buscadero.Core/**, src/Hormiguero.Buscadero/**, src/Hormiguero.Nucleo/Datos/**, tests/Hormiguero.Buscadero.Core.Tests/**, tests/Hormiguero.Nucleo.Tests/**]
@@ -28,3 +28,19 @@ Pruebas: asegurar documento (nuevo, existente, movido con misma huella, contenid
 `dotnet build` sin advertencias; `dotnet test` todo pasa; `dotnet csharpier check .` sin errores. Reporte al final.
 
 ## Reporte del agente
+
+Implementé B-6d dentro del alcance autorizado:
+
+- Núcleo: `AsegurarDocumentoYVersionVigente` calcula la huella y registra/reutiliza el documento y su versión en una transacción con auditoría. `PublicarDocumento` de B-6c comparte la misma lógica. La ruta se prioriza y la huella permite reconocer un documento movido; un cambio de contenido crea una versión nueva.
+- Buscadero: las marcas se leen y escriben en `marcas_version` de la base común. Guardar, editar, deshacer y quitar dejan auditoría e historial mediante inserciones y anulaciones en una transacción. La base propia ya no se usa para escribir marcas y no se migraron las antiguas.
+- La carga de marcas y el cálculo de huella del documento se ejecutan en segundo plano en los visores principal y de comparación. Se mantuvo intacta la migración v5.
+- Añadí pruebas para documento nuevo, existente, movido y modificado; historial y auditoría de marcas; regresiones de `SesionMarcasTests`; y escritura WAL con lector abierto.
+
+Verificación: `dotnet build` correcto, 0 advertencias y 0 errores; `dotnet test` correcto (595 pruebas); `dotnet csharpier check .` correcto (227 archivos).
+
+### Revisión de Claude (2026-10-04)
+
+- Corregido: Buscadero abría la base común con `BaseComun.RutaPorDefecto`, que ignora `HORMIGUERO_DATOS` (en pruebas habría escrito marcas en la base real). Ahora usa `DocumentosGuardados.RutaBaseComun`.
+- Corregido: abrir un PDF lo registraba en la base común (y en auditoría). Ahora solo lee (busca la versión vigente por huella); registra recién al guardar una marca. Prueba nueva `AbrirSinMarcar_NoRegistraElDocumentoEnLaBaseComun`.
+- Corregido: al guardar se usaba una versión en caché; si el PDF cambió desde que se abrió, la marca iba a la versión vieja. Ahora siempre se confirma la versión vigente.
+- Corregido: si se abría otro documento mientras cargaban las marcas, quedaban las del anterior.

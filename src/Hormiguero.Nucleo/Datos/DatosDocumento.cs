@@ -1,3 +1,4 @@
+using Hormiguero.Nucleo.Utilidades;
 using Microsoft.Data.Sqlite;
 
 namespace Hormiguero.Nucleo.Datos;
@@ -86,6 +87,30 @@ internal static class AuditoriaDatos
 
 public sealed class RepositorioDocumentosDatos(SqliteConnection conexion)
 {
+    public (long DocumentoId, VersionDocumento Version) AsegurarDocumentoYVersionVigente(
+        string ruta
+    )
+    {
+        ArgumentException.ThrowIfNullOrWhiteSpace(ruta);
+        string rutaCompleta = Path.GetFullPath(ruta);
+        var archivo = new FileInfo(rutaCompleta);
+        if (!archivo.Exists)
+            throw new FileNotFoundException("No existe el documento.", rutaCompleta);
+        string huella = Huella.Calcular(rutaCompleta);
+        using var tx = conexion.BeginTransaction();
+        var resultado = AsegurarDocumentoYVersionVigente(
+            tx,
+            rutaCompleta,
+            archivo.Length,
+            archivo.LastWriteTimeUtc,
+            huella,
+            "Buscadero",
+            false
+        );
+        tx.Commit();
+        return resultado;
+    }
+
     public (long DocumentoId, VersionDocumento Version) PublicarDocumento(
         string ruta,
         long tamano,
@@ -104,7 +129,16 @@ public sealed class RepositorioDocumentosDatos(SqliteConnection conexion)
 
         using var tx = conexion.BeginTransaction();
         long identificacionId = ObtenerOCrearIdentificacion(tx, emisor, tipo);
-        long documentoId = ObtenerOCrearDocumento(tx, ruta, tamano, modificado, huella);
+        string rutaCompleta = Path.GetFullPath(ruta);
+        var (documentoId, version) = AsegurarDocumentoYVersionVigente(
+            tx,
+            rutaCompleta,
+            tamano,
+            modificado,
+            huella,
+            "Archivero",
+            true
+        );
         var campos = new Dictionary<string, long>(StringComparer.Ordinal);
         foreach (var valor in valores)
         {
@@ -115,7 +149,6 @@ public sealed class RepositorioDocumentosDatos(SqliteConnection conexion)
             }
         }
 
-        VersionDocumento version = ObtenerOCrearVersion(tx, documentoId, huella, ruta);
         foreach (var valor in valores)
         {
             long campoId = campos[valor.NombreEstable];
@@ -184,50 +217,97 @@ public sealed class RepositorioDocumentosDatos(SqliteConnection conexion)
         return Convert.ToInt64(cmd.ExecuteScalar());
     }
 
-    private long ObtenerOCrearDocumento(
+    private (long DocumentoId, VersionDocumento Version) AsegurarDocumentoYVersionVigente(
         SqliteTransaction tx,
         string ruta,
         long tamano,
         DateTime modificado,
-        string huella
+        string huella,
+        string app,
+        bool tieneTexto
     )
     {
         using var buscar = conexion.CreateCommand();
         buscar.Transaction = tx;
-        buscar.CommandText = "SELECT id FROM documentos WHERE huella=$h ORDER BY id LIMIT 1;";
-        buscar.Parameters.AddWithValue("$h", huella);
-        if (buscar.ExecuteScalar() is long existente)
+        buscar.CommandText = "SELECT id FROM documentos WHERE ruta=$r LIMIT 1;";
+        buscar.Parameters.AddWithValue("$r", ruta);
+        object? valorId = buscar.ExecuteScalar();
+        if (valorId is null)
+        {
+            buscar.CommandText = "SELECT id FROM documentos WHERE huella=$h ORDER BY id LIMIT 1;";
+            buscar.Parameters.Clear();
+            buscar.Parameters.AddWithValue("$h", huella);
+            valorId = buscar.ExecuteScalar();
+        }
+        long documentoId;
+        bool nuevo = valorId is null;
+        bool cambioRuta = false;
+        if (valorId is not null)
+        {
+            documentoId = Convert.ToInt64(valorId);
+            using var rutaAnterior = conexion.CreateCommand();
+            rutaAnterior.Transaction = tx;
+            rutaAnterior.CommandText = "SELECT ruta FROM documentos WHERE id=$id;";
+            rutaAnterior.Parameters.AddWithValue("$id", documentoId);
+            cambioRuta = !string.Equals(
+                Convert.ToString(rutaAnterior.ExecuteScalar()),
+                ruta,
+                StringComparison.OrdinalIgnoreCase
+            );
+        }
+        else
+            documentoId = 0;
+
+        if (nuevo)
+        {
+            using var insertar = conexion.CreateCommand();
+            insertar.Transaction = tx;
+            insertar.CommandText =
+                "INSERT INTO documentos(ruta,carpeta_raiz,nombre,tamano,modificado,huella,estado,tiene_texto,indexado_en) VALUES($r,$c,$n,$z,$m,$h,'ok',$tt,$f) RETURNING id;";
+            AgregarDatosDocumento(insertar, ruta, tamano, modificado, huella, tieneTexto);
+            documentoId = Convert.ToInt64(insertar.ExecuteScalar());
+        }
+        else
         {
             using var actualizar = conexion.CreateCommand();
             actualizar.Transaction = tx;
             actualizar.CommandText =
-                "UPDATE documentos SET ruta=$r,carpeta_raiz=$c,nombre=$n,tamano=$z,modificado=$m,huella=$h,estado='ok',tiene_texto=1,indexado_en=$f,estado_baja='activo',fecha_baja=NULL WHERE id=$id;";
-            actualizar.Parameters.AddWithValue("$r", Path.GetFullPath(ruta));
-            actualizar.Parameters.AddWithValue(
-                "$c",
-                Path.GetDirectoryName(Path.GetFullPath(ruta)) ?? ""
-            );
-            actualizar.Parameters.AddWithValue("$n", Path.GetFileName(ruta));
-            actualizar.Parameters.AddWithValue("$z", tamano);
-            actualizar.Parameters.AddWithValue("$m", modificado.ToString("o"));
-            actualizar.Parameters.AddWithValue("$h", huella);
-            actualizar.Parameters.AddWithValue("$f", DateTime.Now.ToString("o"));
-            actualizar.Parameters.AddWithValue("$id", existente);
+                "UPDATE documentos SET ruta=$r,carpeta_raiz=$c,nombre=$n,tamano=$z,modificado=$m,huella=$h,estado='ok',tiene_texto=CASE WHEN $tt=1 THEN 1 ELSE tiene_texto END,indexado_en=$f,estado_baja='activo',fecha_baja=NULL WHERE id=$id;";
+            AgregarDatosDocumento(actualizar, ruta, tamano, modificado, huella, tieneTexto);
+            actualizar.Parameters.AddWithValue("$id", documentoId);
             actualizar.ExecuteNonQuery();
-            return existente;
         }
-        using var insertar = conexion.CreateCommand();
-        insertar.Transaction = tx;
-        insertar.CommandText =
-            "INSERT INTO documentos(ruta,carpeta_raiz,nombre,tamano,modificado,huella,estado,tiene_texto,indexado_en) VALUES($r,$c,$n,$z,$m,$h,'ok',1,$f) ON CONFLICT(ruta) DO UPDATE SET carpeta_raiz=excluded.carpeta_raiz,nombre=excluded.nombre,tamano=excluded.tamano,modificado=excluded.modificado,huella=excluded.huella,estado='ok',tiene_texto=1,indexado_en=excluded.indexado_en,estado_baja='activo',fecha_baja=NULL RETURNING id;";
-        insertar.Parameters.AddWithValue("$r", Path.GetFullPath(ruta));
-        insertar.Parameters.AddWithValue("$c", Path.GetDirectoryName(Path.GetFullPath(ruta)) ?? "");
-        insertar.Parameters.AddWithValue("$n", Path.GetFileName(ruta));
-        insertar.Parameters.AddWithValue("$z", tamano);
-        insertar.Parameters.AddWithValue("$m", modificado.ToString("o"));
-        insertar.Parameters.AddWithValue("$h", huella);
-        insertar.Parameters.AddWithValue("$f", DateTime.Now.ToString("o"));
-        return Convert.ToInt64(insertar.ExecuteScalar());
+        if (nuevo || cambioRuta)
+            AuditoriaDatos.Registrar(
+                conexion,
+                tx,
+                nuevo ? "registrar_documento" : "mover_documento",
+                ruta,
+                null,
+                huella,
+                app
+            );
+        VersionDocumento version = ObtenerOCrearVersion(tx, documentoId, huella, ruta, app);
+        return (documentoId, version);
+    }
+
+    private static void AgregarDatosDocumento(
+        SqliteCommand comando,
+        string ruta,
+        long tamano,
+        DateTime modificado,
+        string huella,
+        bool tieneTexto
+    )
+    {
+        comando.Parameters.AddWithValue("$r", ruta);
+        comando.Parameters.AddWithValue("$c", Path.GetDirectoryName(ruta) ?? "");
+        comando.Parameters.AddWithValue("$n", Path.GetFileName(ruta));
+        comando.Parameters.AddWithValue("$z", tamano);
+        comando.Parameters.AddWithValue("$m", modificado.ToString("o"));
+        comando.Parameters.AddWithValue("$h", huella);
+        comando.Parameters.AddWithValue("$tt", tieneTexto ? 1 : 0);
+        comando.Parameters.AddWithValue("$f", DateTime.Now.ToString("o"));
     }
 
     private long ObtenerOCrearCampo(
@@ -252,13 +332,14 @@ public sealed class RepositorioDocumentosDatos(SqliteConnection conexion)
         SqliteTransaction tx,
         long documentoId,
         string huella,
-        string ruta
+        string ruta,
+        string app = "Nucleo"
     )
     {
         using var buscar = conexion.CreateCommand();
         buscar.Transaction = tx;
         buscar.CommandText =
-            "SELECT id,registrada_en,estado FROM versiones_documento WHERE documento_id=$d AND huella=$h AND estado='vigente' LIMIT 1;";
+            "SELECT id,ruta_observada,registrada_en,estado FROM versiones_documento WHERE documento_id=$d AND huella=$h AND estado='vigente' LIMIT 1;";
         buscar.Parameters.AddWithValue("$d", documentoId);
         buscar.Parameters.AddWithValue("$h", huella);
         using var reader = buscar.ExecuteReader();
@@ -268,18 +349,33 @@ public sealed class RepositorioDocumentosDatos(SqliteConnection conexion)
                 reader.GetInt64(0),
                 documentoId,
                 huella,
-                ruta,
-                DateTime.Parse(reader.GetString(1)),
-                reader.GetString(2)
+                reader.GetString(1),
+                DateTime.Parse(reader.GetString(2)),
+                reader.GetString(3)
             );
             reader.Close();
-            using var update = conexion.CreateCommand();
-            update.Transaction = tx;
-            update.CommandText = "UPDATE versiones_documento SET ruta_observada=$r WHERE id=$id;";
-            update.Parameters.AddWithValue("$r", Path.GetFullPath(ruta));
-            update.Parameters.AddWithValue("$id", v.Id);
-            update.ExecuteNonQuery();
-            return v with { RutaObservada = Path.GetFullPath(ruta) };
+            string rutaCompleta = Path.GetFullPath(ruta);
+            if (!string.Equals(v.RutaObservada, rutaCompleta, StringComparison.OrdinalIgnoreCase))
+            {
+                using var update = conexion.CreateCommand();
+                update.Transaction = tx;
+                update.CommandText =
+                    "UPDATE versiones_documento SET ruta_observada=$r WHERE id=$id;";
+                update.Parameters.AddWithValue("$r", rutaCompleta);
+                update.Parameters.AddWithValue("$id", v.Id);
+                update.ExecuteNonQuery();
+                AuditoriaDatos.Registrar(
+                    conexion,
+                    tx,
+                    "cambiar_ruta_version",
+                    $"version:{v.Id}",
+                    rutaCompleta,
+                    huella,
+                    app
+                );
+                return v with { RutaObservada = rutaCompleta };
+            }
+            return v;
         }
         reader.Close();
         using (var anterior = conexion.CreateCommand())
@@ -307,7 +403,8 @@ public sealed class RepositorioDocumentosDatos(SqliteConnection conexion)
             "crear_version",
             $"documento:{documentoId}",
             ruta,
-            huella
+            huella,
+            app: app
         );
         return new(
             id,
@@ -628,17 +725,170 @@ public sealed class RepositorioDocumentosDatos(SqliteConnection conexion)
         cmd.Parameters.AddWithValue("$z", (object?)marca.Texto ?? DBNull.Value);
         cmd.Parameters.AddWithValue("$f", marca.CreadaEn.ToString("o"));
         long id = Convert.ToInt64(cmd.ExecuteScalar());
+        AuditoriaDatos.Registrar(
+            conexion,
+            tx,
+            "guardar_marca",
+            $"marca:{id}",
+            $"version:{marca.VersionId}",
+            app: "Buscadero"
+        );
         tx.Commit();
         return id;
     }
 
     public bool AnularMarca(long id)
     {
+        using var tx = conexion.BeginTransaction();
         using var cmd = conexion.CreateCommand();
+        cmd.Transaction = tx;
         cmd.CommandText =
             "UPDATE marcas_version SET estado='anulada',fecha_anulacion=$f WHERE id=$id AND estado='activa';";
         cmd.Parameters.AddWithValue("$f", DateTime.Now.ToString("o"));
         cmd.Parameters.AddWithValue("$id", id);
-        return cmd.ExecuteNonQuery() > 0;
+        bool cambio = cmd.ExecuteNonQuery() > 0;
+        if (cambio)
+            AuditoriaDatos.Registrar(conexion, tx, "anular_marca", $"marca:{id}", app: "Buscadero");
+        tx.Commit();
+        return cambio;
     }
+
+    public IReadOnlyList<MarcaVersion> BuscarMarcas(long versionId, bool incluirAnuladas = false)
+    {
+        using var cmd = conexion.CreateCommand();
+        cmd.CommandText =
+            "SELECT id,version_id,tipo,pagina,x,y,ancho,alto,texto,creada_en,estado FROM marcas_version WHERE version_id=$v"
+            + (incluirAnuladas ? "" : " AND estado='activa'")
+            + " ORDER BY id;";
+        cmd.Parameters.AddWithValue("$v", versionId);
+        using var r = cmd.ExecuteReader();
+        var marcas = new List<MarcaVersion>();
+        while (r.Read())
+            marcas.Add(
+                new(
+                    r.GetInt64(0),
+                    r.GetInt64(1),
+                    r.GetString(2),
+                    r.GetInt32(3),
+                    r.GetDouble(4),
+                    r.GetDouble(5),
+                    r.GetDouble(6),
+                    r.GetDouble(7),
+                    r.IsDBNull(8) ? null : r.GetString(8),
+                    DateTime.Parse(r.GetString(9)),
+                    r.GetString(10)
+                )
+            );
+        return marcas;
+    }
+
+    public IReadOnlyList<MarcaVersion> SincronizarMarcas(
+        long versionId,
+        IReadOnlyList<MarcaVersion> recibidas
+    )
+    {
+        using var tx = conexion.BeginTransaction();
+        var actuales = BuscarMarcasEnTransaccion(tx, versionId).ToDictionary(m => m.Id);
+        var incluidas = new HashSet<long>();
+        var resultado = new List<MarcaVersion>(recibidas.Count);
+        foreach (var marca in recibidas)
+        {
+            if (marca.Id > 0 && actuales.TryGetValue(marca.Id, out var anterior))
+            {
+                incluidas.Add(marca.Id);
+                if (Coinciden(anterior, marca))
+                {
+                    resultado.Add(anterior);
+                    continue;
+                }
+                AnularMarcaEnTransaccion(tx, marca.Id);
+            }
+            resultado.Add(
+                InsertarMarcaEnTransaccion(tx, marca with { Id = 0, VersionId = versionId })
+            );
+        }
+        foreach (var id in actuales.Keys.Except(incluidas))
+            AnularMarcaEnTransaccion(tx, id);
+        tx.Commit();
+        return resultado;
+    }
+
+    private IReadOnlyList<MarcaVersion> BuscarMarcasEnTransaccion(
+        SqliteTransaction tx,
+        long versionId
+    )
+    {
+        using var cmd = conexion.CreateCommand();
+        cmd.Transaction = tx;
+        cmd.CommandText =
+            "SELECT id,version_id,tipo,pagina,x,y,ancho,alto,texto,creada_en,estado FROM marcas_version WHERE version_id=$v AND estado='activa' ORDER BY id;";
+        cmd.Parameters.AddWithValue("$v", versionId);
+        using var r = cmd.ExecuteReader();
+        var marcas = new List<MarcaVersion>();
+        while (r.Read())
+            marcas.Add(
+                new(
+                    r.GetInt64(0),
+                    r.GetInt64(1),
+                    r.GetString(2),
+                    r.GetInt32(3),
+                    r.GetDouble(4),
+                    r.GetDouble(5),
+                    r.GetDouble(6),
+                    r.GetDouble(7),
+                    r.IsDBNull(8) ? null : r.GetString(8),
+                    DateTime.Parse(r.GetString(9)),
+                    r.GetString(10)
+                )
+            );
+        return marcas;
+    }
+
+    private MarcaVersion InsertarMarcaEnTransaccion(SqliteTransaction tx, MarcaVersion marca)
+    {
+        using var cmd = conexion.CreateCommand();
+        cmd.Transaction = tx;
+        cmd.CommandText =
+            "INSERT INTO marcas_version(version_id,tipo,pagina,x,y,ancho,alto,texto,creada_en) VALUES($v,$t,$p,$x,$y,$a,$l,$z,$f) RETURNING id;";
+        cmd.Parameters.AddWithValue("$v", marca.VersionId);
+        cmd.Parameters.AddWithValue("$t", marca.Tipo);
+        cmd.Parameters.AddWithValue("$p", marca.Pagina);
+        cmd.Parameters.AddWithValue("$x", marca.X);
+        cmd.Parameters.AddWithValue("$y", marca.Y);
+        cmd.Parameters.AddWithValue("$a", marca.Ancho);
+        cmd.Parameters.AddWithValue("$l", marca.Alto);
+        cmd.Parameters.AddWithValue("$z", (object?)marca.Texto ?? DBNull.Value);
+        cmd.Parameters.AddWithValue("$f", marca.CreadaEn.ToString("o"));
+        long id = Convert.ToInt64(cmd.ExecuteScalar());
+        AuditoriaDatos.Registrar(
+            conexion,
+            tx,
+            "guardar_marca",
+            $"marca:{id}",
+            $"version:{marca.VersionId}",
+            app: "Buscadero"
+        );
+        return marca with { Id = id, Estado = "activa" };
+    }
+
+    private void AnularMarcaEnTransaccion(SqliteTransaction tx, long id)
+    {
+        using var cmd = conexion.CreateCommand();
+        cmd.Transaction = tx;
+        cmd.CommandText =
+            "UPDATE marcas_version SET estado='anulada',fecha_anulacion=$f WHERE id=$id AND estado='activa';";
+        cmd.Parameters.AddWithValue("$f", DateTime.Now.ToString("o"));
+        cmd.Parameters.AddWithValue("$id", id);
+        if (cmd.ExecuteNonQuery() > 0)
+            AuditoriaDatos.Registrar(conexion, tx, "anular_marca", $"marca:{id}", app: "Buscadero");
+    }
+
+    private static bool Coinciden(MarcaVersion anterior, MarcaVersion nueva) =>
+        anterior.Tipo == nueva.Tipo
+        && anterior.Pagina == nueva.Pagina
+        && anterior.X == nueva.X
+        && anterior.Y == nueva.Y
+        && anterior.Ancho == nueva.Ancho
+        && anterior.Alto == nueva.Alto
+        && anterior.Texto == nueva.Texto;
 }

@@ -104,7 +104,12 @@ public partial class MainWindow : Window
             importadorDeGuardados
         );
         Closed += (_, _) => _indexadoEnSegundoPlano.Dispose();
-        _repositorioMarcas = new RepositorioMarcas(rutaBaseDeDatos);
+        // Base común según la carpeta de datos activa: respeta HORMIGUERO_DATOS, así las
+        // pruebas con datos sintéticos nunca escriben marcas en la base real.
+        _repositorioMarcas = new RepositorioMarcas(
+            Hormiguero.Nucleo.Datos.DocumentosGuardados.RutaBaseComun
+        );
+        Closed += (_, _) => _repositorioMarcas.Dispose();
         _lineas = new ServicioLineas(new RepositorioLineas(rutaBaseDeDatos));
 
         CargarCarpetas();
@@ -364,7 +369,13 @@ public partial class MainWindow : Window
             _totalPaginas = totalPaginas;
             _paginaActual = 0;
             _zoom = 1.0;
-            _sesionMarcas = new SesionMarcas(_repositorioMarcas, ruta);
+            var sesion = await Task.Run(() => new SesionMarcas(_repositorioMarcas, ruta));
+            // Si mientras cargaban las marcas se abrió otro documento, esta carga ya no sirve.
+            if (_documentoActual != ruta)
+            {
+                return;
+            }
+            _sesionMarcas = sesion;
 
             // Caso-15: ningún modo de interacción queda activo por defecto al abrir un documento.
             _modoInteraccion = ModoInteraccionPdf.Ninguno;

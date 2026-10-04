@@ -37,7 +37,11 @@ public partial class VisorComparacion : UserControl
         InitializeComponent();
     }
 
-    public void Abrir(string ruta, RepositorioMarcas repositorioMarcas, bool editable = false)
+    public async Task AbrirAsync(
+        string ruta,
+        RepositorioMarcas repositorioMarcas,
+        bool editable = false
+    )
     {
         _repositorioMarcas = repositorioMarcas;
         _esEditable = editable;
@@ -45,12 +49,16 @@ public partial class VisorComparacion : UserControl
 
         try
         {
-            _totalPaginas = VisorPdf.ObtenerTotalPaginas(ruta);
+            _totalPaginas = await Task.Run(() => VisorPdf.ObtenerTotalPaginas(ruta));
             _ruta = ruta;
             _paginaActual = 0;
             _zoom = 1.0;
-            _sesionMarcas = editable ? new SesionMarcas(repositorioMarcas, ruta) : null;
-            _marcas = editable ? _vacio : repositorioMarcas.ObtenerPorDocumento(ruta);
+            _sesionMarcas = editable
+                ? await Task.Run(() => new SesionMarcas(repositorioMarcas, ruta))
+                : null;
+            _marcas = editable
+                ? _vacio
+                : await Task.Run(() => repositorioMarcas.ObtenerPorDocumento(ruta));
             CheckEditable.IsChecked = editable;
             TextoDocumento.Text = System.IO.Path.GetFileName(ruta);
             TextoVacio.Visibility = Visibility.Collapsed;

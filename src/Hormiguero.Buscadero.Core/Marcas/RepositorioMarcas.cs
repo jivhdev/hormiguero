@@ -1,118 +1,103 @@
-using Buscadero.Core.Indexado;
-using Microsoft.Data.Sqlite;
+using Hormiguero.Nucleo.Datos;
 
 namespace Buscadero.Core.Marcas;
 
-public sealed class RepositorioMarcas
+public sealed class RepositorioMarcas : IDisposable
 {
-    private readonly string _cadenaConexion;
+    private readonly Microsoft.Data.Sqlite.SqliteConnection _conexion;
+    private readonly RepositorioDocumentosDatos _documentos;
+    private readonly Dictionary<string, long> _versiones = new(StringComparer.OrdinalIgnoreCase);
+    private readonly Dictionary<Guid, long> _ids = [];
 
-    public RepositorioMarcas(string rutaBaseDeDatos)
+    public RepositorioMarcas(string rutaBaseComun)
     {
-        _cadenaConexion = new SqliteConnectionStringBuilder
-        {
-            DataSource = rutaBaseDeDatos,
-        }.ToString();
-        Inicializar();
+        _conexion = BaseComun.Abrir(rutaBaseComun);
+        _documentos = new RepositorioDocumentosDatos(_conexion);
     }
 
-    private void Inicializar()
-    {
-        using var conexion = AbrirConexion();
-        using var comando = conexion.CreateCommand();
-        comando.CommandText = """
-            CREATE TABLE IF NOT EXISTS Marcas (
-                Id TEXT PRIMARY KEY,
-                RutaClave TEXT NOT NULL,
-                Pagina INTEGER NOT NULL,
-                Tipo INTEGER NOT NULL,
-                X REAL NOT NULL,
-                Y REAL NOT NULL,
-                Ancho REAL NOT NULL,
-                Alto REAL NOT NULL,
-                Texto TEXT NULL
-            );
-            CREATE INDEX IF NOT EXISTS IX_Marcas_Ruta ON Marcas (RutaClave);
-            """;
-        comando.ExecuteNonQuery();
-    }
-
-    private SqliteConnection AbrirConexion()
-    {
-        var conexion = new SqliteConnection(_cadenaConexion);
-        conexion.Open();
-        return conexion;
-    }
-
+    // Solo lee: abrir un PDF no lo registra en la base común (eso pasa recién al guardar una
+    // marca). Se busca la versión vigente con la misma huella, prefiriendo la de esta ruta.
     public IReadOnlyList<Marca> ObtenerPorDocumento(string rutaDocumento)
     {
-        var clave = RepositorioIndice.ClaveRuta(rutaDocumento);
-        using var conexion = AbrirConexion();
-        using var comando = conexion.CreateCommand();
-        comando.CommandText = """
-            SELECT Id, Pagina, Tipo, X, Y, Ancho, Alto, Texto
-            FROM Marcas
-            WHERE RutaClave = $clave
-            ORDER BY Pagina, rowid;
-            """;
-        comando.Parameters.AddWithValue("$clave", clave);
-
-        using var lector = comando.ExecuteReader();
-        var resultado = new List<Marca>();
-        while (lector.Read())
-        {
-            resultado.Add(
-                new Marca
-                {
-                    Id = Guid.Parse(lector.GetString(0)),
-                    Pagina = lector.GetInt32(1),
-                    Tipo = (TipoMarca)lector.GetInt32(2),
-                    X = lector.GetDouble(3),
-                    Y = lector.GetDouble(4),
-                    Ancho = lector.GetDouble(5),
-                    Alto = lector.GetDouble(6),
-                    Texto = lector.IsDBNull(7) ? null : lector.GetString(7),
-                }
-            );
-        }
-
-        return resultado;
+        string ruta = Path.GetFullPath(rutaDocumento);
+        if (!File.Exists(ruta))
+            return [];
+        string huella = Hormiguero.Nucleo.Utilidades.Huella.Calcular(ruta);
+        var vigentes = _documentos
+            .BuscarVersiones(huella)
+            .Where(version => version.Estado == "vigente")
+            .ToList();
+        var version =
+            vigentes.FirstOrDefault(v =>
+                string.Equals(v.RutaObservada, ruta, StringComparison.OrdinalIgnoreCase)
+            ) ?? vigentes.FirstOrDefault();
+        if (version is null)
+            return [];
+        _versiones[ruta] = version.Id;
+        return LeerMarcas(version.Id);
     }
 
-    public void ReemplazarDelDocumento(string rutaDocumento, IEnumerable<Marca> marcas)
+    private IReadOnlyList<Marca> LeerMarcas(long versionId)
     {
-        var clave = RepositorioIndice.ClaveRuta(rutaDocumento);
-        using var conexion = AbrirConexion();
-        using var transaccion = conexion.BeginTransaction();
-
-        using (var borrar = conexion.CreateCommand())
-        {
-            borrar.Transaction = transaccion;
-            borrar.CommandText = "DELETE FROM Marcas WHERE RutaClave = $clave;";
-            borrar.Parameters.AddWithValue("$clave", clave);
-            borrar.ExecuteNonQuery();
-        }
-
+        var marcas = _documentos.BuscarMarcas(versionId);
         foreach (var marca in marcas)
-        {
-            using var insertar = conexion.CreateCommand();
-            insertar.Transaction = transaccion;
-            insertar.CommandText = """
-                INSERT INTO Marcas (Id, RutaClave, Pagina, Tipo, X, Y, Ancho, Alto, Texto)
-                VALUES ($id, $clave, $pagina, $tipo, $x, $y, $ancho, $alto, $texto);
-                """;
-            insertar.Parameters.AddWithValue("$id", marca.Id.ToString());
-            insertar.Parameters.AddWithValue("$clave", clave);
-            insertar.Parameters.AddWithValue("$pagina", marca.Pagina);
-            insertar.Parameters.AddWithValue("$tipo", (int)marca.Tipo);
-            insertar.Parameters.AddWithValue("$x", marca.X);
-            insertar.Parameters.AddWithValue("$y", marca.Y);
-            insertar.Parameters.AddWithValue("$ancho", marca.Ancho);
-            insertar.Parameters.AddWithValue("$alto", marca.Alto);
-            insertar.Parameters.AddWithValue("$texto", (object?)marca.Texto ?? DBNull.Value);
-            insertar.ExecuteNonQuery();
-        }
-
-        transaccion.Commit();
+            _ids[Guid.NewGuid()] = marca.Id;
+        return marcas
+            .Select(marca =>
+            {
+                var id = _ids.First(par => par.Value == marca.Id).Key;
+                return Convertir(marca, id);
+            })
+            .ToList();
     }
+
+    public IReadOnlyList<Marca> ReemplazarDelDocumento(
+        string rutaDocumento,
+        IEnumerable<Marca> marcas
+    )
+    {
+        string ruta = Path.GetFullPath(rutaDocumento);
+        // Siempre se confirma la versión vigente al guardar: el PDF pudo cambiar de contenido
+        // desde que se abrió (entonces las marcas van a la versión nueva y las viejas quedan
+        // como historial). Guardar marcas es poco frecuente; el costo de la huella no pesa.
+        var (_, version) = _documentos.AsegurarDocumentoYVersionVigente(ruta);
+        long versionId = version.Id;
+        _versiones[ruta] = versionId;
+        var recibidas = marcas.ToList();
+        var seleccionadas = recibidas;
+        var versionadas = seleccionadas
+            .Select(marca => new MarcaVersion(
+                _ids.GetValueOrDefault(marca.Id),
+                versionId,
+                marca.Tipo.ToString(),
+                marca.Pagina,
+                marca.X,
+                marca.Y,
+                marca.Ancho,
+                marca.Alto,
+                marca.Texto,
+                DateTime.Now,
+                "activa"
+            ))
+            .ToList();
+        var guardadas = _documentos.SincronizarMarcas(versionId, versionadas);
+        for (int i = 0; i < guardadas.Count; i++)
+            _ids[seleccionadas[i].Id] = guardadas[i].Id;
+        return guardadas.Select((marca, i) => Convertir(marca, seleccionadas[i].Id)).ToList();
+    }
+
+    public void Dispose() => _conexion.Dispose();
+
+    private static Marca Convertir(MarcaVersion marca, Guid id) =>
+        new()
+        {
+            Id = id,
+            Pagina = marca.Pagina,
+            Tipo = Enum.Parse<TipoMarca>(marca.Tipo),
+            X = marca.X,
+            Y = marca.Y,
+            Ancho = marca.Ancho,
+            Alto = marca.Alto,
+            Texto = marca.Texto,
+        };
 }
