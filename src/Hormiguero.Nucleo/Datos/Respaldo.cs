@@ -7,21 +7,19 @@ public static class Respaldo
     public static string? HacerSiCorresponde(
         SqliteConnection conexion,
         string carpetaRespaldos,
-        DateTime ahora
+        DateTime ahora,
+        string nombre = "hormiguero"
     )
     {
         Directory.CreateDirectory(carpetaRespaldos);
 
-        var respaldos = Listar(carpetaRespaldos);
+        var respaldos = Listar(carpetaRespaldos, nombre);
         if (respaldos.Any(archivo => archivo.LastWriteTime > ahora.AddHours(-24)))
         {
             return null;
         }
 
-        string rutaDestino = Path.Combine(
-            carpetaRespaldos,
-            $"hormiguero-{ahora:yyyyMMdd-HHmmss}.db"
-        );
+        string rutaDestino = Path.Combine(carpetaRespaldos, $"{nombre}-{ahora:yyyyMMdd-HHmmss}.db");
         using var destino = new SqliteConnection(
             new SqliteConnectionStringBuilder { DataSource = rutaDestino }.ToString()
         );
@@ -30,7 +28,7 @@ public static class Respaldo
         // archivo a mano daría un respaldo sin lo que aún no se ha volcado.
         conexion.BackupDatabase(destino);
 
-        foreach (FileInfo archivo in Listar(carpetaRespaldos).Skip(7))
+        foreach (FileInfo archivo in Listar(carpetaRespaldos, nombre).Skip(7))
         {
             archivo.Delete();
         }
@@ -38,9 +36,9 @@ public static class Respaldo
         return rutaDestino;
     }
 
-    private static List<FileInfo> Listar(string carpetaRespaldos) =>
+    private static List<FileInfo> Listar(string carpetaRespaldos, string nombre) =>
         Directory
-            .EnumerateFiles(carpetaRespaldos, "hormiguero-*.db")
+            .EnumerateFiles(carpetaRespaldos, $"{nombre}-*.db")
             .Select(ruta => new FileInfo(ruta))
             .OrderByDescending(archivo => archivo.LastWriteTime)
             .ToList();

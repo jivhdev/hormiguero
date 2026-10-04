@@ -33,6 +33,10 @@ public partial class App : System.Windows.Application
             AuditoriaService.RutaLog = System.IO.Path.Combine(datosDePrueba, "auditoria.log");
             nombreMutex += ".prueba";
         }
+        else if (!string.IsNullOrWhiteSpace(Environment.GetEnvironmentVariable("HORMIGUERO_DATOS")))
+        {
+            nombreMutex += ".prueba";
+        }
 
         _mutexInstanciaUnica = new Mutex(
             initiallyOwned: true,
@@ -46,6 +50,11 @@ public partial class App : System.Windows.Application
             EnfocarInstanciaExistente();
             Shutdown();
             return;
+        }
+
+        if (string.IsNullOrWhiteSpace(datosDePrueba))
+        {
+            UsarCarpetaComunDeHormiguero();
         }
 
         BaseDeDatos.AsegurarEsquema();
@@ -89,6 +98,29 @@ public partial class App : System.Windows.Application
         _mutexInstanciaUnica?.ReleaseMutex();
         _mutexInstanciaUnica?.Dispose();
         base.OnExit(e);
+    }
+
+    // Fase B-3 (D-66): los datos viven en la carpeta común de Hormiguero. La primera vez
+    // se copian solos desde %LocalAppData%\Archivero, que queda intacto como respaldo.
+    private static void UsarCarpetaComunDeHormiguero()
+    {
+        string baseAnterior = BaseDeDatos.RutaArchivo;
+        string logAnterior = AuditoriaService.RutaLog;
+
+        BaseDeDatos.RutaArchivo = Hormiguero.Nucleo.Datos.DatosDeApp.Preparar(
+            "archivero",
+            baseAnterior
+        );
+
+        string logNuevo = System.IO.Path.Combine(
+            Hormiguero.Nucleo.Datos.DatosDeApp.Carpeta,
+            "archivero-auditoria.log"
+        );
+        if (!System.IO.File.Exists(logNuevo) && System.IO.File.Exists(logAnterior))
+        {
+            System.IO.File.Copy(logAnterior, logNuevo);
+        }
+        AuditoriaService.RutaLog = logNuevo;
     }
 
     private static void EnfocarInstanciaExistente()
