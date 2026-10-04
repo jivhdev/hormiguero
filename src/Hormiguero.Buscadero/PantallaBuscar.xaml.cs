@@ -3,6 +3,7 @@ using System.Windows;
 using System.Windows.Controls;
 using System.Windows.Input;
 using Hormiguero.Buscadero.Logica;
+using Hormiguero.Diseno.Controles;
 using Microsoft.Data.Sqlite;
 
 namespace Hormiguero.Buscadero;

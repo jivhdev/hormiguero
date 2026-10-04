@@ -7,7 +7,7 @@ using System.Windows.Media;
 using System.Windows.Media.Imaging;
 using Hormiguero.Nucleo.Pdf;
 
-namespace Hormiguero.Buscadero;
+namespace Hormiguero.Diseno.Controles;
 
 public sealed partial class VisorPdf : UserControl
 {
