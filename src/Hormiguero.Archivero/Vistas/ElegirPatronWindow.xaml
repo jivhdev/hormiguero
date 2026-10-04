@@ -18,7 +18,7 @@
       Grid.Row="0"
       TextWrapping="Wrap"
       Margin="0,0,0,12"
-      Text="Esta configuración tiene más de un patrón de reconocimiento (por ejemplo, distintos diseños del mismo proveedor). Elegí cuál querés revisar o corregir:"
+      Text="Esta configuración tiene más de un patrón de reconocimiento (por ejemplo, distintos diseños del mismo proveedor). Elige cuál quieres revisar o corregir:"
     />
 
     <ListBox Grid.Row="1" Name="ListaPatrones" DisplayMemberPath="Descripcion" />
