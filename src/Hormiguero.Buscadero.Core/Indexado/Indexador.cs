@@ -6,6 +6,10 @@ public sealed class Indexador
     private readonly TimeSpan _intervaloEntreSubcarpetas;
     private readonly Action<TimeSpan> _pausar;
 
+    // Fase B-2a: el índice puede actualizarse en segundo plano mientras se busca;
+    // dos pasadas a la vez se pisarían, así que se hacen de a una.
+    private readonly object _unaPasadaALaVez = new();
+
     public Indexador(
         RepositorioIndice repositorio,
         TimeSpan? intervaloEntreSubcarpetas = null,
@@ -31,6 +35,18 @@ public sealed class Indexador
         IEnumerable<string> carpetasRaiz,
         CancellationToken cancellationToken = default,
         IProgress<ProgresoIndexado>? progreso = null
+    )
+    {
+        lock (_unaPasadaALaVez)
+        {
+            return IndexarSinCompetir(carpetasRaiz, cancellationToken, progreso);
+        }
+    }
+
+    private ResumenIndexado IndexarSinCompetir(
+        IEnumerable<string> carpetasRaiz,
+        CancellationToken cancellationToken,
+        IProgress<ProgresoIndexado>? progreso
     )
     {
         var fechas = new Dictionary<string, long>(

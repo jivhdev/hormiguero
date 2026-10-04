@@ -8,16 +8,19 @@ public sealed class ServicioBusqueda
     private readonly ServicioCarpetas _servicioCarpetas;
     private readonly Indexador _indexador;
     private readonly RepositorioIndice _repositorio;
+    private readonly IndexadoEnSegundoPlano? _enSegundoPlano;
 
     public ServicioBusqueda(
         ServicioCarpetas servicioCarpetas,
         Indexador indexador,
-        RepositorioIndice repositorio
+        RepositorioIndice repositorio,
+        IndexadoEnSegundoPlano? enSegundoPlano = null
     )
     {
         _servicioCarpetas = servicioCarpetas;
         _indexador = indexador;
         _repositorio = repositorio;
+        _enSegundoPlano = enSegundoPlano;
     }
 
     public IReadOnlyList<ResultadoBusqueda> Buscar(
@@ -30,14 +33,63 @@ public sealed class ServicioBusqueda
     )
     {
         var carpetasMadre = _servicioCarpetas.ObtenerTodas().Select(c => c.Ruta).ToList();
-        _indexador.Indexar(carpetasMadre, cancellationToken, progreso);
+        if (!string.IsNullOrWhiteSpace(filtroCarpeta))
+        {
+            _repositorio.RegistrarUsoFiltro(filtroCarpeta.Trim());
+        }
 
+        // Fase B-2a (D-66): antes se recorrían todas las carpetas antes de cada búsqueda
+        // (con pausa de 200 ms por subcarpeta: minutos con carpetas grandes). Ahora se busca
+        // primero en el índice y, solo si no aparece nada, se actualiza y se busca de nuevo,
+        // así un documento recién llegado igual se encuentra.
+        var resultado = BuscarEnIndice(
+            carpetasMadre,
+            consulta,
+            filtroCarpeta,
+            modo,
+            alcance,
+            cancellationToken
+        );
+        if (resultado.Count > 0)
+        {
+            _enSegundoPlano?.Pedir();
+            return resultado;
+        }
+
+        if (_enSegundoPlano is { EnCurso: true })
+        {
+            // Ya se está actualizando: basta esperar esa pasada.
+            _enSegundoPlano.EsperarPasadaActual(cancellationToken);
+        }
+        else
+        {
+            _indexador.Indexar(carpetasMadre, cancellationToken, progreso);
+        }
+
+        return BuscarEnIndice(
+            carpetasMadre,
+            consulta,
+            filtroCarpeta,
+            modo,
+            alcance,
+            cancellationToken
+        );
+    }
+
+    private IReadOnlyList<ResultadoBusqueda> BuscarEnIndice(
+        List<string> carpetasMadre,
+        string consulta,
+        string? filtroCarpeta,
+        ModoBusqueda modo,
+        AlcanceBusqueda alcance,
+        CancellationToken cancellationToken
+    )
+    {
         // El filtro (una carpeta o subcarpeta puntual, elegida por el usuario) siempre
         // restringe la busqueda a esa ubicacion, sin importar el alcance activo - es la
         // implementacion de "Carpeta especifica" (Caso-11, punto 4.3).
         if (!string.IsNullOrWhiteSpace(filtroCarpeta))
         {
-            _repositorio.RegistrarUsoFiltro(filtroCarpeta.Trim());
             return BuscarEnArchivos(
                 _repositorio.ObtenerArchivos(filtroCarpeta),
                 consulta,
