@@ -7,7 +7,7 @@
     <!-- 3a: accesos rápidos configurados por el usuario + "Ver todas las opciones" -->
     <StackPanel Name="PanelAccesosRapidos">
       <TextBlock
-        Text="¿Cómo querés organizar las subcarpetas?"
+        Text="¿Cómo quieres organizar las subcarpetas?"
         FontWeight="Bold"
         Margin="0,0,0,8"
       />
@@ -17,7 +17,7 @@
         Foreground="{DynamicResource Hormiguero.TextoSecundario}"
         TextWrapping="Wrap"
         Margin="0,0,0,8"
-        Text="Todavía no tenés accesos rápidos configurados. Elegí un tipo en &quot;Ver todas las opciones&quot; y va a quedar a mano para la próxima."
+        Text="Todavía no tienes accesos rápidos configurados. Elige un tipo en &quot;Ver todas las opciones&quot; y va a quedar a mano para la próxima."
       />
       <StackPanel Name="ContenedorAccesosRapidos" Margin="0,0,0,8" />
       <Button
@@ -92,12 +92,12 @@
         Foreground="{DynamicResource Hormiguero.TextoSecundario}"
         TextWrapping="Wrap"
         Margin="0,0,0,8"
-        Text="Estos ejemplos usan la fecha de hoy — marcá la fecha del documento abajo para ver el ejemplo real."
+        Text="Estos ejemplos usan la fecha de hoy — marca la fecha del documento abajo para ver el ejemplo real."
       />
       <StackPanel Name="ContenedorEjemplos" Margin="0,0,0,8" />
 
       <StackPanel Name="PanelPatronPersonalizado" Visibility="Collapsed" Margin="0,0,0,8">
-        <TextBlock Text="Escribí el patrón a mano:" FontWeight="Bold" Margin="0,0,0,4" />
+        <TextBlock Text="Escribe el patrón a mano:" FontWeight="Bold" Margin="0,0,0,4" />
         <TextBox Name="TxtPatronPersonalizado" TextChanged="TxtPatronPersonalizado_TextChanged" />
         <TextBlock
           Foreground="{DynamicResource Hormiguero.TextoSecundario}"

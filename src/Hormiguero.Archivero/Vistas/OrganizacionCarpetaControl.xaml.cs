@@ -228,8 +228,8 @@ public partial class OrganizacionCarpetaControl : UserControl
         TxtTipoPendienteEnlazar.Text = $"Elegiste: {OrganizacionCarpetaService.NombreDe(tipo)}";
         TxtPreguntaEnlazar.Text =
             accesos.Count > 0
-                ? "¿Con cuál de tus accesos rápidos actuales querés reemplazar esta opción?"
-                : "¿Querés dejarla como acceso rápido para las próximas veces?";
+                ? "¿Con cuál de tus accesos rápidos actuales quieres reemplazar esta opción?"
+                : "¿Quieres dejarla como acceso rápido para las próximas veces?";
 
         PanelListaCompleta.Visibility = Visibility.Collapsed;
         PanelEnlazar.Visibility = Visibility.Visible;
@@ -308,13 +308,13 @@ public partial class OrganizacionCarpetaControl : UserControl
         }
         else if (tipo == FormatoCarpeta.Personalizado)
         {
-            TxtTipoElegido.Text = "Patrón personalizado — escribilo vos a mano.";
+            TxtTipoElegido.Text = "Patrón personalizado — escríbelo tú a mano.";
             ActualizarEjemploPersonalizado();
         }
         else
         {
             TxtTipoElegido.Text =
-                $"{OrganizacionCarpetaService.NombreDe(tipo.Value)} — ¿cuál de estos ejemplos se parece a lo que ya usás?";
+                $"{OrganizacionCarpetaService.NombreDe(tipo.Value)} — ¿cuál de estos ejemplos se parece a lo que ya usas?";
 
             var ejemplos = OrganizacionCarpetaService.ObtenerEjemplos(tipo.Value, fechaReferencia);
 
