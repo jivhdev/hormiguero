@@ -6,6 +6,8 @@ namespace Hormiguero.Buscadero;
 
 public partial class VentanaPrincipal : Window
 {
+    private readonly ControlIndice _controlIndice = new();
+
     public VentanaPrincipal()
     {
         InitializeComponent();
@@ -26,14 +28,7 @@ public partial class VentanaPrincipal : Window
 
     private void MostrarBuscador()
     {
-        var texto = new TextBlock
-        {
-            Text = "Aquí irá el buscador",
-            VerticalAlignment = VerticalAlignment.Center,
-            HorizontalAlignment = HorizontalAlignment.Center,
-        };
-        texto.SetResourceReference(TextBlock.FontSizeProperty, "Hormiguero.TextoTitulo");
-        texto.SetResourceReference(TextBlock.ForegroundProperty, "Hormiguero.TextoSecundario");
-        Contenido.Content = texto;
+        var pantalla = new PantallaBuscar(App.Base!, _controlIndice);
+        Contenido.Content = pantalla;
     }
 }
