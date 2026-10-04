@@ -8,6 +8,7 @@
     <Project Path="src/Hormiguero.Nucleo/Hormiguero.Nucleo.csproj" />
   </Folder>
   <Folder Name="/tests/">
+    <Project Path="tests/Hormiguero.Archivero.App.Tests/Hormiguero.Archivero.App.Tests.csproj" />
     <Project Path="tests/Hormiguero.Archivero.Tests/Hormiguero.Archivero.Tests.csproj" />
     <Project Path="tests/Hormiguero.Buscadero.Tests/Hormiguero.Buscadero.Tests.csproj" />
     <Project Path="tests/Hormiguero.Diseno.Tests/Hormiguero.Diseno.Tests.csproj" />

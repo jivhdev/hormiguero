@@ -1,6 +1,14 @@
-<Application
-  x:Class="Hormiguero.Archivero.App"
+﻿<Application
+  x:Class="Archivero.App"
   xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
   xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
-  ShutdownMode="OnMainWindowClose"
-/>
+  xmlns:local="clr-namespace:Archivero"
+>
+  <Application.Resources>
+    <!-- Icono unico y fijo de la app (Boundaries de SPEC.md: sin personalizacion visual),
+             aplicado a todas las ventanas para que se vea en la barra de titulo y en Alt+Tab. -->
+    <Style TargetType="Window">
+      <Setter Property="Icon" Value="pack://application:,,,/Recursos/icono.ico" />
+    </Style>
+  </Application.Resources>
+</Application>

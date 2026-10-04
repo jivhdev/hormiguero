@@ -1,62 +1,110 @@
+using System.Runtime.InteropServices;
+using System.Threading;
 using System.Windows;
-using Hormiguero.Diseno;
-using Hormiguero.Nucleo.Datos;
-using Microsoft.Data.Sqlite;
+using Archivero.Datos;
+using Archivero.Servicios;
+using Archivero.Vistas;
 
-namespace Hormiguero.Archivero;
+namespace Archivero;
 
-public partial class App : Application
+public partial class App : System.Windows.Application
 {
-    public static SqliteConnection? Base { get; private set; }
+    private const string NombreMutexInstanciaUnica = "Archivero.InstanciaUnica";
+    private const int SW_RESTORE = 9;
 
-    // HORMIGUERO_BASE permite abrir una base de prueba (datos sintéticos) sin
-    // tocar la del usuario; sin ella se usa la base común de siempre.
-    public static string RutaBase { get; } =
-        Environment.GetEnvironmentVariable("HORMIGUERO_BASE") is { Length: > 0 } ruta
-            ? ruta
-            : BaseComun.RutaPorDefecto;
+    private Mutex? _mutexInstanciaUnica;
 
     protected override void OnStartup(StartupEventArgs e)
     {
         base.OnStartup(e);
 
-        Tema.Aplicar(this, ModoTema.Sistema);
-
-        // Un error inesperado de la pantalla se avisa y la app sigue abierta.
-        DispatcherUnhandledException += (_, error) =>
+        // Hormiguero (D-65): ARCHIVERO_DATOS abre la app con datos de prueba en otra carpeta,
+        // sin tocar los reales ni chocar con la instancia que el usuario tenga abierta.
+        // Sin la variable, todo sigue exactamente igual.
+        string? datosDePrueba = Environment.GetEnvironmentVariable("ARCHIVERO_DATOS");
+        string nombreMutex = NombreMutexInstanciaUnica;
+        if (!string.IsNullOrWhiteSpace(datosDePrueba))
         {
-            MessageBox.Show(
-                $"Ocurrió un error inesperado:\n{error.Exception.Message}",
-                "Archivero",
-                MessageBoxButton.OK,
-                MessageBoxImage.Warning
-            );
-            error.Handled = true;
-        };
-
-        try
-        {
-            Base = BaseComun.Abrir(RutaBase);
+            BaseDeDatos.RutaArchivo = System.IO.Path.Combine(datosDePrueba, "archivero.db");
+            AuditoriaService.RutaLog = System.IO.Path.Combine(datosDePrueba, "auditoria.log");
+            nombreMutex += ".prueba";
         }
-        catch (Exception ex)
+
+        _mutexInstanciaUnica = new Mutex(
+            initiallyOwned: true,
+            nombreMutex,
+            out var esInstanciaNueva
+        );
+        if (!esInstanciaNueva)
         {
-            MessageBox.Show(
-                $"No se pudo abrir la base de datos:\n{ex.Message}",
-                "Error al iniciar Archivero",
-                MessageBoxButton.OK,
-                MessageBoxImage.Error
-            );
+            // Ya hay una instancia de Archivero corriendo: la segunda apertura solo enfoca
+            // la ventana de la primera (REQ-005), no abre nada nuevo.
+            EnfocarInstanciaExistente();
             Shutdown();
             return;
         }
 
-        var ventana = new VentanaPrincipal();
-        ventana.Show();
+        BaseDeDatos.AsegurarEsquema();
+
+        var configuracion = new ConfiguracionRepository();
+        var servicioCarpeta = new CarpetaObservadaService(configuracion);
+
+        var carpetaObservada = servicioCarpeta.ObtenerCarpetaConfigurada();
+
+        if (string.IsNullOrEmpty(carpetaObservada))
+        {
+            var onboarding = new OnboardingWindow(servicioCarpeta);
+            var confirmado = onboarding.ShowDialog();
+
+            if (confirmado != true || onboarding.CarpetaCreada is null)
+            {
+                Shutdown();
+                return;
+            }
+
+            carpetaObservada = onboarding.CarpetaCreada;
+        }
+
+        var vigilancia = new VigilanciaCarpetaService(carpetaObservada);
+
+        // MainWindow tiene que suscribirse a los eventos de vigilancia (CarpetaObservadaNoDisponible
+        // en particular) ANTES de Iniciar(): si la carpeta observada ya no existe desde el
+        // arranque, Iniciar() avisa de inmediato, y ese aviso se perdía en silencio porque
+        // todavía no había nadie escuchando (bug real: la carpeta desapareció y Archivero nunca
+        // dijo nada, ni siquiera al reabrirlo).
+        var ventanaPrincipal = new MainWindow(carpetaObservada, vigilancia);
+        MainWindow = ventanaPrincipal;
+
+        vigilancia.Iniciar();
+
+        ventanaPrincipal.Show();
     }
 
     protected override void OnExit(ExitEventArgs e)
     {
-        Base?.Dispose();
+        _mutexInstanciaUnica?.ReleaseMutex();
+        _mutexInstanciaUnica?.Dispose();
         base.OnExit(e);
     }
+
+    private static void EnfocarInstanciaExistente()
+    {
+        var ventana = FindWindow(null, "Archivero");
+        if (ventana == IntPtr.Zero)
+        {
+            return;
+        }
+
+        ShowWindow(ventana, SW_RESTORE);
+        SetForegroundWindow(ventana);
+    }
+
+    [DllImport("user32.dll", CharSet = CharSet.Unicode)]
+    private static extern IntPtr FindWindow(string? lpClassName, string lpWindowName);
+
+    [DllImport("user32.dll")]
+    private static extern bool ShowWindow(IntPtr hWnd, int nCmdShow);
+
+    [DllImport("user32.dll")]
+    private static extern bool SetForegroundWindow(IntPtr hWnd);
 }

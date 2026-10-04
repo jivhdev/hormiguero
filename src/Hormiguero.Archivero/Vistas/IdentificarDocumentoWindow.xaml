@@ -1,0 +1,308 @@
+<Window
+  x:Class="Archivero.Vistas.IdentificarDocumentoWindow"
+  xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+  xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+  xmlns:local="clr-namespace:Archivero.Vistas"
+  Title="Archivero — Identificar documento"
+  Height="720"
+  Width="1080"
+  WindowStartupLocation="CenterScreen"
+>
+  <Grid Margin="16">
+    <Grid.RowDefinitions>
+      <RowDefinition Height="*" />
+      <RowDefinition Height="Auto" />
+    </Grid.RowDefinitions>
+    <Grid.ColumnDefinitions>
+      <ColumnDefinition Width="*" />
+      <ColumnDefinition Width="360" />
+    </Grid.ColumnDefinitions>
+
+    <local:VisorPdfConMarcado x:Name="Visor" Grid.Column="0" Margin="0,0,16,0" />
+
+    <StackPanel Grid.Column="1">
+      <TextBlock
+        Name="TxtTituloPaso"
+        FontSize="15"
+        FontWeight="Bold"
+        Margin="0,0,0,4"
+        TextWrapping="Wrap"
+      />
+      <TextBlock
+        Name="TxtInstruccionPaso"
+        Foreground="Gray"
+        TextWrapping="Wrap"
+        Margin="0,0,0,16"
+      />
+
+      <!-- Paso 1: Emisor y Tipo -->
+      <StackPanel Name="PanelEmisorTipo">
+        <TextBlock Text="Emisor" FontWeight="Bold" />
+        <Button
+          Name="BtnMarcarEmisor"
+          Content="Marcar Emisor en el PDF"
+          Margin="0,4,0,4"
+          Padding="6,4"
+          Click="BtnMarcarEmisor_Click"
+        />
+        <TextBlock
+          Name="TxtEstadoMarcaEmisor"
+          Foreground="Gray"
+          Margin="0,0,0,4"
+          TextWrapping="Wrap"
+        />
+        <ComboBox
+          Name="CmbEmisor"
+          IsEditable="True"
+          Margin="0,0,0,16"
+          TextBoxBase.TextChanged="CmbEmisor_TextChanged"
+        />
+
+        <TextBlock Text="Tipo de documento" FontWeight="Bold" />
+        <Button
+          Name="BtnMarcarTipo"
+          Content="Marcar Tipo en el PDF"
+          Margin="0,4,0,4"
+          Padding="6,4"
+          Click="BtnMarcarTipo_Click"
+        />
+        <TextBlock
+          Name="TxtEstadoMarcaTipo"
+          Foreground="Gray"
+          Margin="0,0,0,4"
+          TextWrapping="Wrap"
+        />
+        <ComboBox Name="CmbTipo" IsEditable="True" TextBoxBase.TextChanged="CmbTipo_TextChanged" />
+      </StackPanel>
+
+      <!-- Paso 2 (Caso-3, revisado): carpeta madre + eleccion explicita Directo/Subcarpetas -->
+      <StackPanel Name="PanelCarpeta" Visibility="Collapsed">
+        <TextBlock Text="Carpeta madre" FontWeight="Bold" />
+        <TextBlock
+          Text="La carpeta raíz donde va a vivir todo lo de este tipo de documento."
+          Foreground="Gray"
+          TextWrapping="Wrap"
+          Margin="0,2,0,0"
+        />
+        <TextBox Name="TxtCarpetaDestino" IsReadOnly="True" Margin="0,8,0,8" />
+        <Button
+          Name="BtnElegirCarpeta"
+          Content="Elegir carpeta…"
+          Padding="6,4"
+          HorizontalAlignment="Left"
+          Click="BtnElegirCarpeta_Click"
+        />
+
+        <TextBlock
+          Text="¿Cómo se va a guardar dentro de esa carpeta?"
+          FontWeight="Bold"
+          Margin="0,16,0,8"
+        />
+        <RadioButton
+          Name="RbGuardarDirecto"
+          Content="Guardar directo en esta carpeta"
+          Margin="0,0,0,6"
+        />
+        <RadioButton
+          Name="RbGuardarSubcarpetas"
+          Content="Guardar en subcarpetas dentro de esta carpeta"
+          Margin="0,0,0,6"
+        />
+      </StackPanel>
+
+      <!-- Paso 3 (Caso-3, nuevo): tipo de organizacion, patron con ejemplos concretos (control compartido con Caso-4), y fecha de referencia -->
+      <StackPanel Name="PanelOrganizacion" Visibility="Collapsed">
+        <local:OrganizacionCarpetaControl
+          x:Name="ControlOrganizacion"
+          SeleccionCambiada="ControlOrganizacion_SeleccionCambiada"
+        />
+
+        <StackPanel Name="PanelMarcarFecha">
+          <TextBlock Text="Fecha del documento" FontWeight="Bold" />
+          <Button
+            Name="BtnMarcarFecha"
+            Content="Marcar fecha en el PDF"
+            Margin="0,4,0,4"
+            Padding="6,4"
+            Click="BtnMarcarFecha_Click"
+          />
+          <TextBlock Name="TxtEstadoMarcaFecha" Foreground="Gray" TextWrapping="Wrap" />
+          <TextBlock
+            Name="TxtFechaOpcional"
+            Visibility="Collapsed"
+            Foreground="Gray"
+            TextWrapping="Wrap"
+            Margin="0,4,0,0"
+            Text="Para este tipo de organización la fecha es opcional: si no la marcás, los ejemplos y la vista previa usan la fecha de hoy."
+          />
+        </StackPanel>
+      </StackPanel>
+
+      <!-- Paso 4: Nombre de archivo -->
+      <StackPanel Name="PanelNombreArchivo" Visibility="Collapsed">
+        <TextBlock
+          Text="Nombre con el que se guarda el archivo"
+          FontWeight="Bold"
+          Margin="0,0,0,8"
+        />
+        <RadioButton
+          Name="RbMantenerNombre"
+          Content="Mantener el nombre original"
+          Margin="0,0,0,6"
+          Checked="OpcionNombre_Changed"
+        />
+        <RadioButton
+          Name="RbExtraerNombre"
+          Content="Extraer de una coordenada del PDF"
+          Margin="0,0,0,6"
+          Checked="OpcionNombre_Changed"
+        />
+        <RadioButton
+          Name="RbPreguntarNombre"
+          Content="Preguntar el nombre cada vez"
+          Margin="0,0,0,2"
+          Checked="OpcionNombre_Changed"
+        />
+        <TextBlock
+          Foreground="Gray"
+          TextWrapping="Wrap"
+          Margin="20,0,0,6"
+          Text="La carpeta se sigue eligiendo sola; antes de guardar, el documento queda en &quot;Pendientes por reconocer&quot; para escribir o confirmar su nombre."
+        />
+
+        <StackPanel Name="PanelMarcarNombre" Visibility="Collapsed" Margin="0,8,0,0">
+          <Button
+            Name="BtnMarcarNombreArchivo"
+            Content="Marcar el campo en el PDF"
+            Margin="0,0,0,4"
+            Padding="6,4"
+            Click="BtnMarcarNombreArchivo_Click"
+          />
+          <TextBlock Name="TxtEstadoMarcaNombre" Foreground="Gray" TextWrapping="Wrap" />
+        </StackPanel>
+      </StackPanel>
+
+      <!-- Paso 5: Confirmar -->
+      <StackPanel Name="PanelConfirmar" Visibility="Collapsed">
+        <TextBlock Name="TxtResumen" TextWrapping="Wrap" Margin="0,0,0,12" />
+
+        <!-- Caso-11, punto 1: con "Preguntar el nombre cada vez", también para este primer documento -->
+        <StackPanel Name="PanelNombreEsteDocumento" Visibility="Collapsed" Margin="0,0,0,12">
+          <TextBlock Text="Nombre para este documento" FontWeight="Bold" Margin="0,0,0,4" />
+          <TextBox Name="TxtNombreEsteDocumento" />
+        </StackPanel>
+
+        <CheckBox
+          Name="ChkAbrirDespuesDeGuardar"
+          Content="Abrir el documento después de guardarlo automáticamente"
+          Checked="ChkAbrirDespuesDeGuardar_Changed"
+          Unchecked="ChkAbrirDespuesDeGuardar_Changed"
+        />
+      </StackPanel>
+
+      <!-- Preview obligatorio de anterior/actual/futuro (Caso-1, punto 3). Visible desde
+                 el paso de Formato en adelante, se actualiza solo al cambiar algo relevante, y
+                 tambien con el boton, para ver el efecto en vivo de una correccion. -->
+      <Border
+        Name="PanelPreview"
+        Visibility="Collapsed"
+        Margin="0,16,0,0"
+        Padding="10"
+        Background="#FFF6F6F6"
+        BorderBrush="#FFD0D0D0"
+        BorderThickness="1"
+      >
+        <StackPanel>
+          <TextBlock
+            Text="Vista previa de dónde va a quedar guardado"
+            FontWeight="Bold"
+            Margin="0,0,0,6"
+            TextWrapping="Wrap"
+          />
+          <TextBlock
+            Text="Carpeta anterior (ya existente):"
+            FontWeight="SemiBold"
+            TextWrapping="Wrap"
+          />
+          <TextBlock
+            Name="TxtPreviewAnterior"
+            Foreground="Gray"
+            TextWrapping="Wrap"
+            Margin="0,0,0,8"
+          />
+          <TextBlock Text="Este documento quedaría en:" FontWeight="SemiBold" TextWrapping="Wrap" />
+          <TextBlock Name="TxtPreviewActual" TextWrapping="Wrap" Margin="0,0,0,8" />
+          <TextBlock
+            Name="TxtPreviewFuturaTitulo"
+            Text="Cuando llegue el próximo período, se crearía:"
+            FontWeight="SemiBold"
+            TextWrapping="Wrap"
+          />
+          <TextBlock
+            Name="TxtPreviewFutura"
+            Foreground="Gray"
+            TextWrapping="Wrap"
+            Margin="0,0,0,8"
+          />
+          <Button
+            Name="BtnActualizarPreview"
+            Content="Actualizar vista previa"
+            Padding="6,4"
+            HorizontalAlignment="Left"
+            Click="BtnActualizarPreview_Click"
+          />
+        </StackPanel>
+      </Border>
+
+      <TextBlock
+        Name="TxtError"
+        Foreground="Red"
+        TextWrapping="Wrap"
+        Margin="0,16,0,0"
+        Visibility="Collapsed"
+      />
+    </StackPanel>
+
+    <StackPanel
+      Grid.Row="1"
+      Grid.Column="0"
+      Grid.ColumnSpan="2"
+      Orientation="Horizontal"
+      HorizontalAlignment="Right"
+      Margin="0,16,0,0"
+    >
+      <Button
+        Name="BtnAtras"
+        Content="&lt; Atrás"
+        Width="90"
+        Margin="0,0,8,0"
+        Padding="6,6"
+        Click="BtnAtras_Click"
+      />
+      <Button
+        Name="BtnPosponer"
+        Content="Posponer"
+        Width="100"
+        Margin="0,0,8,0"
+        Padding="6,6"
+        Click="BtnPosponer_Click"
+      />
+      <Button
+        Name="BtnCancelar"
+        Content="Cancelar"
+        Width="100"
+        Margin="0,0,8,0"
+        Padding="6,6"
+        Click="BtnCancelar_Click"
+      />
+      <Button
+        Name="BtnSiguiente"
+        Content="Siguiente"
+        Width="150"
+        Padding="6,6"
+        IsDefault="True"
+        Click="BtnSiguiente_Click"
+      />
+    </StackPanel>
+  </Grid>
+</Window>
