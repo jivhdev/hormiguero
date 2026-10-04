@@ -66,7 +66,18 @@ public partial class MainWindow : Window
     {
         _vigilancia.ArchivoPendienteDetectado += _ => Dispatcher.Invoke(CargarPendientes);
         _vigilancia.ArchivoPendienteEliminado += _ => Dispatcher.Invoke(CargarPendientes);
-        _vigilancia.ArchivoRequiereAtencion += (_, _) => Dispatcher.Invoke(CargarPendientes);
+        _vigilancia.ArchivoRequiereAtencion += (ruta, detalle) =>
+            Dispatcher.Invoke(() =>
+            {
+                CargarPendientes();
+                System.Windows.MessageBox.Show(
+                    this,
+                    $"No se pudo completar el procesamiento de {Path.GetFileName(ruta)}.\n\n{detalle}",
+                    "Archivero",
+                    MessageBoxButton.OK,
+                    MessageBoxImage.Warning
+                );
+            });
         _vigilancia.ArchivoGuardadoAutomaticamente += (_, rutaFinal) =>
             Dispatcher.Invoke(() => AgregarAGuardadosRecientes(rutaFinal));
         _vigilancia.CarpetaObservadaNoDisponible += () =>

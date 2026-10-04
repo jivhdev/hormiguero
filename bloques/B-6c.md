@@ -2,7 +2,7 @@
 bloque: B-6c
 app: Archivero (y núcleo)
 fase: B-6
-estado: pendiente
+estado: hecho
 agente: Codex
 modelo: codex
 archivos_permitidos: [src/Hormiguero.Archivero/**, src/Hormiguero.Nucleo/Datos/DatosDocumento.cs, tests/Hormiguero.Archivero.App.Tests/**, tests/Hormiguero.Nucleo.Tests/**]
@@ -25,3 +25,8 @@ Pruebas: campos base y propios, valores con tildes/ñ y ceros a la izquierda con
 `dotnet build` sin advertencias; `dotnet test` todo pasa; `dotnet csharpier check .` sin errores. Reporte al final.
 
 ## Reporte del agente
+
+- Archivero publica campos base y valores de configuración en Núcleo. Se agregó almacenamiento lógico de campos propios con nombre y zona de lectura; falta la pantalla para administrarlos, prevista para B-6g.
+- La publicación registra la identificación, la fila de documento, la versión por huella, los campos, los valores originales/claves y la auditoría en una transacción. Una huella igual conserva identidad y actualiza la ruta; contenido distinto genera otra versión. El contrato del observador publica con procedencia `observador` sin mover el archivo. La corrección manual anula el valor activo y crea uno con origen `manual`.
+- Se conserva un solo aviso `documentos_guardados` por el evento existente. Si falla la publicación automática, el documento queda guardado, se registra en la auditoría local y el detalle se entrega para mostrar atención.
+- Verificación: `dotnet build Hormiguero.slnx --no-restore` sin advertencias; `dotnet test Hormiguero.slnx` pasó (591 pruebas); `dotnet csharpier check .` pasó.

@@ -122,6 +122,16 @@ public record Marca(
 /// </summary>
 public record PatronReconocimiento(int Id, List<Marca> Marcas);
 
+public record CampoPropio(
+    string Nombre,
+    string NombreEstable,
+    int Pagina,
+    double X,
+    double Y,
+    double Ancho,
+    double Alto
+);
+
 public record ConfiguracionDocumento
 {
     public int Id { get; init; }
@@ -132,6 +142,7 @@ public record ConfiguracionDocumento
     public string? PatronCarpeta { get; init; }
     public required bool Renombrar { get; init; }
     public required List<PatronReconocimiento> Patrones { get; init; }
+    public List<CampoPropio> CamposPropios { get; init; } = [];
 
     /// <summary>Caso-1, punto 5: si está activo, abre el archivo en el visor de PDF del sistema apenas se guarda solo.</summary>
     public bool AbrirDespuesDeGuardar { get; init; }

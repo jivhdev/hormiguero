@@ -55,6 +55,7 @@ public partial class App : System.Windows.Application
         if (string.IsNullOrWhiteSpace(datosDePrueba))
         {
             UsarCarpetaComunDeHormiguero();
+            PublicadorDatosDocumentoService.PublicacionAutomaticaActiva = true;
 
             // Fase B-4 (D-66): avisa a las otras apps de cada documento guardado.
             ClasificadorService.DocumentoGuardado += AvisarAHormiguero;

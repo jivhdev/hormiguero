@@ -36,6 +36,7 @@ public class ConfiguracionDocumentoRepository
         return configuracion with
         {
             Patrones = ObtenerPatrones(conexion, configuracionId),
+            CamposPropios = ObtenerCamposPropios(conexion, configuracionId),
         };
     }
 
@@ -110,8 +111,72 @@ public class ConfiguracionDocumentoRepository
         }
 
         return configuraciones
-            .Select(c => c with { Patrones = ObtenerPatrones(conexion, c.Id) })
+            .Select(c =>
+                c with
+                {
+                    Patrones = ObtenerPatrones(conexion, c.Id),
+                    CamposPropios = ObtenerCamposPropios(conexion, c.Id),
+                }
+            )
             .ToList();
+    }
+
+    public void GuardarCamposPropios(int configuracionId, IReadOnlyList<CampoPropio> campos)
+    {
+        using var conexion = BaseDeDatos.CrearConexion();
+        using var tx = conexion.BeginTransaction();
+        using (var borrar = conexion.CreateCommand())
+        {
+            borrar.Transaction = tx;
+            borrar.CommandText = "DELETE FROM CamposPropios WHERE ConfiguracionId=$id;";
+            borrar.Parameters.AddWithValue("$id", configuracionId);
+            borrar.ExecuteNonQuery();
+        }
+        foreach (var campo in campos)
+        {
+            ArgumentException.ThrowIfNullOrWhiteSpace(campo.Nombre);
+            ArgumentException.ThrowIfNullOrWhiteSpace(campo.NombreEstable);
+            using var insertar = conexion.CreateCommand();
+            insertar.Transaction = tx;
+            insertar.CommandText =
+                "INSERT INTO CamposPropios(ConfiguracionId,Nombre,NombreEstable,Pagina,X,Y,Ancho,Alto) VALUES($id,$n,$e,$p,$x,$y,$a,$l);";
+            insertar.Parameters.AddWithValue("$id", configuracionId);
+            insertar.Parameters.AddWithValue("$n", campo.Nombre.Trim());
+            insertar.Parameters.AddWithValue("$e", campo.NombreEstable.Trim());
+            insertar.Parameters.AddWithValue("$p", campo.Pagina);
+            insertar.Parameters.AddWithValue("$x", campo.X);
+            insertar.Parameters.AddWithValue("$y", campo.Y);
+            insertar.Parameters.AddWithValue("$a", campo.Ancho);
+            insertar.Parameters.AddWithValue("$l", campo.Alto);
+            insertar.ExecuteNonQuery();
+        }
+        tx.Commit();
+    }
+
+    private static List<CampoPropio> ObtenerCamposPropios(
+        SqliteConnection conexion,
+        int configuracionId
+    )
+    {
+        using var cmd = conexion.CreateCommand();
+        cmd.CommandText =
+            "SELECT Nombre,NombreEstable,Pagina,X,Y,Ancho,Alto FROM CamposPropios WHERE ConfiguracionId=$id ORDER BY Id;";
+        cmd.Parameters.AddWithValue("$id", configuracionId);
+        using var lector = cmd.ExecuteReader();
+        var campos = new List<CampoPropio>();
+        while (lector.Read())
+            campos.Add(
+                new(
+                    lector.GetString(0),
+                    lector.GetString(1),
+                    lector.GetInt32(2),
+                    lector.GetDouble(3),
+                    lector.GetDouble(4),
+                    lector.GetDouble(5),
+                    lector.GetDouble(6)
+                )
+            );
+        return campos;
     }
 
     public int GuardarNueva(
