@@ -27,6 +27,7 @@ Todo lo que hace la Ofisuiza en uso y su estado en Mensajero. Ninguna fila puede
 | 14 | Datos que se conservan (D-68) | `clientes.txt` en uso (2026-10-02; mostrar a Javier las 2 líneas que solo están en la copia de `dist`) | ⏳ |
 
 | 15 | Nuevo (pedido de Javier, 2026-10-04) | "Copiar PDF (Ctrl+5)": copia el ARCHIVO de la última OCC agregada a la carpeta (fecha de creación o modificación, la más reciente) para pegarla como adjunto | ✅ |
+| 16 | Cambio pedido por Javier (2026-10-04) | Si no se puede extraer, el aviso nombra el archivo usado ("❌ No se pudo extraer: archivo.pdf"). El "último PDF" sigue siendo el más reciente de la carpeta, sea o no OCC: Javier lo quiere así | ✅ |
 
 Verificado (2026-10-04): extracción idéntica al original en 13 OCC sintéticas y 36/36 campos en 6 OCC reales; pantalla probada en vivo por Claude con datos sintéticos (todos los botones, buscadores, editor y atajos).
 

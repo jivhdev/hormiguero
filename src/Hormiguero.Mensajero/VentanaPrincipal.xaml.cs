@@ -196,7 +196,7 @@ public partial class VentanaPrincipal : Window
             var datos = ExtractorOcc.ExtraerOccNvvOcl(ruta);
             string asunto = ExtractorOcc.FormatearAsunto(datos.Occ, datos.Nvv, datos.Ocl);
             if (asunto.Length == 0)
-                MostrarToast("❌ No se pudo extraer", "error");
+                MostrarToast($"❌ No se pudo extraer: {Path.GetFileName(ruta)}", "error");
             else
             {
                 Copiar(asunto, $"✅ Asunto copiado: {asunto}");
@@ -220,7 +220,7 @@ public partial class VentanaPrincipal : Window
         {
             string despacho = ExtractorOcc.ExtraerDespacho(ruta);
             if (despacho.Length == 0)
-                MostrarToast("❌ No se encontró despacho", "error");
+                MostrarToast($"❌ No se encontró despacho: {Path.GetFileName(ruta)}", "error");
             else
             {
                 Copiar(despacho, "✅ Cuerpo del correo copiado");
