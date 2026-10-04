@@ -20,6 +20,10 @@ public static class Tema
     private static readonly Uri UriClaro = UriDe("Claro");
     private static readonly Uri UriOscuro = UriDe("Oscuro");
 
+    // Estilos de los controles: van siempre después del tema de colores para
+    // ganarle a los estilos de Fluent y tomar sus colores con DynamicResource.
+    private static readonly Uri UriControles = UriDe("Controles");
+
     private static UserPreferenceChangedEventHandler? alCambiarWindows;
 
     private static Uri UriDe(string nombre)
@@ -60,6 +64,7 @@ public static class Tema
         app.Resources.MergedDictionaries.Add(
             new ResourceDictionary { Source = DiccionarioPara(modo, WindowsEstaEnOscuro()) }
         );
+        app.Resources.MergedDictionaries.Add(new ResourceDictionary { Source = UriControles });
 
         if (modo == ModoTema.Sistema)
         {
@@ -79,7 +84,10 @@ public static class Tema
 
         foreach (ResourceDictionary diccionario in cargados)
         {
-            if (diccionario.Source is Uri origen && (origen == UriClaro || origen == UriOscuro))
+            if (
+                diccionario.Source is Uri origen
+                && (origen == UriClaro || origen == UriOscuro || origen == UriControles)
+            )
             {
                 app.Resources.MergedDictionaries.Remove(diccionario);
             }

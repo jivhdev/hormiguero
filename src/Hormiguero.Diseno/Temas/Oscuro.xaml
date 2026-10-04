@@ -44,6 +44,40 @@
   <SolidColorBrush x:Key="Hormiguero.Aviso" Color="{StaticResource Hormiguero.AvisoColor}" />
   <SolidColorBrush x:Key="Hormiguero.Error" Color="{StaticResource Hormiguero.ErrorColor}" />
 
+  <!-- Estados de los controles (hoja común Controles.xaml) -->
+  <Color x:Key="Hormiguero.PrincipalSuaveColor">#23382B</Color>
+  <Color x:Key="Hormiguero.PrincipalPresionadoColor">#4FA06E</Color>
+  <Color x:Key="Hormiguero.DesactivadoColor">#1A211C</Color>
+  <Color x:Key="Hormiguero.BordeDesactivadoColor">#262E28</Color>
+  <Color x:Key="Hormiguero.TextoDesactivadoColor">#5F6B63</Color>
+  <Color x:Key="Hormiguero.EncabezadoColor">#18201B</Color>
+  <Color x:Key="Hormiguero.ResalteColor">#202B24</Color>
+  <SolidColorBrush
+    x:Key="Hormiguero.PrincipalSuave"
+    Color="{StaticResource Hormiguero.PrincipalSuaveColor}"
+  />
+  <SolidColorBrush
+    x:Key="Hormiguero.PrincipalPresionado"
+    Color="{StaticResource Hormiguero.PrincipalPresionadoColor}"
+  />
+  <SolidColorBrush
+    x:Key="Hormiguero.Desactivado"
+    Color="{StaticResource Hormiguero.DesactivadoColor}"
+  />
+  <SolidColorBrush
+    x:Key="Hormiguero.BordeDesactivado"
+    Color="{StaticResource Hormiguero.BordeDesactivadoColor}"
+  />
+  <SolidColorBrush
+    x:Key="Hormiguero.TextoDesactivado"
+    Color="{StaticResource Hormiguero.TextoDesactivadoColor}"
+  />
+  <SolidColorBrush
+    x:Key="Hormiguero.Encabezado"
+    Color="{StaticResource Hormiguero.EncabezadoColor}"
+  />
+  <SolidColorBrush x:Key="Hormiguero.Resalte" Color="{StaticResource Hormiguero.ResalteColor}" />
+
   <!-- Tamaños -->
   <sys:Double x:Key="Hormiguero.TextoNormal">14</sys:Double>
   <sys:Double x:Key="Hormiguero.TextoTitulo">20</sys:Double>
@@ -51,11 +85,4 @@
   <sys:Double x:Key="Hormiguero.Espacio">12</sys:Double>
   <CornerRadius x:Key="Hormiguero.Radio">8</CornerRadius>
   <Thickness x:Key="Hormiguero.Margen">12</Thickness>
-
-  <!-- Estilo base para Button -->
-  <Style TargetType="Button" BasedOn="{StaticResource {x:Type Button}}">
-    <Setter Property="MinHeight" Value="{StaticResource Hormiguero.AltoBoton}" />
-    <Setter Property="Background" Value="{StaticResource Hormiguero.Principal}" />
-    <Setter Property="Foreground" Value="{StaticResource Hormiguero.PrincipalTexto}" />
-  </Style>
 </ResourceDictionary>
