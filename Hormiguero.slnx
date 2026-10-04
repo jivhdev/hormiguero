@@ -1,5 +1,6 @@
 <Solution>
   <Folder Name="/src/">
+    <Project Path="src/Hormiguero.Buscadero/Hormiguero.Buscadero.csproj" />
     <Project Path="src/Hormiguero.Buscadero.Logica/Hormiguero.Buscadero.Logica.csproj" />
     <Project Path="src/Hormiguero.Diseno/Hormiguero.Diseno.csproj" />
     <Project Path="src/Hormiguero.Nucleo/Hormiguero.Nucleo.csproj" />
