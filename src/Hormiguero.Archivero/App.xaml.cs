@@ -55,6 +55,9 @@ public partial class App : System.Windows.Application
         if (string.IsNullOrWhiteSpace(datosDePrueba))
         {
             UsarCarpetaComunDeHormiguero();
+
+            // Fase B-4 (D-66): avisa a las otras apps de cada documento guardado.
+            ClasificadorService.DocumentoGuardado += AvisarAHormiguero;
         }
 
         BaseDeDatos.AsegurarEsquema();
@@ -121,6 +124,26 @@ public partial class App : System.Windows.Application
             System.IO.File.Copy(logAnterior, logNuevo);
         }
         AuditoriaService.RutaLog = logNuevo;
+    }
+
+    // Fase B-4 (D-66): avisa a las otras apps (Buscadero lo encuentra al instante).
+    // Si falla, el documento igual quedó guardado: solo se anota en la auditoría.
+    private static void AvisarAHormiguero(string rutaFinal)
+    {
+        try
+        {
+            using var conexion = Hormiguero.Nucleo.Datos.BaseComun.Abrir(
+                Hormiguero.Nucleo.Datos.DocumentosGuardados.RutaBaseComun
+            );
+            new Hormiguero.Nucleo.Datos.DocumentosGuardados(conexion).Registrar(
+                rutaFinal,
+                "Archivero"
+            );
+        }
+        catch (Exception error)
+        {
+            AuditoriaService.Registrar("AVISO_HORMIGUERO_FALLIDO", $"{rutaFinal}: {error.Message}");
+        }
     }
 
     private static void EnfocarInstanciaExistente()
