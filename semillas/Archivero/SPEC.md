@@ -52,6 +52,10 @@ Que un oficinista deje caer sus PDF en una carpeta de entrada y Archivero los gu
 - **Given** el destino ya tiene un archivo con la misma huella · **Then** no se guarda: queda en "Ya guardados antes" (REQ-006). Nunca se cae (arreglo pendiente de la v1).
 - **Given** el destino ya tiene un archivo con el mismo nombre y **distinto** contenido · **Then** no se guarda ni se sobrescribe: queda en un aviso "Mismo nombre, distinto contenido" donde el usuario compara y elige (D-62).
 - **Given** una cedible (la palabra CEDIBLE en el nombre original o en el texto) reconocida por una configuración · **Then** se guarda en la misma carpeta que su original, con `_CEDIBLE` al final del nombre (por ejemplo `FCV25001_CEDIBLE.pdf`), y se ve en Guardados recientes (D-62).
+- **Given** la carpeta destino no está disponible (red caída) · **When** se intenta guardar · **Then** el documento se queda en la entrada y se reintenta cuando la carpeta vuelve; nunca se pierde. *(¿Qué tal si...?, 2026-10-04)*
+- **Given** el PDF está abierto o bloqueado por otro programa · **Then** se espera y se reintenta; si sigue bloqueado, queda en un aviso. *(¿Qué tal si...?)*
+- **Given** una configuración cuyo destino está dentro de una carpeta vigilada · **When** se intenta guardar la configuración · **Then** el asistente no lo permite (evita que un documento se mueva en círculo). *(¿Qué tal si...?)*
+- **Given** el usuario edita o borra una configuración · **Then** los documentos ya guardados no se mueven ni se renombran; el cambio vale para los que lleguen después. *(¿Qué tal si...? "¿y si quiere cambiarlo después?")*
 - **Given** cada movimiento (guardar, descartar, guardar a mano) · **Then** queda en el registro de auditoría: fecha y hora, origen, destino, huella y resultado.
 
 ### REQ-005 Guardar a mano (A3)
@@ -86,7 +90,7 @@ Que un oficinista deje caer sus PDF en una carpeta de entrada y Archivero los gu
 - [x] Cada requisito tiene al menos un Given/When/Then, propuesto por la IA y aprobado por Javier (D-09, D-62).
 - [x] Cada requisito no funcional tiene una medida numérica.
 - [x] La sección "Qué NO construir" no está vacía.
-- [ ] Una vuelta completa de "¿Qué tal si...?" no encontró nada nuevo.
+- [x] Una vuelta completa de "¿Qué tal si...?" no encontró nada nuevo (la primera vuelta agregó 4 casos en REQ-004, a confirmar por Javier en el hito).
 - [x] Toda decisión con ventajas y desventajas reales tiene su ADR en `decisiones/`.
 - [x] Ningún nombre visible para el usuario quedó elegido por la IA (textos del boceto aprobado, D-58).
 
