@@ -1,0 +1,290 @@
+<Window
+  x:Class="Hormiguero.Mensajero.App.VentanaFacturas"
+  xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+  xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+  Title="ClickFactura - Envío Semanal de Facturas"
+  Background="{DynamicResource Hormiguero.Superficie}"
+  Foreground="{DynamicResource Hormiguero.Texto}"
+  Width="950"
+  Height="700"
+  MinWidth="760"
+  MinHeight="520"
+  WindowStartupLocation="CenterScreen"
+  PreviewKeyDown="Ventana_PreviewKeyDown"
+>
+  <Grid Margin="16">
+    <Grid x:Name="PaginaPeriodo">
+      <Grid.RowDefinitions>
+        <RowDefinition Height="Auto" />
+        <RowDefinition Height="*" />
+        <RowDefinition Height="Auto" />
+      </Grid.RowDefinitions>
+      <TextBlock
+        Text="📅 Configurar Período"
+        FontSize="22"
+        FontWeight="Bold"
+        HorizontalAlignment="Center"
+        Margin="0,8,0,18"
+      />
+      <StackPanel
+        Grid.Row="1"
+        VerticalAlignment="Center"
+        MaxWidth="700"
+        HorizontalAlignment="Center"
+      >
+        <GroupBox Header="Semana principal" Padding="12" Margin="0,0,0,10">
+          <WrapPanel VerticalAlignment="Center">
+            <TextBlock Text="N° de semana:" VerticalAlignment="Center" Margin="0,0,8,0" />
+            <ComboBox x:Name="SemanaUno" Width="70" Margin="0,0,18,0" />
+            <TextBlock Text="Mes:" VerticalAlignment="Center" Margin="0,0,8,0" />
+            <ComboBox x:Name="MesUno" Width="145" Margin="0,0,18,0" />
+            <TextBlock Text="Año:" VerticalAlignment="Center" Margin="0,0,8,0" />
+            <ComboBox x:Name="AnioUno" Width="90" />
+          </WrapPanel>
+        </GroupBox>
+        <CheckBox
+          x:Name="IncluyeSegunda"
+          Content="El período abarca dos meses"
+          Margin="0,4,0,10"
+          Checked="SegundaSemana_Changed"
+          Unchecked="SegundaSemana_Changed"
+        />
+        <GroupBox
+          x:Name="GrupoSegunda"
+          Header="Segunda semana"
+          Padding="12"
+          Margin="0,0,0,10"
+          Visibility="Collapsed"
+        >
+          <WrapPanel VerticalAlignment="Center">
+            <TextBlock Text="N° de semana:" VerticalAlignment="Center" Margin="0,0,8,0" />
+            <ComboBox x:Name="SemanaDos" Width="70" Margin="0,0,18,0" />
+            <TextBlock Text="Mes:" VerticalAlignment="Center" Margin="0,0,8,0" />
+            <ComboBox x:Name="MesDos" Width="145" Margin="0,0,18,0" />
+            <TextBlock Text="Año:" VerticalAlignment="Center" Margin="0,0,8,0" />
+            <ComboBox x:Name="AnioDos" Width="90" />
+          </WrapPanel>
+        </GroupBox>
+        <CheckBox
+          x:Name="BusquedaAmpliada"
+          Content="🔍 Buscar en todas las carpetas (modo búsqueda ampliada)"
+          Margin="0,8,0,16"
+        />
+        <Button
+          Content="👁️ Vista previa"
+          Click="VistaPrevia_Click"
+          HorizontalAlignment="Center"
+          Padding="18,7"
+        />
+        <TextBlock
+          x:Name="TextoVistaPrevia"
+          TextWrapping="Wrap"
+          TextAlignment="Center"
+          Margin="0,10"
+          Foreground="{DynamicResource Hormiguero.Texto}"
+        />
+      </StackPanel>
+      <Button
+        Grid.Row="2"
+        Content="Siguiente →"
+        Click="SiguientePeriodo_Click"
+        HorizontalAlignment="Right"
+        Padding="18,8"
+      />
+    </Grid>
+    <Grid x:Name="PaginaCarga" Visibility="Collapsed">
+      <Grid.RowDefinitions>
+        <RowDefinition Height="Auto" />
+        <RowDefinition Height="*" />
+        <RowDefinition Height="Auto" />
+      </Grid.RowDefinitions>
+      <TextBlock
+        Text="📂 Cargar Archivo XLS"
+        FontSize="22"
+        FontWeight="Bold"
+        HorizontalAlignment="Center"
+        Margin="0,8,0,18"
+      />
+      <StackPanel Grid.Row="1" VerticalAlignment="Center" HorizontalAlignment="Center">
+        <TextBlock
+          x:Name="TextoArchivoXls"
+          Text="Ningún archivo seleccionado"
+          TextWrapping="Wrap"
+          MaxWidth="700"
+          HorizontalAlignment="Center"
+          Margin="0,0,0,16"
+        />
+        <Button
+          Content="📁 Seleccionar Archivo XLS"
+          Click="SeleccionarXls_Click"
+          Padding="18,12"
+          HorizontalAlignment="Center"
+        />
+      </StackPanel>
+      <DockPanel Grid.Row="2">
+        <Button
+          Content="← Atrás"
+          Click="AtrasPeriodo_Click"
+          HorizontalAlignment="Left"
+          Padding="18,8"
+        />
+        <Button
+          x:Name="BotonAnalizar"
+          Content="Analizar →"
+          Click="Analizar_Click"
+          IsEnabled="False"
+          HorizontalAlignment="Right"
+          Padding="18,8"
+        />
+      </DockPanel>
+    </Grid>
+    <Grid x:Name="PaginaAnalisis" Visibility="Collapsed">
+      <Grid.RowDefinitions>
+        <RowDefinition Height="Auto" />
+        <RowDefinition Height="Auto" />
+        <RowDefinition Height="*" />
+        <RowDefinition Height="Auto" />
+      </Grid.RowDefinitions>
+      <DockPanel>
+        <Button
+          DockPanel.Dock="Right"
+          Content="📋 Gestionar Clientes"
+          Click="GestionarClientes_Click"
+        />
+        <TextBlock
+          Text="🔍 Análisis de Documentos"
+          FontSize="22"
+          FontWeight="Bold"
+          VerticalAlignment="Center"
+        />
+      </DockPanel>
+      <TextBlock
+        x:Name="EstadoAnalisis"
+        Grid.Row="1"
+        Text=""
+        HorizontalAlignment="Center"
+        Margin="0,8"
+      />
+      <DataGrid
+        x:Name="TablaAnalisis"
+        Grid.Row="2"
+        IsReadOnly="True"
+        AutoGenerateColumns="False"
+        CanUserAddRows="False"
+        HeadersVisibility="Column"
+      >
+        <DataGrid.Columns>
+          <DataGridTextColumn Header="RUT" Binding="{Binding Rut}" />
+          <DataGridTextColumn Header="Cliente" Binding="{Binding RazonSocial}" Width="*" />
+          <DataGridTextColumn Header="Correo" Binding="{Binding Correo}" Width="*" />
+          <DataGridTextColumn Header="Docs" Binding="{Binding CantidadDocumentos}" />
+          <DataGridTextColumn Header="PDFs encontrados" Binding="{Binding CantidadEncontrados}" />
+          <DataGridTextColumn Header="Estado" Binding="{Binding Estado}" />
+        </DataGrid.Columns>
+      </DataGrid>
+      <DockPanel Grid.Row="3" Margin="0,10,0,0">
+        <Button Content="← Atrás" Click="AtrasCarga_Click" Padding="18,8" />
+        <Button
+          x:Name="BotonIrEnvios"
+          Content="Ir a Envíos →"
+          Click="IrEnvios_Click"
+          IsEnabled="False"
+          HorizontalAlignment="Right"
+          Padding="18,8"
+        />
+      </DockPanel>
+    </Grid>
+    <Grid x:Name="PaginaEnvio" Visibility="Collapsed">
+      <Grid.RowDefinitions>
+        <RowDefinition Height="Auto" />
+        <RowDefinition Height="Auto" />
+        <RowDefinition Height="1.2*" />
+        <RowDefinition Height="1.8*" />
+        <RowDefinition Height="Auto" />
+        <RowDefinition Height="Auto" />
+      </Grid.RowDefinitions>
+      <TextBlock
+        Text="📧 Preparar Envíos"
+        FontSize="22"
+        FontWeight="Bold"
+        HorizontalAlignment="Center"
+      />
+      <StackPanel Grid.Row="1" Margin="0,8">
+        <TextBlock x:Name="TextoClienteActual" FontSize="16" FontWeight="Bold" />
+        <DockPanel>
+          <Button DockPanel.Dock="Right" Content="📋 Copiar correo" Click="CopiarCorreo_Click" />
+          <TextBlock Text="Correo: (Ctrl+1)  " VerticalAlignment="Center" />
+          <TextBlock x:Name="TextoCorreo" FontWeight="Bold" VerticalAlignment="Center" />
+        </DockPanel>
+      </StackPanel>
+      <DataGrid
+        x:Name="TablaDocumentos"
+        Grid.Row="2"
+        IsReadOnly="True"
+        AutoGenerateColumns="False"
+        CanUserAddRows="False"
+        HeadersVisibility="Column"
+        Margin="0,4"
+      >
+        <DataGrid.Columns>
+          <DataGridTextColumn Header="Tipo" Binding="{Binding Tipo}" />
+          <DataGridTextColumn Header="Número" Binding="{Binding Numero}" />
+          <DataGridTextColumn Header="Archivo" Binding="{Binding Archivo}" Width="*" />
+        </DataGrid.Columns>
+      </DataGrid>
+      <GroupBox Grid.Row="3" Header="Mensaje del correo" Padding="8" Margin="0,5">
+        <Grid>
+          <Grid.RowDefinitions>
+            <RowDefinition Height="Auto" />
+            <RowDefinition Height="Auto" />
+            <RowDefinition Height="Auto" />
+            <RowDefinition Height="*" />
+          </Grid.RowDefinitions>
+          <DockPanel>
+            <Button DockPanel.Dock="Right" Content="📋 Copiar asunto" Click="CopiarAsunto_Click" />
+            <TextBlock Text="Asunto: (Ctrl+2)" VerticalAlignment="Center" />
+          </DockPanel>
+          <TextBox x:Name="CampoAsunto" Grid.Row="1" MinHeight="32" TextWrapping="Wrap" />
+          <DockPanel Grid.Row="2" Margin="0,5,0,0">
+            <Button DockPanel.Dock="Right" Content="📋 Copiar cuerpo" Click="CopiarCuerpo_Click" />
+            <TextBlock Text="Cuerpo: (Ctrl+3)" VerticalAlignment="Center" />
+          </DockPanel>
+          <TextBox
+            x:Name="CampoCuerpo"
+            Grid.Row="3"
+            AcceptsReturn="True"
+            TextWrapping="Wrap"
+            VerticalScrollBarVisibility="Auto"
+          />
+        </Grid>
+      </GroupBox>
+      <WrapPanel Grid.Row="4" HorizontalAlignment="Center" Margin="0,5">
+        <Button
+          x:Name="BotonPreparar"
+          Content="📋 Preparar Envío"
+          Click="PrepararEnvio_Click"
+          Margin="3"
+          Padding="10,7"
+        />
+        <Button
+          x:Name="BotonPendiente"
+          Content="⏳ Dejar Pendiente"
+          Click="Pendiente_Click"
+          Margin="3"
+          Padding="10,7"
+        />
+        <Button
+          x:Name="BotonEnviado"
+          Content="✅ Marcar como Enviado"
+          Click="Enviado_Click"
+          IsEnabled="False"
+          Margin="3"
+          Padding="10,7"
+        />
+      </WrapPanel>
+      <DockPanel Grid.Row="5" Margin="0,6,0,0">
+        <Button Content="← Volver al análisis" Click="VolverAnalisis_Click" Padding="12,6" />
+      </DockPanel>
+    </Grid>
+  </Grid>
+</Window>

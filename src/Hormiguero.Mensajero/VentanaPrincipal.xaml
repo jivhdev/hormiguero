@@ -32,6 +32,13 @@
           Click="CambiarCarpeta_Click"
           Padding="14,5"
         />
+        <Button
+          DockPanel.Dock="Right"
+          Content="🧾 Facturas"
+          Click="AbrirFacturas_Click"
+          Padding="14,5"
+          Margin="0,0,8,0"
+        />
         <TextBlock
           x:Name="TextoCarpeta"
           Text="Sin carpeta configurada"

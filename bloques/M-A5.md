@@ -2,7 +2,7 @@
 bloque: M-A5
 app: Mensajero
 fase: A (D-65, D-68)
-estado: pendiente
+estado: hecho
 agente: Codex
 modelo: codex
 archivos_permitidos: [src/Hormiguero.Mensajero/VentanaFacturas.xaml, src/Hormiguero.Mensajero/VentanaFacturas.xaml.cs, src/Hormiguero.Mensajero/VentanaClientesFactura.xaml, src/Hormiguero.Mensajero/VentanaClientesFactura.xaml.cs, src/Hormiguero.Mensajero/VentanaPrincipal.xaml, src/Hormiguero.Mensajero/VentanaPrincipal.xaml.cs, src/Hormiguero.Mensajero.Core/ClickFactura/**, tests/Hormiguero.Mensajero.Core.Tests/ClickFactura/**, semillas/Mensajero/EQUIVALENCIA-CLICKFACTURA.md]
@@ -38,3 +38,14 @@ Agregar a Mensajero la ventana de **ClickFactura, equivalente a la que Javier us
 - Reporte al final de esta nota: qué quedó igual, qué no se pudo dejar igual y por qué, mejoras pendientes de `Arreglos click factura.txt`.
 
 ## Reporte del agente
+
+- **Quedó igual:** la ventana de Ofisuiza solo suma el botón «🧾 Facturas», que mantiene una única ventana no modal y la activa si ya estaba abierta. ClickFactura incluye períodos, carga XLS, análisis, registro y gestión de clientes, preparación de envíos, mensajes y avisos del original, copia de texto con `Ctrl+1/2/3` y copia CF_HDROP de los PDF preparados. Los datos usan `AlmacenMensajero`; las preferencias de carpetas usan claves `factura.*`. Se actualizaron los estados equivalentes en `semillas/Mensajero/EQUIVALENCIA-CLICKFACTURA.md`.
+- **No quedó igual:** la carpeta temporal usa `%LOCALAPPDATA%\ClickFactura\temp_envios` y queda guardada, pero no hay selector ni botón para abrirla porque son mejoras de `Arreglos click factura.txt` excluidas de este bloque.
+- **Mejoras pendientes de `Arreglos click factura.txt`:** aclarar «Preparar Envío»; filtrar/revisar solo clientes pendientes; definir cómo separar varios correos; permitir elegir la carpeta temporal y abrirla desde la pantalla.
+- **Verificación:** `dotnet build` pasó con 0 advertencias y 0 errores; `dotnet test` pasó (583 pruebas); `dotnet csharpier check .` pasó. Se intentó ejecutar Mensajero con `HORMIGUERO_DATOS` temporal, pero CUA no expuso ventanas nativas (`apps: []`), así que no pude confirmar visualmente la ventana principal y Facturas ni cerrarlas desde la interfaz. Los procesos iniciados para la prueba se detuvieron al terminar.
+
+### Revisión de Claude (2026-10-04)
+
+- Revisado: el cambio en la ventana de Ofisuiza es solo el botón "🧾 Facturas"; datos con AlmacenMensajero; no llama a ImportarClientesFactura.
+- Prueba en vivo: Mensajero abre, "🧾 Facturas" abre la ventana sin caerse; la página de período calcula bien la vista previa ("1° SEMANA DE MARZO 2026"). El resto del flujo (cargar XLS, análisis, envíos) lo prueba Javier a mano: automatizar el diálogo de Windows costaba demasiado.
+- Igual que el original: abre en julio (índice fijo en el código de ClickFactura). Posible mejora a consultar: abrir en el mes actual.

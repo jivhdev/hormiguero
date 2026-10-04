@@ -21,6 +21,7 @@ public partial class VentanaPrincipal : Window
     private string? rutaPdfRetiro;
     private string? rutaPdfGuia;
     private bool editorAbierto;
+    private VentanaFacturas? ventanaFacturas;
 
     public VentanaPrincipal()
     {
@@ -101,6 +102,21 @@ public partial class VentanaPrincipal : Window
         {
             PrecargarPdf(rutaUltimoPdf);
         }
+    }
+
+    private void AbrirFacturas_Click(object sender, RoutedEventArgs e)
+    {
+        if (ventanaFacturas is null)
+        {
+            ventanaFacturas = new VentanaFacturas();
+            ventanaFacturas.Closed += (_, _) => ventanaFacturas = null;
+            ventanaFacturas.Show();
+            return;
+        }
+
+        if (ventanaFacturas.WindowState == WindowState.Minimized)
+            ventanaFacturas.WindowState = WindowState.Normal;
+        ventanaFacturas.Activate();
     }
 
     private void UltimoAsunto_Click(object sender, RoutedEventArgs e) => CopiarUltimoAsunto();
