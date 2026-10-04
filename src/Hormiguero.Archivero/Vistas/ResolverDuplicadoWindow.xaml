@@ -67,11 +67,14 @@
           VerticalScrollBarVisibility="Auto"
           ScrollChanged="Scroll_ScrollChanged"
         >
-          <Image Name="ImagenExistente" Stretch="None">
-            <Image.LayoutTransform>
-              <ScaleTransform x:Name="EscalaExistente" ScaleX="0.4" ScaleY="0.4" />
-            </Image.LayoutTransform>
-          </Image>
+          <!-- Página sobre blanco (color del papel, no del tema). -->
+          <Border Background="White" HorizontalAlignment="Left" VerticalAlignment="Top">
+            <Image Name="ImagenExistente" Stretch="None">
+              <Image.LayoutTransform>
+                <ScaleTransform x:Name="EscalaExistente" ScaleX="0.4" ScaleY="0.4" />
+              </Image.LayoutTransform>
+            </Image>
+          </Border>
         </ScrollViewer>
       </Border>
 
@@ -96,11 +99,14 @@
           VerticalScrollBarVisibility="Auto"
           ScrollChanged="Scroll_ScrollChanged"
         >
-          <Image Name="ImagenNuevo" Stretch="None">
-            <Image.LayoutTransform>
-              <ScaleTransform x:Name="EscalaNuevo" ScaleX="0.4" ScaleY="0.4" />
-            </Image.LayoutTransform>
-          </Image>
+          <!-- Página sobre blanco (color del papel, no del tema). -->
+          <Border Background="White" HorizontalAlignment="Left" VerticalAlignment="Top">
+            <Image Name="ImagenNuevo" Stretch="None">
+              <Image.LayoutTransform>
+                <ScaleTransform x:Name="EscalaNuevo" ScaleX="0.4" ScaleY="0.4" />
+              </Image.LayoutTransform>
+            </Image>
+          </Border>
         </ScrollViewer>
       </Border>
 

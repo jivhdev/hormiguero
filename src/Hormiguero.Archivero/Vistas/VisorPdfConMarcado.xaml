@@ -21,8 +21,11 @@
                  Los clics siguen llegando en coordenadas de pixel nativas de la pagina: WPF
                  deshace la transformacion automaticamente al pedir GetPosition(LienzoPagina). -->
       <ScrollViewer HorizontalScrollBarVisibility="Auto" VerticalScrollBarVisibility="Auto">
+        <!-- La página va siempre sobre blanco (color del papel, no del tema): Docnet la
+             dibuja con fondo transparente y en modo oscuro se veía negra. -->
         <Grid
           Name="LienzoPagina"
+          Background="White"
           MouseLeftButtonDown="LienzoPagina_MouseLeftButtonDown"
           MouseMove="LienzoPagina_MouseMove"
           MouseLeftButtonUp="LienzoPagina_MouseLeftButtonUp"
