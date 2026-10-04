@@ -1,4 +1,5 @@
-using PDFtoImage;
+using System.Runtime.InteropServices;
+using Hormiguero.Nucleo.Pdf;
 using SkiaSharp;
 
 namespace Buscadero.Core.Pdf;
@@ -9,26 +10,40 @@ public static class RenderizadorPdf
 
     public static int ObtenerTotalPaginas(string ruta)
     {
-        using var pdf = File.Open(ruta, FileMode.Open, FileAccess.Read, FileShare.ReadWrite);
-        return Conversion.GetPageCount(pdf);
+        return DibujoPdf.Paginas(LeerArchivo(ruta));
     }
 
     public static PaginaRenderizada RenderizarPagina(string ruta, int indicePagina)
     {
-        using var pdf = File.Open(ruta, FileMode.Open, FileAccess.Read, FileShare.ReadWrite);
-        using var mapaBits = Conversion.ToImage(
-            pdf,
-            page: indicePagina,
-            options: new RenderOptions(Dpi: DpiBase)
+        ImagenPagina imagen = DibujoPdf.Dibujar(LeerArchivo(ruta), indicePagina, DpiBase / 96.0);
+
+        using var mapaBits = new SKBitmap(
+            imagen.Ancho,
+            imagen.Alto,
+            SKColorType.Bgra8888,
+            SKAlphaType.Premul
         );
-        using var imagen = SKImage.FromBitmap(mapaBits);
-        using var datos = imagen.Encode(SKEncodedImageFormat.Png, 90);
+        Marshal.Copy(imagen.PixelesBgra, 0, mapaBits.GetPixels(), imagen.PixelesBgra.Length);
+        using var datos = mapaBits.Encode(SKEncodedImageFormat.Png, 90);
 
         return new PaginaRenderizada
         {
             Png = datos.ToArray(),
-            Ancho = mapaBits.Width,
-            Alto = mapaBits.Height,
+            Ancho = imagen.Ancho,
+            Alto = imagen.Alto,
         };
+    }
+
+    private static byte[] LeerArchivo(string ruta)
+    {
+        using var pdf = File.Open(
+            ruta,
+            FileMode.Open,
+            FileAccess.Read,
+            FileShare.ReadWrite | FileShare.Delete
+        );
+        using var memoria = new MemoryStream();
+        pdf.CopyTo(memoria);
+        return memoria.ToArray();
     }
 }
