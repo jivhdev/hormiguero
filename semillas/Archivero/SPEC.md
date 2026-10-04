@@ -3,12 +3,12 @@ tipo: spec
 app: Archivero
 version: 0.1 (apertura, paso 2)
 fecha: 2026-10-04
-estado: borrador
+estado: aprobada
 ---
 
 # SPEC — Archivero, apertura (paso 2)
 
-<!-- Fase 4 (MQD, sección 3). Alcance: apertura según PROTOTIPO.md (elementos marcados paso 2) e IDEA.md. Criterios y medidas propuestos por Claude; los aprueba Javier. Usa el núcleo (semillas/Nucleo/SPEC.md). Datos de prueba: los mismos 52 archivos del Descubrimiento de Buscadero (C:\JV\pruebas), solo metadatos (D-11). -->
+<!-- Fase 4 (MQD, sección 3). Alcance: apertura según PROTOTIPO.md (elementos marcados paso 2) e IDEA.md. Criterios y medidas propuestos por Claude; aprobados por Javier el 2026-10-04 (D-62). Usa el núcleo (semillas/Nucleo/SPEC.md). Datos de prueba: los mismos 52 archivos del Descubrimiento de Buscadero (C:\JV\pruebas), solo metadatos (D-11). -->
 
 ## 1. Intención
 
@@ -50,7 +50,8 @@ Que un oficinista deje caer sus PDF en una carpeta de entrada y Archivero los gu
 - **Given** la copia falla o su huella no coincide · **Then** el original queda donde estaba, se borra la copia mala y se avisa.
 - **Given** un número con ceros a la izquierda (`000104523`) · **When** se arma el nombre · **Then** el nombre lleva el número sin ceros (`104523`).
 - **Given** el destino ya tiene un archivo con la misma huella · **Then** no se guarda: queda en "Ya guardados antes" (REQ-006). Nunca se cae (arreglo pendiente de la v1).
-- **Given** el destino ya tiene un archivo con el mismo nombre y **distinto** contenido · **Then** nunca se sobrescribe: ver tema abierto 1.
+- **Given** el destino ya tiene un archivo con el mismo nombre y **distinto** contenido · **Then** no se guarda ni se sobrescribe: queda en un aviso "Mismo nombre, distinto contenido" donde el usuario compara y elige (D-62).
+- **Given** una cedible (la palabra CEDIBLE en el nombre original o en el texto) reconocida por una configuración · **Then** se guarda en la misma carpeta que su original, con `_CEDIBLE` al final del nombre (por ejemplo `FCV25001_CEDIBLE.pdf`), y se ve en Guardados recientes (D-62).
 - **Given** cada movimiento (guardar, descartar, guardar a mano) · **Then** queda en el registro de auditoría: fecha y hora, origen, destino, huella y resultado.
 
 ### REQ-005 Guardar a mano (A3)
@@ -61,7 +62,7 @@ Que un oficinista deje caer sus PDF en una carpeta de entrada y Archivero los gu
 ### REQ-006 Ya guardados antes
 
 - **Given** un documento en "Ya guardados antes" · **When** se abre · **Then** se ven lado a lado el que llegó y el que ya estaba, con zoom.
-- **Given** esa comparación · **When** se toca "Descartar" · **Then** el que llegó se descarta según el tema abierto 2, y queda en el registro de auditoría.
+- **Given** esa comparación · **When** se toca "Descartar" · **Then** el que llegó va a la Papelera de reciclaje de Windows (se puede recuperar) y queda en el registro de auditoría (D-62).
 
 ### REQ-007 Guardados recientes y configuraciones (A1)
 
@@ -82,11 +83,11 @@ Que un oficinista deje caer sus PDF en una carpeta de entrada y Archivero los gu
 
 ## 4. Lista de listo para construir
 
-- [ ] Cada requisito tiene al menos un Given/When/Then, propuesto por la IA y aprobado por Javier (D-09).
+- [x] Cada requisito tiene al menos un Given/When/Then, propuesto por la IA y aprobado por Javier (D-09, D-62).
 - [x] Cada requisito no funcional tiene una medida numérica.
 - [x] La sección "Qué NO construir" no está vacía.
 - [ ] Una vuelta completa de "¿Qué tal si...?" no encontró nada nuevo.
-- [ ] Toda decisión con ventajas y desventajas reales tiene su ADR en `decisiones/` (pendiente: dónde se guardan las configuraciones y el registro de auditoría).
+- [x] Toda decisión con ventajas y desventajas reales tiene su ADR en `decisiones/`.
 - [x] Ningún nombre visible para el usuario quedó elegido por la IA (textos del boceto aprobado, D-58).
 
 ## 5. Qué NO construir (en la apertura)
@@ -99,10 +100,9 @@ Que un oficinista deje caer sus PDF en una carpeta de entrada y Archivero los gu
 
 ## 6. Decisiones
 
-- ADR-001, ADR-002 y ADR-003 del ecosistema. Pendiente ADR-001 de Archivero (configuraciones y auditoría).
+- ADR-001 (Archivero): configuraciones de identificación y auditoría en tablas comunes del núcleo.
+- ADR-001, ADR-002 y ADR-003 del ecosistema.
 
-## 7. Temas abiertos (decide Javier)
+## 7. Temas abiertos
 
-1. **Mismo nombre, distinto contenido en el destino.** Propuesta: no guardar y dejarlo en un aviso para que el usuario elija (nunca sobrescribir ni inventar un nombre).
-2. **"Descartar" un repetido.** Propuesta: enviarlo a la Papelera de reciclaje de Windows (se puede recuperar), no borrarlo para siempre.
-3. **"Cedibles descartadas a la vista"** (A1 del boceto): falta precisar qué hace Archivero con una cedible que llega.
+- Ninguno. Resueltos por Javier el 2026-10-04 (D-62): mismo nombre con distinto contenido → aviso para elegir; descartar → Papelera de reciclaje; cedibles → se guardan junto al original.
