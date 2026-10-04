@@ -20,7 +20,7 @@
       <TextBlock
         x:Name="TextoSubtitulo"
         TextWrapping="Wrap"
-        Foreground="DimGray"
+        Foreground="{DynamicResource Hormiguero.TextoSecundario}"
         Visibility="Collapsed"
         Margin="0,0,0,10"
       />

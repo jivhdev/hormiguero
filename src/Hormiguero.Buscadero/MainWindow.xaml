@@ -225,9 +225,9 @@
           Grid.Row="4"
           x:Name="PanelPrevisualizacion"
           Visibility="Collapsed"
-          BorderBrush="LightGray"
+          BorderBrush="{DynamicResource Hormiguero.Borde}"
           BorderThickness="1"
-          Background="#FFF7F7F7"
+          Background="{DynamicResource Hormiguero.Encabezado}"
           Padding="6"
           Margin="0,0,0,6"
         >
@@ -235,7 +235,7 @@
             <TextBlock
               Text="Cadena documental (clic = vista rápida, doble clic = ver completa):"
               FontSize="11"
-              Foreground="DimGray"
+              Foreground="{DynamicResource Hormiguero.TextoSecundario}"
               Margin="0,0,0,4"
             />
             <ScrollViewer
@@ -268,7 +268,7 @@
                         Text="{Binding Conector}"
                         VerticalAlignment="Center"
                         Margin="0,0,4,0"
-                        Foreground="DimGray"
+                        Foreground="{DynamicResource Hormiguero.TextoSecundario}"
                       />
                     </StackPanel>
                   </DataTemplate>
@@ -345,8 +345,8 @@
           Grid.Row="3"
           x:Name="BarraEspiar"
           Visibility="Collapsed"
-          Background="#FFFDF1D6"
-          BorderBrush="#FFE0B44C"
+          Background="{DynamicResource Hormiguero.AvisoSuave}"
+          BorderBrush="{DynamicResource Hormiguero.Aviso}"
           BorderThickness="1"
           CornerRadius="3"
           Padding="8,6"
@@ -375,7 +375,12 @@
           </WrapPanel>
         </Border>
 
-        <Border Grid.Row="5" BorderBrush="LightGray" BorderThickness="1" Background="#FFEFEFEF">
+        <Border
+          Grid.Row="5"
+          BorderBrush="{DynamicResource Hormiguero.Borde}"
+          BorderThickness="1"
+          Background="{DynamicResource Hormiguero.Encabezado}"
+        >
           <Grid>
             <ScrollViewer
               x:Name="LienzoVisor"
@@ -402,7 +407,7 @@
               Text="Busque un documento para visualizarlo."
               HorizontalAlignment="Center"
               VerticalAlignment="Center"
-              Foreground="Gray"
+              Foreground="{DynamicResource Hormiguero.TextoSecundario}"
             />
           </Grid>
         </Border>
@@ -483,7 +488,7 @@
             x:Name="TextoEstadoPlantilla"
             DockPanel.Dock="Bottom"
             TextWrapping="Wrap"
-            Foreground="DarkRed"
+            Foreground="{DynamicResource Hormiguero.Error}"
             Margin="0,8,0,0"
           />
           <TreeView
@@ -567,7 +572,7 @@
             x:Name="TextoEstadoCadena"
             DockPanel.Dock="Bottom"
             TextWrapping="Wrap"
-            Foreground="DarkRed"
+            Foreground="{DynamicResource Hormiguero.Error}"
             Margin="0,8,0,0"
           />
           <ScrollViewer VerticalScrollBarVisibility="Auto" HorizontalScrollBarVisibility="Auto">
@@ -620,7 +625,7 @@
                                         HorizontalAlignment="Left"
                                         Background="Transparent"
                                         BorderThickness="0"
-                                        Foreground="SteelBlue"
+                                        Foreground="{DynamicResource Hormiguero.Principal}"
                                         Cursor="Hand"
                                       />
                                     </DataTemplate>
@@ -708,7 +713,7 @@
           DockPanel.Dock="Bottom"
           Margin="0,8,0,0"
           TextWrapping="Wrap"
-          Foreground="DarkRed"
+          Foreground="{DynamicResource Hormiguero.Error}"
         />
 
         <ListView x:Name="ListaCarpetas" SelectionMode="Single">

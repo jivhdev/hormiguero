@@ -15,7 +15,7 @@
     <TextBlock
       x:Name="TextoAyuda"
       TextWrapping="Wrap"
-      Foreground="DimGray"
+      Foreground="{DynamicResource Hormiguero.TextoSecundario}"
       Margin="0,0,0,10"
       Text="También puede buscar un documento cualquiera."
     />

@@ -19,6 +19,7 @@
 
   <ItemGroup>
     <ProjectReference Include="..\Hormiguero.Buscadero.Core\Hormiguero.Buscadero.Core.csproj" />
+    <ProjectReference Include="..\Hormiguero.Diseno\Hormiguero.Diseno.csproj" />
   </ItemGroup>
 
   <ItemGroup>

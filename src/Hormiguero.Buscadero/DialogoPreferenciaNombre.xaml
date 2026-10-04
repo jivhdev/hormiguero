@@ -18,7 +18,7 @@
     <TextBlock
       Text="Esta elección se hace una sola vez por modelo y se aplica a todas sus cadenas, presentes y futuras."
       TextWrapping="Wrap"
-      Foreground="DimGray"
+      Foreground="{DynamicResource Hormiguero.TextoSecundario}"
       Margin="0,0,0,12"
     />
 

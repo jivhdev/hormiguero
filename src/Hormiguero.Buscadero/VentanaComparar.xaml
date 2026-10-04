@@ -11,8 +11,8 @@
   <DockPanel>
     <Border
       DockPanel.Dock="Top"
-      Background="#FFEFEFEF"
-      BorderBrush="LightGray"
+      Background="{DynamicResource Hormiguero.Encabezado}"
+      BorderBrush="{DynamicResource Hormiguero.Borde}"
       BorderThickness="0,0,0,1"
       Padding="8,6"
     >
@@ -40,7 +40,7 @@
         <ColumnDefinition Width="*" />
       </Grid.ColumnDefinitions>
       <local:VisorComparacion x:Name="VisorIzquierda" Grid.Column="0" />
-      <Border Grid.Column="1" Background="LightGray" />
+      <Border Grid.Column="1" Background="{DynamicResource Hormiguero.Borde}" />
       <local:VisorComparacion x:Name="VisorDerecha" Grid.Column="2" />
     </Grid>
   </DockPanel>
