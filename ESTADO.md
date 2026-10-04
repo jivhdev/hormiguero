@@ -21,7 +21,13 @@ tipo: estado
 - **Para probar**: accesos directos del escritorio → `E:\Probar\Archivero` y `E:\Probar\Buscadero`.
 - **Variables de prueba** (datos sintéticos): `HORMIGUERO_DATOS`, `HORMIGUERO_TEMA`, `ARCHIVERO_DATOS`.
 - **Pendientes conocidos**: ventanas secundarias sin revisar a fondo en modo oscuro; Archivero no abre maximizado (igual que la 0.1 B, revisar contra el caso 7); `Caso-Sin-Cadenas.md` de la copia vieja de Buscadero por revisar; páginas rotadas: el texto se lee sin girar (revisar con documentos reales).
-- **Siguiente paso**: Mensajero fase A. **Ofisuiza listo** (M-A1, M-A1b, M-A2: extracción idéntica, 36/36 en OCC reales; pantalla probada en vivo; nuevo "Copiar PDF"). Falta: que Javier lo pruebe; importar su `clientes.txt` (consultarle las 2 líneas de `dist`); luego ClickFactura (base en el PC del trabajo), ExtractorCobelcar/Facturas JCV y Motores. Pendiente menor: la barra de título no se oscurece en Windows 10 (las 3 apps).
+- **Siguiente paso**: Mensajero. Hecho: Ofisuiza (M-A1/A1b/A2, 36/36 en OCC reales) y ClickFactura (M-A4 lógica, M-A5 pantalla), atajos Alt (M-A6), almacén de clientes de ClickFactura con importación segura. En curso: análisis de Facturas JCV (M-A7) para rediseñarlo con Javier. Motores no se traduce (era un prototipo antiguo de Archivero).
+- **Pendientes de Mensajero (pedidos por Javier, 2026-10-04)**:
+  - Facturas: elegir en pantalla la carpeta donde se buscan las facturas y la carpeta temporal donde se preparan los envíos (y abrirla). Junto con las mejoras de `Arreglos click factura.txt` (aclarar "Preparar Envío", ver solo pendientes, separar varios correos).
+  - Textos nuevos más cortos de retiro, guía y facturas: propuestos, esperan visto bueno.
+  - Importar `clientes.txt` de Ofisuiza (revisar con Javier las 2 líneas solo de `dist`) y `clickfactura.db` (traerla del PC del trabajo).
+  - Posible mejora a consultar: Facturas abre en julio (fijo en el original); abrir en el mes actual.
+  - Barra de título blanca en modo oscuro en Windows 10 (las 3 apps).
 
 ## Traspasos anteriores
 
