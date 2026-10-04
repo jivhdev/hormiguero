@@ -74,6 +74,29 @@ public class ZonaPdfTests
     }
 
     [Fact]
+    public void Texto_en_fraccion_convierte_desde_arriba_a_la_izquierda()
+    {
+        InfoPdf info = Info(
+            Palabra("arriba", 10, 80, 20, 10),
+            Palabra("abajo", 80, 10, 20, 10)
+        ) with
+        {
+            TamanosPagina = [(100, 100)],
+        };
+
+        Assert.Equal("arriba", ZonaPdf.TextoEnFraccion(info, 0, 0, 0, 0.5, 0.5));
+        Assert.Equal("abajo", ZonaPdf.TextoEnFraccion(info, 0, 0.5, 0.5, 0.5, 0.5));
+    }
+
+    [Fact]
+    public void Texto_en_fraccion_de_pagina_inexistente_devuelve_vacio()
+    {
+        InfoPdf info = Info() with { TamanosPagina = [(100, 100)] };
+
+        Assert.Equal("", ZonaPdf.TextoEnFraccion(info, 1, 0, 0, 1, 1));
+    }
+
+    [Fact]
     public void Zona_sin_tamano_lanza_error()
     {
         InfoPdf info = Info();
@@ -89,5 +112,13 @@ public class ZonaPdfTests
         Assert.Throws<ArgumentOutOfRangeException>(() =>
             ZonaPdf.Texto(info, new Zona(1, 0, 0, -5, 10))
         );
+    }
+
+    [Fact]
+    public void Fraccion_sin_tamano_devuelve_texto_vacio()
+    {
+        var info = new InfoPdf(EstadoPdf.Correcto, 1, [true], []) { TamanosPagina = [(595, 842)] };
+
+        Assert.Equal("", ZonaPdf.TextoEnFraccion(info, 0, 0.1, 0.1, 0, 0.2));
     }
 }
