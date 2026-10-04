@@ -50,7 +50,57 @@ public sealed class RepositorioIndice
                 Ruta TEXT NOT NULL,
                 Veces INTEGER NOT NULL
             );
+
+            CREATE TABLE IF NOT EXISTS ImportacionGuardados (
+                Id INTEGER PRIMARY KEY CHECK (Id = 1),
+                UltimoId INTEGER NOT NULL
+            );
             """;
+        comando.ExecuteNonQuery();
+    }
+
+    public long LeerUltimoGuardadoImportado()
+    {
+        using var conexion = AbrirConexion();
+        using var comando = conexion.CreateCommand();
+        comando.CommandText = "SELECT UltimoId FROM ImportacionGuardados WHERE Id = 1;";
+        return (long?)comando.ExecuteScalar() ?? 0;
+    }
+
+    public void GuardarUltimoGuardadoImportado(long id)
+    {
+        using var conexion = AbrirConexion();
+        using var comando = conexion.CreateCommand();
+        comando.CommandText = """
+            INSERT INTO ImportacionGuardados (Id, UltimoId)
+            VALUES (1, $id)
+            ON CONFLICT(Id) DO UPDATE SET UltimoId = $id;
+            """;
+        comando.Parameters.AddWithValue("$id", id);
+        comando.ExecuteNonQuery();
+    }
+
+    public void AgregarArchivo(string ruta)
+    {
+        var carpeta = Path.GetDirectoryName(ruta) ?? string.Empty;
+        using var conexion = AbrirConexion();
+        using var comando = conexion.CreateCommand();
+        comando.CommandText = """
+            INSERT INTO ArchivosIndexados (Ruta, RutaClave, Nombre, CarpetaContenedora, CarpetaClave, FechaModificacion)
+            VALUES ($ruta, $rutaClave, $nombre, $carpeta, $carpetaClave, $fecha)
+            ON CONFLICT(RutaClave) DO UPDATE SET
+                Ruta = $ruta,
+                Nombre = $nombre,
+                CarpetaContenedora = $carpeta,
+                CarpetaClave = $carpetaClave,
+                FechaModificacion = $fecha;
+            """;
+        comando.Parameters.AddWithValue("$ruta", ruta);
+        comando.Parameters.AddWithValue("$rutaClave", ClaveRuta(ruta));
+        comando.Parameters.AddWithValue("$nombre", Path.GetFileName(ruta));
+        comando.Parameters.AddWithValue("$carpeta", carpeta);
+        comando.Parameters.AddWithValue("$carpetaClave", ClaveRuta(carpeta));
+        comando.Parameters.AddWithValue("$fecha", File.GetLastWriteTimeUtc(ruta).Ticks);
         comando.ExecuteNonQuery();
     }
 
