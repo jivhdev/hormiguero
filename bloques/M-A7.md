@@ -2,10 +2,10 @@
 bloque: M-A7
 app: Mensajero
 fase: análisis previo a rediseño (D-68)
-estado: pendiente
+estado: hecho
 agente: Codex
 modelo: codex
-archivos_permitidos: [semillas/Mensajero/ANALISIS-FACTURAS-JCV.md]
+archivos_permitidos: [semillas/Archivero/ANALISIS-FACTURAS-JCV.md]
 archivos_prohibidos: [todo lo demás: este bloque NO escribe código]
 rama: mensajero/a7-analisis-facturas-jcv
 ---
@@ -37,3 +37,5 @@ Originales (SOLO LECTURA, no ejecutes nada que escriba en ellos):
 Escribe en español neutro, claro y breve. Reporte al final de esta nota.
 
 ## Reporte del agente
+
+- Claude: movido a `semillas/Archivero/` porque, según PLAN-ECOSISTEMA, Facturas JCV pasa a ser una configuración de Archivero (entrada).
