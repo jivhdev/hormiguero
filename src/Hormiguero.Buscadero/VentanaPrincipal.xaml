@@ -25,13 +25,7 @@
       />
     </Border>
 
-    <TextBlock
-      Grid.Row="1"
-      Text="Aquí irá el buscador"
-      FontSize="{DynamicResource Hormiguero.TextoNormal}"
-      Foreground="{DynamicResource Hormiguero.Texto}"
-      HorizontalAlignment="Center"
-      VerticalAlignment="Center"
-    />
+    <!-- Aquí se muestra la pantalla actual: P1 (primera configuración) o P2 (buscador). -->
+    <ContentControl x:Name="Contenido" Grid.Row="1" />
   </Grid>
 </Window>
