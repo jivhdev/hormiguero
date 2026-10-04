@@ -213,7 +213,7 @@
         <TextBlock x:Name="TextoClienteActual" FontSize="16" FontWeight="Bold" />
         <DockPanel>
           <Button DockPanel.Dock="Right" Content="📋 Copiar correo" Click="CopiarCorreo_Click" />
-          <TextBlock Text="Correo: (Ctrl+1)  " VerticalAlignment="Center" />
+          <TextBlock Text="Correo: (Alt+A)  " VerticalAlignment="Center" />
           <TextBlock x:Name="TextoCorreo" FontWeight="Bold" VerticalAlignment="Center" />
         </DockPanel>
       </StackPanel>
@@ -242,12 +242,12 @@
           </Grid.RowDefinitions>
           <DockPanel>
             <Button DockPanel.Dock="Right" Content="📋 Copiar asunto" Click="CopiarAsunto_Click" />
-            <TextBlock Text="Asunto: (Ctrl+2)" VerticalAlignment="Center" />
+            <TextBlock Text="Asunto: (Alt+S)" VerticalAlignment="Center" />
           </DockPanel>
           <TextBox x:Name="CampoAsunto" Grid.Row="1" MinHeight="32" TextWrapping="Wrap" />
           <DockPanel Grid.Row="2" Margin="0,5,0,0">
             <Button DockPanel.Dock="Right" Content="📋 Copiar cuerpo" Click="CopiarCuerpo_Click" />
-            <TextBlock Text="Cuerpo: (Ctrl+3)" VerticalAlignment="Center" />
+            <TextBlock Text="Cuerpo: (Alt+D)" VerticalAlignment="Center" />
           </DockPanel>
           <TextBox
             x:Name="CampoCuerpo"
@@ -261,7 +261,7 @@
       <WrapPanel Grid.Row="4" HorizontalAlignment="Center" Margin="0,5">
         <Button
           x:Name="BotonPreparar"
-          Content="📋 Preparar Envío"
+          Content="📋 Preparar Envío (Alt+F)"
           Click="PrepararEnvio_Click"
           Margin="3"
           Padding="10,7"

@@ -239,7 +239,7 @@ public partial class VentanaPrincipal : Window
                 MostrarToast($"❌ No se encontró despacho: {Path.GetFileName(ruta)}", "error");
             else
             {
-                Copiar(despacho, "✅ Cuerpo del correo copiado");
+                Copiar(PrepararCuerpoCorreo(despacho), "✅ Cuerpo del correo copiado");
                 PrecargarPdf(ruta);
             }
         }
@@ -483,7 +483,10 @@ public partial class VentanaPrincipal : Window
             MostrarToast("❌ Genera la vista previa primero", "error");
             return;
         }
-        Copiar(VistaRetiro.Text.Trim(), "✅ Mensaje de retiro copiado al portapapeles");
+        Copiar(
+            PrepararCuerpoCorreo(VistaRetiro.Text),
+            "✅ Mensaje de retiro copiado al portapapeles"
+        );
     }
 
     private void BuscarGuia_Click(object sender, RoutedEventArgs e) => BuscarGuia();
@@ -555,43 +558,12 @@ public partial class VentanaPrincipal : Window
             MostrarToast("❌ Genera el mensaje primero", "error");
             return;
         }
-        Copiar(VistaGuia.Text.Trim(), "✅ Mensaje de guía copiado al portapapeles");
+        Copiar(PrepararCuerpoCorreo(VistaGuia.Text), "✅ Mensaje de guía copiado al portapapeles");
     }
 
     private void Ventana_PreviewKeyDown(object sender, KeyEventArgs e)
     {
-        if ((Keyboard.Modifiers & ModifierKeys.Control) != 0)
-        {
-            switch (e.Key)
-            {
-                case Key.D1:
-                case Key.NumPad1:
-                    CopiarUltimoAsunto();
-                    e.Handled = true;
-                    break;
-                case Key.D2:
-                case Key.NumPad2:
-                    CopiarUltimoCuerpo();
-                    e.Handled = true;
-                    break;
-                case Key.D3:
-                case Key.NumPad3:
-                    CopiarRetiro_Click(this, new RoutedEventArgs());
-                    e.Handled = true;
-                    break;
-                case Key.D4:
-                case Key.NumPad4:
-                    CopiarGuia_Click(this, new RoutedEventArgs());
-                    e.Handled = true;
-                    break;
-                case Key.D5:
-                case Key.NumPad5:
-                    CopiarUltimoPdf();
-                    e.Handled = true;
-                    break;
-            }
-        }
-        else if ((Keyboard.Modifiers & ModifierKeys.Alt) != 0)
+        if ((Keyboard.Modifiers & ModifierKeys.Alt) != 0)
         {
             // Con Alt, WPF entrega la tecla en SystemKey (e.Key llega como Key.System).
             switch (e.Key == Key.System ? e.SystemKey : e.Key)
@@ -616,9 +588,16 @@ public partial class VentanaPrincipal : Window
                     CampoBuscarCliente.Focus();
                     e.Handled = true;
                     break;
+                case Key.X:
+                    CopiarUltimoPdf();
+                    e.Handled = true;
+                    break;
             }
         }
     }
+
+    private static string PrepararCuerpoCorreo(string texto) =>
+        string.IsNullOrEmpty(texto) ? string.Empty : texto.TrimEnd() + "\r\n\r\n";
 
     private void PrecargarPdf(string ruta)
     {

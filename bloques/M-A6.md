@@ -2,7 +2,7 @@
 bloque: M-A6
 app: Mensajero
 fase: C (pedido directo de Javier, 2026-10-04)
-estado: pendiente
+estado: hecho
 agente: Codex
 modelo: codex
 archivos_permitidos: [src/Hormiguero.Mensajero/VentanaPrincipal.xaml, src/Hormiguero.Mensajero/VentanaPrincipal.xaml.cs, src/Hormiguero.Mensajero/VentanaFacturas.xaml, src/Hormiguero.Mensajero/VentanaFacturas.xaml.cs, semillas/Mensajero/EQUIVALENCIA-OFISUIZA.md, semillas/Mensajero/EQUIVALENCIA-CLICKFACTURA.md]
@@ -37,3 +37,8 @@ Actualiza las filas de atajos en `EQUIVALENCIA-OFISUIZA.md` y `EQUIVALENCIA-CLIC
 `dotnet build` sin advertencias; `dotnet test` todo pasa; `dotnet csharpier check .` sin errores. Reporte al final.
 
 ## Reporte del agente
+
+- Implementé los atajos Alt solicitados en Ofisuiza y Facturas; eliminé el manejo Ctrl+1..5 y actualicé las etiquetas visibles. En Facturas los atajos solo actúan durante la etapa de envíos.
+- Los cuerpos de correo copiados desde ambas ventanas terminan con `\r\n\r\n` para dejar una línea en blanco antes de la firma. Asunto, correo, RUT, clientes NVV y archivos no se modificaron.
+- Actualicé las equivalencias de Ofisuiza y ClickFactura con el pedido de Javier del 2026-10-04.
+- Verificación: `dotnet build` correcto, 0 advertencias y 0 errores; `dotnet test` correcto, 583 pruebas superadas y 0 fallidas; `dotnet csharpier check .` correcto (221 archivos). `git diff --check` sin errores.

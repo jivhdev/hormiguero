@@ -495,32 +495,40 @@ public partial class VentanaFacturas : Window
         CopiarTexto(CampoAsunto.Text);
 
     private void CopiarCuerpo_Click(object sender, RoutedEventArgs e) =>
-        CopiarTexto(CampoCuerpo.Text);
+        CopiarTexto(PrepararCuerpoCorreo(CampoCuerpo.Text));
 
     private void Ventana_PreviewKeyDown(object sender, KeyEventArgs e)
     {
-        if ((Keyboard.Modifiers & ModifierKeys.Control) == 0)
+        if ((Keyboard.Modifiers & ModifierKeys.Alt) == 0)
             return;
         Key tecla = e.Key == Key.System ? e.SystemKey : e.Key;
         switch (tecla)
         {
-            case Key.D1:
-            case Key.NumPad1:
-                CopiarTexto(TextoCorreo.Text);
+            case Key.A
+                when PaginaEnvio.Visibility == Visibility.Visible && indiceCliente < clientes.Count:
+                CopiarCorreo_Click(this, new RoutedEventArgs());
                 e.Handled = true;
                 break;
-            case Key.D2:
-            case Key.NumPad2:
-                CopiarTexto(CampoAsunto.Text);
+            case Key.S
+                when PaginaEnvio.Visibility == Visibility.Visible && indiceCliente < clientes.Count:
+                CopiarAsunto_Click(this, new RoutedEventArgs());
                 e.Handled = true;
                 break;
-            case Key.D3:
-            case Key.NumPad3:
-                CopiarTexto(CampoCuerpo.Text);
+            case Key.D
+                when PaginaEnvio.Visibility == Visibility.Visible && indiceCliente < clientes.Count:
+                CopiarCuerpo_Click(this, new RoutedEventArgs());
+                e.Handled = true;
+                break;
+            case Key.F
+                when PaginaEnvio.Visibility == Visibility.Visible && indiceCliente < clientes.Count:
+                PrepararEnvio_Click(this, new RoutedEventArgs());
                 e.Handled = true;
                 break;
         }
     }
+
+    private static string PrepararCuerpoCorreo(string texto) =>
+        string.IsNullOrEmpty(texto) ? string.Empty : texto.TrimEnd() + "\r\n\r\n";
 
     private void CopiarTexto(string texto)
     {
