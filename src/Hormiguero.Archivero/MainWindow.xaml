@@ -35,7 +35,7 @@
       />
       <TextBlock
         Name="TxtCarpetaObservada"
-        Foreground="Gray"
+        Foreground="{DynamicResource Hormiguero.TextoSecundario}"
         VerticalAlignment="Center"
         TextWrapping="Wrap"
       />
@@ -122,7 +122,7 @@
       <TextBlock
         Name="TxtTiempoAhorradoAclaracion"
         FontSize="10"
-        Foreground="Gray"
+        Foreground="{DynamicResource Hormiguero.TextoSecundario}"
         TextWrapping="Wrap"
       />
     </StackPanel>

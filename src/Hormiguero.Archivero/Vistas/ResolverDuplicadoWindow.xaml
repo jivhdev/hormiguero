@@ -27,7 +27,7 @@
       Grid.Row="1"
       Name="TxtRutaConflicto"
       TextWrapping="Wrap"
-      Foreground="Gray"
+      Foreground="{DynamicResource Hormiguero.TextoSecundario}"
       Margin="0,0,0,12"
     />
 
@@ -57,9 +57,9 @@
       <Border
         Grid.Row="1"
         Grid.Column="0"
-        BorderBrush="Gray"
+        BorderBrush="{DynamicResource Hormiguero.Borde}"
         BorderThickness="1"
-        Background="White"
+        Background="{DynamicResource Hormiguero.Superficie}"
       >
         <ScrollViewer
           Name="ScrollExistente"
@@ -86,9 +86,9 @@
       <Border
         Grid.Row="1"
         Grid.Column="2"
-        BorderBrush="Gray"
+        BorderBrush="{DynamicResource Hormiguero.Borde}"
         BorderThickness="1"
-        Background="White"
+        Background="{DynamicResource Hormiguero.Superficie}"
       >
         <ScrollViewer
           Name="ScrollNuevo"

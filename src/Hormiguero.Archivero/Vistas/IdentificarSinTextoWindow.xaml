@@ -26,9 +26,9 @@
       <Border
         Name="AvisoSinVista"
         Visibility="Collapsed"
-        BorderBrush="Gray"
+        BorderBrush="{DynamicResource Hormiguero.Borde}"
         BorderThickness="1"
-        Background="#FFF8F8F8"
+        Background="{DynamicResource Hormiguero.Encabezado}"
       >
         <StackPanel VerticalAlignment="Center" HorizontalAlignment="Center" MaxWidth="420">
           <TextBlock
@@ -42,7 +42,7 @@
             Name="TxtAvisoSinVista"
             TextWrapping="Wrap"
             TextAlignment="Center"
-            Foreground="Gray"
+            Foreground="{DynamicResource Hormiguero.TextoSecundario}"
           />
         </StackPanel>
       </Border>
@@ -59,7 +59,7 @@
       />
       <TextBlock
         Name="TxtInstruccion"
-        Foreground="Gray"
+        Foreground="{DynamicResource Hormiguero.TextoSecundario}"
         TextWrapping="Wrap"
         Margin="0,0,0,16"
         Text="No se puede marcar ningún dato por coordenadas (ej. es una imagen escaneada)."
@@ -86,7 +86,7 @@
         <TextBlock Text="Accesos rápidos" FontWeight="Bold" Margin="0,20,0,4" />
         <TextBlock
           Name="TxtSinAtajos"
-          Foreground="Gray"
+          Foreground="{DynamicResource Hormiguero.TextoSecundario}"
           TextWrapping="Wrap"
           Text="Todavía no hay accesos rápidos. Se crean al final de &quot;Crear ubicación nueva&quot;."
         />
@@ -114,7 +114,7 @@
         <TextBlock Text="Carpeta madre" FontWeight="Bold" />
         <TextBlock
           Text="La carpeta raíz donde va a vivir todo lo de este tipo de documento."
-          Foreground="Gray"
+          Foreground="{DynamicResource Hormiguero.TextoSecundario}"
           TextWrapping="Wrap"
           Margin="0,2,0,0"
         />
@@ -138,7 +138,7 @@
         <StackPanel Name="PanelMarcarFecha">
           <TextBlock Text="Fecha del documento" FontWeight="Bold" />
           <TextBlock
-            Foreground="Gray"
+            Foreground="{DynamicResource Hormiguero.TextoSecundario}"
             TextWrapping="Wrap"
             Margin="0,2,0,4"
             Text="No hay texto para extraer de este documento: escribir la fecha a mano (ej. 15/03/2026)."
@@ -147,7 +147,7 @@
           <TextBlock
             Name="TxtFechaOpcional"
             Visibility="Collapsed"
-            Foreground="Gray"
+            Foreground="{DynamicResource Hormiguero.TextoSecundario}"
             TextWrapping="Wrap"
             Margin="0,4,0,0"
             Text="Para este tipo de organización la fecha es opcional: si se deja vacía, se usa la fecha de hoy."
@@ -169,7 +169,7 @@
         <TextBlock
           Name="TxtSinUbicaciones"
           Visibility="Collapsed"
-          Foreground="Gray"
+          Foreground="{DynamicResource Hormiguero.TextoSecundario}"
           TextWrapping="Wrap"
           Margin="0,0,0,8"
           Text="Todavía no se creó ninguna ubicación desde &quot;Crear ubicación nueva&quot;."
@@ -193,14 +193,14 @@
       <StackPanel Name="PanelNavegar" Visibility="Collapsed">
         <TextBlock
           Name="TxtRutaNavegacion"
-          Foreground="Gray"
+          Foreground="{DynamicResource Hormiguero.TextoSecundario}"
           TextWrapping="Wrap"
           Margin="0,0,0,8"
         />
         <TextBlock
           Name="TxtSinSubcarpetas"
           Visibility="Collapsed"
-          Foreground="Gray"
+          Foreground="{DynamicResource Hormiguero.TextoSecundario}"
           TextWrapping="Wrap"
           Margin="0,0,0,8"
           Text="Esta carpeta todavía no tiene ninguna subcarpeta creada."
@@ -228,7 +228,7 @@
         />
         <TextBlock
           Name="TxtCarpetaDestinoFinal"
-          Foreground="Gray"
+          Foreground="{DynamicResource Hormiguero.TextoSecundario}"
           TextWrapping="Wrap"
           Margin="0,0,0,8"
         />
@@ -238,7 +238,7 @@
           <TextBlock Text="Fecha del documento" FontWeight="Bold" />
           <TextBlock
             Name="TxtAyudaFechaAtajo"
-            Foreground="Gray"
+            Foreground="{DynamicResource Hormiguero.TextoSecundario}"
             TextWrapping="Wrap"
             Margin="0,2,0,4"
           />
@@ -272,7 +272,7 @@
 
       <TextBlock
         Name="TxtError"
-        Foreground="Red"
+        Foreground="{DynamicResource Hormiguero.Error}"
         TextWrapping="Wrap"
         Margin="0,16,0,0"
         Visibility="Collapsed"

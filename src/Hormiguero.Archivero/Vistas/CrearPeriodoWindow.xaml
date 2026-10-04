@@ -24,11 +24,16 @@
     />
 
     <StackPanel Grid.Row="1">
-      <TextBlock Name="TxtCarpetaPeriodo" TextWrapping="Wrap" Foreground="Gray" Margin="0,0,0,16" />
+      <TextBlock
+        Name="TxtCarpetaPeriodo"
+        TextWrapping="Wrap"
+        Foreground="{DynamicResource Hormiguero.TextoSecundario}"
+        Margin="0,0,0,16"
+      />
       <TextBlock
         Text="Crear esta carpeta es siempre una decisión del usuario — Archivero nunca la inventa sola."
         TextWrapping="Wrap"
-        Foreground="Gray"
+        Foreground="{DynamicResource Hormiguero.TextoSecundario}"
         FontStyle="Italic"
       />
     </StackPanel>

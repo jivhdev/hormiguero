@@ -28,7 +28,12 @@
         TextWrapping="Wrap"
         Margin="0,0,0,4"
       />
-      <TextBlock Name="TxtClasificacion" Foreground="Gray" TextWrapping="Wrap" Margin="0,0,0,12" />
+      <TextBlock
+        Name="TxtClasificacion"
+        Foreground="{DynamicResource Hormiguero.TextoSecundario}"
+        TextWrapping="Wrap"
+        Margin="0,0,0,12"
+      />
 
       <TextBlock Text="Carpeta" FontWeight="Bold" />
       <TextBlock Name="TxtCarpeta" TextWrapping="Wrap" Margin="0,2,0,12" />
@@ -46,7 +51,7 @@
 
       <TextBlock
         Name="TxtError"
-        Foreground="Red"
+        Foreground="{DynamicResource Hormiguero.Error}"
         TextWrapping="Wrap"
         Margin="0,16,0,0"
         Visibility="Collapsed"

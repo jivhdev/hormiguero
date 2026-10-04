@@ -30,7 +30,7 @@
       />
       <TextBlock
         Name="TxtInstruccionPaso"
-        Foreground="Gray"
+        Foreground="{DynamicResource Hormiguero.TextoSecundario}"
         TextWrapping="Wrap"
         Margin="0,0,0,16"
       />
@@ -47,7 +47,7 @@
         />
         <TextBlock
           Name="TxtEstadoMarcaEmisor"
-          Foreground="Gray"
+          Foreground="{DynamicResource Hormiguero.TextoSecundario}"
           Margin="0,0,0,4"
           TextWrapping="Wrap"
         />
@@ -68,7 +68,7 @@
         />
         <TextBlock
           Name="TxtEstadoMarcaTipo"
-          Foreground="Gray"
+          Foreground="{DynamicResource Hormiguero.TextoSecundario}"
           Margin="0,0,0,4"
           TextWrapping="Wrap"
         />
@@ -80,7 +80,7 @@
         <TextBlock Text="Carpeta madre" FontWeight="Bold" />
         <TextBlock
           Text="La carpeta raíz donde va a vivir todo lo de este tipo de documento."
-          Foreground="Gray"
+          Foreground="{DynamicResource Hormiguero.TextoSecundario}"
           TextWrapping="Wrap"
           Margin="0,2,0,0"
         />
@@ -126,11 +126,15 @@
             Padding="6,4"
             Click="BtnMarcarFecha_Click"
           />
-          <TextBlock Name="TxtEstadoMarcaFecha" Foreground="Gray" TextWrapping="Wrap" />
+          <TextBlock
+            Name="TxtEstadoMarcaFecha"
+            Foreground="{DynamicResource Hormiguero.TextoSecundario}"
+            TextWrapping="Wrap"
+          />
           <TextBlock
             Name="TxtFechaOpcional"
             Visibility="Collapsed"
-            Foreground="Gray"
+            Foreground="{DynamicResource Hormiguero.TextoSecundario}"
             TextWrapping="Wrap"
             Margin="0,4,0,0"
             Text="Para este tipo de organización la fecha es opcional: si no la marcás, los ejemplos y la vista previa usan la fecha de hoy."
@@ -164,7 +168,7 @@
           Checked="OpcionNombre_Changed"
         />
         <TextBlock
-          Foreground="Gray"
+          Foreground="{DynamicResource Hormiguero.TextoSecundario}"
           TextWrapping="Wrap"
           Margin="20,0,0,6"
           Text="La carpeta se sigue eligiendo sola; antes de guardar, el documento queda en &quot;Pendientes por reconocer&quot; para escribir o confirmar su nombre."
@@ -178,7 +182,11 @@
             Padding="6,4"
             Click="BtnMarcarNombreArchivo_Click"
           />
-          <TextBlock Name="TxtEstadoMarcaNombre" Foreground="Gray" TextWrapping="Wrap" />
+          <TextBlock
+            Name="TxtEstadoMarcaNombre"
+            Foreground="{DynamicResource Hormiguero.TextoSecundario}"
+            TextWrapping="Wrap"
+          />
         </StackPanel>
       </StackPanel>
 
@@ -208,8 +216,8 @@
         Visibility="Collapsed"
         Margin="0,16,0,0"
         Padding="10"
-        Background="#FFF6F6F6"
-        BorderBrush="#FFD0D0D0"
+        Background="{DynamicResource Hormiguero.Encabezado}"
+        BorderBrush="{DynamicResource Hormiguero.Borde}"
         BorderThickness="1"
       >
         <StackPanel>
@@ -226,7 +234,7 @@
           />
           <TextBlock
             Name="TxtPreviewAnterior"
-            Foreground="Gray"
+            Foreground="{DynamicResource Hormiguero.TextoSecundario}"
             TextWrapping="Wrap"
             Margin="0,0,0,8"
           />
@@ -240,7 +248,7 @@
           />
           <TextBlock
             Name="TxtPreviewFutura"
-            Foreground="Gray"
+            Foreground="{DynamicResource Hormiguero.TextoSecundario}"
             TextWrapping="Wrap"
             Margin="0,0,0,8"
           />
@@ -256,7 +264,7 @@
 
       <TextBlock
         Name="TxtError"
-        Foreground="Red"
+        Foreground="{DynamicResource Hormiguero.Error}"
         TextWrapping="Wrap"
         Margin="0,16,0,0"
         Visibility="Collapsed"
