@@ -197,12 +197,38 @@ public static class GuardadoAutomaticoService
                 $"Emisor={configuracionConPatronCoincidente.Emisor}; Tipo={configuracionConPatronCoincidente.Tipo}; Ruta={rutaFinal}"
             );
 
+            string? detallePublicacion = null;
+            if (PublicadorDatosDocumentoService.PublicacionAutomaticaActiva)
+            {
+                try
+                {
+                    PublicadorDatosDocumentoService.PublicarGuardado(
+                        rutaFinal,
+                        configuracionConPatronCoincidente,
+                        campos
+                    );
+                }
+                catch (Exception error)
+                {
+                    detallePublicacion =
+                        $"El documento se guardó, pero no se publicaron sus datos en Hormiguero: {error.Message}";
+                    AuditoriaService.Registrar(
+                        "PUBLICACION_HORMIGUERO_FALLIDA",
+                        $"{rutaFinal}: {error.Message}"
+                    );
+                }
+            }
+
             if (configuracionConPatronCoincidente.AbrirDespuesDeGuardar)
             {
                 AbrirEnVisorDelSistema(rutaFinal);
             }
 
-            return new ResultadoProcesamiento(ResultadoGuardadoAutomatico.Guardado, rutaFinal);
+            return new ResultadoProcesamiento(
+                ResultadoGuardadoAutomatico.Guardado,
+                rutaFinal,
+                detallePublicacion
+            );
         }
         catch (ArchivoDuplicadoException ex)
         {

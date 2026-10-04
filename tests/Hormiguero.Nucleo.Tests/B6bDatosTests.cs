@@ -198,6 +198,63 @@ public sealed class B6bDatosTests : IDisposable
         }
     }
 
+    [Fact]
+    public void Publicacion_conserva_valores_originales_correcciones_y_versiones_por_huella()
+    {
+        var repo = new RepositorioDocumentosDatos(conexion);
+        var valores = new[]
+        {
+            new ValorDocumentoLeido(
+                "Emisor",
+                "emisor",
+                "Compañía Ñandú",
+                "Compañía Ñandú",
+                "marca"
+            ),
+            new ValorDocumentoLeido("Tipo", "tipo", "Factura", "Factura", "marca"),
+            new ValorDocumentoLeido("OC", "oc", "000123", "000123", "marca"),
+        };
+        var uno = repo.PublicarDocumento(
+            @"C:\docs\a.pdf",
+            3,
+            DateTime.UtcNow,
+            "h1",
+            "Compañía Ñandú",
+            "Factura",
+            valores
+        );
+        var campo = Assert.Single(repo.ListarCampos(1), c => c.NombreEstable == "oc");
+        var original = Assert.Single(repo.BuscarValores(campo.Id, "000123"));
+        Assert.Equal("000123", original.ValorOriginal);
+        repo.CorregirValor(uno.Version.Id, campo.Id, "001234", "001234");
+        Assert.Equal("manual", Assert.Single(repo.BuscarValores(campo.Id, "001234")).Origen);
+        Assert.Empty(repo.BuscarValores(campo.Id, "000123"));
+
+        var movido = repo.PublicarDocumento(
+            @"D:\docs\a.pdf",
+            3,
+            DateTime.UtcNow,
+            "h1",
+            "Compañía Ñandú",
+            "Factura",
+            valores
+        );
+        Assert.Equal(uno.DocumentoId, movido.DocumentoId);
+        Assert.Equal(uno.Version.Id, movido.Version.Id);
+        Assert.Equal(@"D:\docs\a.pdf", movido.Version.RutaObservada);
+        var nuevo = repo.PublicarDocumento(
+            @"D:\docs\a.pdf",
+            4,
+            DateTime.UtcNow,
+            "h2",
+            "Compañía Ñandú",
+            "Factura",
+            valores
+        );
+        Assert.Equal(uno.DocumentoId, nuevo.DocumentoId);
+        Assert.NotEqual(uno.Version.Id, nuevo.Version.Id);
+    }
+
     private long AgregarDocumento(string huella)
     {
         new Documentos(conexion).Guardar(

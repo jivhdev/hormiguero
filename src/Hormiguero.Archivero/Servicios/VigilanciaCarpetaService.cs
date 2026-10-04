@@ -259,6 +259,8 @@ public class VigilanciaCarpetaService : IDisposable
             case ResultadoGuardadoAutomatico.Guardado:
                 _pendientes.Quitar(rutaArchivo);
                 ArchivoGuardadoAutomaticamente?.Invoke(rutaArchivo, resultado.RutaFinal!);
+                if (resultado.Detalle is not null)
+                    ArchivoRequiereAtencion?.Invoke(rutaArchivo, resultado.Detalle);
                 break;
 
             case ResultadoGuardadoAutomatico.ValorInvalido:

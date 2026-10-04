@@ -54,6 +54,19 @@ public static class BaseDeDatos
                 ConfiguracionId INTEGER NOT NULL REFERENCES Configuraciones (Id)
             );
 
+            CREATE TABLE IF NOT EXISTS CamposPropios (
+                Id INTEGER PRIMARY KEY AUTOINCREMENT,
+                ConfiguracionId INTEGER NOT NULL REFERENCES Configuraciones(Id),
+                Nombre TEXT NOT NULL,
+                NombreEstable TEXT NOT NULL,
+                Pagina INTEGER NOT NULL,
+                X REAL NOT NULL,
+                Y REAL NOT NULL,
+                Ancho REAL NOT NULL,
+                Alto REAL NOT NULL,
+                UNIQUE(ConfiguracionId, NombreEstable)
+            );
+
             CREATE TABLE IF NOT EXISTS Marcas (
                 Id INTEGER PRIMARY KEY AUTOINCREMENT,
                 PatronId INTEGER NOT NULL REFERENCES PatronesReconocimiento (Id),

@@ -1165,13 +1165,42 @@ public partial class IdentificarDocumentoWindow : Window
             AuditoriaService.Registrar("CLASIFICACION_CREADA", $"Emisor={_emisor}; Tipo={_tipo}");
         }
 
+        string? errorPublicacion = null;
+        if (PublicadorDatosDocumentoService.PublicacionAutomaticaActiva)
+            try
+            {
+                var configuracion =
+                    _configuraciones.BuscarPorEmisorYTipo(_emisor, _tipo)
+                    ?? throw new InvalidOperationException(
+                        "No se encontró la configuración guardada."
+                    );
+                var (campos, error) = GuardadoAutomaticoService.ExtraerCamposParaClasificar(
+                    rutaFinal,
+                    configuracion
+                );
+                if (campos is null)
+                    throw new InvalidOperationException(error);
+                PublicadorDatosDocumentoService.PublicarGuardado(rutaFinal, configuracion, campos);
+            }
+            catch (Exception error)
+            {
+                errorPublicacion =
+                    $"No se pudieron publicar los datos en Hormiguero: {error.Message}";
+                AuditoriaService.Registrar(
+                    "PUBLICACION_HORMIGUERO_FALLIDA",
+                    $"{rutaFinal}: {error.Message}"
+                );
+            }
+
         _pendientes.Quitar(_rutaArchivo);
         _borradores.Eliminar(_rutaArchivo);
         _draftYaResuelto = true;
 
         System.Windows.MessageBox.Show(
             this,
-            $"Documento guardado en:\n{rutaFinal}",
+            errorPublicacion is null
+                ? $"Documento guardado en:\n{rutaFinal}"
+                : $"Documento guardado en:\n{rutaFinal}\n\n{errorPublicacion}",
             "Archivero",
             MessageBoxButton.OK,
             MessageBoxImage.Information
