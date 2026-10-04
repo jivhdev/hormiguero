@@ -9,15 +9,34 @@ public partial class App : Application
 {
     public static SqliteConnection? Base { get; private set; }
 
+    // HORMIGUERO_BASE permite abrir una base de prueba (datos sintéticos) sin
+    // tocar la del usuario; sin ella se usa la base común de siempre.
+    public static string RutaBase { get; } =
+        Environment.GetEnvironmentVariable("HORMIGUERO_BASE") is { Length: > 0 } ruta
+            ? ruta
+            : BaseComun.RutaPorDefecto;
+
     protected override void OnStartup(StartupEventArgs e)
     {
         base.OnStartup(e);
 
         Tema.Aplicar(this, ModoTema.Sistema);
 
+        // Un error inesperado de la pantalla se avisa y la app sigue abierta.
+        DispatcherUnhandledException += (_, error) =>
+        {
+            MessageBox.Show(
+                $"Ocurrió un error inesperado:\n{error.Exception.Message}",
+                "Buscadero",
+                MessageBoxButton.OK,
+                MessageBoxImage.Warning
+            );
+            error.Handled = true;
+        };
+
         try
         {
-            Base = BaseComun.Abrir(BaseComun.RutaPorDefecto);
+            Base = BaseComun.Abrir(RutaBase);
         }
         catch (Exception ex)
         {

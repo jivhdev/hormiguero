@@ -17,9 +17,14 @@ public sealed partial class PantallaBuscar : UserControl
 
     public event EventHandler<ResultadoBusqueda>? Elegido;
 
+    public VisorPdf VisorDocumento { get; } = new();
+
     public PantallaBuscar(SqliteConnection conexion, ControlIndice control)
     {
         InitializeComponent();
+        // Se elige aquí y no en el XAML: allí el aviso de selección llega antes
+        // de que exista el panel de carpeta específica.
+        ComboAlcance.SelectedIndex = 0;
         _conexion = conexion;
         _controlIndice = control;
 
@@ -119,6 +124,9 @@ public sealed partial class PantallaBuscar : UserControl
     {
         if (ListaResultados.SelectedItem is ResultadoPresentacion presentacion)
         {
+            // Se abre la versión principal (original antes que cedible, REQ-004).
+            Visor.Child = VisorDocumento;
+            _ = VisorDocumento.AbrirAsync(presentacion.Original.Versiones[0].Rutas[0]);
             Elegido?.Invoke(this, presentacion.Original);
         }
     }
@@ -154,10 +162,18 @@ public sealed partial class PantallaBuscar : UserControl
             AlcanceBusqueda alcance = ObtenerAlcance();
             string? carpetaEspecifica = ObtenerCarpetaEspecifica();
 
+            CancellationToken token = _cts.Token;
+            string cadena = _conexion.ConnectionString;
+            // La búsqueda corre en otro hilo con su propia conexión: una
+            // SqliteConnection no se comparte entre hilos.
             var documentos = await Task.Run(
                 () =>
-                    new Buscador(_conexion).Buscar(numero, alcance, carpetaEspecifica, _cts.Token),
-                _cts.Token
+                {
+                    using var conexion = new SqliteConnection(cadena);
+                    conexion.Open();
+                    return new Buscador(conexion).Buscar(numero, alcance, carpetaEspecifica, token);
+                },
+                token
             );
 
             var agrupados = await Task.Run(() => Agrupador.Agrupar(documentos, numero), _cts.Token);

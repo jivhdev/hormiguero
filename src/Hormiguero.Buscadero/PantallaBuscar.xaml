@@ -85,11 +85,7 @@
             Width="200"
             SelectionChanged="ComboAlcance_SelectionChanged"
           >
-            <ComboBoxItem
-              Content="Primera coincidencia"
-              Tag="PrimeraCoincidencia"
-              IsSelected="True"
-            />
+            <ComboBoxItem Content="Primera coincidencia" Tag="PrimeraCoincidencia" />
             <ComboBoxItem Content="Todas las carpetas" Tag="TodasLasCarpetas" />
             <ComboBoxItem Content="Carpeta específica" Tag="CarpetaEspecifica" />
           </ComboBox>
