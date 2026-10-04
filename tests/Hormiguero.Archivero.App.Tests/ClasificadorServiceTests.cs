@@ -74,6 +74,26 @@ public class ClasificadorServiceTests : IDisposable
         Assert.False(File.Exists(origen));
         Assert.True(File.Exists(destino));
         Assert.Equal("contenido nuevo", File.ReadAllText(destino));
+        Assert.Empty(Directory.GetFiles(_carpetaDestino, "*.reemplazo"));
+    }
+
+    // Fase B-5: antes se borraba lo anterior antes de copiar lo nuevo; si la copia
+    // fallaba, el documento que ya estaba guardado se perdía.
+    [Fact]
+    public void ReemplazarYClasificar_SiLoNuevoNoSePuedeCopiar_ConservaLoAnterior()
+    {
+        var origen = CrearArchivo(_carpetaOrigen, "factura.pdf", "contenido nuevo");
+        var destino = CrearArchivo(_carpetaDestino, "factura.pdf", "contenido viejo");
+
+        using (new FileStream(origen, FileMode.Open, FileAccess.Write, FileShare.Read))
+        {
+            Assert.Throws<IOException>(() =>
+                ClasificadorService.ReemplazarYClasificar(origen, destino)
+            );
+        }
+
+        Assert.Equal("contenido viejo", File.ReadAllText(destino));
+        Assert.True(File.Exists(origen));
     }
 
     [Fact]
