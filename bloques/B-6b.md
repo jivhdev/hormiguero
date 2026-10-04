@@ -2,7 +2,7 @@
 bloque: B-6b
 app: Núcleo
 fase: B-6
-estado: pendiente
+estado: hecho
 agente: Codex
 modelo: codex
 archivos_permitidos: [src/Hormiguero.Nucleo/Datos/**, tests/Hormiguero.Nucleo.Tests/**]
@@ -28,3 +28,9 @@ Implementa **exactamente** las secciones 2 ("Correspondencia en la base común")
 `dotnet build` sin advertencias; `dotnet test` todo pasa; `dotnet csharpier check .` sin errores. Reporte al final con las tablas creadas y cualquier punto del diseño que no se pudo seguir exacto (y por qué).
 
 ## Reporte del agente
+- Implementado: migración v5, baja lógica auditada de documentos y repositorios en Datos para modelos/cadenas y vagones, versiones, campos/valores, reglas, enlaces y marcas por versión.
+- Tablas nuevas: `modelos_cadena`, `vagones_modelo`, `cadenas`, `vagones_cadena`, `versiones_documento`, `campos_documento`, `valores_documento`, `reglas_vagon`, `enlaces_cadena` y `marcas_version`. Se agregaron índices para modelo/padre/orden, cadenas madre, huella, campo/valor/estado, versión/campo, enlaces y marcas. Las relaciones nuevas no usan cascada.
+- `Documentos.Quitar` conserva filas y números, pone estado/fecha de baja y registra auditoría en la misma transacción; `Firmas` y `BuscarPorNumero` excluyen bajas. Guardar una ruta dada de baja la reactiva para conservar el comportamiento de reindexación.
+- Verificación: `dotnet build` correcto, 0 advertencias; `dotnet test` correcto (588 pruebas); `dotnet csharpier check .` correcto (225 archivos).
+- Diferencia de detalle: D-71 describe las marcas como un rectángulo, sin fijar nombres/unidades de coordenadas; `marcas_version` lo representa con `x`, `y`, `ancho` y `alto` numéricos. No se migraron bases privadas de Archivero/Buscadero, según D-68.
+- Revisión de Claude: esquema v5 coherente con el diseño (FK compuestas que impiden mezclar vagones de otro modelo/cadena, sin cascada, índices); baja lógica auditada en la misma transacción y todas las consultas de `documentos` excluyen bajas. Pendiente para B-6f: validar en el repositorio que el vagón de comparación de una regla pertenezca al mismo modelo.

@@ -141,7 +141,7 @@ public class DocumentosTests
     }
 
     [Fact]
-    public void Quitar_borra_sus_numeros()
+    public void Quitar_da_de_baja_y_conserva_sus_numeros()
     {
         string ruta = RutaTemporal();
         try
@@ -170,13 +170,20 @@ public class DocumentosTests
 
             using (var comando = conexion.CreateCommand())
             {
-                comando.CommandText = "SELECT COUNT(*) FROM documentos;";
+                comando.CommandText = "SELECT COUNT(*) FROM documentos WHERE estado_baja='activo';";
                 Assert.Equal(0L, Convert.ToInt64(comando.ExecuteScalar()));
             }
             using (var comando = conexion.CreateCommand())
             {
                 comando.CommandText = "SELECT COUNT(*) FROM numeros_documento;";
-                Assert.Equal(0L, Convert.ToInt64(comando.ExecuteScalar()));
+                Assert.Equal(1L, Convert.ToInt64(comando.ExecuteScalar()));
+            }
+            Assert.Empty(documentos.BuscarPorNumero("999"));
+            using (var comando = conexion.CreateCommand())
+            {
+                comando.CommandText =
+                    "SELECT COUNT(*) FROM auditoria WHERE accion='baja_documento';";
+                Assert.Equal(1L, Convert.ToInt64(comando.ExecuteScalar()));
             }
         }
         finally

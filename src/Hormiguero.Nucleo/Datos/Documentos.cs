@@ -69,7 +69,7 @@ public class Documentos
                 comando.Transaction = transaccion;
                 comando.CommandText =
                     "UPDATE documentos SET carpeta_raiz=$carpeta_raiz, nombre=$nombre, tamano=$tamano, modificado=$modificado, "
-                    + "huella=$huella, estado=$estado, tiene_texto=$tiene_texto, indexado_en=$indexado_en WHERE ruta=$ruta;";
+                    + "huella=$huella, estado=$estado, tiene_texto=$tiene_texto, indexado_en=$indexado_en, estado_baja='activo', fecha_baja=NULL WHERE ruta=$ruta;";
                 comando.Parameters.AddWithValue("$ruta", doc.Ruta);
                 comando.Parameters.AddWithValue("$carpeta_raiz", doc.CarpetaRaiz);
                 comando.Parameters.AddWithValue("$nombre", doc.Nombre);
@@ -132,10 +132,23 @@ public class Documentos
     public void Quitar(string ruta)
     {
         using var transaccion = _conexion.BeginTransaction();
+        string fechaBaja = DateTime.Now.ToString("o");
         using (var comando = _conexion.CreateCommand())
         {
             comando.Transaction = transaccion;
-            comando.CommandText = "DELETE FROM documentos WHERE ruta=$ruta;";
+            comando.CommandText =
+                "UPDATE documentos SET estado_baja='anulado', fecha_baja=$fecha WHERE ruta=$ruta AND estado_baja='activo';";
+            comando.Parameters.AddWithValue("$fecha", fechaBaja);
+            comando.Parameters.AddWithValue("$ruta", ruta);
+            comando.ExecuteNonQuery();
+        }
+        using (var comando = _conexion.CreateCommand())
+        {
+            comando.Transaction = transaccion;
+            comando.CommandText =
+                "INSERT INTO auditoria(fecha, app, accion, origen, destino, huella, resultado) "
+                + "SELECT $fecha, 'Nucleo', 'baja_documento', ruta, NULL, huella, 'ok' FROM documentos WHERE ruta=$ruta AND fecha_baja=$fecha;";
+            comando.Parameters.AddWithValue("$fecha", fechaBaja);
             comando.Parameters.AddWithValue("$ruta", ruta);
             comando.ExecuteNonQuery();
         }
@@ -152,7 +165,7 @@ public class Documentos
         using (var comando = _conexion.CreateCommand())
         {
             comando.CommandText =
-                "SELECT ruta, tamano, modificado FROM documentos WHERE carpeta_raiz=$carpeta_raiz;";
+                "SELECT ruta, tamano, modificado FROM documentos WHERE carpeta_raiz=$carpeta_raiz AND estado_baja='activo';";
             comando.Parameters.AddWithValue("$carpeta_raiz", carpetaRaiz);
             using var lector = comando.ExecuteReader();
             while (lector.Read())
@@ -183,7 +196,7 @@ public class Documentos
                 "SELECT d.id, d.ruta, d.carpeta_raiz, d.nombre, d.tamano, d.modificado, d.huella, d.estado, d.tiene_texto "
                 + "FROM documentos d "
                 + "INNER JOIN numeros_documento n ON n.documento_id = d.id "
-                + "WHERE n.numero = $numero";
+                + "WHERE n.numero = $numero AND d.estado_baja='activo'";
             if (carpetaRaiz != null)
             {
                 sql += " AND d.carpeta_raiz = $carpeta_raiz";
