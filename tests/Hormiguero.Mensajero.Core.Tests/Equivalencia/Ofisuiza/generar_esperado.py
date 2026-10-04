@@ -56,10 +56,45 @@ casos = [
      ["INFORMACIÓN PARA EL DESPACHO"]),
 ]
 
+# Casos de borde (2026-10-04): con OCC reales la traducción capturaba letras vecinas que
+# tocan apenas el borde de las zonas de NVV y OCL (zonas pegadas y algo traslapadas).
+# Etiquetas que cruzan el borde izquierdo y renglones vecinos a pocos puntos, para que la
+# respuesta correcta del Ofisuiza original fije cómo se cuenta cada letra en el borde.
+def occ_borde(nombre, cruce, separacion, tam):
+    doc = fitz.open()
+    pag = doc.new_page(width=595.28, height=841.89)
+    pag.insert_text((40, 60), "OCC SINTETICA DE BORDE", fontsize=12, fontname="helv")
+    for zona, etiqueta, valor in [(config.COORD_OCC, "N° Orden:", "0000020999"),
+                                  (config.COORD_NVV, "Nota de Venta:", "NVV-12345"),
+                                  (config.COORD_OCL, "O.C. Cliente:", "4500077777")]:
+        x0, y0, x1, y1 = zona
+        base = y1 - 3
+        ancho = fitz.get_text_length(etiqueta, fontname="helv", fontsize=tam)
+        pag.insert_text((x0 + cruce - ancho, base), etiqueta, fontsize=tam, fontname="helv")
+        pag.insert_text((x0 + 2, base), valor, fontsize=tam, fontname="helv")
+    # renglón extra justo debajo del OCL y justo encima del NVV
+    pag.insert_text((config.COORD_OCL[0] + 2, config.COORD_OCL[3] - 3 + separacion), "Obra 9", fontsize=tam, fontname="helv")
+    pag.insert_text((config.COORD_NVV[0] + 2, config.COORD_NVV[3] - 3 - separacion), "Fecha 01-10-2026", fontsize=tam, fontname="helv")
+    escribir(pag, config.COORD_PROVEEDOR, "Señores/as: HOFFENS S.A.")
+    y = config.COORD_DESPACHO[1] + 14
+    for linea in ["INFORMACIÓN PARA EL DESPACHO", "Obra: Borde", "Comuna: Renca"]:
+        pag.insert_text((36, y), linea, fontsize=9, fontname="helv")
+        y += 13
+    ruta = os.path.join(salida, nombre)
+    doc.save(ruta)
+    doc.close()
+
+bordes = []
+for i, (cruce, separacion, tam) in enumerate([(0.0, 12, 9), (1.0, 12, 9), (2.5, 11, 9), (4.0, 10, 9),
+                                               (-1.0, 12, 10), (1.5, 9, 8), (3.0, 12, 10), (0.5, 8, 9)]):
+    nombre = f"BORDE{i + 1}.pdf"
+    occ_borde(nombre, cruce, separacion, tam)
+    bordes.append(nombre)
+
 resultado = {"extraccion": [], "mensajes_retiro": [], "guias": [], "numeros_en_nombre": [], "buscar_clientes": []}
 
-for nombre, occ, nvv, ocl, prov, despacho in casos:
-    ruta = occ_sintetica(nombre, occ, nvv, ocl, prov, despacho)
+for nombre, occ, nvv, ocl, prov, despacho in casos + [(b, None, None, None, None, None) for b in bordes]:
+    ruta = occ_sintetica(nombre, occ, nvv, ocl, prov, despacho) if occ is not None else os.path.join(salida, nombre)
     o, n, c = extractor.extraer_occ_nvv_ocl(ruta)
     dp = extractor.extraer_despacho(ruta)
     p = extractor.extraer_proveedor(ruta)

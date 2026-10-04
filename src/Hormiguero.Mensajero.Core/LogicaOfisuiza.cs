@@ -171,45 +171,84 @@ public static class ExtractorOcc
         }
     }
 
-    private static string ExtraerTexto(Page pagina, RectanguloOcc rectangulo)
-    {
-        double limiteInferior = pagina.Height - rectangulo.Y1;
-        double limiteSuperior = pagina.Height - rectangulo.Y0;
-        var letras = pagina
-            .Letters.Where(letra =>
-                letra.BoundingBox.Left >= rectangulo.X0
-                && letra.BoundingBox.Right <= rectangulo.X1
-                && letra.BoundingBox.Bottom >= limiteInferior
-                && letra.BoundingBox.Top <= limiteSuperior
-            )
-            .OrderByDescending(letra => letra.BoundingBox.Bottom)
-            .ThenBy(letra => letra.BoundingBox.Left)
-            .ToList();
-        if (letras.Count == 0)
-            return "";
+    // Reproduce page.get_text("text", clip=rect).strip() de PyMuPDF (lo que usa Ofisuiza).
+    // MuPDF deja una letra si su TINTA toca la zona (aunque sea apenas), recorre las letras en
+    // el orden del PDF y arma los renglones según la distancia entre cada letra y la anterior
+    // que quedó: poca distancia (o un retroceso corto) = misma palabra, algo más hacia adelante =
+    // espacio, mucha = renglón nuevo.
+    private const double DistanciaEspacio = 0.15;
+    private const double DistanciaMaxima = 0.8;
 
-        var lineas = new List<List<Letter>> { new() { letras[0] } };
-        foreach (Letter letra in letras.Skip(1))
+    private static string ExtraerTexto(Page pagina, RectanguloOcc zona)
+    {
+        double alto = pagina.Height;
+        var texto = new StringBuilder();
+        (double X, double Y)? pluma = null;
+        (double X, double Y) direccion = (1, 0);
+        foreach (Letter letra in pagina.Letters)
         {
-            Letter anterior = lineas[^1][^1];
-            if (Math.Abs(letra.StartBaseLine.Y - anterior.StartBaseLine.Y) <= 2.0)
+            if (!TintaTocaLaZona(letra, zona, alto))
+                continue;
+
+            (double X, double Y) origen = (letra.StartBaseLine.X, alto - letra.StartBaseLine.Y);
+            (double X, double Y) fin = (letra.EndBaseLine.X, alto - letra.EndBaseLine.Y);
+            double tamano = letra.PointSize > 0 ? letra.PointSize : 1;
+            if (pluma is { } anterior)
             {
-                lineas[^1].Add(letra);
+                double dx = origen.X - anterior.X;
+                double dy = origen.Y - anterior.Y;
+                double avance = (direccion.X * dx + direccion.Y * dy) / tamano;
+                double desvio = (-direccion.Y * dx + direccion.X * dy) / tamano;
+                if (Math.Abs(desvio) >= DistanciaMaxima || Math.Abs(avance) >= DistanciaMaxima)
+                    texto.Append('\n');
+                else if (avance >= DistanciaEspacio && texto.Length > 0 && texto[^1] != ' ')
+                    texto.Append(' ');
             }
-            else
-            {
-                lineas.Add([letra]);
-            }
+
+            texto.Append(letra.Value);
+            pluma = fin;
+            double largo = Math.Sqrt(
+                (fin.X - origen.X) * (fin.X - origen.X) + (fin.Y - origen.Y) * (fin.Y - origen.Y)
+            );
+            if (largo > 0)
+                direccion = ((fin.X - origen.X) / largo, (fin.Y - origen.Y) / largo);
         }
 
-        return string.Join(
-            "\n",
-            lineas.Select(linea =>
-                string.Concat(
-                    linea.OrderBy(letra => letra.BoundingBox.Left).Select(letra => letra.Value)
-                )
-            )
-        );
+        return texto.ToString().Trim();
+    }
+
+    // Caja de tinta de la letra en coordenadas de PyMuPDF (origen arriba). Una letra sin tinta
+    // (espacio) cuenta como el punto donde empieza, igual que en MuPDF. Si la fuente es una de
+    // las estándar sin incrustar, la caja sale de la tabla de MuPDF y no de la de PdfPig.
+    private static bool TintaTocaLaZona(Letter letra, RectanguloOcc zona, double alto)
+    {
+        var caja = letra.BoundingBox;
+        double x0,
+            x1,
+            y0,
+            y1;
+        if (TintaBase14.Buscar(letra.FontName ?? "", letra.Value, out var tinta))
+        {
+            double escala = letra.PointSize / 1000;
+            x0 = letra.StartBaseLine.X + tinta.X0 * escala;
+            x1 = letra.StartBaseLine.X + tinta.X1 * escala;
+            y0 = alto - (letra.StartBaseLine.Y + tinta.Y1 * escala);
+            y1 = alto - (letra.StartBaseLine.Y + tinta.Y0 * escala);
+        }
+        else if (!string.IsNullOrWhiteSpace(letra.Value) && (caja.Width > 0 || caja.Height > 0))
+        {
+            x0 = caja.Left;
+            x1 = caja.Right;
+            y0 = alto - caja.Top;
+            y1 = alto - caja.Bottom;
+        }
+        else
+        {
+            x0 = x1 = letra.StartBaseLine.X;
+            y0 = y1 = alto - letra.StartBaseLine.Y;
+        }
+
+        return !(x1 < zona.X0 || y1 < zona.Y0 || x0 > zona.X1 || y0 > zona.Y1);
     }
 }
 
