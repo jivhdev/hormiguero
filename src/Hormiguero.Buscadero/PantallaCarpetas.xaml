@@ -1,0 +1,108 @@
+<UserControl
+  x:Class="Hormiguero.Buscadero.PantallaCarpetas"
+  xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+  xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+  Background="{DynamicResource Hormiguero.Fondo}"
+>
+  <Border
+    Background="{DynamicResource Hormiguero.Superficie}"
+    BorderBrush="{DynamicResource Hormiguero.Borde}"
+    BorderThickness="1"
+    CornerRadius="{DynamicResource Hormiguero.Radio}"
+    Padding="{DynamicResource Hormiguero.Margen}"
+    MaxWidth="720"
+    HorizontalAlignment="Center"
+    VerticalAlignment="Center"
+  >
+    <StackPanel>
+      <TextBlock
+        Text="¿Dónde están tus documentos?"
+        FontSize="{DynamicResource Hormiguero.TextoTitulo}"
+        Foreground="{DynamicResource Hormiguero.Texto}"
+        Margin="0,0,0,8"
+        TextAlignment="Center"
+      />
+      <TextBlock
+        Text="Elige las carpetas donde guardas tus PDF. Pueden estar en este equipo, en la red de la oficina o en Google Drive. Buscadero solo lee: nunca cambia tus archivos."
+        FontSize="{DynamicResource Hormiguero.TextoNormal}"
+        Foreground="{DynamicResource Hormiguero.TextoSecundario}"
+        TextWrapping="Wrap"
+        TextAlignment="Center"
+        Margin="0,0,0,16"
+      />
+
+      <ItemsControl x:Name="ListaCarpetas">
+        <ItemsControl.ItemTemplate>
+          <DataTemplate>
+            <Border
+              BorderBrush="{DynamicResource Hormiguero.Borde}"
+              BorderThickness="0,0,0,1"
+              Margin="0,8"
+              Padding="0,0,0,8"
+            >
+              <Grid>
+                <Grid.ColumnDefinitions>
+                  <ColumnDefinition Width="*" />
+                  <ColumnDefinition Width="Auto" />
+                  <ColumnDefinition Width="Auto" />
+                </Grid.ColumnDefinitions>
+
+                <TextBlock
+                  Grid.Column="0"
+                  Text="{Binding Ruta}"
+                  FontSize="{DynamicResource Hormiguero.TextoNormal}"
+                  Foreground="{DynamicResource Hormiguero.Texto}"
+                  VerticalAlignment="Center"
+                  TextTrimming="CharacterEllipsis"
+                  Margin="0,0,8,0"
+                />
+                <TextBlock
+                  x:Name="NoDisponible"
+                  Grid.Column="1"
+                  Text="No disponible"
+                  FontSize="{DynamicResource Hormiguero.TextoNormal}"
+                  Foreground="{DynamicResource Hormiguero.Aviso}"
+                  VerticalAlignment="Center"
+                  Margin="0,0,8,0"
+                  Visibility="Collapsed"
+                />
+                <Button
+                  Grid.Column="2"
+                  Content="Quitar"
+                  FontSize="{DynamicResource Hormiguero.TextoNormal}"
+                  Padding="12,4"
+                  Tag="{Binding Ruta}"
+                  Click="Quitar_Click"
+                />
+              </Grid>
+            </Border>
+            <DataTemplate.Triggers>
+              <DataTrigger Binding="{Binding Disponible}" Value="False">
+                <Setter TargetName="NoDisponible" Property="Visibility" Value="Visible" />
+              </DataTrigger>
+            </DataTemplate.Triggers>
+          </DataTemplate>
+        </ItemsControl.ItemTemplate>
+      </ItemsControl>
+
+      <StackPanel Orientation="Horizontal" HorizontalAlignment="Center" Margin="0,16,0,0">
+        <Button
+          x:Name="BtnAgregar"
+          Content="Agregar carpeta"
+          FontSize="{DynamicResource Hormiguero.TextoNormal}"
+          Padding="16,8"
+          Margin="0,0,8,0"
+          Click="Agregar_Click"
+        />
+        <Button
+          x:Name="BtnListo"
+          Content="Listo, empezar"
+          FontSize="{DynamicResource Hormiguero.TextoNormal}"
+          Padding="16,8"
+          Click="Listo_Click"
+          IsEnabled="False"
+        />
+      </StackPanel>
+    </StackPanel>
+  </Border>
+</UserControl>
