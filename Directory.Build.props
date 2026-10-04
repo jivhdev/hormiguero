@@ -7,5 +7,10 @@
     <Deterministic>true</Deterministic>
     <Authors>Javier</Authors>
     <Product>Hormiguero</Product>
+    <!-- Hormiguero corre solo en Windows x64: sin esto cada carpeta bin copia las
+         librerías nativas de PDF de todos los sistemas (~580 MB) y llena el disco. -->
+    <RuntimeIdentifier>win-x64</RuntimeIdentifier>
+    <SelfContained>false</SelfContained>
+    <AppendRuntimeIdentifierToOutputPath>false</AppendRuntimeIdentifierToOutputPath>
   </PropertyGroup>
 </Project>
