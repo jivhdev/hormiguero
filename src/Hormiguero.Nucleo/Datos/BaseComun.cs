@@ -37,6 +37,12 @@ public static class BaseComun
                 comando.ExecuteNonQuery();
             }
 
+            using (var comando = conexion.CreateCommand())
+            {
+                comando.CommandText = "PRAGMA foreign_keys=ON;";
+                comando.ExecuteNonQuery();
+            }
+
             Migraciones.Aplicar(conexion, Migraciones.Todas);
         }
         catch
