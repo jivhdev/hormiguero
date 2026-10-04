@@ -394,6 +394,19 @@ public static class CarpetaOcc
             .OrderByDescending(ruta => File.GetLastWriteTimeUtc(ruta))
             .FirstOrDefault();
 
+    // Nuevo en Mensajero (pedido de Javier): el PDF que entró último a la carpeta. Un archivo
+    // copiado conserva su fecha de modificación antigua y solo estrena la de creación, por eso
+    // se toma la más reciente de las dos.
+    public static string? UltimoAgregado(string carpeta) =>
+        ObtenerPdfs(carpeta)
+            .OrderByDescending(ruta =>
+            {
+                DateTime creado = File.GetCreationTimeUtc(ruta);
+                DateTime modificado = File.GetLastWriteTimeUtc(ruta);
+                return creado > modificado ? creado : modificado;
+            })
+            .FirstOrDefault();
+
     public static IReadOnlyList<string> BuscarPorNumero(string carpeta, string numero)
     {
         string numeroLimpio = Regex.IsMatch(numero, @"^\d+$") ? numero.TrimStart('0') : numero;

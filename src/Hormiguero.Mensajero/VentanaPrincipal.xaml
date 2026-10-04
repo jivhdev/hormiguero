@@ -5,8 +5,7 @@
   xmlns:core="clr-namespace:Hormiguero.Mensajero.Core;assembly=Hormiguero.Mensajero.Core"
   Title="Mensajero"
   Width="1050"
-  Height="850"
-  ResizeMode="NoResize"
+  Height="780"
   WindowStartupLocation="CenterScreen"
   PreviewKeyDown="Ventana_PreviewKeyDown"
 >
@@ -63,6 +62,13 @@
                   x:Name="BotonUltimoCuerpo"
                   Content="📋 Cuerpo (Ctrl+2)"
                   Click="UltimoCuerpo_Click"
+                  Margin="0,0,6,5"
+                />
+                <Button
+                  x:Name="BotonCopiarPdf"
+                  Content="📄 Copiar PDF (Ctrl+5)"
+                  ToolTip="Copia la última OCC agregada a la carpeta, para pegarla como adjunto"
+                  Click="CopiarPdf_Click"
                   Margin="0,0,6,5"
                 />
                 <Button
@@ -293,13 +299,19 @@
         </StackPanel>
       </Grid>
     </ScrollViewer>
-    <Border Grid.Row="2" Background="{DynamicResource Hormiguero.Principal}" Padding="8,3">
+    <Border
+      Grid.Row="2"
+      Background="{DynamicResource Hormiguero.Superficie}"
+      BorderBrush="{DynamicResource Hormiguero.Borde}"
+      BorderThickness="0,1,0,0"
+      Padding="8,3"
+    >
       <TextBlock
         x:Name="TextoToast"
         Text="● Listo"
         HorizontalAlignment="Center"
         FontWeight="Bold"
-        Foreground="{DynamicResource Hormiguero.PrincipalTexto}"
+        Foreground="{DynamicResource Hormiguero.Texto}"
       />
     </Border>
   </Grid>

@@ -21,7 +21,7 @@ tipo: estado
 - **Para probar**: accesos directos del escritorio → `E:\Probar\Archivero` y `E:\Probar\Buscadero`.
 - **Variables de prueba** (datos sintéticos): `HORMIGUERO_DATOS`, `HORMIGUERO_TEMA`, `ARCHIVERO_DATOS`.
 - **Pendientes conocidos**: ventanas secundarias sin revisar a fondo en modo oscuro; Archivero no abre maximizado (igual que la 0.1 B, revisar contra el caso 7); `Caso-Sin-Cadenas.md` de la copia vieja de Buscadero por revisar; páginas rotadas: el texto se lee sin girar (revisar con documentos reales).
-- **Siguiente paso**: fase A de Mensajero. Los programas de salida (ClickFactura, ExtractorCobelcar, Motores, Ofisuiza) están en Python: traducción fiel a .NET; traslado de los datos de ClickFactura (base en el PC del trabajo) y Ofisuiza (`clientes.txt`, mensajes de retiro).
+- **Siguiente paso**: Mensajero fase A. **Ofisuiza listo** (M-A1, M-A1b, M-A2: extracción idéntica, 36/36 en OCC reales; pantalla probada en vivo; nuevo "Copiar PDF"). Falta: que Javier lo pruebe; importar su `clientes.txt` (consultarle las 2 líneas de `dist`); luego ClickFactura (base en el PC del trabajo), ExtractorCobelcar/Facturas JCV y Motores. Pendiente menor: la barra de título no se oscurece en Windows 10 (las 3 apps).
 
 ## Traspasos anteriores
 

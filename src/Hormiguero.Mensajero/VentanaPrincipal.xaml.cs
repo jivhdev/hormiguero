@@ -39,7 +39,11 @@ public partial class VentanaPrincipal : Window
         {
             temporizadorToast.Stop();
             TextoToast.Text = "● Listo";
+            TextoToast.SetResourceReference(TextBlock.ForegroundProperty, "Hormiguero.Texto");
         };
+        // Ofisuiza abre en 1050 x 780; en pantallas más bajas (1366 x 768) se ajusta al área útil.
+        Height = Math.Min(Height, SystemParameters.WorkArea.Height);
+        Width = Math.Min(Width, SystemParameters.WorkArea.Width);
         vigilante.NuevoPdf += ruta =>
             Dispatcher.BeginInvoke(() =>
             {
@@ -86,7 +90,11 @@ public partial class VentanaPrincipal : Window
         carpetaOcc = dialogo.FolderName;
         almacen.GuardarCarpetaOcc(carpetaOcc);
         TextoCarpeta.Text = NombreCarpeta(carpetaOcc);
-        BotonUltimoAsunto.IsEnabled = BotonUltimoCuerpo.IsEnabled = BotonActivar.IsEnabled = true;
+        BotonUltimoAsunto.IsEnabled =
+            BotonUltimoCuerpo.IsEnabled =
+            BotonCopiarPdf.IsEnabled =
+            BotonActivar.IsEnabled =
+                true;
         MostrarToast("✅ Carpeta guardada", "success");
         rutaUltimoPdf = CarpetaOcc.UltimoPdf(carpetaOcc);
         if (rutaUltimoPdf is not null)
@@ -104,6 +112,42 @@ public partial class VentanaPrincipal : Window
 
     private void CuerpoEncontrado_Click(object sender, RoutedEventArgs e) =>
         CopiarCuerpo(rutaEncontradaExtractor);
+
+    private void CopiarPdf_Click(object sender, RoutedEventArgs e) => CopiarUltimoPdf();
+
+    // Copia el archivo (no el texto): se pega como adjunto en el correo o en el Explorador.
+    private void CopiarUltimoPdf()
+    {
+        if (string.IsNullOrWhiteSpace(carpetaOcc))
+        {
+            MostrarToast("❌ Sin carpeta configurada", "error");
+            return;
+        }
+        string? ruta = CarpetaOcc.UltimoAgregado(carpetaOcc);
+        if (ruta is null)
+        {
+            MostrarToast("❌ No hay PDFs en la carpeta", "error");
+            return;
+        }
+        for (int intento = 0; intento < 3; intento++)
+        {
+            try
+            {
+                Clipboard.SetFileDropList([ruta]);
+                MostrarToast($"✅ PDF copiado: {Path.GetFileName(ruta)}", "success");
+                return;
+            }
+            catch (ExternalException) when (intento < 2)
+            {
+                Thread.Sleep(50);
+            }
+            catch (Exception excepcion)
+            {
+                MostrarToast($"❌ Error al copiar: {excepcion.Message}", "error");
+                return;
+            }
+        }
+    }
 
     private void CopiarUltimoAsunto()
     {
@@ -466,8 +510,12 @@ public partial class VentanaPrincipal : Window
             MostrarToast("⚠️ Múltiples archivos", "warning");
     }
 
-    private void DiaGuia_Checked(object sender, RoutedEventArgs e) =>
-        CampoDiaGuia.IsEnabled = DiaOtro.IsChecked == true;
+    // "Hoy" viene marcado en el XAML: este evento llega antes de que existan los demás controles.
+    private void DiaGuia_Checked(object sender, RoutedEventArgs e)
+    {
+        if (CampoDiaGuia is not null)
+            CampoDiaGuia.IsEnabled = DiaOtro.IsChecked == true;
+    }
 
     private void GenerarGuia_Click(object sender, RoutedEventArgs e)
     {
@@ -518,6 +566,11 @@ public partial class VentanaPrincipal : Window
                 case Key.D4:
                 case Key.NumPad4:
                     CopiarGuia_Click(this, new RoutedEventArgs());
+                    e.Handled = true;
+                    break;
+                case Key.D5:
+                case Key.NumPad5:
+                    CopiarUltimoPdf();
                     e.Handled = true;
                     break;
             }
@@ -602,7 +655,7 @@ public partial class VentanaPrincipal : Window
             "error" => "Hormiguero.Error",
             "warning" => "Hormiguero.Aviso",
             "success" => "Hormiguero.Exito",
-            _ => "Hormiguero.PrincipalTexto",
+            _ => "Hormiguero.Texto",
         };
         TextoToast.SetResourceReference(TextBlock.ForegroundProperty, clave);
         temporizadorToast.Stop();
