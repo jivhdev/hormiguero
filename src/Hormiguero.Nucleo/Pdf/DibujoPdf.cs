@@ -11,6 +11,15 @@ public static class DibujoPdf
 {
     private static readonly object candado = new();
 
+    public static int Paginas(byte[] pdf)
+    {
+        ArgumentNullException.ThrowIfNull(pdf);
+        lock (candado)
+        {
+            return Conversion.GetPageCount(pdf);
+        }
+    }
+
     public static ImagenPagina Dibujar(byte[] pdf, int pagina, double zoom)
     {
         ArgumentNullException.ThrowIfNull(pdf);

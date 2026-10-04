@@ -1,0 +1,106 @@
+<UserControl
+  x:Class="Hormiguero.Buscadero.VisorPdf"
+  xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+  xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+  Background="{DynamicResource Hormiguero.Fondo}"
+>
+  <Border
+    Background="{DynamicResource Hormiguero.Superficie}"
+    BorderBrush="{DynamicResource Hormiguero.Borde}"
+    BorderThickness="1"
+    CornerRadius="{DynamicResource Hormiguero.Radio}"
+    Padding="{DynamicResource Hormiguero.Margen}"
+    HorizontalAlignment="Center"
+    VerticalAlignment="Center"
+  >
+    <StackPanel>
+      <!-- Barra de herramientas -->
+      <StackPanel Orientation="Horizontal" HorizontalAlignment="Center" Margin="0,0,0,12">
+        <Button
+          x:Name="BtnZoomMenos"
+          Content="−"
+          FontSize="{DynamicResource Hormiguero.TextoNormal}"
+          Padding="12,4"
+          Margin="0,0,4,0"
+          Click="ZoomMenos_Click"
+          IsEnabled="False"
+          ToolTip="Disminuir zoom (Ctrl+rueda)"
+        />
+        <TextBlock
+          x:Name="TxtZoom"
+          Text="100 %"
+          FontSize="{DynamicResource Hormiguero.TextoNormal}"
+          VerticalAlignment="Center"
+          Margin="0,0,4,0"
+          MinWidth="60"
+          TextAlignment="Center"
+          Foreground="{DynamicResource Hormiguero.Texto}"
+        />
+        <Button
+          x:Name="BtnZoomMas"
+          Content="+"
+          FontSize="{DynamicResource Hormiguero.TextoNormal}"
+          Padding="12,4"
+          Margin="0,0,12,0"
+          Click="ZoomMas_Click"
+          IsEnabled="False"
+          ToolTip="Aumentar zoom (Ctrl+rueda)"
+        />
+        <Button
+          x:Name="BtnGirar"
+          Content="Girar"
+          FontSize="{DynamicResource Hormiguero.TextoNormal}"
+          Padding="12,4"
+          Margin="0,0,4,0"
+          Click="Girar_Click"
+          IsEnabled="False"
+          ToolTip="Rotar 90° a la derecha"
+        />
+        <Button
+          x:Name="BtnImprimir1"
+          Content="Imprimir 1ª página"
+          FontSize="{DynamicResource Hormiguero.TextoNormal}"
+          Padding="12,4"
+          Margin="0,0,4,0"
+          Click="Imprimir1_Click"
+          IsEnabled="False"
+        />
+        <Button
+          x:Name="BtnImprimir2"
+          Content="Imprimir 2 primeras"
+          FontSize="{DynamicResource Hormiguero.TextoNormal}"
+          Padding="12,4"
+          Margin="0,0,4,0"
+          Click="Imprimir2_Click"
+          IsEnabled="False"
+        />
+        <Button
+          x:Name="BtnVerEnCarpeta"
+          Content="Ver en carpeta"
+          FontSize="{DynamicResource Hormiguero.TextoNormal}"
+          Padding="12,4"
+          Margin="0,0,12,0"
+          Click="VerEnCarpeta_Click"
+          IsEnabled="False"
+        />
+        <TextBlock
+          x:Name="Aviso"
+          Text=""
+          FontSize="{DynamicResource Hormiguero.TextoNormal}"
+          VerticalAlignment="Center"
+          Foreground="{DynamicResource Hormiguero.Aviso}"
+          Margin="12,0,0,0"
+        />
+      </StackPanel>
+
+      <!-- Área de páginas -->
+      <ScrollViewer
+        x:Name="ScrollVisor"
+        HorizontalScrollBarVisibility="Auto"
+        VerticalScrollBarVisibility="Auto"
+      >
+        <StackPanel x:Name="Paginas" Orientation="Vertical" HorizontalAlignment="Center" />
+      </ScrollViewer>
+    </StackPanel>
+  </Border>
+</UserControl>
