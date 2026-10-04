@@ -20,7 +20,7 @@
     <ProjectReference Include="..\..\src\Hormiguero.Mensajero.Core\Hormiguero.Mensajero.Core.csproj" />
   </ItemGroup>
 
-  <!-- Respuestas de la versión antigua (generar_esperado.py corre el Ofisuiza original). -->
+  <!-- Respuestas de las versiones antiguas generadas por sus programas originales. -->
   <ItemGroup>
     <None Include="Equivalencia\**\*" CopyToOutputDirectory="PreserveNewest" />
   </ItemGroup>

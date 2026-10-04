@@ -1,0 +1,238 @@
+{
+  "documentos_excel": [
+    {
+      "td": "FCV",
+      "numero": "0000000123",
+      "entidad": "76.000.000-1"
+    },
+    {
+      "td": "NCV",
+      "numero": "9876543210",
+      "entidad": "76000000-1"
+    },
+    {
+      "td": "FCV",
+      "numero": "000000AB12",
+      "entidad": "77.000.000-K"
+    },
+    {
+      "td": "FCV",
+      "numero": "0000000007",
+      "entidad": "77.000.000-K"
+    },
+    {
+      "td": "NCV",
+      "numero": "00000012.5",
+      "entidad": "78.000.000-0"
+    },
+    {
+      "td": "NCV",
+      "numero": "0000000042",
+      "entidad": "78.000.000-0"
+    }
+  ],
+  "ruts": [
+    {
+      "entrada": "76.123.456-7",
+      "limpio": "76123456-7"
+    },
+    {
+      "entrada": "76 123 456-k",
+      "limpio": "76123456-K"
+    },
+    {
+      "entrada": "76123456k",
+      "limpio": "76123456-K"
+    },
+    {
+      "entrada": "76000000-1",
+      "limpio": "76000000-1"
+    },
+    {
+      "entrada": "77000000-K",
+      "limpio": "77000000-K"
+    },
+    {
+      "entrada": "",
+      "limpio": ""
+    },
+    {
+      "entrada": "RUT inválido",
+      "error": "IndexError"
+    }
+  ],
+  "validaciones_rut": [
+    {
+      "rut": "76123456-7",
+      "valido": false
+    },
+    {
+      "rut": "77000000-K",
+      "valido": true
+    },
+    {
+      "rut": "76000000-1",
+      "valido": false
+    },
+    {
+      "rut": "123-4",
+      "valido": false
+    },
+    {
+      "rut": "760000001",
+      "valido": false
+    }
+  ],
+  "correos": [
+    {
+      "razon_social": "EMPRESA DE PRUEBA",
+      "descripcion": "1° semana de marzo 2026",
+      "documentos": [
+        {
+          "td": "FCV",
+          "numero": "0",
+          "entidad": "76000000-1"
+        }
+      ],
+      "asunto": "FACTURAS 1° SEMANA DE MARZO 2026",
+      "cuerpo": "Estimados,\n\nAdjunto las facturas correspondientes a la 1° semana de marzo 2026 para EMPRESA DE PRUEBA.\n\nQuedo atento a cualquier consulta.\n\nSaludos cordiales."
+    },
+    {
+      "razon_social": "Compañía Ñandú",
+      "descripcion": "2° semana de agosto 2026",
+      "documentos": [
+        {
+          "td": "NCV",
+          "numero": "0",
+          "entidad": "76000000-1"
+        }
+      ],
+      "asunto": "NOTAS DE CRÉDITO 2° SEMANA DE AGOSTO 2026",
+      "cuerpo": "Estimados,\n\nAdjunto las notas de crédito correspondientes a la 2° semana de agosto 2026 para Compañía Ñandú.\n\nQuedo atento a cualquier consulta.\n\nSaludos cordiales."
+    },
+    {
+      "razon_social": "Áridos Uno",
+      "descripcion": "3° semana de octubre 2026",
+      "documentos": [
+        {
+          "td": "FCV",
+          "numero": "0",
+          "entidad": "76000000-1"
+        },
+        {
+          "td": "NCV",
+          "numero": "1",
+          "entidad": "76000000-1"
+        },
+        {
+          "td": "FCV",
+          "numero": "2",
+          "entidad": "76000000-1"
+        }
+      ],
+      "asunto": "FACTURAS Y NOTAS DE CRÉDITO 3° SEMANA DE OCTUBRE 2026",
+      "cuerpo": "Estimados,\n\nAdjunto las facturas y notas de crédito correspondientes a la 3° semana de octubre 2026 para Áridos Uno.\n\nQuedo atento a cualquier consulta.\n\nSaludos cordiales."
+    },
+    {
+      "razon_social": "Cliente vacío",
+      "descripcion": "",
+      "documentos": [],
+      "asunto": "FACTURAS ",
+      "cuerpo": "Estimados,\n\nAdjunto las facturas correspondientes a la  para Cliente vacío.\n\nQuedo atento a cualquier consulta.\n\nSaludos cordiales."
+    }
+  ],
+  "busquedas_pdf": {
+    "fcv": "FCV0000000123.pdf",
+    "ncv": "NCV0000000042.pdf",
+    "cedible_sola": null,
+    "ampliada": "FCV0000000123.pdf"
+  },
+  "copia_temporal": {
+    "carpeta": "76000000_1_20261004_123045",
+    "archivos": [
+      "FCV0000000123.pdf",
+      "NCV0000000042.pdf"
+    ],
+    "huellas_sha256": {
+      "FCV0000000123.pdf": "a51b8b2bf9f5105a213166b3c4b511561a8b59be616720c2f49f33718bcd6c27",
+      "NCV0000000042.pdf": "3124413e1c382ef3c96e85fb5ea527882e240283e024aefb9c26cb951524fe58"
+    }
+  },
+  "analisis": {
+    "ruts_no_registrados": [],
+    "total_documentos": 6,
+    "total_encontrados": 2,
+    "total_faltantes": 4,
+    "clientes": [
+      {
+        "rut": "76000000-1",
+        "razon_social": "EMPRESA DE PRUEBA",
+        "correo": "prueba@ejemplo.cl",
+        "documentos": [
+          {
+            "td": "FCV",
+            "numero": "0000000123",
+            "entidad": "76.000.000-1",
+            "ruta_pdf": "FCV0000000123.pdf"
+          },
+          {
+            "td": "NCV",
+            "numero": "9876543210",
+            "entidad": "76000000-1",
+            "ruta_pdf": null
+          }
+        ],
+        "mensaje": {
+          "asunto": "FACTURAS Y NOTAS DE CRÉDITO PRUEBA DE EQUIVALENCIA",
+          "cuerpo": "Estimados,\n\nAdjunto las facturas y notas de crédito correspondientes a la prueba de equivalencia para EMPRESA DE PRUEBA.\n\nQuedo atento a cualquier consulta.\n\nSaludos cordiales."
+        }
+      },
+      {
+        "rut": "77000000-K",
+        "razon_social": "Empresa Ñandú",
+        "correo": "nandu@ejemplo.cl",
+        "documentos": [
+          {
+            "td": "FCV",
+            "numero": "000000AB12",
+            "entidad": "77.000.000-K",
+            "ruta_pdf": null
+          },
+          {
+            "td": "FCV",
+            "numero": "0000000007",
+            "entidad": "77.000.000-K",
+            "ruta_pdf": null
+          }
+        ],
+        "mensaje": {
+          "asunto": "FACTURAS PRUEBA DE EQUIVALENCIA",
+          "cuerpo": "Estimados,\n\nAdjunto las facturas correspondientes a la prueba de equivalencia para Empresa Ñandú.\n\nQuedo atento a cualquier consulta.\n\nSaludos cordiales."
+        }
+      },
+      {
+        "rut": "78000000-0",
+        "razon_social": "Áridos Uno",
+        "correo": "aridos@ejemplo.cl",
+        "documentos": [
+          {
+            "td": "NCV",
+            "numero": "00000012.5",
+            "entidad": "78.000.000-0",
+            "ruta_pdf": null
+          },
+          {
+            "td": "NCV",
+            "numero": "0000000042",
+            "entidad": "78.000.000-0",
+            "ruta_pdf": "NCV0000000042.pdf"
+          }
+        ],
+        "mensaje": {
+          "asunto": "NOTAS DE CRÉDITO PRUEBA DE EQUIVALENCIA",
+          "cuerpo": "Estimados,\n\nAdjunto las notas de crédito correspondientes a la prueba de equivalencia para Áridos Uno.\n\nQuedo atento a cualquier consulta.\n\nSaludos cordiales."
+        }
+      }
+    ]
+  }
+}

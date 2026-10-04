@@ -2,7 +2,7 @@
 bloque: M-A4
 app: Mensajero
 fase: A (D-65, D-68)
-estado: pendiente
+estado: hecho
 agente: Codex
 modelo: codex
 archivos_permitidos: [Directory.Packages.props, src/Hormiguero.Mensajero.Core/Hormiguero.Mensajero.Core.csproj, tests/Hormiguero.Mensajero.Core.Tests/Hormiguero.Mensajero.Core.Tests.csproj, semillas/Mensajero/EQUIVALENCIA-CLICKFACTURA.md, src/Hormiguero.Mensajero.Core/ClickFactura/**, tests/Hormiguero.Mensajero.Core.Tests/ClickFactura/**, tests/Hormiguero.Mensajero.Core.Tests/Equivalencia/ClickFactura/**]
@@ -39,3 +39,17 @@ Original (SOLO LECTURA, no modifiques nada ahí): `C:\Users\jihja\Desktop\Entorn
 - Escribe tu reporte al final de esta nota: versión usada, qué quedó traducido, qué falta, dudas para Javier.
 
 ## Reporte del agente
+
+- Copia del original usada: `C:\Users\jihja\Desktop\Entorno Antiguo\AP03-ClickFactura\`, con `main.py` en la raíz y módulos de negocio bajo `src/`. La seleccioné porque es la única copia localizada con los servicios Python completos (`analysis.py`, `xls_reader.py`, `file_finder.py`, `email_composer.py`, `rut_utils.py`, `copier.py` y `database/clientes_repo.py`); las otras rutas revisadas tenían pruebas, archivos de compilación o copias parciales. Leí `Arreglos click factura.txt` (28-09-2026). No abrí bases ni planillas reales.
+- ClosedXML `0.105.1`, última versión estable publicada al realizar el bloque y con licencia MIT, agregada a `Directory.Packages.props` y al proyecto Core.
+- Traducido en `src/Hormiguero.Mensajero.Core/ClickFactura/`: lectura de XLSX, normalización/validación de RUT (incluido el multiplicador 7→9 del original), composición de asunto/cuerpo, rutas y búsqueda de PDF por período o ampliada, agrupación/análisis de clientes y copiado/limpieza de archivos temporales. ClickFactura no extrae texto ni datos de los PDF, por lo que no era necesario PdfPig ni `ExtractorOcc`.
+- `EQUIVALENCIA-CLICKFACTURA.md` documenta pantallas, textos, avisos, atajos, formatos, rutas, reglas y esquema de SQLite. Las operaciones de UI/Qt y portapapeles `CF_HDROP` con `pywin32` quedan pendientes de M-A5; el original no tiene automatización de Outlook. No se tradujo acceso a la base desde la app: las pruebas usan únicamente una SQLite temporal creada desde el esquema original y datos falsos.
+- `generar_esperado.py` crea `entrada.xlsx` con openpyxl y ejecuta servicios del original para escribir `esperado.json`; las pruebas comparan textos y campos carácter por carácter. Incluye RUT con K, nombres con tildes/ñ, documentos con números grandes, filas vacías, varias facturas/notas y archivos cedibles sintéticos.
+- Pendiente/dudas para Javier: el original usa una carpeta temporal fija en la pantalla, aunque `config.py` define otra; la nota de arreglos pide que la persona elija y pueda abrir su carpeta. El campo actual de correo es único: falta decidir cómo representar y separar varios destinatarios. También queda precisar el filtro/flujo de revisión de pendientes en M-A5. La tabla de sesiones e historial está en el esquema aunque el flujo de análisis consultado no la usa.
+- Verificación final: `dotnet build Hormiguero.slnx -m:1` (0 advertencias, 0 errores); `dotnet test Hormiguero.slnx --no-build -m:1` (579 pruebas aprobadas); `dotnet csharpier check .` (217 archivos, sin errores).
+
+### Revisión de Claude (2026-10-04)
+
+- La respuesta correcta sale del original: regenerada con `generar_esperado.py` da un `esperado.json` idéntico. Solo datos inventados en una carpeta temporal; no hay base real de ClickFactura en este PC.
+- Corregido: el caso "RUT inválido" tenía el error escrito a mano; ahora también lo decide el original (mismo resultado).
+- `validar_rut` del original tiene un error (tras el multiplicador 7 salta a 9 en vez de volver a 2), pero el programa nunca la llama. Se tradujo igual (fase A); si en fase B/C se usa, hay que corregirla con Javier.
