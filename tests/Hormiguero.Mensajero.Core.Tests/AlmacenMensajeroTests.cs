@@ -1,4 +1,5 @@
 using Hormiguero.Mensajero.Core;
+using Hormiguero.Mensajero.Core.ClickFactura;
 using Microsoft.Data.Sqlite;
 
 namespace Hormiguero.Mensajero.Core.Tests;
@@ -91,5 +92,131 @@ public sealed class AlmacenMensajeroTests : IDisposable
 
         Assert.Equal(0, almacen.ImportarClientesNvv(Path.Combine(raiz, "no-existe.txt")));
         Assert.Empty(almacen.LeerClientesNvv());
+    }
+
+    // Base sintética con el esquema exacto de ClickFactura (src/database/db.py del original).
+    private string BaseClickFactura(
+        params (string Rut, string Razon, string Correo, int Activo)[] clientes
+    )
+    {
+        string ruta = Path.Combine(raiz, "clickfactura.db");
+        using (var conexion = new SqliteConnection($"Data Source={ruta};Pooling=False"))
+        {
+            conexion.Open();
+            using var crear = conexion.CreateCommand();
+            crear.CommandText =
+                "CREATE TABLE clientes(rut TEXT PRIMARY KEY, razon_social TEXT NOT NULL, correo TEXT NOT NULL, "
+                + "activo INTEGER NOT NULL DEFAULT 1, created_at TEXT NOT NULL DEFAULT (datetime('now','localtime')), "
+                + "updated_at TEXT NOT NULL DEFAULT (datetime('now','localtime')));";
+            crear.ExecuteNonQuery();
+            foreach (var c in clientes)
+            {
+                using var insertar = conexion.CreateCommand();
+                insertar.CommandText =
+                    "INSERT INTO clientes VALUES ($r, $n, $c, $a, '2025-01-02 03:04:05', '2026-05-06 07:08:09');";
+                insertar.Parameters.AddWithValue("$r", c.Rut);
+                insertar.Parameters.AddWithValue("$n", c.Razon);
+                insertar.Parameters.AddWithValue("$c", c.Correo);
+                insertar.Parameters.AddWithValue("$a", c.Activo);
+                insertar.ExecuteNonQuery();
+            }
+        }
+        return ruta;
+    }
+
+    [Fact]
+    public void Importa_clientes_de_clickfactura_sin_tocar_la_base_original()
+    {
+        string original = BaseClickFactura(
+            ("77000000-K", "Ñandú SpA", "a@ejemplo.cl; b@ejemplo.cl", 1),
+            ("76000000-1", "Áridos Uno", "aridos@ejemplo.cl", 1),
+            ("78000000-0", "Inactivo Ltda", "inactivo@ejemplo.cl", 0)
+        );
+        string huella = Convert.ToHexString(
+            System.Security.Cryptography.SHA256.HashData(File.ReadAllBytes(original))
+        );
+        DateTime fecha = File.GetLastWriteTimeUtc(original);
+        using var almacen = new AlmacenMensajero(RutaBase);
+
+        Assert.Equal(3, almacen.ImportarClientesFactura(original));
+
+        Assert.Equal(
+            [
+                new ClienteFactura("76000000-1", "Áridos Uno", "aridos@ejemplo.cl"),
+                new ClienteFactura("77000000-K", "Ñandú SpA", "a@ejemplo.cl; b@ejemplo.cl"),
+            ],
+            almacen.LeerClientesFactura()
+        );
+        Assert.Null(almacen.BuscarClienteFactura("78000000-0"));
+        Assert.Equal(
+            huella,
+            Convert.ToHexString(
+                System.Security.Cryptography.SHA256.HashData(File.ReadAllBytes(original))
+            )
+        );
+        Assert.Equal(fecha, File.GetLastWriteTimeUtc(original));
+        Assert.False(File.Exists(original + "-wal"));
+    }
+
+    [Fact]
+    public void Importar_clickfactura_nunca_pisa_clientes_existentes()
+    {
+        using var almacen = new AlmacenMensajero(RutaBase);
+        almacen.GuardarClienteFactura("79000000-5", "Ya Estaba", "ya@ejemplo.cl", DateTime.Now);
+
+        Assert.Equal(
+            0,
+            almacen.ImportarClientesFactura(
+                BaseClickFactura(("76000000-1", "Otro", "o@ejemplo.cl", 1))
+            )
+        );
+        Assert.Equal(
+            [new ClienteFactura("79000000-5", "Ya Estaba", "ya@ejemplo.cl")],
+            almacen.LeerClientesFactura()
+        );
+        Assert.Equal(0, almacen.ImportarClientesFactura(Path.Combine(raiz, "no-existe.db")));
+    }
+
+    [Fact]
+    public void Guardar_cliente_factura_actualiza_sin_perder_la_fecha_de_creacion()
+    {
+        using var almacen = new AlmacenMensajero(RutaBase);
+        almacen.GuardarClienteFactura(
+            "76000000-1",
+            "Nombre Viejo",
+            "v@ejemplo.cl",
+            new DateTime(2026, 1, 1, 8, 0, 0)
+        );
+        almacen.GuardarClienteFactura(
+            "76000000-1",
+            "Nombre Nuevo",
+            "n@ejemplo.cl",
+            new DateTime(2026, 2, 3, 9, 10, 11)
+        );
+
+        Assert.Equal(
+            new ClienteFactura("76000000-1", "Nombre Nuevo", "n@ejemplo.cl"),
+            almacen.BuscarClienteFactura("76000000-1")
+        );
+        using var conexion = new SqliteConnection($"Data Source={RutaBase};Pooling=False");
+        conexion.Open();
+        using var leer = conexion.CreateCommand();
+        leer.CommandText = "SELECT creado || '|' || actualizado FROM clientes_factura;";
+        Assert.Equal("2026-01-01 08:00:00|2026-02-03 09:10:11", leer.ExecuteScalar());
+    }
+
+    [Fact]
+    public void Recuerda_valores_de_configuracion()
+    {
+        using (var almacen = new AlmacenMensajero(RutaBase))
+        {
+            Assert.Equal("", almacen.LeerValor("factura.carpeta_temporal"));
+            almacen.GuardarValor("factura.carpeta_temporal", @"C:\Temporal");
+            almacen.GuardarValor("factura.carpeta_temporal", @"D:\Otra");
+        }
+
+        using var otra = new AlmacenMensajero(RutaBase);
+        Assert.Equal(@"D:\Otra", otra.LeerValor("factura.carpeta_temporal"));
+        Assert.Equal("", otra.LeerCarpetaOcc());
     }
 }
