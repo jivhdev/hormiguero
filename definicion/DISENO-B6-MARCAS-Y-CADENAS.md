@@ -1,78 +1,104 @@
-# Diseño B-6: marcas y cadenas en la base común
+# Diseño B-6: cadenas configurables y datos comunes
 
-**Alcance:** diseño para B-6; no implementa cambios. La base objetivo es `%LocalAppData%\Hormiguero\hormiguero.db`, administrada por Nucleo (ADR-001). Buscadero y Archivero parten sin migrar sus datos anteriores (D-68).
+**Alcance:** diseño para llevar a la base SQLite común las cadenas de Buscadero y los datos que Archivero publica para enlazarlas. No fija tipos de documento, campos comerciales ni proveedores. La base es local y la administra Nucleo (D-47, ADR-001). Archivero y Buscadero parten sin migrar configuraciones antiguas (D-68).
 
-## 1. Estado actual
+## 1. Decisiones que guían el diseño
 
-- **Índice común:** `documentos` y `numeros_documento`, migración 2, [Migraciones.cs](../src/Hormiguero.Nucleo/Datos/Migraciones.cs#L13). `Documentos.Guardar` reemplaza los números del documento al reindexar y `Documentos.Quitar` borra la fila; [Documentos.cs](../src/Hormiguero.Nucleo/Datos/Documentos.cs#L26) y [Documentos.cs](../src/Hormiguero.Nucleo/Datos/Documentos.cs#L132). `numeros_documento` no distingue OCC, NVV u otro tipo: conserva número, prefijo, sufijo y origen.
-- **Marcas de Buscadero:** base propia indicada al crear `RepositorioMarcas`; tabla `Marcas` con ruta clave, página, tipo, rectángulo y texto, e índice por ruta. [RepositorioMarcas.cs](../src/Hormiguero.Buscadero.Core/Marcas/RepositorioMarcas.cs#L6). Cada edición reemplaza todas las marcas de esa ruta en una transacción; [SesionMarcas.cs](../src/Hormiguero.Buscadero.Core/Marcas/SesionMarcas.cs#L104).
-- **Cadenas de Buscadero:** base propia indicada al crear `RepositorioLineas`; modelos (`PlantillasLinea`, `PlantillaVagones`) e instancias/documentos (`InstanciasLinea`, `InstanciaVagones`) con padre, orden, ruta y nombre. [RepositorioLineas.cs](../src/Hormiguero.Buscadero.Core/Lineas/RepositorioLineas.cs#L18). Hay cadenas hijas y ramas (`EsMultiple`, `CadenaMadreId`, `InstanciaVagonPadreId`); [ServicioLineas.cs](../src/Hormiguero.Buscadero.Core/Lineas/ServicioLineas.cs#L135) y [ServicioLineas.cs](../src/Hormiguero.Buscadero.Core/Lineas/ServicioLineas.cs#L244). No se enlazan aún por un número comercial común.
-- **Configuración de Archivero:** hoy vive en su base propia (`Configuraciones`, `PatronesReconocimiento`, `Marcas`), [BaseDeDatos.cs](../src/Hormiguero.Archivero/Datos/BaseDeDatos.cs#L23). Las marcas configurables son `Emisor`, `Tipo`, `Fecha` y `NombreArchivo`; [Modelos.cs](../src/Hormiguero.Archivero/Datos/Modelos.cs#L23). No identifica campos `OCC`, `NVV`, `OCL`, guía ni factura. La base común ya tiene `identificaciones(tipo, emisor, datos JSON, actualizada)` y su acceso desde Nucleo, migración 3; [Migraciones.cs](../src/Hormiguero.Nucleo/Datos/Migraciones.cs#L36), [Identificaciones.cs](../src/Hormiguero.Nucleo/Datos/Identificaciones.cs#L7). El JSON no tiene hoy un contrato de campos de enlace.
-- **Concurrencia y registro:** `BaseComun.Abrir` activa WAL, `busy_timeout=5000` y claves foráneas; [BaseComun.cs](../src/Hormiguero.Nucleo/Datos/BaseComun.cs#L14). `auditoria` registra fecha, app, acción, origen/destino, huella y resultado (migración 3). `documentos_guardados` es un registro de eventos de solo agregado (migración 4).
-- **Referencia histórica opcional:** la antigua especificación de Motores enumera campos variables OCC (`OCC`, `NVV`, `OCL`, `DESPACHO`), GRC (`OCC`, `NVV`) y FCC (`OCC`, `NVV`, `GRC`), además de reglas de emparejamiento FCC/NCC con GRC/GRCF y FCV con OCL/NVV/COV. Es antecedente, no una configuración vigente ni un contrato aprobado para Hormiguero: `motores/bitacora/historial/Tablas maestras - formato de intercambio entre motores.md` y `motores/Fase3-Vinculacion/PLAN.md`.
+- Se conserva el modelo actual de Buscadero: modelos de cadena con vagones ordenados, anexos, vagones múltiples que abren cadenas hijas, preferencia de nombre; y cadenas reales derivadas del modelo, con vagones, archivos y relaciones madre/hija.
+- Cada vagón puede tener una regla de enlace automático opcional, configurada por la persona. Sin regla no hay enlace automático. Un único resultado seguro se enlaza; cualquier ambigüedad queda para revisión (D-48, D-71).
+- Los tipos y datos comparables los define Archivero por configuración de documento. Los datos específicos de Javier/Motores son solo una configuración precargada (D-69, D-70).
+- Nucleo es la única puerta a las tablas comunes. Las entidades relacionadas se anulan y auditan; no se borran físicamente. No se migran las bases antiguas de Buscadero ni Archivero (D-68).
 
-## 2. Modelo propuesto: migración v5
+## 2. Comportamiento actual que se conserva
 
-Todas estas tablas se crean desde `Hormiguero.Nucleo`; ninguna app ejecuta SQL directo contra la base común. Sin `CASCADE`: las referencias deben impedir el borrado accidental. Las entidades que representan hechos llevan estado/fecha de baja en vez de borrarse.
+### Modelos y vagones
 
-| Tabla | Columnas esenciales, claves e índices |
+- `LineaModelos.cs` define `PlantillaLinea` (nombre, creación, modelo hijo, preferencia de nombre y vagón que aporta el nombre), `PlantillaVagon` (modelo, padre, orden, nombre, múltiple/anexo y modelo hijo), sus nodos de árbol y los modelos de instancia. `PreferenciaNombreCadena` tiene `Generico`, `PorDocumento` y `Personalizado`; hoy `Personalizado` se guarda, pero se comporta como `Generico`.
+- `RepositorioLineas.cs` crea y consulta `PlantillasLinea` y `PlantillaVagones`, ordena los vagones por `Orden`, calcula el orden siguiente entre hermanos y guarda la preferencia de nombre. `PadreId` organiza anexos bajo un documento principal. `ModeloCadenaHijaId` conserva el modelo que sigue a un vagón múltiple. La inicialización de sus tablas y columnas está en las líneas 18–80; las operaciones de modelos, vagones y preferencia, en 117–357.
+- `ServicioLineas.cs` valida nombres y relaciones (16–68, 99–220), construye el árbol ordenado (222–240), y al crear una cadena guarda una instantánea de la estructura del modelo y materializa sus vagones (244–287, 607–650). Un anexo cuelga de un principal (367–393). Un vagón múltiple permite crear una cadena hija desde el modelo asociado y registra sus dos referencias (320–365). Se puede vincular y desvincular un archivo del vagón (395–415). La cadena muestra el nombre del archivo del vagón elegido como nombre, con retorno al nombre genérico mientras está vacío (75–97).
+
+### Pantallas y operaciones
+
+- `DialogoModeloGuiado.xaml.cs` guía la creación de un modelo con al menos dos documentos raíz; permite agregar anexos y, al marcar un documento como ramificado, crear o elegir un modelo hijo y definirlo antes de regresar al padre (35–50, 57–149, 154–274, 276–320). Al terminar, pregunta cómo nombrar las cadenas derivadas (322–344).
+- `DialogoVagon.xaml.cs` permite nombrar/editar un vagón, marcarlo múltiple o anexo y elegir o crear el modelo hijo (22–70, 72–100). La pantalla de modelos de `MainWindow.xaml.cs` muestra el árbol y deja agregar/editar modelos y vagones (1028–1058, 1828–1950).
+- `DialogoPreferenciaNombre.xaml.cs` ofrece nombre genérico, el nombre del documento seleccionado o personalizado; obliga a elegir documento si se selecciona “Por documento” (12–70). `ServicioLineas` actualmente hace que “Personalizado” use el nombre genérico (75–97); la v5 conserva ese comportamiento y no inventa una fórmula personalizada.
+- `MainWindow.xaml.cs` muestra las acciones para añadir los anexos que aún no se materializaron y crear cadenas hijas en vagones múltiples (1296–1343). `DialogoVincularCadena.xaml.cs` permite escoger un modelo, crear una cadena vacía, buscar un archivo, localizar en qué cadena está y elegir un vagón destino; impide ocupar un destino que ya tiene archivo (24–48, 64–111, 113–236, 238–302). `MainWindow` abre el diálogo y muestra la cadena resultante (1571–1596). La acción explícita de quitar una cadena hija o un anexo puede advertir que se perderá el trabajo relacionado (1684–1731).
+
+### Correspondencia en la base común
+
+La v5 representa las entidades actuales en tablas comunes. Nombres SQL en minúsculas; las claves son locales a la base. Se agregan tablas e índices, no se renombra ni elimina lo existente.
+
+| Tabla v5 | Campos y comportamiento que representa |
 |---|---|
-| `versiones_documento` | `id` PK; `documento_id` FK a `documentos(id)`; `huella`, `ruta_observada`, `registrada_en`, `vigente`. Índice único parcial de una versión vigente por documento e índice por `huella`. Conserva versiones cuando cambia el contenido; mover/renombrar con la misma huella conserva la identidad y actualiza la ruta observada. |
-| `marcas_documento` | `id` PK; `version_id` FK; `tipo`, `pagina`, `x`, `y`, `ancho`, `alto`, `texto`, `creada_en`, `anulada_en`. Índice `(version_id, anulada_en, pagina)`. Anular una marca conserva el registro. |
-| `valores_documento` | `id` PK; `version_id` FK; `tipo_documento`, `campo`, `valor_original`, `valor_clave`, `origen` (`automatico`/`manual`), `identificacion_id` nullable, `confianza` nullable, `estado`, `creado_en`. Índices `(campo, valor_clave, estado)` y `(version_id, campo)`. Aquí van números y otros campos extraídos; se conserva el original y la clave para búsqueda. |
-| `cadenas_documentales` | `id` PK; `tipo_ancla`, `numero_ancla`, `numero_clave`, `estado`, `creada_en`, `actualizada_en`. `UNIQUE(tipo_ancla, numero_clave)` para anclas únicas; índice por la misma pareja para consulta. La OCC es el ancla de la cadena principal; los tipos de ancla permiten otros números comunes si se confirma que hacen falta. |
-| `miembros_cadena` | `id` PK; `cadena_id` FK; `version_id` FK; `tipo_documento`, `rol`, `documento_padre_id` nullable FK a esta misma tabla, `origen` (`automatico`/`manual`), `estado`, `creado_en`, `anulado_en`. Índices `(cadena_id, estado)` y `(version_id, estado)`; unicidad parcial de miembro activo por cadena y versión. `documento_padre_id` admite ramas y varias guías/facturas bajo la misma OCC. |
-| `reglas_enlace` | `id` PK; `tipo_origen`, `campo_origen`, `tipo_destino`, `campo_destino`, `campo_ancla`, `longitud_minima`, `activa`. Índice por tipo/campo origen y destino. Reglas administrables desde la configuración de Archivero; inicialmente vacía hasta acordar el mapa de campos. |
+| `modelos_cadena` | Equivale a `PlantillaLinea`: nombre, fecha, `es_modelo_hijo`, preferencia de nombre y `vagon_nombre_id` opcional. La preferencia por documento apunta a un vagón de ese modelo. |
+| `vagones_modelo` | Equivale a `PlantillaVagon`: modelo, `padre_id`, orden entre hermanos, nombre, `es_multiple`, `es_anexo` y `modelo_cadena_hija_id`. Restricciones comprueban que el padre/anexo pertenezca al mismo modelo y que el modelo hijo exista. |
+| `cadenas` | Equivale a `InstanciaLinea`: modelo de origen opcional, nombre del modelo conservado como referencia, nombre/fecha, y `cadena_madre_id` más `vagon_padre_id` para la relación madre/hija. Conserva una instantánea de estructura para que cambios posteriores al modelo no reescriban cadenas existentes. |
+| `vagones_cadena` | Equivale a `InstanciaVagon`: cadena, padre/anexo, vagón de modelo nullable, orden, nombre, indicadores múltiple/anexo y referencia a la versión de documento, nullable hasta enlazar. Conserva el comportamiento de un archivo por vagón y anexos separados. |
+| `reglas_vagon` | Cero o una regla activa por vagón de modelo: configuración/tipo de origen, campo origen, vagón y campo de comparación, operación, opciones de normalización y largo mínimo. Desactivada o ausente equivale al comportamiento manual actual. |
+| `enlaces_cadena` | Registro de enlace entre vagón y versión de documento, origen (manual/automático), regla si aplica, estado y fechas. El estado permite activo, dudoso, rechazado o anulado; la fila se conserva al deshacer. Índices por versión/estado y vagón/estado. |
 
-La consulta de una OCC busca `cadenas_documentales` por `(tipo_ancla, numero_clave)` y obtiene miembros con `miembros_cadena(cadena_id, estado)`, luego los datos del índice por `version_id/documento_id`. No requiere recorrer todos los PDF ni comparar rutas. SQLite no garantiza milisegundos para cualquier volumen, pero las búsquedas puntuales quedan respaldadas por índices selectivos.
+Los modelos, sus vagones y las cadenas se identifican por ID y orden; índices por modelo, padre y cadena evitan recorrer toda la base. Claves foráneas se usan sin borrado en cascada. El `EstructuraJson` actual se conserva como instantánea al convertir a la nueva representación; el repositorio del núcleo ofrece árboles equivalentes a `ObtenerArbolPlantilla` y `ObtenerArbolInstancia`. La relación con documentos pasa de una ruta copiada en `InstanciaVagon` a un ID de versión; ruta y nombre se consultan en el índice común. Una cadena hija sigue apuntando a la cadena madre y al vagón múltiple que la abrió; los anexos y nombres de respaldo siguen siendo visibles igual.
 
-Las futuras alertas pueden referir `cadena_id` o `miembro_id` y guardar fecha base, cantidad, tipo de días, fecha de vencimiento y estado. El cómputo de días queda en Utilidades del núcleo (D-41); B-6 no crea ni calcula alertas.
+## 3. Configuración y valores de documentos
 
-## 3. Enlace automático
+Archivero hoy reconoce `Emisor`, `Tipo`, `Fecha` y `NombreArchivo` (`src/Hormiguero.Archivero/Datos/Modelos.cs`, líneas 23–29). Sus marcas indican zonas a leer; la configuración y patrones viven hoy en su base propia (`src/Hormiguero.Archivero/Datos/BaseDeDatos.cs`, líneas 40–68; guardado de patrones/marcas en `ConfiguracionDocumentoRepository.cs`, 117–140 y 236–280). La tabla común `identificaciones` ya guarda configuración general en JSON (`Migraciones.cs`, líneas 37–55; `Identificaciones.cs`, líneas 5–7 y 33–70), pero todavía no define campos con identidad consultable.
 
-Una regla compara el valor de un campo con el del campo objetivo/ancla configurado. La tabla siguiente refleja lo escrito hoy y el antecedente, y distingue lo pendiente de aprobación:
+La v5 añade:
 
-| Documento/campo de referencia | Documento/campo que podría coincidir | Estado |
-|---|---|---|
-| OCC.`NUMERO_DOCUMENTO` | NVV.`OCC`; OCL.`OCC`; guía.`OCC`; factura.`OCC` | Flujo deseado en el bloque (OCC → NVV → guía → factura), pero los nombres de campo por tipo no existen aún en Archivero. |
-| GRC.`OCC` / FCC.`OCC` | OCC.`NUMERO_DOCUMENTO` | Mapa documentado en el antecedente Motores; requiere validar nombres y tipos antes de habilitarlo. |
-| FCC o NCC | GRC o GRCF de la misma OCC | Emparejamiento antecedente, no regla confirmada para este esquema. |
-| FCV | OCL; si no existe, NVV; si no, COV | Orden antecedente; confirmar si aplica a Buscadero. |
+- `campos_documento`: campo definido por configuración/tipo (`identificacion_id`), nombre visible y estable, tipo de dato (texto o fecha), activo y origen de lectura. Los campos base son Emisor, Tipo, Fecha y NombreArchivo; la persona puede agregar, por ejemplo, “N° OC” o “N° guía”. El nombre visible puede cambiar sin cambiar el ID del campo.
+- `valores_documento`: versión de documento, campo, valor leído original, valor clave para consulta, origen (marca/configuración, observador o corrección manual), confianza si el lector la entrega, estado y fecha. Índices por `(campo_id, valor_clave, estado)` y `(version_id, campo_id)`.
+- `versiones_documento`: versión, documento del índice, huella, ruta observada, fecha de registro y estado vigente/anulado. Índice por huella y unicidad parcial de una versión vigente por documento. Huella nueva crea versión; cambio de ruta con la misma huella actualiza la ruta observada conservando identidad, sujeto a revisión si no se puede demostrar que es el mismo archivo.
 
-Solo se crea el enlace automático con coincidencia exacta de `valor_clave`, una regla activa y un candidato inequívoco dentro del ancla; varios candidatos, baja confianza, dato inválido o referencia sin resolver quedan como pendientes/dudosos, nunca se fuerzan. El número corto no se enlaza automáticamente: `longitud_minima` se define por regla y queda sin valor aprobado hasta que Javier lo confirme. La clave debe normalizar espacios/separadores acordados, conservar `valor_original` y **no quitar ceros iniciales**: `00123` y `123` no son equivalentes salvo regla explícita. No usar coincidencia parcial ni comparar solo sufijos.
+Archivero publica cada valor leído/corregido y la configuración de campos mediante repositorios de Nucleo. La escritura de versión, valores y registro de publicación va en una transacción. Buscadero consulta por ID e índices. En el futuro modo observador (D-69), Archivero registra ruta y datos leídos en la misma base sin mover ni renombrar el archivo observado; la procedencia distingue la carpeta observada. Puede publicar solo NombreArchivo o los campos opcionales extraídos, como OC y guía. El observador usa los mismos IDs de campo y flujo de confianza que el archivo guardado normalmente.
 
-El enlace manual crea/anula un miembro o su relación padre, guarda el origen y registra la acción en `auditoria`. Para reemplazo de contenido se cierra la versión anterior, se crea otra y se dejan sus marcas/enlaces históricos; el contenido nuevo no hereda enlaces automáticamente hasta revalidar sus valores. Para un movimiento con misma huella se conserva la identidad y se actualiza la ruta. Si no hay huella fiable, requiere revisión manual. La política de detección de reemplazo y de preservar relaciones requiere una prueba de caso antes de activar.
+## 4. Regla de enlace opcional y segura
 
-## 4. Concurrencia, integridad y auditoría
+Una regla se expresa en términos configurables: **“Completar este vagón con documentos de [configuración/tipo] cuando [dato] sea igual a [dato] del vagón [documento relacionado]”**. El campo de comparación puede ser NombreArchivo. La primera versión admite igualdad únicamente; “contiene”, sufijos y coincidencias parciales no son seguras para decidir por sí solas y no se habilitan. Se puede comparar con un dato de otro vagón, incluso de la cadena madre/hija, cuando esa relación existe.
 
-Archivero escribe datos/configuración y Buscadero consulta usando conexiones del núcleo. WAL ya permite lectores junto a un escritor; `busy_timeout=5000` espera bloqueos breves. Escrituras de versión + valores + enlace deben ser una sola transacción; los lectores consultan por ID/índice. No se guardan bases en red.
+Cada regla incluye:
 
-Toda anulación, corrección de valores, cambio de regla, enlace/desenlace, movimiento o reemplazo registra evento en `auditoria` con app, acción, identificadores, rutas/huellas pertinentes y resultado. Las operaciones son anulaciones/versiones nuevas; no borrados físicos en marcas, valores, cadenas ni miembros. El índice `documentos` actual sí tiene borrado físico por `Documentos.Quitar`; antes de asociarle datos de negocio B-6b debe cambiarse a baja lógica o proteger la fila referenciada y auditar la baja. Los registros históricos de auditoría no se eliminan desde estas funciones.
+- Normalizar espacios: sí por defecto (recortar extremos y reducir secuencias internas a un espacio).
+- Ignorar guiones: no por defecto. Si se activa, elimina solo el guion normal `-`; no elimina otros signos.
+- Ignorar ceros iniciales: no por defecto. “00123” y “123” siguen distintos salvo que la persona lo active.
+- Largo mínimo: sugerencia inicial de 6 caracteres significativos, editable por regla. Se cuenta después de las normalizaciones elegidas; por debajo del mínimo no se enlaza automáticamente y queda dudoso. El valor es una protección editable, no una condición fija por tipo.
 
-## 5. Bloques de implementación sugeridos
+El motor solo considera valores presentes, válidos y con lectura suficientemente confiable o confirmada por la persona. Con una coincidencia exacta y un único candidato se crea el enlace y un evento de auditoría. Sin coincidencia, con valor corto/incierto, con varios candidatos, con un destino ya ocupado o si cambia una versión, no se reemplaza ni se fuerza nada: se registra como dudoso para revisión. En un vagón marcado múltiple, varios resultados tampoco se aceptan en bloque sin revisión; cada documento queda propuesto individualmente. Aceptar, rechazar o deshacer un enlace deja su historial. Las reglas nuevas no alteran enlaces ya confirmados.
 
-Rutas y pruebas son propuestas para los siguientes bloques; cada bloque conserva la condición de compilación/pruebas verdes. “Trivial para OpenCode Go” significa alcance mecánico con decisiones ya fijadas, no exime revisión.
+## 5. Flujo sencillo en pantalla
 
-| Bloque | Alcance y archivos probables | Pruebas | Dificultad |
+El asistente usa nombres y ejemplos de la configuración elegida, nunca términos como “clave”, “normalización” o “candidato”:
+
+1. **“¿Qué documentos forman esta cadena?”** La persona elige o crea el modelo y ordena sus documentos; puede marcar un anexo o indicar que un documento abre una cadena hija.
+2. **“¿Cuándo se completa este documento automáticamente?”** Se puede elegir “No completar automáticamente” o escoger una configuración/tipo, el dato que llega y con qué documento/dato de la cadena compararlo. Se muestra una frase completa antes de guardar.
+3. **“¿Cómo deben coincidir los datos?”** Casillas simples para espacios, guiones y ceros iniciales, con una explicación breve y el largo mínimo sugerido. Un ejemplo enseña qué valores se consideran iguales.
+4. **“¿Cómo se llamarán las cadenas?”** Nombre genérico o nombre de un documento. Se conserva la opción personalizada actual; hasta que se defina su fórmula, seguirá usando el nombre genérico.
+
+La lista de dudosos muestra los dos documentos, los datos que coinciden o faltan, y por qué no se enlazó solo. Botones: **“Enlazar”**, **“No son el mismo documento”** y **“Ver archivo”**. La cadena muestra **“Deshacer vínculo”** en el menú del documento. Deshacer lo marca como anulado, conserva auditoría y deja libre el vagón; no borra ni mueve el PDF.
+
+## 6. Integridad, auditoría y consulta
+
+- `BaseComun.Abrir` activa WAL, `busy_timeout=5000` y claves foráneas (`src/Hormiguero.Nucleo/Datos/BaseComun.cs`, 14–46). Se mantienen: varias lecturas junto a un escritor, una transacción por operación relacionada y la base fuera de carpetas de red.
+- `auditoria` ya registra fecha, app, acción, origen/destino, huella y resultado (migración 3 de `Migraciones.cs`, 37–55). Se registra creación/cambio de valor o regla, enlace, aceptación/rechazo, deshacer, cambio de versión y baja, con IDs y huella disponibles. El historial no se elimina.
+- `Documentos.Guardar` hoy actualiza el registro por ruta y reemplaza sus números; `Documentos.Quitar` borra físicamente la fila (`src/Hormiguero.Nucleo/Datos/Documentos.cs`, 26–120 y 132–143). En v5 se agrega estado/fecha de baja a `documentos`; `Quitar` pasa a baja lógica y registra auditoría. No se borra una fila referida por valores, versión o cadena. Las consultas normales excluyen bajas; vistas de auditoría pueden consultarlas.
+- Las marcas de Buscadero se llevan a Nucleo con marca por versión, tipo, página, rectángulo, texto, creación y anulación. No se borra al editar o quitar una marca.
+- Consultas por documento, dato, cadena o vagón se apoyan en índices de huella, ruta, campo/valor y claves foráneas. Las alertas futuras pueden referir una cadena o enlace y mantener fecha base, cantidad, tipo de día, vencimiento y estado (D-41); B-6 no crea ni calcula alertas.
+
+## 7. Bloques siguientes
+
+Cada bloque mantiene `dotnet build` y `dotnet test` sin errores ni advertencias nuevas. “Trivial para OpenCode Go” indica trabajo mecánico con decisiones resueltas; Claude revisa igual.
+
+| Bloque | Alcance y archivos previstos | Pruebas | OpenCode Go |
 |---|---|---|---|
-| B-6b | Cerrar con Javier los nombres de campos/reglas, normalización, largo mínimo, identidad de versión y baja lógica. Actualizar `definicion/DISENO-B6-MARCAS-Y-CADENAS.md` o abrir decisión explícita antes de código. | Casos tabulares acordados como criterios en la nota. | No trivial: decisiones de negocio. |
-| B-6c | Migración v5 y acceso desde Nucleo: `src/Hormiguero.Nucleo/Datos/Migraciones.cs`, nuevos repositorios bajo `Datos/`; agregar `tests/Hormiguero.Nucleo.Tests/` para esquema, índices, integridad y WAL. | Migración idempotente, claves foráneas, escritura con lector abierto, auditoría de baja. | No trivial: migración e identidad histórica. |
-| B-6d | Valores/reglas de enlace en Nucleo; acceso común de Archivero para publicar configuración/campos. `Identificaciones.cs` y clases nuevas de `Nucleo/Datos`; luego adaptador Archivero. | Normalización sin falsos positivos, ceros iniciales, números cortos, ambigüedad y rechazo de regla no configurada. | No trivial: extracción y datos reales. |
-| B-6e | Repositorio de marcas Buscadero en Nucleo; adaptar `src/Hormiguero.Buscadero.Core/Marcas/RepositorioMarcas.cs` y sesión. | `SesionMarcasTests.cs`: guardar, editar, anular, versión reemplazada y documento movido. | Trivial después de B-6c. |
-| B-6f | Cadenas/miembros y consulta por número en Nucleo; adaptar `src/Hormiguero.Buscadero.Core/Lineas/RepositorioLineas.cs` y `ServicioLineas.cs`. | `LineasTests.cs`: enlace manual/automático, OCC con ramas múltiples, consulta por OCC y anulación auditada. | No trivial: cardinalidad y comportamiento existente. |
-| B-6g | Activar reglas acordadas e integrar la lectura de configuración; dejar contrato para futura referencia de alertas, sin UI ni cómputo de vencimientos. | Casos por tipo/campo y regresión conjunta Archivero/Buscadero. | No trivial: validación funcional de Javier. |
+| B-6b | Migración v5 y repositorios de modelos, vagones, cadenas, valores, reglas y enlaces en `src/Hormiguero.Nucleo/Datos/`; ampliar `Migraciones.cs`, `Documentos.cs` y `Auditoria.cs`. Sin tocar pantallas ni adaptar aplicaciones. | `tests/Hormiguero.Nucleo.Tests/`: migración nueva/repetida, claves foráneas, relaciones de rama/anexo, orden, valores/índices, baja lógica, transacciones y WAL. | No trivial: esquema y persistencia relacionados. |
+| B-6c | Publicación de campos/valores de Archivero hacia Nucleo: `src/Hormiguero.Archivero/` y pruebas de Archivero/Nucleo. Primero campos base y propios; dejar contrato para modo observador. | Dato original/clave, corrección, campos opcionales, versión y baja. | No trivial: integra dos aplicaciones. |
+| B-6d | Repositorio de marcas de Buscadero en Nucleo y adaptación de `src/Hormiguero.Buscadero.Core/Marcas/`. | Guardar, editar, anular, asociar a versión nueva y consultar por documento. | Trivial una vez cerrado B-6b. |
+| B-6e | Adaptar `src/Hormiguero.Buscadero.Core/Lineas/RepositorioLineas.cs` y `ServicioLineas.cs` al contrato común; conservar reglas actuales de árboles y cadenas. | Modelos, instantánea, orden, anexos, múltiples, madre/hija, preferencia de nombre, enlace y deshacer. | No trivial: regresión de comportamiento. |
+| B-6f | Reglas configurables, comparación segura y lista de dudosos en Nucleo/Core; sin valores fijos por empresa/proveedor. | Coincidencia única, empate, falta de dato, largo mínimo, opciones de espacios/guiones/ceros, destino ocupado y versión cambiada. | No trivial: evita falsos enlaces. |
+| B-6g | Pantallas amigables de configuración y revisión en Archivero/Buscadero; configuración precargada de Javier/Motores en datos de ejemplo. | Flujos de configuración, aceptar/rechazar/deshacer, accesibilidad y regresión visual. | No trivial: interacción entre pantallas y datos. |
+| B-6h | Modo observador de Archivero publica datos extraídos sin mover/renombrar; integración de carpeta, estados y procedencia (D-69). | Archivo observado intacto, datos opcionales, cedible dudosa y original localizado después. | No trivial: interacción con carpetas externas. |
 
-No son triviales para OpenCode Go los bloques B-6b, B-6c, B-6d, B-6f y B-6g. B-6e puede asignarse como bloque sencillo solo después de aprobar el esquema y las pruebas de B-6c.
+El primer bloque es B-6b: migración v5 y repositorios en Nucleo, con pruebas y ninguna pantalla.
 
-## 6. Preguntas para Javier
+## 8. Preguntas para Javier
 
-1. ¿Confirmas los mapas del antecedente Motores (incluido FCV → OCL/NVV/COV) o indicas los campos vigentes por tipo?
-2. ¿Qué longitud mínima debe exigir cada tipo de número para permitir enlace automático?
-3. ¿Se puede enlazar manualmente un documento a más de una cadena OCC activa?
-4. Si cambia el contenido del PDF en la misma ruta, ¿se conserva la relación anterior como histórica y el reemplazo queda pendiente de confirmar?
-
-## Reporte del agente
-
-- Entregable: diseño redactado en esta nota; no se modificó código ni otro archivo.
-- Verificación: `dotnet build Hormiguero.slnx` correcto, 0 advertencias y 0 errores. `dotnet test Hormiguero.slnx` correcto: 583 pruebas aprobadas, 0 fallidas, 0 omitidas (105 Mensajero, 68 Nucleo, 9 Diseño, 121 Buscadero, 280 Archivero).
-- Decisiones que deben resolverse antes de implementar: mapa de campos y reglas por tipo, umbrales de números cortos, cardinalidad manual y política de reemplazo (preguntas anteriores).
+Ninguna decisión de D-71 impide definir este esquema. Se recomienda dejar los vagones ocupados y las coincidencias múltiples como dudosos, y no reemplazar ni enlazar nada automáticamente en esos casos. El largo mínimo sugerido de 6 se puede cambiar en cada regla.
