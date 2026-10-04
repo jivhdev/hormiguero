@@ -161,9 +161,15 @@ public class BaseComunTests
 
             var tareaLector = Task.Run(() =>
             {
-                for (int intento = 0; ; intento++)
+                // Límite por tiempo y no por intentos: en un equipo con disco lento
+                // (como el de GitHub Actions) el escritor tarda más en confirmar.
+                var limite = System.Diagnostics.Stopwatch.StartNew();
+                while (true)
                 {
-                    Assert.True(intento < 100_000, "El lector nunca vio las 100 filas.");
+                    Assert.True(
+                        limite.Elapsed < TimeSpan.FromSeconds(30),
+                        "El lector nunca vio las 100 filas."
+                    );
 
                     using var comando = lector.CreateCommand();
                     comando.CommandText = "SELECT COUNT(*) FROM configuracion;";
