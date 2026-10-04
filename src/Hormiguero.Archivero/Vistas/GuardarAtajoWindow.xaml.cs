@@ -5,7 +5,7 @@ namespace Archivero.Vistas;
 
 /// <summary>
 /// Pregunta del final de "Crear ubicación nueva" (Caso-11, punto 4). Solo elige el nombre: el
-/// atajo se persiste recién después de que el documento se guardó bien, no acá.
+/// atajo se persiste recién después de que el documento se guardó bien, no aquí.
 /// </summary>
 public partial class GuardarAtajoWindow : Window
 {

@@ -67,7 +67,7 @@ public partial class VerGuardadoWindow : Window
             System.Windows.MessageBox.Show(
                 this,
                 "No se pudo volver a reconocer este documento contra ninguna configuración guardada. "
-                    + "Probá editarlo desde \"Administrar clasificaciones\".",
+                    + "Prueba editarlo desde \"Administrar clasificaciones\".",
                 "Archivero",
                 MessageBoxButton.OK,
                 MessageBoxImage.Warning

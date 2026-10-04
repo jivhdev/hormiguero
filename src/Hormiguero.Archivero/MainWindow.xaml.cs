@@ -122,7 +122,7 @@ public partial class MainWindow : Window
     {
         _guardadosRecientes.Agregar(rutaFinal);
         // Caso-8: el contador de tiempo ahorrado se lleva aparte de GuardadosRecientes (que se
-        // recorta a los últimos 20 -- Caso-6, punto 2), justo acá, en el único punto real donde
+        // recorta a los últimos 20 -- Caso-6, punto 2), justo aquí, en el único punto real donde
         // un documento se archivó solo (REQ-002; nunca el flujo manual de PDFs sin texto).
         TiempoAhorradoService.RegistrarDocumentoArchivado(_configuracion);
         CargarGuardadosRecientes();
@@ -209,7 +209,7 @@ public partial class MainWindow : Window
         System.Windows.MessageBox.Show(
             this,
             $"La carpeta observada ya no está disponible (se movió o se borró):\n{_carpetaObservada}\n\n"
-                + "Archivero no puede seguir vigilándola hasta que vuelva a estar accesible. Podés recrearla con ese mismo nombre y ruta, "
+                + "Archivero no puede seguir vigilándola hasta que vuelva a estar accesible. Puedes recrearla con ese mismo nombre y ruta, "
                 + "o usar el botón \"Cambiar…\" para elegir otra.",
             "Archivero",
             MessageBoxButton.OK,
@@ -279,7 +279,7 @@ public partial class MainWindow : Window
             System.Windows.MessageBox.Show(
                 this,
                 $"Este documento no se puede guardar automáticamente:\n\n{pendiente.Motivo.DescripcionLegible()}\n\n"
-                    + "Revisalo a mano; si corresponde, movelo vos mismo a su carpeta.",
+                    + "Revísalo a mano; si corresponde, muévelo tú mismo a su carpeta.",
                 "Archivero",
                 MessageBoxButton.OK,
                 MessageBoxImage.Warning
@@ -349,7 +349,7 @@ public partial class MainWindow : Window
         {
             System.Windows.MessageBox.Show(
                 this,
-                $"No se pudo volver a leer los datos de este documento ({error}). Probá abrirlo desde \"Administrar clasificaciones\" para revisar el patrón.",
+                $"No se pudo volver a leer los datos de este documento ({error}). Prueba abrirlo desde \"Administrar clasificaciones\" para revisar el patrón.",
                 "Archivero",
                 MessageBoxButton.OK,
                 MessageBoxImage.Warning
@@ -439,7 +439,7 @@ public partial class MainWindow : Window
         {
             System.Windows.MessageBox.Show(
                 this,
-                $"No se pudo volver a leer la fecha de este documento ({error}). Probá abrirlo desde \"Administrar clasificaciones\" para revisar el patrón.",
+                $"No se pudo volver a leer la fecha de este documento ({error}). Prueba abrirlo desde \"Administrar clasificaciones\" para revisar el patrón.",
                 "Archivero",
                 MessageBoxButton.OK,
                 MessageBoxImage.Warning

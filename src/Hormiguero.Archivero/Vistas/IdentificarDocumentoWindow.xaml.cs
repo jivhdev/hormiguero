@@ -318,7 +318,7 @@ public partial class IdentificarDocumentoWindow : Window
                 "Paso 3 de 5 — Organización de las subcarpetas",
                 vinculando
                     ? "El tipo de organización ya está definido por la configuración existente. Si corresponde, marcar la fecha en este documento."
-                    : "Elegir el tipo de organización y cuál de los ejemplos se parece más a las carpetas que ya usás."
+                    : "Elegir el tipo de organización y cuál de los ejemplos se parece más a las carpetas que ya usas."
             ),
             Paso.NombreArchivo => (
                 "Paso 4 de 5 — Nombre de archivo",
@@ -503,7 +503,7 @@ public partial class IdentificarDocumentoWindow : Window
 
     // ----- Paso 3 (Caso-3): organización de subcarpetas -----
     // El tipo/patrón (accesos rápidos, lista completa, ejemplos) vive en ControlOrganizacion
-    // (Caso-4 lo reutiliza tal cual); acá solo queda lo propio de esta ventana: cuándo mostrarlo
+    // (Caso-4 lo reutiliza tal cual); aquí solo queda lo propio de esta ventana: cuándo mostrarlo
     // por primera vez, y el marcado de la fecha sobre el PDF.
 
     private void PrepararVistaOrganizacion()
@@ -630,7 +630,7 @@ public partial class IdentificarDocumentoWindow : Window
         {
             TxtPreviewAnterior.Text = "—";
             TxtPreviewActual.Text =
-                "(Elegí el tipo de organización y un ejemplo de patrón para verlo acá.)";
+                "(Elige el tipo de organización y un ejemplo de patrón para verlo aquí.)";
             TxtPreviewFuturaTitulo.Visibility = Visibility.Collapsed;
             TxtPreviewFutura.Visibility = Visibility.Collapsed;
             return;
@@ -778,7 +778,7 @@ public partial class IdentificarDocumentoWindow : Window
             : _preguntarNombre ? "se pregunta cada vez, antes de guardar"
             : "se mantiene el nombre original";
 
-        // Al editar no se guarda ningún documento, así que no hay nombre que pedir acá.
+        // Al editar no se guarda ningún documento, así que no hay nombre que pedir aquí.
         var pedirNombreAhora = _preguntarNombre && _edicion is null;
         PanelNombreEsteDocumento.Visibility = pedirNombreAhora
             ? Visibility.Visible
@@ -818,7 +818,7 @@ public partial class IdentificarDocumentoWindow : Window
                 }
 
                 // Caso-9, mejora 1: Emisor y Tipo pueden terminar formando parte de un nombre o
-                // ruta más adelante -- se validan/sanean acá, apenas se escriben.
+                // ruta más adelante -- se validan/sanean aquí, apenas se escriben.
                 try
                 {
                     _emisor = ValidadorRutaService.ValidarYSanearSegmento(_emisor);
@@ -1120,7 +1120,7 @@ public partial class IdentificarDocumentoWindow : Window
                 if (resolver.ShowDialog() != true)
                 {
                     MostrarError(
-                        "Documento dejado pendiente por nombre duplicado. Podés posponer o cancelar, o intentar de nuevo."
+                        "Documento dejado pendiente por nombre duplicado. Puedes posponer o cancelar, o intentar de nuevo."
                     );
                     return;
                 }

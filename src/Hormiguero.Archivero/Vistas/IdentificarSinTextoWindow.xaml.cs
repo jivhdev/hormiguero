@@ -567,7 +567,7 @@ public partial class IdentificarSinTextoWindow : Window
 
     /// <summary>
     /// Se persiste recién con el documento ya guardado: si el guardado falló, no queda un acceso
-    /// rápido a una combinación que nunca funcionó. Un error acá no deshace el guardado del documento.
+    /// rápido a una combinación que nunca funcionó. Un error aquí no deshace el guardado del documento.
     /// </summary>
     private string GuardarAtajo(string nombreAtajo)
     {

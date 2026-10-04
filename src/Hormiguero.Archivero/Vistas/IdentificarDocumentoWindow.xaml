@@ -137,7 +137,7 @@
             Foreground="{DynamicResource Hormiguero.TextoSecundario}"
             TextWrapping="Wrap"
             Margin="0,4,0,0"
-            Text="Para este tipo de organización la fecha es opcional: si no la marcás, los ejemplos y la vista previa usan la fecha de hoy."
+            Text="Para este tipo de organización la fecha es opcional: si no la marcas, los ejemplos y la vista previa usan la fecha de hoy."
           />
         </StackPanel>
       </StackPanel>
