@@ -36,7 +36,7 @@ public partial class OnboardingWindow : Window
         using var dialogo = new FolderBrowserDialog
         {
             SelectedPath = TxtUbicacion.Text,
-            Description = "Elegir dónde va a vivir la carpeta de Archivero"
+            Description = "Elegir dónde va a vivir la carpeta de Archivero",
         };
 
         if (dialogo.ShowDialog() == System.Windows.Forms.DialogResult.OK)

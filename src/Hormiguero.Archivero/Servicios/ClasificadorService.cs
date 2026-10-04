@@ -26,28 +26,35 @@ public static class ClasificadorService
         string rutaArchivoOrigen,
         ConfiguracionDocumento configuracion,
         DateTime? fechaExtraida,
-        string? nombreExtraido)
+        string? nombreExtraido
+    )
     {
         var subcarpeta = FormatoCarpetaService.ConstruirSubcarpeta(
-            configuracion.FormatoCarpeta, configuracion.PatronCarpeta, fechaExtraida ?? DateTime.Now);
+            configuracion.FormatoCarpeta,
+            configuracion.PatronCarpeta,
+            fechaExtraida ?? DateTime.Now
+        );
 
         // Caso-9, mejora 1: cada nivel real de subcarpeta se valida/sanea por separado antes de
         // combinarlo -- puede venir de un patrón personalizado escrito a mano (Caso-3).
         var subcarpetaSaneada = string.IsNullOrEmpty(subcarpeta)
             ? subcarpeta
-            : Path.Combine(subcarpeta
-                .Split(Path.DirectorySeparatorChar, Path.AltDirectorySeparatorChar)
-                .Select(ValidadorRutaService.ValidarYSanearSegmento)
-                .ToArray());
+            : Path.Combine(
+                subcarpeta
+                    .Split(Path.DirectorySeparatorChar, Path.AltDirectorySeparatorChar)
+                    .Select(ValidadorRutaService.ValidarYSanearSegmento)
+                    .ToArray()
+            );
 
         var carpetaFinal = string.IsNullOrEmpty(subcarpetaSaneada)
             ? configuracion.CarpetaDestino
             : Path.Combine(configuracion.CarpetaDestino, subcarpetaSaneada);
 
         var extension = Path.GetExtension(rutaArchivoOrigen);
-        var nombreOrigen = configuracion.Renombrar && !string.IsNullOrWhiteSpace(nombreExtraido)
-            ? nombreExtraido
-            : Path.GetFileNameWithoutExtension(rutaArchivoOrigen);
+        var nombreOrigen =
+            configuracion.Renombrar && !string.IsNullOrWhiteSpace(nombreExtraido)
+                ? nombreExtraido
+                : Path.GetFileNameWithoutExtension(rutaArchivoOrigen);
         var nombreSinExtension = ValidadorRutaService.ValidarYSanearSegmento(nombreOrigen);
 
         var nombreArchivo = $"{nombreSinExtension}{extension}";
@@ -56,7 +63,10 @@ public static class ClasificadorService
         // (e) última línea de defensa, siempre: la ruta final ya resuelta tiene que quedar
         // efectivamente dentro de la carpeta configurada, sin excepción.
         var rutaResuelta = Path.GetFullPath(rutaDestino);
-        ValidadorRutaService.ValidarContenidaEnCarpeta(rutaResuelta, Path.GetFullPath(configuracion.CarpetaDestino));
+        ValidadorRutaService.ValidarContenidaEnCarpeta(
+            rutaResuelta,
+            Path.GetFullPath(configuracion.CarpetaDestino)
+        );
         ValidadorRutaService.ValidarLargos(nombreSinExtension, rutaResuelta);
 
         return rutaDestino;
@@ -66,9 +76,15 @@ public static class ClasificadorService
         string rutaArchivoOrigen,
         ConfiguracionDocumento configuracion,
         DateTime? fechaExtraida,
-        string? nombreExtraido)
+        string? nombreExtraido
+    )
     {
-        var rutaDestino = CalcularRutaDestino(rutaArchivoOrigen, configuracion, fechaExtraida, nombreExtraido);
+        var rutaDestino = CalcularRutaDestino(
+            rutaArchivoOrigen,
+            configuracion,
+            fechaExtraida,
+            nombreExtraido
+        );
         Directory.CreateDirectory(Path.GetDirectoryName(rutaDestino)!);
 
         if (File.Exists(rutaDestino))
@@ -107,7 +123,9 @@ public static class ClasificadorService
         if (!ArchivosSonIdenticos(origen, destino))
         {
             File.Delete(destino);
-            throw new IOException("La copia no coincide con el original; no se borró el archivo original.");
+            throw new IOException(
+                "La copia no coincide con el original; no se borró el archivo original."
+            );
         }
 
         File.Delete(origen);

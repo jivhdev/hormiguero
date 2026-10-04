@@ -9,6 +9,7 @@ public record DeteccionFormatoCarpeta(FormatoCarpeta Formato, string? PatronCarp
 public static class FormatoCarpetaService
 {
     private static readonly string[] TokensAnio = ["yyyy", "yy"];
+
     // "MMM" (abreviado, ej. "ene.") queda afuera: en es-ES el nombre abreviado termina en punto,
     // y Windows recorta el punto final de cualquier nombre de carpeta -- nunca podria coincidir
     // con una carpeta real.
@@ -61,7 +62,10 @@ public static class FormatoCarpetaService
     /// ninguna combinacion es consistente en TODOS los ejemplos, no hay evidencia: devuelve null
     /// (nunca se inventa un patron sin evidencia clara).
     /// </summary>
-    private static string? DetectarPatronPorEvidencia(List<string> nombres, string[] tokensCandidatos)
+    private static string? DetectarPatronPorEvidencia(
+        List<string> nombres,
+        string[] tokensCandidatos
+    )
     {
         if (nombres.Count == 0)
         {
@@ -175,7 +179,8 @@ public static class FormatoCarpetaService
         texto.Length == 0 ? string.Empty : "'" + texto.Replace("'", "\\'") + "'";
 
     public static bool CoincideConPatron(string? nombre, string patron) =>
-        !string.IsNullOrEmpty(nombre) && DateTime.TryParseExact(nombre, patron, Cultura, DateTimeStyles.None, out _);
+        !string.IsNullOrEmpty(nombre)
+        && DateTime.TryParseExact(nombre, patron, Cultura, DateTimeStyles.None, out _);
 
     /// <summary>
     /// Busca un ejemplo real de subcarpeta ya existente que coincide con el patron confirmado --
@@ -187,7 +192,11 @@ public static class FormatoCarpetaService
     /// nombres de las carpetas se genera hacia atras los nombres que el patron produciria y se
     /// compara con lo que hay en disco (sin distinguir mayusculas, como Windows).
     /// </summary>
-    public static string? BuscarCarpetaAnteriorReal(string carpetaDestino, FormatoCarpeta formato, string? patron)
+    public static string? BuscarCarpetaAnteriorReal(
+        string carpetaDestino,
+        FormatoCarpeta formato,
+        string? patron
+    )
     {
         if (formato == FormatoCarpeta.Directo)
         {
@@ -202,7 +211,12 @@ public static class FormatoCarpetaService
         var partes = patron.Split('\\');
         var candidatos = FechasCandidatas(formato, patron, DateTime.Today).ToList();
 
-        var carpetasNivel1 = BuscarCoincidentes(carpetaDestino, partes[0], candidatos, static _ => true);
+        var carpetasNivel1 = BuscarCoincidentes(
+            carpetaDestino,
+            partes[0],
+            candidatos,
+            static _ => true
+        );
         if (carpetasNivel1.Count == 0)
         {
             return null;
@@ -215,8 +229,17 @@ public static class FormatoCarpetaService
 
         foreach (var nivel1 in carpetasNivel1)
         {
-            var carpetasNivel2 = BuscarCoincidentes(nivel1.Ruta, partes[1], candidatos,
-                f => string.Equals(FormatearNivel(partes[0], f), nivel1.Nombre, StringComparison.OrdinalIgnoreCase));
+            var carpetasNivel2 = BuscarCoincidentes(
+                nivel1.Ruta,
+                partes[1],
+                candidatos,
+                f =>
+                    string.Equals(
+                        FormatearNivel(partes[0], f),
+                        nivel1.Nombre,
+                        StringComparison.OrdinalIgnoreCase
+                    )
+            );
             if (carpetasNivel2.Count == 0)
             {
                 continue;
@@ -229,9 +252,22 @@ public static class FormatoCarpetaService
 
             foreach (var nivel2 in carpetasNivel2)
             {
-                var carpetasNivel3 = BuscarCoincidentes(nivel2.Ruta, partes[2], candidatos,
-                    f => string.Equals(FormatearNivel(partes[0], f), nivel1.Nombre, StringComparison.OrdinalIgnoreCase)
-                        && string.Equals(FormatearNivel(partes[1], f), nivel2.Nombre, StringComparison.OrdinalIgnoreCase));
+                var carpetasNivel3 = BuscarCoincidentes(
+                    nivel2.Ruta,
+                    partes[2],
+                    candidatos,
+                    f =>
+                        string.Equals(
+                            FormatearNivel(partes[0], f),
+                            nivel1.Nombre,
+                            StringComparison.OrdinalIgnoreCase
+                        )
+                        && string.Equals(
+                            FormatearNivel(partes[1], f),
+                            nivel2.Nombre,
+                            StringComparison.OrdinalIgnoreCase
+                        )
+                );
                 if (carpetasNivel3.Count > 0)
                 {
                     return carpetasNivel3[0].Ruta;
@@ -252,7 +288,11 @@ public static class FormatoCarpetaService
     /// antigua (orden cronologico real, no alfabético -- con "Marzo"/"Abril" no coincide).
     /// </summary>
     private static List<CarpetaCoincidente> BuscarCoincidentes(
-        string carpetaPadre, string nivelPatron, List<DateTime> candidatos, Func<DateTime, bool> filtro)
+        string carpetaPadre,
+        string nivelPatron,
+        List<DateTime> candidatos,
+        Func<DateTime, bool> filtro
+    )
     {
         // Los candidatos vienen en orden descendente: la primera fecha que genera cada nombre
         // es la mas reciente que lo genera (relevante para nombres que se repiten, ej. "03" de
@@ -263,7 +303,8 @@ public static class FormatoCarpetaService
             fechaPorNombre.TryAdd(FormatearNivel(nivelPatron, fecha), fecha);
         }
 
-        return Directory.GetDirectories(carpetaPadre)
+        return Directory
+            .GetDirectories(carpetaPadre)
             .Select(d => (Ruta: d, Nombre: Path.GetFileName(d)!))
             .Where(x => fechaPorNombre.ContainsKey(x.Nombre))
             .Select(x => new CarpetaCoincidente(x.Ruta, x.Nombre, fechaPorNombre[x.Nombre]))
@@ -276,7 +317,11 @@ public static class FormatoCarpetaService
     /// (carpetas creadas por adelantado) y bastante hacia atras, en pasos del tamaño del periodo
     /// del patron (ver <see cref="InferirPaso"/>).
     /// </summary>
-    private static IEnumerable<DateTime> FechasCandidatas(FormatoCarpeta formato, string patron, DateTime hoy)
+    private static IEnumerable<DateTime> FechasCandidatas(
+        FormatoCarpeta formato,
+        string patron,
+        DateTime hoy
+    )
     {
         var paso = InferirPaso(formato, patron);
 
@@ -293,26 +338,42 @@ public static class FormatoCarpetaService
         }
     }
 
-    private enum PasoPeriodo { Anio, Semestre, Trimestre, Mes, Quincena, Semana, Dia }
+    private enum PasoPeriodo
+    {
+        Anio,
+        Semestre,
+        Trimestre,
+        Mes,
+        Quincena,
+        Semana,
+        Dia,
+    }
 
     /// <summary>Fecha del próximo período, para el preview de "carpeta futura" (Caso-1, punto 3).</summary>
-    public static DateTime SiguientePeriodo(FormatoCarpeta formato, DateTime fecha, string? patron = null) =>
-        formato == FormatoCarpeta.Directo ? fecha : AvanzarPeriodo(InferirPaso(formato, patron), fecha);
+    public static DateTime SiguientePeriodo(
+        FormatoCarpeta formato,
+        DateTime fecha,
+        string? patron = null
+    ) =>
+        formato == FormatoCarpeta.Directo
+            ? fecha
+            : AvanzarPeriodo(InferirPaso(formato, patron), fecha);
 
-    private static PasoPeriodo InferirPaso(FormatoCarpeta formato, string? patron) => formato switch
-    {
-        FormatoCarpeta.Anio => PasoPeriodo.Anio,
-        FormatoCarpeta.AnioSemestre => PasoPeriodo.Semestre,
-        FormatoCarpeta.AnioTrimestre => PasoPeriodo.Trimestre,
-        FormatoCarpeta.AnioMes => PasoPeriodo.Mes,
-        FormatoCarpeta.AnioQuincena => PasoPeriodo.Quincena,
-        FormatoCarpeta.AnioSemana => PasoPeriodo.Semana,
-        FormatoCarpeta.AnioMesDia => PasoPeriodo.Dia,
-        FormatoCarpeta.MesSinAnio => PasoPeriodo.Mes,
-        FormatoCarpeta.SemanaDelMes => PasoPeriodo.Semana,
-        FormatoCarpeta.Personalizado => InferirPasoDePatron(patron),
-        _ => PasoPeriodo.Anio
-    };
+    private static PasoPeriodo InferirPaso(FormatoCarpeta formato, string? patron) =>
+        formato switch
+        {
+            FormatoCarpeta.Anio => PasoPeriodo.Anio,
+            FormatoCarpeta.AnioSemestre => PasoPeriodo.Semestre,
+            FormatoCarpeta.AnioTrimestre => PasoPeriodo.Trimestre,
+            FormatoCarpeta.AnioMes => PasoPeriodo.Mes,
+            FormatoCarpeta.AnioQuincena => PasoPeriodo.Quincena,
+            FormatoCarpeta.AnioSemana => PasoPeriodo.Semana,
+            FormatoCarpeta.AnioMesDia => PasoPeriodo.Dia,
+            FormatoCarpeta.MesSinAnio => PasoPeriodo.Mes,
+            FormatoCarpeta.SemanaDelMes => PasoPeriodo.Semana,
+            FormatoCarpeta.Personalizado => InferirPasoDePatron(patron),
+            _ => PasoPeriodo.Anio,
+        };
 
     /// <summary>
     /// Para un patrón personalizado, la granularidad del periodo sale del token más fino que
@@ -322,36 +383,48 @@ public static class FormatoCarpetaService
     {
         var tokens = EnumerarTokens(patron).ToHashSet();
 
-        if (tokens.Contains("dd")) return PasoPeriodo.Dia;
-        if (tokens.Overlaps(new[] { "N", "WW", "W" })) return PasoPeriodo.Semana;
-        if (tokens.Contains("H")) return PasoPeriodo.Quincena;
-        if (tokens.Overlaps(new[] { "MM", "MMMM" })) return PasoPeriodo.Mes;
-        if (tokens.Contains("T")) return PasoPeriodo.Trimestre;
-        if (tokens.Contains("S")) return PasoPeriodo.Semestre;
+        if (tokens.Contains("dd"))
+            return PasoPeriodo.Dia;
+        if (tokens.Overlaps(new[] { "N", "WW", "W" }))
+            return PasoPeriodo.Semana;
+        if (tokens.Contains("H"))
+            return PasoPeriodo.Quincena;
+        if (tokens.Overlaps(new[] { "MM", "MMMM" }))
+            return PasoPeriodo.Mes;
+        if (tokens.Contains("T"))
+            return PasoPeriodo.Trimestre;
+        if (tokens.Contains("S"))
+            return PasoPeriodo.Semestre;
         return PasoPeriodo.Anio;
     }
 
-    private static DateTime AvanzarPeriodo(PasoPeriodo paso, DateTime fecha) => paso switch
-    {
-        PasoPeriodo.Anio => fecha.AddYears(1),
-        PasoPeriodo.Semestre => fecha.AddMonths(6),
-        PasoPeriodo.Trimestre => fecha.AddMonths(3),
-        PasoPeriodo.Mes => fecha.AddMonths(1),
-        PasoPeriodo.Quincena => fecha.Day <= 15 ? new DateTime(fecha.Year, fecha.Month, 16) : new DateTime(fecha.Year, fecha.Month, 1).AddMonths(1),
-        PasoPeriodo.Semana => fecha.AddDays(7),
-        _ => fecha.AddDays(1)
-    };
+    private static DateTime AvanzarPeriodo(PasoPeriodo paso, DateTime fecha) =>
+        paso switch
+        {
+            PasoPeriodo.Anio => fecha.AddYears(1),
+            PasoPeriodo.Semestre => fecha.AddMonths(6),
+            PasoPeriodo.Trimestre => fecha.AddMonths(3),
+            PasoPeriodo.Mes => fecha.AddMonths(1),
+            PasoPeriodo.Quincena => fecha.Day <= 15
+                ? new DateTime(fecha.Year, fecha.Month, 16)
+                : new DateTime(fecha.Year, fecha.Month, 1).AddMonths(1),
+            PasoPeriodo.Semana => fecha.AddDays(7),
+            _ => fecha.AddDays(1),
+        };
 
-    private static DateTime RetrocederPeriodo(PasoPeriodo paso, DateTime fecha) => paso switch
-    {
-        PasoPeriodo.Anio => fecha.AddYears(-1),
-        PasoPeriodo.Semestre => fecha.AddMonths(-6),
-        PasoPeriodo.Trimestre => fecha.AddMonths(-3),
-        PasoPeriodo.Mes => fecha.AddMonths(-1),
-        PasoPeriodo.Quincena => fecha.Day > 15 ? new DateTime(fecha.Year, fecha.Month, 15) : new DateTime(fecha.Year, fecha.Month, 1).AddDays(-1),
-        PasoPeriodo.Semana => fecha.AddDays(-7),
-        _ => fecha.AddDays(-1)
-    };
+    private static DateTime RetrocederPeriodo(PasoPeriodo paso, DateTime fecha) =>
+        paso switch
+        {
+            PasoPeriodo.Anio => fecha.AddYears(-1),
+            PasoPeriodo.Semestre => fecha.AddMonths(-6),
+            PasoPeriodo.Trimestre => fecha.AddMonths(-3),
+            PasoPeriodo.Mes => fecha.AddMonths(-1),
+            PasoPeriodo.Quincena => fecha.Day > 15
+                ? new DateTime(fecha.Year, fecha.Month, 15)
+                : new DateTime(fecha.Year, fecha.Month, 1).AddDays(-1),
+            PasoPeriodo.Semana => fecha.AddDays(-7),
+            _ => fecha.AddDays(-1),
+        };
 
     public static string ConstruirSubcarpeta(FormatoCarpeta formato, string? patron, DateTime fecha)
     {
@@ -374,8 +447,18 @@ public static class FormatoCarpetaService
 
     private static readonly string[] NombresMes =
     [
-        "Enero", "Febrero", "Marzo", "Abril", "Mayo", "Junio",
-        "Julio", "Agosto", "Septiembre", "Octubre", "Noviembre", "Diciembre"
+        "Enero",
+        "Febrero",
+        "Marzo",
+        "Abril",
+        "Mayo",
+        "Junio",
+        "Julio",
+        "Agosto",
+        "Septiembre",
+        "Octubre",
+        "Noviembre",
+        "Diciembre",
     ];
 
     // Tokens del lenguaje de patrones (los ve el motor, nunca el usuario: en la interfaz solo
@@ -383,14 +466,26 @@ public static class FormatoCarpetaService
     // el emparejamiento voraz dentro de una corrida de letras.
     private static readonly string[] TokensReconocidos =
     [
-        "yyyy", "MMMM", "MM", "yy", "dd", "WW", "W", "S", "T", "H", "O", "N"
+        "yyyy",
+        "MMMM",
+        "MM",
+        "yy",
+        "dd",
+        "WW",
+        "W",
+        "S",
+        "T",
+        "H",
+        "O",
+        "N",
     ];
 
     /// <summary>El token más largo de <see cref="TokensReconocidos"/> que empieza en <paramref name="posicion"/>.</summary>
     private static string? BuscarToken(string corrida, int posicion) =>
         TokensReconocidos.FirstOrDefault(t =>
-            corrida.Length >= posicion + t.Length &&
-            string.CompareOrdinal(corrida, posicion, t, 0, t.Length) == 0);
+            corrida.Length >= posicion + t.Length
+            && string.CompareOrdinal(corrida, posicion, t, 0, t.Length) == 0
+        );
 
     /// <summary>
     /// Formatea un nivel del patron para una fecha: primero con el motor propio (que entiende los
@@ -469,22 +564,23 @@ public static class FormatoCarpetaService
         return resultado.ToString();
     }
 
-    private static string ValorToken(string token, DateTime fecha) => token switch
-    {
-        "yyyy" => fecha.Year.ToString("D4"),
-        "yy" => (fecha.Year % 100).ToString("D2"),
-        "MMMM" => NombresMes[fecha.Month - 1],
-        "MM" => fecha.Month.ToString("D2"),
-        "dd" => fecha.Day.ToString("D2"),
-        "WW" => System.Globalization.ISOWeek.GetWeekOfYear(fecha).ToString("D2"),
-        "W" => System.Globalization.ISOWeek.GetWeekOfYear(fecha).ToString(),
-        "S" => ((fecha.Month - 1) / 6 + 1).ToString(),
-        "T" => ((fecha.Month - 1) / 3 + 1).ToString(),
-        "H" => (fecha.Day <= 15 ? 1 : 2).ToString(),
-        "O" => fecha.Day <= 15 ? "1ra" : "2da",
-        "N" => SemanaDelMes(fecha).ToString(),
-        _ => throw new InvalidOperationException($"Token de patrón desconocido: \"{token}\".")
-    };
+    private static string ValorToken(string token, DateTime fecha) =>
+        token switch
+        {
+            "yyyy" => fecha.Year.ToString("D4"),
+            "yy" => (fecha.Year % 100).ToString("D2"),
+            "MMMM" => NombresMes[fecha.Month - 1],
+            "MM" => fecha.Month.ToString("D2"),
+            "dd" => fecha.Day.ToString("D2"),
+            "WW" => System.Globalization.ISOWeek.GetWeekOfYear(fecha).ToString("D2"),
+            "W" => System.Globalization.ISOWeek.GetWeekOfYear(fecha).ToString(),
+            "S" => ((fecha.Month - 1) / 6 + 1).ToString(),
+            "T" => ((fecha.Month - 1) / 3 + 1).ToString(),
+            "H" => (fecha.Day <= 15 ? 1 : 2).ToString(),
+            "O" => fecha.Day <= 15 ? "1ra" : "2da",
+            "N" => SemanaDelMes(fecha).ToString(),
+            _ => throw new InvalidOperationException($"Token de patrón desconocido: \"{token}\"."),
+        };
 
     /// <summary>
     /// Semana dentro del mes, contando semanas de calendario lunes-domingo que tocan el mes:

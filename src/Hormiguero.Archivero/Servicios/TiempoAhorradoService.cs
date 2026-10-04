@@ -30,8 +30,10 @@ public static class TiempoAhorradoService
     public static (string Titulo, string Aclaracion) FormatearResumen(int totalDocumentos)
     {
         var minutos = totalDocumentos * SegundosAhorradosPorDocumento / 60.0;
-        var titulo = $"{totalDocumentos} {Pluralizar(totalDocumentos, "documento", "documentos")} archivado{(totalDocumentos == 1 ? "" : "s")} automáticamente — tiempo humano ahorrado: ~{FormatearTiempo(minutos)}";
-        var aclaracion = $"(estimado a ~{SegundosAhorradosPorDocumento} segundos de atención manual ahorrados por documento)";
+        var titulo =
+            $"{totalDocumentos} {Pluralizar(totalDocumentos, "documento", "documentos")} archivado{(totalDocumentos == 1 ? "" : "s")} automáticamente — tiempo humano ahorrado: ~{FormatearTiempo(minutos)}";
+        var aclaracion =
+            $"(estimado a ~{SegundosAhorradosPorDocumento} segundos de atención manual ahorrados por documento)";
         return (titulo, aclaracion);
     }
 
@@ -54,5 +56,6 @@ public static class TiempoAhorradoService
             : $"{textoHoras} y {minutosRestantes} {Pluralizar(minutosRestantes, "minuto", "minutos")}";
     }
 
-    private static string Pluralizar(int cantidad, string singular, string plural) => cantidad == 1 ? singular : plural;
+    private static string Pluralizar(int cantidad, string singular, string plural) =>
+        cantidad == 1 ? singular : plural;
 }

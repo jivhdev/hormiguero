@@ -53,7 +53,7 @@ public class VigilanciaCarpetaService : IDisposable
         _watcher = new FileSystemWatcher(_carpetaObservada, "*.pdf")
         {
             NotifyFilter = NotifyFilters.FileName,
-            EnableRaisingEvents = true
+            EnableRaisingEvents = true,
         };
         // FileSystemWatcher entrega los eventos Created de a uno, en orden, en un unico hilo de
         // fondo: como este handler es sincronico (sin async/Task.Run), los archivos se procesan
@@ -86,7 +86,11 @@ public class VigilanciaCarpetaService : IDisposable
     {
         ReconciliarPendientesConDisco();
 
-        foreach (var pendiente in _pendientes.ObtenerTodos().Where(p => !p.Motivo.EsPendienteDeDistribuir()))
+        foreach (
+            var pendiente in _pendientes
+                .ObtenerTodos()
+                .Where(p => !p.Motivo.EsPendienteDeDistribuir())
+        )
         {
             ProcesarArchivo(pendiente.RutaArchivo, esReproceso: true);
         }
@@ -149,7 +153,10 @@ public class VigilanciaCarpetaService : IDisposable
                 return;
             }
 
-            AuditoriaService.Registrar(esReproceso ? "DOCUMENTO_REPROCESADO" : "DOCUMENTO_DETECTADO", rutaArchivo);
+            AuditoriaService.Registrar(
+                esReproceso ? "DOCUMENTO_REPROCESADO" : "DOCUMENTO_DETECTADO",
+                rutaArchivo
+            );
 
             // Caso-6, punto 1: el evento Created del FileSystemWatcher dispara apenas Windows
             // crea el archivo destino, no cuando termina de copiarse -- con archivos grandes
@@ -189,7 +196,10 @@ public class VigilanciaCarpetaService : IDisposable
             }
 
             var configuraciones = _configuraciones.ObtenerTodasConPatrones();
-            var coincidencia = CoincidenciaAutomaticaService.BuscarConfiguracionQueCoincide(rutaArchivo, configuraciones);
+            var coincidencia = CoincidenciaAutomaticaService.BuscarConfiguracionQueCoincide(
+                rutaArchivo,
+                configuraciones
+            );
 
             if (coincidencia is null)
             {
@@ -197,7 +207,10 @@ public class VigilanciaCarpetaService : IDisposable
                 return;
             }
 
-            ManejarResultadoGuardado(rutaArchivo, GuardadoAutomaticoService.Procesar(rutaArchivo, coincidencia));
+            ManejarResultadoGuardado(
+                rutaArchivo,
+                GuardadoAutomaticoService.Procesar(rutaArchivo, coincidencia)
+            );
         }
         catch
         {
@@ -222,7 +235,12 @@ public class VigilanciaCarpetaService : IDisposable
         {
             try
             {
-                using var stream = File.Open(rutaArchivo, FileMode.Open, FileAccess.Read, FileShare.Read);
+                using var stream = File.Open(
+                    rutaArchivo,
+                    FileMode.Open,
+                    FileAccess.Read,
+                    FileShare.Read
+                );
                 return true;
             }
             catch (IOException)
@@ -250,21 +268,30 @@ public class VigilanciaCarpetaService : IDisposable
             case ResultadoGuardadoAutomatico.Duplicado:
                 if (AgregarAPendientes(rutaArchivo, MotivoPendiente.Duplicado))
                 {
-                    ArchivoRequiereAtencion?.Invoke(rutaArchivo, resultado.Detalle ?? resultado.Resultado.ToString());
+                    ArchivoRequiereAtencion?.Invoke(
+                        rutaArchivo,
+                        resultado.Detalle ?? resultado.Resultado.ToString()
+                    );
                 }
                 break;
 
             case ResultadoGuardadoAutomatico.CarpetaNoDisponible:
                 if (AgregarAPendientes(rutaArchivo, MotivoPendiente.CarpetaNoDisponible))
                 {
-                    ArchivoRequiereAtencion?.Invoke(rutaArchivo, resultado.Detalle ?? resultado.Resultado.ToString());
+                    ArchivoRequiereAtencion?.Invoke(
+                        rutaArchivo,
+                        resultado.Detalle ?? resultado.Resultado.ToString()
+                    );
                 }
                 break;
 
             case ResultadoGuardadoAutomatico.PeriodoNuevo:
                 if (AgregarAPendientes(rutaArchivo, MotivoPendiente.PeriodoNuevo))
                 {
-                    ArchivoRequiereAtencion?.Invoke(rutaArchivo, resultado.Detalle ?? resultado.Resultado.ToString());
+                    ArchivoRequiereAtencion?.Invoke(
+                        rutaArchivo,
+                        resultado.Detalle ?? resultado.Resultado.ToString()
+                    );
                 }
                 break;
 
@@ -280,7 +307,10 @@ public class VigilanciaCarpetaService : IDisposable
                 // Caso-9, mejora 1(g): nunca un guardado silencioso -- motivo específico y legible.
                 if (AgregarAPendientes(rutaArchivo, resultado.MotivoValidacion!.Value))
                 {
-                    ArchivoRequiereAtencion?.Invoke(rutaArchivo, resultado.Detalle ?? resultado.Resultado.ToString());
+                    ArchivoRequiereAtencion?.Invoke(
+                        rutaArchivo,
+                        resultado.Detalle ?? resultado.Resultado.ToString()
+                    );
                 }
                 break;
         }
@@ -294,7 +324,10 @@ public class VigilanciaCarpetaService : IDisposable
             // Único punto donde un archivo pasa a pendientes, para cualquier motivo -- cubre a
             // la vez "documento a pendientes con motivo" y "rechazo por validación" (Caso-9,
             // mejora 2), sin duplicar el registro en cada lugar que llama a este método.
-            AuditoriaService.Registrar("DOCUMENTO_PENDIENTE", $"Motivo={motivo}; Ruta={rutaArchivo}");
+            AuditoriaService.Registrar(
+                "DOCUMENTO_PENDIENTE",
+                $"Motivo={motivo}; Ruta={rutaArchivo}"
+            );
             ArchivoPendienteDetectado?.Invoke(rutaArchivo);
         }
 

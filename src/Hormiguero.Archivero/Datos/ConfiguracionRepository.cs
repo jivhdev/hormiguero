@@ -15,8 +15,7 @@ public class ConfiguracionRepository
     {
         using var conexion = BaseDeDatos.CrearConexion();
         using var comando = conexion.CreateCommand();
-        comando.CommandText =
-            """
+        comando.CommandText = """
             INSERT INTO Configuracion (Clave, Valor) VALUES ($clave, $valor)
             ON CONFLICT(Clave) DO UPDATE SET Valor = excluded.Valor;
             """;
@@ -30,8 +29,7 @@ public class ConfiguracionRepository
     {
         using var conexion = BaseDeDatos.CrearConexion();
         using var comando = conexion.CreateCommand();
-        comando.CommandText =
-            """
+        comando.CommandText = """
             INSERT INTO Configuracion (Clave, Valor) VALUES ($clave, '1')
             ON CONFLICT(Clave) DO UPDATE SET Valor = CAST(CAST(Valor AS INTEGER) + 1 AS TEXT);
             """;
@@ -39,5 +37,6 @@ public class ConfiguracionRepository
         comando.ExecuteNonQuery();
     }
 
-    public int ObtenerContador(string clave) => int.TryParse(Obtener(clave), out var valor) ? valor : 0;
+    public int ObtenerContador(string clave) =>
+        int.TryParse(Obtener(clave), out var valor) ? valor : 0;
 }

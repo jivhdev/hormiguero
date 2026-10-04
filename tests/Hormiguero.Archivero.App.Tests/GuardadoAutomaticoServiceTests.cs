@@ -33,7 +33,11 @@ public class GuardadoAutomaticoServiceTests : IDisposable
     [Fact]
     public void Procesar_ConFormatoDirecto_ClasificaElArchivoSinSubcarpetas()
     {
-        var ruta = CreadorPdfDePrueba.CrearConLineas(_carpetaOrigen, "Banco de Prueba SA", "Resumen de cuenta");
+        var ruta = CreadorPdfDePrueba.CrearConLineas(
+            _carpetaOrigen,
+            "Banco de Prueba SA",
+            "Resumen de cuenta"
+        );
         var configuracion = new ConfiguracionDocumento
         {
             Id = 1,
@@ -43,7 +47,13 @@ public class GuardadoAutomaticoServiceTests : IDisposable
             FormatoCarpeta = FormatoCarpeta.Directo,
             PatronCarpeta = null,
             Renombrar = false,
-            Patrones = [new PatronReconocimiento(1, [MarcaDeLinea(CampoMarca.Emisor, 0), MarcaDeLinea(CampoMarca.Tipo, 1)])]
+            Patrones =
+            [
+                new PatronReconocimiento(
+                    1,
+                    [MarcaDeLinea(CampoMarca.Emisor, 0), MarcaDeLinea(CampoMarca.Tipo, 1)]
+                ),
+            ],
         };
 
         var resultado = GuardadoAutomaticoService.Procesar(ruta, configuracion);
@@ -59,7 +69,12 @@ public class GuardadoAutomaticoServiceTests : IDisposable
         // Caso comun (silencioso, sin intervencion): la carpeta del periodo actual ya existe,
         // asi que Archivero guarda directo, como pide REQ-002.
         Directory.CreateDirectory(Path.Combine(_carpetaDestino, "2026"));
-        var ruta = CreadorPdfDePrueba.CrearConLineas(_carpetaOrigen, "Banco de Prueba SA", "Resumen de cuenta", "12/09/2026");
+        var ruta = CreadorPdfDePrueba.CrearConLineas(
+            _carpetaOrigen,
+            "Banco de Prueba SA",
+            "Resumen de cuenta",
+            "12/09/2026"
+        );
         var configuracion = new ConfiguracionDocumento
         {
             Id = 1,
@@ -71,19 +86,24 @@ public class GuardadoAutomaticoServiceTests : IDisposable
             Renombrar = false,
             Patrones =
             [
-                new PatronReconocimiento(1,
-                [
-                    MarcaDeLinea(CampoMarca.Emisor, 0),
-                    MarcaDeLinea(CampoMarca.Tipo, 1),
-                    MarcaDeLinea(CampoMarca.Fecha, 2)
-                ])
-            ]
+                new PatronReconocimiento(
+                    1,
+                    [
+                        MarcaDeLinea(CampoMarca.Emisor, 0),
+                        MarcaDeLinea(CampoMarca.Tipo, 1),
+                        MarcaDeLinea(CampoMarca.Fecha, 2),
+                    ]
+                ),
+            ],
         };
 
         var resultado = GuardadoAutomaticoService.Procesar(ruta, configuracion);
 
         Assert.Equal(ResultadoGuardadoAutomatico.Guardado, resultado.Resultado);
-        Assert.Equal(Path.Combine(_carpetaDestino, "2026"), Path.GetDirectoryName(resultado.RutaFinal));
+        Assert.Equal(
+            Path.Combine(_carpetaDestino, "2026"),
+            Path.GetDirectoryName(resultado.RutaFinal)
+        );
     }
 
     [Fact]
@@ -91,7 +111,12 @@ public class GuardadoAutomaticoServiceTests : IDisposable
     {
         // Caso-1, punto 2 (ultimo parrafo): la carpeta del periodo actual todavia no existe --
         // Archivero nunca la crea sola, se lo deja a una decision activa del usuario.
-        var ruta = CreadorPdfDePrueba.CrearConLineas(_carpetaOrigen, "Banco de Prueba SA", "Resumen de cuenta", "12/09/2026");
+        var ruta = CreadorPdfDePrueba.CrearConLineas(
+            _carpetaOrigen,
+            "Banco de Prueba SA",
+            "Resumen de cuenta",
+            "12/09/2026"
+        );
         var configuracion = new ConfiguracionDocumento
         {
             Id = 1,
@@ -103,13 +128,15 @@ public class GuardadoAutomaticoServiceTests : IDisposable
             Renombrar = false,
             Patrones =
             [
-                new PatronReconocimiento(1,
-                [
-                    MarcaDeLinea(CampoMarca.Emisor, 0),
-                    MarcaDeLinea(CampoMarca.Tipo, 1),
-                    MarcaDeLinea(CampoMarca.Fecha, 2)
-                ])
-            ]
+                new PatronReconocimiento(
+                    1,
+                    [
+                        MarcaDeLinea(CampoMarca.Emisor, 0),
+                        MarcaDeLinea(CampoMarca.Tipo, 1),
+                        MarcaDeLinea(CampoMarca.Fecha, 2),
+                    ]
+                ),
+            ],
         };
 
         var resultado = GuardadoAutomaticoService.Procesar(ruta, configuracion);
@@ -122,7 +149,12 @@ public class GuardadoAutomaticoServiceTests : IDisposable
     [Fact]
     public void Procesar_ConFormatoAnioYFechaInvalida_DevuelveValorInvalidoYNoTocaElOriginal()
     {
-        var ruta = CreadorPdfDePrueba.CrearConLineas(_carpetaOrigen, "Banco de Prueba SA", "Resumen de cuenta", "esto no es una fecha");
+        var ruta = CreadorPdfDePrueba.CrearConLineas(
+            _carpetaOrigen,
+            "Banco de Prueba SA",
+            "Resumen de cuenta",
+            "esto no es una fecha"
+        );
         var configuracion = new ConfiguracionDocumento
         {
             Id = 1,
@@ -134,13 +166,15 @@ public class GuardadoAutomaticoServiceTests : IDisposable
             Renombrar = false,
             Patrones =
             [
-                new PatronReconocimiento(1,
-                [
-                    MarcaDeLinea(CampoMarca.Emisor, 0),
-                    MarcaDeLinea(CampoMarca.Tipo, 1),
-                    MarcaDeLinea(CampoMarca.Fecha, 2)
-                ])
-            ]
+                new PatronReconocimiento(
+                    1,
+                    [
+                        MarcaDeLinea(CampoMarca.Emisor, 0),
+                        MarcaDeLinea(CampoMarca.Tipo, 1),
+                        MarcaDeLinea(CampoMarca.Fecha, 2),
+                    ]
+                ),
+            ],
         };
 
         var resultado = GuardadoAutomaticoService.Procesar(ruta, configuracion);
@@ -152,7 +186,12 @@ public class GuardadoAutomaticoServiceTests : IDisposable
     [Fact]
     public void Procesar_ConRenombrar_UsaElCampoExtraidoComoNombreDeArchivo()
     {
-        var ruta = CreadorPdfDePrueba.CrearConLineas(_carpetaOrigen, "Banco de Prueba SA", "Resumen de cuenta", "FACTURA-001");
+        var ruta = CreadorPdfDePrueba.CrearConLineas(
+            _carpetaOrigen,
+            "Banco de Prueba SA",
+            "Resumen de cuenta",
+            "FACTURA-001"
+        );
         var configuracion = new ConfiguracionDocumento
         {
             Id = 1,
@@ -164,13 +203,15 @@ public class GuardadoAutomaticoServiceTests : IDisposable
             Renombrar = true,
             Patrones =
             [
-                new PatronReconocimiento(1,
-                [
-                    MarcaDeLinea(CampoMarca.Emisor, 0),
-                    MarcaDeLinea(CampoMarca.Tipo, 1),
-                    MarcaDeLinea(CampoMarca.NombreArchivo, 2)
-                ])
-            ]
+                new PatronReconocimiento(
+                    1,
+                    [
+                        MarcaDeLinea(CampoMarca.Emisor, 0),
+                        MarcaDeLinea(CampoMarca.Tipo, 1),
+                        MarcaDeLinea(CampoMarca.NombreArchivo, 2),
+                    ]
+                ),
+            ],
         };
 
         var resultado = GuardadoAutomaticoService.Procesar(ruta, configuracion);
@@ -181,33 +222,44 @@ public class GuardadoAutomaticoServiceTests : IDisposable
 
     // ----- Caso-11, punto 1: "Preguntar el nombre cada vez" -----
 
-    private ConfiguracionDocumento ConfiguracionQuePreguntaElNombre(FormatoCarpeta formato) => new()
-    {
-        Id = 1,
-        Emisor = "Banco de Prueba SA",
-        Tipo = "Resumen de cuenta",
-        CarpetaDestino = _carpetaDestino,
-        FormatoCarpeta = formato,
-        PatronCarpeta = formato == FormatoCarpeta.Directo ? null : "yyyy",
-        Renombrar = false,
-        PreguntarNombre = true,
-        Patrones =
-        [
-            new PatronReconocimiento(1,
+    private ConfiguracionDocumento ConfiguracionQuePreguntaElNombre(FormatoCarpeta formato) =>
+        new()
+        {
+            Id = 1,
+            Emisor = "Banco de Prueba SA",
+            Tipo = "Resumen de cuenta",
+            CarpetaDestino = _carpetaDestino,
+            FormatoCarpeta = formato,
+            PatronCarpeta = formato == FormatoCarpeta.Directo ? null : "yyyy",
+            Renombrar = false,
+            PreguntarNombre = true,
+            Patrones =
             [
-                MarcaDeLinea(CampoMarca.Emisor, 0),
-                MarcaDeLinea(CampoMarca.Tipo, 1),
-                MarcaDeLinea(CampoMarca.Fecha, 2)
-            ])
-        ]
-    };
+                new PatronReconocimiento(
+                    1,
+                    [
+                        MarcaDeLinea(CampoMarca.Emisor, 0),
+                        MarcaDeLinea(CampoMarca.Tipo, 1),
+                        MarcaDeLinea(CampoMarca.Fecha, 2),
+                    ]
+                ),
+            ],
+        };
 
     [Fact]
     public void Procesar_ConPreguntarNombre_DevuelveNombrePorConfirmarYNoTocaElArchivo()
     {
-        var ruta = CreadorPdfDePrueba.CrearConLineas(_carpetaOrigen, "Banco de Prueba SA", "Resumen de cuenta", "12/09/2026");
+        var ruta = CreadorPdfDePrueba.CrearConLineas(
+            _carpetaOrigen,
+            "Banco de Prueba SA",
+            "Resumen de cuenta",
+            "12/09/2026"
+        );
 
-        var resultado = GuardadoAutomaticoService.Procesar(ruta, ConfiguracionQuePreguntaElNombre(FormatoCarpeta.Directo));
+        var resultado = GuardadoAutomaticoService.Procesar(
+            ruta,
+            ConfiguracionQuePreguntaElNombre(FormatoCarpeta.Directo)
+        );
 
         Assert.Equal(ResultadoGuardadoAutomatico.NombrePorConfirmar, resultado.Resultado);
         Assert.True(File.Exists(ruta));
@@ -219,9 +271,17 @@ public class GuardadoAutomaticoServiceTests : IDisposable
     {
         // Si el período se resolviera primero, la pantalla de crear período guardaría con el
         // nombre original y el usuario nunca vería la pregunta del nombre.
-        var ruta = CreadorPdfDePrueba.CrearConLineas(_carpetaOrigen, "Banco de Prueba SA", "Resumen de cuenta", "12/09/2026");
+        var ruta = CreadorPdfDePrueba.CrearConLineas(
+            _carpetaOrigen,
+            "Banco de Prueba SA",
+            "Resumen de cuenta",
+            "12/09/2026"
+        );
 
-        var resultado = GuardadoAutomaticoService.Procesar(ruta, ConfiguracionQuePreguntaElNombre(FormatoCarpeta.Anio));
+        var resultado = GuardadoAutomaticoService.Procesar(
+            ruta,
+            ConfiguracionQuePreguntaElNombre(FormatoCarpeta.Anio)
+        );
 
         Assert.Equal(ResultadoGuardadoAutomatico.NombrePorConfirmar, resultado.Resultado);
         Assert.False(Directory.Exists(Path.Combine(_carpetaDestino, "2026")));
@@ -230,9 +290,17 @@ public class GuardadoAutomaticoServiceTests : IDisposable
     [Fact]
     public void Procesar_ConPreguntarNombreYFechaInvalida_DevuelveValorInvalido()
     {
-        var ruta = CreadorPdfDePrueba.CrearConLineas(_carpetaOrigen, "Banco de Prueba SA", "Resumen de cuenta", "esto no es una fecha");
+        var ruta = CreadorPdfDePrueba.CrearConLineas(
+            _carpetaOrigen,
+            "Banco de Prueba SA",
+            "Resumen de cuenta",
+            "esto no es una fecha"
+        );
 
-        var resultado = GuardadoAutomaticoService.Procesar(ruta, ConfiguracionQuePreguntaElNombre(FormatoCarpeta.Anio));
+        var resultado = GuardadoAutomaticoService.Procesar(
+            ruta,
+            ConfiguracionQuePreguntaElNombre(FormatoCarpeta.Anio)
+        );
 
         Assert.Equal(ResultadoGuardadoAutomatico.ValorInvalido, resultado.Resultado);
     }
@@ -241,10 +309,18 @@ public class GuardadoAutomaticoServiceTests : IDisposable
     public void GuardarConNombreConfirmado_GuardaConElNombreEscritoEnLaCarpetaCalculada()
     {
         Directory.CreateDirectory(Path.Combine(_carpetaDestino, "2026"));
-        var ruta = CreadorPdfDePrueba.CrearConLineas(_carpetaOrigen, "Banco de Prueba SA", "Resumen de cuenta", "12/09/2026");
+        var ruta = CreadorPdfDePrueba.CrearConLineas(
+            _carpetaOrigen,
+            "Banco de Prueba SA",
+            "Resumen de cuenta",
+            "12/09/2026"
+        );
 
         var resultado = GuardadoAutomaticoService.GuardarConNombreConfirmado(
-            ruta, ConfiguracionQuePreguntaElNombre(FormatoCarpeta.Anio), "NC 555");
+            ruta,
+            ConfiguracionQuePreguntaElNombre(FormatoCarpeta.Anio),
+            "NC 555"
+        );
 
         Assert.Equal(ResultadoGuardadoAutomatico.Guardado, resultado.Resultado);
         Assert.Equal(Path.Combine(_carpetaDestino, "2026", "NC 555.pdf"), resultado.RutaFinal);
@@ -255,10 +331,18 @@ public class GuardadoAutomaticoServiceTests : IDisposable
     [Fact]
     public void GuardarConNombreConfirmado_ConPeriodoInexistente_DevuelvePeriodoNuevoSinCrearlo()
     {
-        var ruta = CreadorPdfDePrueba.CrearConLineas(_carpetaOrigen, "Banco de Prueba SA", "Resumen de cuenta", "12/09/2026");
+        var ruta = CreadorPdfDePrueba.CrearConLineas(
+            _carpetaOrigen,
+            "Banco de Prueba SA",
+            "Resumen de cuenta",
+            "12/09/2026"
+        );
 
         var resultado = GuardadoAutomaticoService.GuardarConNombreConfirmado(
-            ruta, ConfiguracionQuePreguntaElNombre(FormatoCarpeta.Anio), "NC 555");
+            ruta,
+            ConfiguracionQuePreguntaElNombre(FormatoCarpeta.Anio),
+            "NC 555"
+        );
 
         Assert.Equal(ResultadoGuardadoAutomatico.PeriodoNuevo, resultado.Resultado);
         Assert.Equal(Path.Combine(_carpetaDestino, "2026"), resultado.Detalle);
@@ -271,10 +355,18 @@ public class GuardadoAutomaticoServiceTests : IDisposable
     {
         var existente = Path.Combine(_carpetaDestino, "NC 555.pdf");
         File.WriteAllText(existente, "el que ya estaba");
-        var ruta = CreadorPdfDePrueba.CrearConLineas(_carpetaOrigen, "Banco de Prueba SA", "Resumen de cuenta", "12/09/2026");
+        var ruta = CreadorPdfDePrueba.CrearConLineas(
+            _carpetaOrigen,
+            "Banco de Prueba SA",
+            "Resumen de cuenta",
+            "12/09/2026"
+        );
 
         var resultado = GuardadoAutomaticoService.GuardarConNombreConfirmado(
-            ruta, ConfiguracionQuePreguntaElNombre(FormatoCarpeta.Directo), "NC 555");
+            ruta,
+            ConfiguracionQuePreguntaElNombre(FormatoCarpeta.Directo),
+            "NC 555"
+        );
 
         Assert.Equal(ResultadoGuardadoAutomatico.Duplicado, resultado.Resultado);
         Assert.Equal("el que ya estaba", File.ReadAllText(existente));
@@ -284,10 +376,18 @@ public class GuardadoAutomaticoServiceTests : IDisposable
     [Fact]
     public void GuardarConNombreConfirmado_ConUnNombreReservadoPorWindows_LoRechazaSinTocarNada()
     {
-        var ruta = CreadorPdfDePrueba.CrearConLineas(_carpetaOrigen, "Banco de Prueba SA", "Resumen de cuenta", "12/09/2026");
+        var ruta = CreadorPdfDePrueba.CrearConLineas(
+            _carpetaOrigen,
+            "Banco de Prueba SA",
+            "Resumen de cuenta",
+            "12/09/2026"
+        );
 
         var resultado = GuardadoAutomaticoService.GuardarConNombreConfirmado(
-            ruta, ConfiguracionQuePreguntaElNombre(FormatoCarpeta.Directo), "CON");
+            ruta,
+            ConfiguracionQuePreguntaElNombre(FormatoCarpeta.Directo),
+            "CON"
+        );
 
         Assert.Equal(ResultadoGuardadoAutomatico.ValidacionFallida, resultado.Resultado);
         Assert.Equal(MotivoPendiente.NombreReservadoPorWindows, resultado.MotivoValidacion);

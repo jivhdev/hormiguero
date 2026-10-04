@@ -8,7 +8,10 @@ public class PendienteRepositoryTests : IDisposable
 
     public PendienteRepositoryTests()
     {
-        _rutaDbTemporal = Path.Combine(Path.GetTempPath(), $"archivero-tests-{Guid.NewGuid():N}.db");
+        _rutaDbTemporal = Path.Combine(
+            Path.GetTempPath(),
+            $"archivero-tests-{Guid.NewGuid():N}.db"
+        );
         BaseDeDatos.RutaArchivo = _rutaDbTemporal;
         BaseDeDatos.AsegurarEsquema();
     }

@@ -10,14 +10,21 @@ public class VigilanciaCarpetaServiceTests : IDisposable
 
     public VigilanciaCarpetaServiceTests()
     {
-        _rutaDbTemporal = Path.Combine(Path.GetTempPath(), $"archivero-tests-{Guid.NewGuid():N}.db");
+        _rutaDbTemporal = Path.Combine(
+            Path.GetTempPath(),
+            $"archivero-tests-{Guid.NewGuid():N}.db"
+        );
         BaseDeDatos.RutaArchivo = _rutaDbTemporal;
         BaseDeDatos.AsegurarEsquema();
 
         // Caso-9, mejora 2: redirigir el log de auditoria para no escribir en el real del
         // usuario al correr los tests.
         _rutaLogOriginal = AuditoriaService.RutaLog;
-        AuditoriaService.RutaLog = Path.Combine(Path.GetTempPath(), $"archivero-tests-{Guid.NewGuid():N}", "auditoria.log");
+        AuditoriaService.RutaLog = Path.Combine(
+            Path.GetTempPath(),
+            $"archivero-tests-{Guid.NewGuid():N}",
+            "auditoria.log"
+        );
     }
 
     [Fact]
@@ -26,7 +33,10 @@ public class VigilanciaCarpetaServiceTests : IDisposable
         // Bug real reportado por Javier: la carpeta observada se borró del disco por fuera de
         // Archivero, y al reabrirlo no avisaba nada -- se quedaba observando en silencio total,
         // sin importar qué archivos se dejaran ahí. REQ-005 pide avisar, no fallar en silencio.
-        var carpetaQueNoExiste = Path.Combine(Path.GetTempPath(), "archivero-tests-inexistente-" + Guid.NewGuid().ToString("N"));
+        var carpetaQueNoExiste = Path.Combine(
+            Path.GetTempPath(),
+            "archivero-tests-inexistente-" + Guid.NewGuid().ToString("N")
+        );
         using var vigilancia = new VigilanciaCarpetaService(carpetaQueNoExiste);
 
         var avisoDisparado = false;
@@ -40,7 +50,10 @@ public class VigilanciaCarpetaServiceTests : IDisposable
     [Fact]
     public void Iniciar_ConLaCarpetaObservadaExistente_NoAvisa()
     {
-        var carpeta = Path.Combine(Path.GetTempPath(), "archivero-tests-" + Guid.NewGuid().ToString("N"));
+        var carpeta = Path.Combine(
+            Path.GetTempPath(),
+            "archivero-tests-" + Guid.NewGuid().ToString("N")
+        );
         Directory.CreateDirectory(carpeta);
 
         try
@@ -70,7 +83,10 @@ public class VigilanciaCarpetaServiceTests : IDisposable
 
     private static (string Observada, string Destino) CrearCarpetas()
     {
-        var raiz = Path.Combine(Path.GetTempPath(), "archivero-tests-" + Guid.NewGuid().ToString("N"));
+        var raiz = Path.Combine(
+            Path.GetTempPath(),
+            "archivero-tests-" + Guid.NewGuid().ToString("N")
+        );
         var observada = Path.Combine(raiz, "observada");
         var destino = Path.Combine(raiz, "destino");
         Directory.CreateDirectory(observada);
@@ -85,13 +101,23 @@ public class VigilanciaCarpetaServiceTests : IDisposable
         // creó la configuración de su mismo Emisor+Tipo, y se quedó ahí -- tuvo que sacarlo y
         // volverlo a meter en la carpeta para que Archivero lo procesara.
         var (observada, destino) = CrearCarpetas();
-        var ruta = CreadorPdfDePrueba.CrearConLineas(observada, "Banco de Prueba SA", "Resumen de cuenta");
+        var ruta = CreadorPdfDePrueba.CrearConLineas(
+            observada,
+            "Banco de Prueba SA",
+            "Resumen de cuenta"
+        );
         var pendientes = new PendienteRepository();
         pendientes.Agregar(ruta, MotivoPendiente.NuevoDocumento);
 
         new ConfiguracionDocumentoRepository().GuardarNueva(
-            "Banco de Prueba SA", "Resumen de cuenta", destino, FormatoCarpeta.Directo, null, false,
-            [MarcaDeLinea(CampoMarca.Emisor, 0), MarcaDeLinea(CampoMarca.Tipo, 1)]);
+            "Banco de Prueba SA",
+            "Resumen de cuenta",
+            destino,
+            FormatoCarpeta.Directo,
+            null,
+            false,
+            [MarcaDeLinea(CampoMarca.Emisor, 0), MarcaDeLinea(CampoMarca.Tipo, 1)]
+        );
 
         using var vigilancia = new VigilanciaCarpetaService(observada);
         string? rutaGuardada = null;
@@ -125,7 +151,10 @@ public class VigilanciaCarpetaServiceTests : IDisposable
     {
         var (observada, _) = CrearCarpetas();
         var pendientes = new PendienteRepository();
-        pendientes.Agregar(Path.Combine(observada, "ya-no-esta.pdf"), MotivoPendiente.NuevoDocumento);
+        pendientes.Agregar(
+            Path.Combine(observada, "ya-no-esta.pdf"),
+            MotivoPendiente.NuevoDocumento
+        );
 
         using var vigilancia = new VigilanciaCarpetaService(observada);
         vigilancia.ReprocesarPendientes();
@@ -139,7 +168,9 @@ public class VigilanciaCarpetaServiceTests : IDisposable
     [InlineData("esto no es un pdf")]
     [InlineData("")]
     [InlineData("%PDF-1.4\n1 0 obj << /Type /Catalog")]
-    public void Iniciar_ConUnPdfDanado_LoDejaEnPendientesComoArchivoDanadoSinTocarlo(string contenido)
+    public void Iniciar_ConUnPdfDanado_LoDejaEnPendientesComoArchivoDanadoSinTocarlo(
+        string contenido
+    )
     {
         // Antes: RNF-2 descartaba el archivo en silencio -- quedaba invisible para el usuario,
         // igual que los "documentos fantasma" de Caso-1.
@@ -162,11 +193,22 @@ public class VigilanciaCarpetaServiceTests : IDisposable
     public void Iniciar_ConUnaConfiguracionQuePreguntaElNombre_LoDejaPendienteDeConfirmarYAvisaSinTocarlo()
     {
         var (observada, destino) = CrearCarpetas();
-        var ruta = CreadorPdfDePrueba.CrearConLineas(observada, "Banco de Prueba SA", "Resumen de cuenta");
+        var ruta = CreadorPdfDePrueba.CrearConLineas(
+            observada,
+            "Banco de Prueba SA",
+            "Resumen de cuenta"
+        );
 
         new ConfiguracionDocumentoRepository().GuardarNueva(
-            "Banco de Prueba SA", "Resumen de cuenta", destino, FormatoCarpeta.Directo, null, false,
-            [MarcaDeLinea(CampoMarca.Emisor, 0), MarcaDeLinea(CampoMarca.Tipo, 1)], preguntarNombre: true);
+            "Banco de Prueba SA",
+            "Resumen de cuenta",
+            destino,
+            FormatoCarpeta.Directo,
+            null,
+            false,
+            [MarcaDeLinea(CampoMarca.Emisor, 0), MarcaDeLinea(CampoMarca.Tipo, 1)],
+            preguntarNombre: true
+        );
 
         using var vigilancia = new VigilanciaCarpetaService(observada);
         var avisos = 0;
@@ -176,7 +218,10 @@ public class VigilanciaCarpetaServiceTests : IDisposable
 
         Assert.True(File.Exists(ruta));
         Assert.Empty(Directory.GetFiles(destino));
-        Assert.Equal(MotivoPendiente.NombrePorConfirmar, Assert.Single(new PendienteRepository().ObtenerTodos()).Motivo);
+        Assert.Equal(
+            MotivoPendiente.NombrePorConfirmar,
+            Assert.Single(new PendienteRepository().ObtenerTodos()).Motivo
+        );
         Assert.Equal(1, avisos);
     }
 
@@ -184,20 +229,34 @@ public class VigilanciaCarpetaServiceTests : IDisposable
     public void ReprocesarPendientes_ConUnaConfiguracionQuePreguntaElNombre_CambiaElMotivoSinTocarElArchivo()
     {
         var (observada, destino) = CrearCarpetas();
-        var ruta = CreadorPdfDePrueba.CrearConLineas(observada, "Banco de Prueba SA", "Resumen de cuenta");
+        var ruta = CreadorPdfDePrueba.CrearConLineas(
+            observada,
+            "Banco de Prueba SA",
+            "Resumen de cuenta"
+        );
         var pendientes = new PendienteRepository();
         pendientes.Agregar(ruta, MotivoPendiente.NuevoDocumento);
 
         new ConfiguracionDocumentoRepository().GuardarNueva(
-            "Banco de Prueba SA", "Resumen de cuenta", destino, FormatoCarpeta.Directo, null, false,
-            [MarcaDeLinea(CampoMarca.Emisor, 0), MarcaDeLinea(CampoMarca.Tipo, 1)], preguntarNombre: true);
+            "Banco de Prueba SA",
+            "Resumen de cuenta",
+            destino,
+            FormatoCarpeta.Directo,
+            null,
+            false,
+            [MarcaDeLinea(CampoMarca.Emisor, 0), MarcaDeLinea(CampoMarca.Tipo, 1)],
+            preguntarNombre: true
+        );
 
         using var vigilancia = new VigilanciaCarpetaService(observada);
         vigilancia.ReprocesarPendientes();
 
         Assert.True(File.Exists(ruta));
         Assert.Empty(Directory.GetFiles(destino));
-        Assert.Equal(MotivoPendiente.NombrePorConfirmar, Assert.Single(pendientes.ObtenerTodos()).Motivo);
+        Assert.Equal(
+            MotivoPendiente.NombrePorConfirmar,
+            Assert.Single(pendientes.ObtenerTodos()).Motivo
+        );
     }
 
     public void Dispose()

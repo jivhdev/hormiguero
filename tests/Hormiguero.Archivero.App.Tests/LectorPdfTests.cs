@@ -8,7 +8,10 @@ public class LectorPdfTests : IDisposable
 
     public LectorPdfTests()
     {
-        _carpetaTemporal = Path.Combine(Path.GetTempPath(), "archivero-tests-" + Guid.NewGuid().ToString("N"));
+        _carpetaTemporal = Path.Combine(
+            Path.GetTempPath(),
+            "archivero-tests-" + Guid.NewGuid().ToString("N")
+        );
         Directory.CreateDirectory(_carpetaTemporal);
     }
 

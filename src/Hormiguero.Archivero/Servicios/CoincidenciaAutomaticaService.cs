@@ -17,7 +17,10 @@ public static class CoincidenciaAutomaticaService
     /// Devuelve la configuración con Patrones reducido a únicamente el patrón que coincidió
     /// (para saber qué marca de Fecha y de Nombre de archivo usar), o null si ninguno coincide.
     /// </summary>
-    public static ConfiguracionDocumento? BuscarConfiguracionQueCoincide(string rutaPdf, IEnumerable<ConfiguracionDocumento> configuraciones)
+    public static ConfiguracionDocumento? BuscarConfiguracionQueCoincide(
+        string rutaPdf,
+        IEnumerable<ConfiguracionDocumento> configuraciones
+    )
     {
         var totalPaginas = LectorPdf.ContarPaginas(rutaPdf);
 
@@ -39,7 +42,11 @@ public static class CoincidenciaAutomaticaService
                 }
 
                 var referenciaEmisor = marcaEmisor.TextoReferencia ?? configuracion.Emisor;
-                var textoEmisor = LectorPdf.ExtraerTexto(rutaPdf, marcaEmisor.Pagina, ARect(marcaEmisor));
+                var textoEmisor = LectorPdf.ExtraerTexto(
+                    rutaPdf,
+                    marcaEmisor.Pagina,
+                    ARect(marcaEmisor)
+                );
                 if (!CoincideExacto(textoEmisor, referenciaEmisor))
                 {
                     continue;
@@ -52,7 +59,10 @@ public static class CoincidenciaAutomaticaService
                     continue;
                 }
 
-                return configuracion with { Patrones = [patron] };
+                return configuracion with
+                {
+                    Patrones = [patron],
+                };
             }
         }
 
@@ -60,7 +70,12 @@ public static class CoincidenciaAutomaticaService
     }
 
     private static bool CoincideExacto(string textoExtraido, string valorEsperado) =>
-        string.Equals(textoExtraido.Trim(), valorEsperado.Trim(), StringComparison.OrdinalIgnoreCase);
+        string.Equals(
+            textoExtraido.Trim(),
+            valorEsperado.Trim(),
+            StringComparison.OrdinalIgnoreCase
+        );
 
-    private static RectanguloFraccion ARect(Marca marca) => new(marca.X, marca.Y, marca.Ancho, marca.Alto);
+    private static RectanguloFraccion ARect(Marca marca) =>
+        new(marca.X, marca.Y, marca.Ancho, marca.Alto);
 }

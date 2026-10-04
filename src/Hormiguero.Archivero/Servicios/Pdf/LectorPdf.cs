@@ -14,24 +14,34 @@ public static class LectorPdf
 
     public static int ContarPaginas(string rutaPdf)
     {
-        using var docReader = DocLib.Instance.GetDocReader(rutaPdf, new PageDimensions(AnchoLienzo, AltoLienzo));
+        using var docReader = DocLib.Instance.GetDocReader(
+            rutaPdf,
+            new PageDimensions(AnchoLienzo, AltoLienzo)
+        );
         return docReader.GetPageCount();
     }
 
     public static PaginaRenderizada RenderizarPagina(string rutaPdf, int numeroPagina)
     {
-        using var docReader = DocLib.Instance.GetDocReader(rutaPdf, new PageDimensions(AnchoLienzo, AltoLienzo));
+        using var docReader = DocLib.Instance.GetDocReader(
+            rutaPdf,
+            new PageDimensions(AnchoLienzo, AltoLienzo)
+        );
         using var pageReader = docReader.GetPageReader(numeroPagina);
 
         return new PaginaRenderizada(
             pageReader.GetImage(),
             pageReader.GetPageWidth(),
-            pageReader.GetPageHeight());
+            pageReader.GetPageHeight()
+        );
     }
 
     public static bool TieneTextoExtraible(string rutaPdf)
     {
-        using var docReader = DocLib.Instance.GetDocReader(rutaPdf, new PageDimensions(AnchoLienzo, AltoLienzo));
+        using var docReader = DocLib.Instance.GetDocReader(
+            rutaPdf,
+            new PageDimensions(AnchoLienzo, AltoLienzo)
+        );
         for (var i = 0; i < docReader.GetPageCount(); i++)
         {
             using var pageReader = docReader.GetPageReader(i);
@@ -44,19 +54,32 @@ public static class LectorPdf
         return false;
     }
 
-    public static string ExtraerTexto(string rutaPdf, int numeroPagina, RectanguloFraccion rectangulo)
+    public static string ExtraerTexto(
+        string rutaPdf,
+        int numeroPagina,
+        RectanguloFraccion rectangulo
+    )
     {
-        using var docReader = DocLib.Instance.GetDocReader(rutaPdf, new PageDimensions(AnchoLienzo, AltoLienzo));
+        using var docReader = DocLib.Instance.GetDocReader(
+            rutaPdf,
+            new PageDimensions(AnchoLienzo, AltoLienzo)
+        );
         using var pageReader = docReader.GetPageReader(numeroPagina);
 
-        return ExtraerTextoDePagina(pageReader.GetCharacters(), pageReader.GetPageWidth(), pageReader.GetPageHeight(), rectangulo);
+        return ExtraerTextoDePagina(
+            pageReader.GetCharacters(),
+            pageReader.GetPageWidth(),
+            pageReader.GetPageHeight(),
+            rectangulo
+        );
     }
 
     internal static string ExtraerTextoDePagina(
         IEnumerable<Docnet.Core.Models.Character> caracteres,
         int anchoPagina,
         int altoPagina,
-        RectanguloFraccion rectangulo)
+        RectanguloFraccion rectangulo
+    )
     {
         var izquierda = rectangulo.X * anchoPagina;
         var arriba = rectangulo.Y * altoPagina;

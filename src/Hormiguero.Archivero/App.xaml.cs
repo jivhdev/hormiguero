@@ -30,7 +30,11 @@ public partial class App : System.Windows.Application
             nombreMutex += ".prueba";
         }
 
-        _mutexInstanciaUnica = new Mutex(initiallyOwned: true, nombreMutex, out var esInstanciaNueva);
+        _mutexInstanciaUnica = new Mutex(
+            initiallyOwned: true,
+            nombreMutex,
+            out var esInstanciaNueva
+        );
         if (!esInstanciaNueva)
         {
             // Ya hay una instancia de Archivero corriendo: la segunda apertura solo enfoca

@@ -11,34 +11,62 @@ public static partial class FechaExtraidaService
 {
     private static readonly string[] FormatosNumericos =
     [
-        "dd/MM/yyyy", "dd-MM-yyyy", "dd.MM.yyyy",
-        "dd/MM/yy", "dd-MM-yy", "dd.MM.yy",
-        "yyyy-MM-dd", "yyyy/MM/dd",
-        "MM/dd/yyyy", "M/d/yyyy",
+        "dd/MM/yyyy",
+        "dd-MM-yyyy",
+        "dd.MM.yyyy",
+        "dd/MM/yy",
+        "dd-MM-yy",
+        "dd.MM.yy",
+        "yyyy-MM-dd",
+        "yyyy/MM/dd",
+        "MM/dd/yyyy",
+        "M/d/yyyy",
     ];
 
-    private static readonly Dictionary<string, int> MesesPorNombre = new(StringComparer.OrdinalIgnoreCase)
+    private static readonly Dictionary<string, int> MesesPorNombre = new(
+        StringComparer.OrdinalIgnoreCase
+    )
     {
-        ["ENERO"] = 1, ["ENE"] = 1,
-        ["FEBRERO"] = 2, ["FEB"] = 2,
-        ["MARZO"] = 3, ["MAR"] = 3,
-        ["ABRIL"] = 4, ["ABR"] = 4,
-        ["MAYO"] = 5, ["MAY"] = 5,
-        ["JUNIO"] = 6, ["JUN"] = 6,
-        ["JULIO"] = 7, ["JUL"] = 7,
-        ["AGOSTO"] = 8, ["AGO"] = 8,
-        ["SEPTIEMBRE"] = 9, ["SETIEMBRE"] = 9, ["SEP"] = 9, ["SET"] = 9,
-        ["OCTUBRE"] = 10, ["OCT"] = 10,
-        ["NOVIEMBRE"] = 11, ["NOV"] = 11,
-        ["DICIEMBRE"] = 12, ["DIC"] = 12,
+        ["ENERO"] = 1,
+        ["ENE"] = 1,
+        ["FEBRERO"] = 2,
+        ["FEB"] = 2,
+        ["MARZO"] = 3,
+        ["MAR"] = 3,
+        ["ABRIL"] = 4,
+        ["ABR"] = 4,
+        ["MAYO"] = 5,
+        ["MAY"] = 5,
+        ["JUNIO"] = 6,
+        ["JUN"] = 6,
+        ["JULIO"] = 7,
+        ["JUL"] = 7,
+        ["AGOSTO"] = 8,
+        ["AGO"] = 8,
+        ["SEPTIEMBRE"] = 9,
+        ["SETIEMBRE"] = 9,
+        ["SEP"] = 9,
+        ["SET"] = 9,
+        ["OCTUBRE"] = 10,
+        ["OCT"] = 10,
+        ["NOVIEMBRE"] = 11,
+        ["NOV"] = 11,
+        ["DICIEMBRE"] = 12,
+        ["DIC"] = 12,
     };
 
     // "30 de abril de 2026"
-    [GeneratedRegex(@"^\s*(\d{1,2})\s+de\s+([A-Za-zñÑ]+)\.?\s+de\s+(\d{4})\s*$", RegexOptions.IgnoreCase)]
+    [GeneratedRegex(
+        @"^\s*(\d{1,2})\s+de\s+([A-Za-zñÑ]+)\.?\s+de\s+(\d{4})\s*$",
+        RegexOptions.IgnoreCase
+    )]
     private static partial Regex ConPalabraDe();
 
     // "30-ABR-2026", "30/abr/26", "30.ABR.2026", "30 ABR 2026"
-    [GeneratedRegex(@"^\s*(\d{1,2})\s*[-/. ]\s*([A-Za-zñÑ]+)\.?\s*[-/. ]\s*(\d{2,4})\s*$", RegexOptions.IgnoreCase)]
+    [GeneratedRegex(
+        @"^\s*(\d{1,2})\s*[-/. ]\s*([A-Za-zñÑ]+)\.?\s*[-/. ]\s*(\d{2,4})\s*$",
+        RegexOptions.IgnoreCase
+    )]
     private static partial Regex ConSeparador();
 
     public static bool TryParsear(string texto, out DateTime fecha)
@@ -47,21 +75,36 @@ public static partial class FechaExtraidaService
 
         foreach (var formato in FormatosNumericos)
         {
-            if (DateTime.TryParseExact(texto, formato, CultureInfo.InvariantCulture, DateTimeStyles.None, out fecha))
+            if (
+                DateTime.TryParseExact(
+                    texto,
+                    formato,
+                    CultureInfo.InvariantCulture,
+                    DateTimeStyles.None,
+                    out fecha
+                )
+            )
             {
                 return true;
             }
         }
 
-        if (TryParsearConNombreDeMes(texto, ConPalabraDe(), out fecha) ||
-            TryParsearConNombreDeMes(texto, ConSeparador(), out fecha))
+        if (
+            TryParsearConNombreDeMes(texto, ConPalabraDe(), out fecha)
+            || TryParsearConNombreDeMes(texto, ConSeparador(), out fecha)
+        )
         {
             return true;
         }
 
         // Ultimo recurso: el parseo general de .NET, por si reconoce algo que las reglas de
         // arriba no contemplaron.
-        return DateTime.TryParse(texto, CultureInfo.GetCultureInfo("es-ES"), DateTimeStyles.None, out fecha);
+        return DateTime.TryParse(
+            texto,
+            CultureInfo.GetCultureInfo("es-ES"),
+            DateTimeStyles.None,
+            out fecha
+        );
     }
 
     private static bool TryParsearConNombreDeMes(string texto, Regex patron, out DateTime fecha)

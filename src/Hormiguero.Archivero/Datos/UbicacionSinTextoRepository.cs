@@ -7,17 +7,21 @@ public class UbicacionSinTextoRepository
     {
         using var conexion = BaseDeDatos.CrearConexion();
         using var comando = conexion.CreateCommand();
-        comando.CommandText = "SELECT Id, CarpetaMadre, FormatoCarpeta, PatronCarpeta FROM UbicacionesSinTexto ORDER BY Id DESC;";
+        comando.CommandText =
+            "SELECT Id, CarpetaMadre, FormatoCarpeta, PatronCarpeta FROM UbicacionesSinTexto ORDER BY Id DESC;";
 
         var resultado = new List<UbicacionSinTexto>();
         using var lector = comando.ExecuteReader();
         while (lector.Read())
         {
-            resultado.Add(new UbicacionSinTexto(
-                lector.GetInt32(0),
-                lector.GetString(1),
-                Enum.Parse<FormatoCarpeta>(lector.GetString(2)),
-                lector.IsDBNull(3) ? null : lector.GetString(3)));
+            resultado.Add(
+                new UbicacionSinTexto(
+                    lector.GetInt32(0),
+                    lector.GetString(1),
+                    Enum.Parse<FormatoCarpeta>(lector.GetString(2)),
+                    lector.IsDBNull(3) ? null : lector.GetString(3)
+                )
+            );
         }
 
         return resultado;
@@ -28,14 +32,17 @@ public class UbicacionSinTextoRepository
     /// patrón), o crea una nueva. Evita que "Crear ubicación nueva" acumule entradas repetidas
     /// en "Ver ubicaciones disponibles" cada vez que se reutiliza el mismo lugar.
     /// </summary>
-    public UbicacionSinTexto ObtenerOCrear(string carpetaMadre, FormatoCarpeta formato, string? patron)
+    public UbicacionSinTexto ObtenerOCrear(
+        string carpetaMadre,
+        FormatoCarpeta formato,
+        string? patron
+    )
     {
         using var conexion = BaseDeDatos.CrearConexion();
 
         using (var buscar = conexion.CreateCommand())
         {
-            buscar.CommandText =
-                """
+            buscar.CommandText = """
                 SELECT Id FROM UbicacionesSinTexto
                 WHERE CarpetaMadre = $carpeta AND FormatoCarpeta = $formato
                     AND (PatronCarpeta = $patron OR (PatronCarpeta IS NULL AND $patron IS NULL));
@@ -51,8 +58,7 @@ public class UbicacionSinTextoRepository
         }
 
         using var insertar = conexion.CreateCommand();
-        insertar.CommandText =
-            """
+        insertar.CommandText = """
             INSERT INTO UbicacionesSinTexto (CarpetaMadre, FormatoCarpeta, PatronCarpeta)
             VALUES ($carpeta, $formato, $patron);
             SELECT last_insert_rowid();

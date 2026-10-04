@@ -17,17 +17,19 @@ public record GuardadoRecienteFila(DateTime Hora, string RutaFinal)
 /// <summary>Fila de "Pendientes de distribuir": un archivo dañado lleva el aviso a la vista, para no confundirlo con un PDF sin texto (Caso-11, punto 5).</summary>
 public record PendienteDistribucionFila(ArchivoPendiente Pendiente)
 {
-    public string Texto => Pendiente.Motivo == MotivoPendiente.ArchivoDanado
-        ? $"⚠ {Pendiente.NombreArchivo} — no se pudo leer este archivo"
-        : Pendiente.NombreArchivo;
+    public string Texto =>
+        Pendiente.Motivo == MotivoPendiente.ArchivoDanado
+            ? $"⚠ {Pendiente.NombreArchivo} — no se pudo leer este archivo"
+            : Pendiente.NombreArchivo;
 }
 
 /// <summary>Fila de "Pendientes por reconocer": un documento que solo espera el nombre lo dice, para no confundirlo con uno sin identificar (Caso-11, punto 1).</summary>
 public record PendienteReconocerFila(ArchivoPendiente Pendiente)
 {
-    public string Texto => Pendiente.Motivo == MotivoPendiente.NombrePorConfirmar
-        ? $"{Pendiente.NombreArchivo} — falta confirmar el nombre"
-        : Pendiente.NombreArchivo;
+    public string Texto =>
+        Pendiente.Motivo == MotivoPendiente.NombrePorConfirmar
+            ? $"{Pendiente.NombreArchivo} — falta confirmar el nombre"
+            : Pendiente.NombreArchivo;
 }
 
 public partial class MainWindow : Window
@@ -65,19 +67,27 @@ public partial class MainWindow : Window
         _vigilancia.ArchivoPendienteDetectado += _ => Dispatcher.Invoke(CargarPendientes);
         _vigilancia.ArchivoPendienteEliminado += _ => Dispatcher.Invoke(CargarPendientes);
         _vigilancia.ArchivoRequiereAtencion += (_, _) => Dispatcher.Invoke(CargarPendientes);
-        _vigilancia.ArchivoGuardadoAutomaticamente += (_, rutaFinal) => Dispatcher.Invoke(() => AgregarAGuardadosRecientes(rutaFinal));
-        _vigilancia.CarpetaObservadaNoDisponible += () => Dispatcher.Invoke(AvisarCarpetaNoDisponible);
+        _vigilancia.ArchivoGuardadoAutomaticamente += (_, rutaFinal) =>
+            Dispatcher.Invoke(() => AgregarAGuardadosRecientes(rutaFinal));
+        _vigilancia.CarpetaObservadaNoDisponible += () =>
+            Dispatcher.Invoke(AvisarCarpetaNoDisponible);
     }
 
     private void BtnCambiarCarpetaObservada_Click(object sender, RoutedEventArgs e)
     {
-        var ventana = new CambiarCarpetaObservadaWindow(_servicioCarpeta, _carpetaObservada) { Owner = this };
+        var ventana = new CambiarCarpetaObservadaWindow(_servicioCarpeta, _carpetaObservada)
+        {
+            Owner = this,
+        };
         if (ventana.ShowDialog() != true || ventana.CarpetaNueva is null)
         {
             return;
         }
 
-        AuditoriaService.Registrar("CARPETA_OBSERVADA_CAMBIADA", $"Anterior={_carpetaObservada}; Nueva={ventana.CarpetaNueva}");
+        AuditoriaService.Registrar(
+            "CARPETA_OBSERVADA_CAMBIADA",
+            $"Anterior={_carpetaObservada}; Nueva={ventana.CarpetaNueva}"
+        );
 
         _vigilancia.Dispose();
         _carpetaObservada = ventana.CarpetaNueva;
@@ -96,10 +106,12 @@ public partial class MainWindow : Window
 
         // Caso-4, punto 1: los PDF sin texto extraible tienen su propia lista ("Pendientes de
         // distribuir"), separada de "Pendientes por reconocer" -- nunca se mezclan.
-        ListaPendientes.ItemsSource = pendientes.Where(p => !p.Motivo.EsPendienteDeDistribuir())
+        ListaPendientes.ItemsSource = pendientes
+            .Where(p => !p.Motivo.EsPendienteDeDistribuir())
             .Select(p => new PendienteReconocerFila(p))
             .ToList();
-        ListaPendientesDistribucion.ItemsSource = pendientes.Where(p => p.Motivo.EsPendienteDeDistribuir())
+        ListaPendientesDistribucion.ItemsSource = pendientes
+            .Where(p => p.Motivo.EsPendienteDeDistribuir())
             .Select(p => new PendienteDistribucionFila(p))
             .ToList();
 
@@ -119,7 +131,8 @@ public partial class MainWindow : Window
 
     private void CargarGuardadosRecientes()
     {
-        ListaGuardados.ItemsSource = _guardadosRecientes.ObtenerTodos()
+        ListaGuardados.ItemsSource = _guardadosRecientes
+            .ObtenerTodos()
             .Select(g => new GuardadoRecienteFila(g.Hora, g.RutaFinal))
             .ToList();
     }
@@ -157,7 +170,8 @@ public partial class MainWindow : Window
         }
     }
 
-    private void BtnReprocesarPendientes_Click(object sender, RoutedEventArgs e) => _ = ReprocesarPendientesAsync();
+    private void BtnReprocesarPendientes_Click(object sender, RoutedEventArgs e) =>
+        _ = ReprocesarPendientesAsync();
 
     /// <summary>
     /// Caso-11, punto 3: se llama sola apenas se crea o se edita una configuración (y a mano con
@@ -175,8 +189,13 @@ public partial class MainWindow : Window
         }
         catch (Exception ex)
         {
-            System.Windows.MessageBox.Show(this, $"No se pudieron reprocesar los pendientes: {ex.Message}", "Archivero",
-                MessageBoxButton.OK, MessageBoxImage.Warning);
+            System.Windows.MessageBox.Show(
+                this,
+                $"No se pudieron reprocesar los pendientes: {ex.Message}",
+                "Archivero",
+                MessageBoxButton.OK,
+                MessageBoxImage.Warning
+            );
         }
         finally
         {
@@ -189,10 +208,13 @@ public partial class MainWindow : Window
     {
         System.Windows.MessageBox.Show(
             this,
-            $"La carpeta observada ya no está disponible (se movió o se borró):\n{_carpetaObservada}\n\n" +
-            "Archivero no puede seguir vigilándola hasta que vuelva a estar accesible. Podés recrearla con ese mismo nombre y ruta, " +
-            "o usar el botón \"Cambiar…\" para elegir otra.",
-            "Archivero", MessageBoxButton.OK, MessageBoxImage.Warning);
+            $"La carpeta observada ya no está disponible (se movió o se borró):\n{_carpetaObservada}\n\n"
+                + "Archivero no puede seguir vigilándola hasta que vuelva a estar accesible. Podés recrearla con ese mismo nombre y ruta, "
+                + "o usar el botón \"Cambiar…\" para elegir otra.",
+            "Archivero",
+            MessageBoxButton.OK,
+            MessageBoxImage.Warning
+        );
     }
 
     private void RestaurarVentana()
@@ -244,16 +266,24 @@ public partial class MainWindow : Window
         {
             AbrirCreacionDePeriodo(pendiente.RutaArchivo);
         }
-        else if (pendiente.Motivo is MotivoPendiente.TextoConCaracteresInvalidos or MotivoPendiente.NombreReservadoPorWindows
-            or MotivoPendiente.RutaFueraDeCarpetaConfigurada or MotivoPendiente.NombreORutaDemasiadoLarga)
+        else if (
+            pendiente.Motivo
+            is MotivoPendiente.TextoConCaracteresInvalidos
+                or MotivoPendiente.NombreReservadoPorWindows
+                or MotivoPendiente.RutaFueraDeCarpetaConfigurada
+                or MotivoPendiente.NombreORutaDemasiadoLarga
+        )
         {
             // Caso-9, mejora 1: no tiene sentido reabrir el asistente -- el dato extraído es el
             // mismo texto problemático de siempre. Se explica el motivo y se deja para revisar a mano.
             System.Windows.MessageBox.Show(
                 this,
-                $"Este documento no se puede guardar automáticamente:\n\n{pendiente.Motivo.DescripcionLegible()}\n\n" +
-                "Revisalo a mano; si corresponde, movelo vos mismo a su carpeta.",
-                "Archivero", MessageBoxButton.OK, MessageBoxImage.Warning);
+                $"Este documento no se puede guardar automáticamente:\n\n{pendiente.Motivo.DescripcionLegible()}\n\n"
+                    + "Revisalo a mano; si corresponde, movelo vos mismo a su carpeta.",
+                "Archivero",
+                MessageBoxButton.OK,
+                MessageBoxImage.Warning
+            );
         }
         else
         {
@@ -263,16 +293,26 @@ public partial class MainWindow : Window
         CargarPendientes();
     }
 
-    private void BtnRecargarPendientesDistribucion_Click(object sender, RoutedEventArgs e) => CargarPendientes();
+    private void BtnRecargarPendientesDistribucion_Click(object sender, RoutedEventArgs e) =>
+        CargarPendientes();
 
     private void ListaPendientesDistribucion_MouseDoubleClick(object sender, MouseButtonEventArgs e)
     {
-        if (ListaPendientesDistribucion.SelectedItem is not PendienteDistribucionFila { Pendiente: var pendiente })
+        if (
+            ListaPendientesDistribucion.SelectedItem
+            is not PendienteDistribucionFila { Pendiente: var pendiente }
+        )
         {
             return;
         }
 
-        var identificarSinTexto = new IdentificarSinTextoWindow(pendiente.RutaArchivo, pendiente.Motivo == MotivoPendiente.ArchivoDanado) { Owner = this };
+        var identificarSinTexto = new IdentificarSinTextoWindow(
+            pendiente.RutaArchivo,
+            pendiente.Motivo == MotivoPendiente.ArchivoDanado
+        )
+        {
+            Owner = this,
+        };
         identificarSinTexto.ShowDialog();
 
         CargarPendientes();
@@ -289,7 +329,10 @@ public partial class MainWindow : Window
         // en la base: es el mismo documento y la misma configuracion, asi que da lo mismo, y
         // evita duplicar el estado en Pendientes.
         var configuraciones = _configuraciones.ObtenerTodasConPatrones();
-        var coincidencia = CoincidenciaAutomaticaService.BuscarConfiguracionQueCoincide(rutaArchivo, configuraciones);
+        var coincidencia = CoincidenciaAutomaticaService.BuscarConfiguracionQueCoincide(
+            rutaArchivo,
+            configuraciones
+        );
         if (coincidencia is null)
         {
             // Ya no coincide con ninguna configuracion (por ejemplo, se borro) -> tratarlo
@@ -298,18 +341,33 @@ public partial class MainWindow : Window
             return;
         }
 
-        var (campos, error) = GuardadoAutomaticoService.ExtraerCamposParaClasificar(rutaArchivo, coincidencia);
+        var (campos, error) = GuardadoAutomaticoService.ExtraerCamposParaClasificar(
+            rutaArchivo,
+            coincidencia
+        );
         if (campos is null)
         {
-            System.Windows.MessageBox.Show(this,
+            System.Windows.MessageBox.Show(
+                this,
                 $"No se pudo volver a leer los datos de este documento ({error}). Probá abrirlo desde \"Administrar clasificaciones\" para revisar el patrón.",
-                "Archivero", MessageBoxButton.OK, MessageBoxImage.Warning);
+                "Archivero",
+                MessageBoxButton.OK,
+                MessageBoxImage.Warning
+            );
             return;
         }
 
-        var rutaDestinoConflicto = ClasificadorService.CalcularRutaDestino(rutaArchivo, coincidencia, campos.Fecha, campos.NombreExtraido);
+        var rutaDestinoConflicto = ClasificadorService.CalcularRutaDestino(
+            rutaArchivo,
+            coincidencia,
+            campos.Fecha,
+            campos.NombreExtraido
+        );
 
-        var resolver = new ResolverDuplicadoWindow(rutaArchivo, rutaDestinoConflicto) { Owner = this };
+        var resolver = new ResolverDuplicadoWindow(rutaArchivo, rutaDestinoConflicto)
+        {
+            Owner = this,
+        };
         resolver.ShowDialog();
     }
 
@@ -322,19 +380,32 @@ public partial class MainWindow : Window
 
         // Igual que duplicado y período nuevo: se recalcula en el momento, no se guarda en la base.
         var configuraciones = _configuraciones.ObtenerTodasConPatrones();
-        var coincidencia = CoincidenciaAutomaticaService.BuscarConfiguracionQueCoincide(rutaArchivo, configuraciones);
+        var coincidencia = CoincidenciaAutomaticaService.BuscarConfiguracionQueCoincide(
+            rutaArchivo,
+            configuraciones
+        );
         if (coincidencia is null)
         {
             AbrirAsistenteIdentificacion(rutaArchivo);
             return;
         }
 
-        var (campos, error) = GuardadoAutomaticoService.ExtraerCamposParaClasificar(rutaArchivo, coincidencia with { Renombrar = false });
+        var (campos, error) = GuardadoAutomaticoService.ExtraerCamposParaClasificar(
+            rutaArchivo,
+            coincidencia with
+            {
+                Renombrar = false,
+            }
+        );
         if (campos is null)
         {
-            System.Windows.MessageBox.Show(this,
+            System.Windows.MessageBox.Show(
+                this,
                 $"No se pudo volver a leer los datos de este documento ({error}). Revisar el patrón desde \"Administrar clasificaciones\".",
-                "Archivero", MessageBoxButton.OK, MessageBoxImage.Warning);
+                "Archivero",
+                MessageBoxButton.OK,
+                MessageBoxImage.Warning
+            );
             return;
         }
 
@@ -350,26 +421,51 @@ public partial class MainWindow : Window
         }
 
         var configuraciones = _configuraciones.ObtenerTodasConPatrones();
-        var coincidencia = CoincidenciaAutomaticaService.BuscarConfiguracionQueCoincide(rutaArchivo, configuraciones);
+        var coincidencia = CoincidenciaAutomaticaService.BuscarConfiguracionQueCoincide(
+            rutaArchivo,
+            configuraciones
+        );
         if (coincidencia is null)
         {
             AbrirAsistenteIdentificacion(rutaArchivo);
             return;
         }
 
-        var (campos, error) = GuardadoAutomaticoService.ExtraerCamposParaClasificar(rutaArchivo, coincidencia);
+        var (campos, error) = GuardadoAutomaticoService.ExtraerCamposParaClasificar(
+            rutaArchivo,
+            coincidencia
+        );
         if (campos?.Fecha is null)
         {
-            System.Windows.MessageBox.Show(this,
+            System.Windows.MessageBox.Show(
+                this,
                 $"No se pudo volver a leer la fecha de este documento ({error}). Probá abrirlo desde \"Administrar clasificaciones\" para revisar el patrón.",
-                "Archivero", MessageBoxButton.OK, MessageBoxImage.Warning);
+                "Archivero",
+                MessageBoxButton.OK,
+                MessageBoxImage.Warning
+            );
             return;
         }
 
         var carpetaPeriodo = Path.GetDirectoryName(
-            ClasificadorService.CalcularRutaDestino(rutaArchivo, coincidencia, campos.Fecha, campos.NombreExtraido))!;
+            ClasificadorService.CalcularRutaDestino(
+                rutaArchivo,
+                coincidencia,
+                campos.Fecha,
+                campos.NombreExtraido
+            )
+        )!;
 
-        var ventana = new CrearPeriodoWindow(rutaArchivo, coincidencia, campos.Fecha.Value, campos.NombreExtraido, carpetaPeriodo) { Owner = this };
+        var ventana = new CrearPeriodoWindow(
+            rutaArchivo,
+            coincidencia,
+            campos.Fecha.Value,
+            campos.NombreExtraido,
+            carpetaPeriodo
+        )
+        {
+            Owner = this,
+        };
         ventana.ShowDialog();
     }
 

@@ -9,7 +9,10 @@ public class AccesoRapidoRepositoryTests : IDisposable
 
     public AccesoRapidoRepositoryTests()
     {
-        _rutaDbTemporal = Path.Combine(Path.GetTempPath(), $"archivero-tests-{Guid.NewGuid():N}.db");
+        _rutaDbTemporal = Path.Combine(
+            Path.GetTempPath(),
+            $"archivero-tests-{Guid.NewGuid():N}.db"
+        );
         BaseDeDatos.RutaArchivo = _rutaDbTemporal;
         BaseDeDatos.AsegurarEsquema();
     }
@@ -28,7 +31,10 @@ public class AccesoRapidoRepositoryTests : IDisposable
 
         repo.Guardar([FormatoCarpeta.Anio, FormatoCarpeta.AnioMes, FormatoCarpeta.Personalizado]);
 
-        Assert.Equal([FormatoCarpeta.Anio, FormatoCarpeta.AnioMes, FormatoCarpeta.Personalizado], repo.Obtener());
+        Assert.Equal(
+            [FormatoCarpeta.Anio, FormatoCarpeta.AnioMes, FormatoCarpeta.Personalizado],
+            repo.Obtener()
+        );
     }
 
     [Fact]
@@ -45,9 +51,15 @@ public class AccesoRapidoRepositoryTests : IDisposable
     [Fact]
     public void Obtener_ConValoresDesconocidosGuardados_LosOmiteSinRomper()
     {
-        new ConfiguracionRepository().Guardar("AccesosRapidosOrganizacion", """["Anio","Inventado","AnioMes"]""");
+        new ConfiguracionRepository().Guardar(
+            "AccesosRapidosOrganizacion",
+            """["Anio","Inventado","AnioMes"]"""
+        );
 
-        Assert.Equal([FormatoCarpeta.Anio, FormatoCarpeta.AnioMes], new AccesoRapidoRepository().Obtener());
+        Assert.Equal(
+            [FormatoCarpeta.Anio, FormatoCarpeta.AnioMes],
+            new AccesoRapidoRepository().Obtener()
+        );
     }
 
     public void Dispose()

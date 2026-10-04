@@ -11,7 +11,9 @@ public class OpcionPatron
     public OpcionPatron(PatronReconocimiento patron, int numero)
     {
         Patron = patron;
-        var emisor = patron.Marcas.FirstOrDefault(m => m.Campo == CampoMarca.Emisor)?.TextoReferencia;
+        var emisor = patron
+            .Marcas.FirstOrDefault(m => m.Campo == CampoMarca.Emisor)
+            ?.TextoReferencia;
         Descripcion = string.IsNullOrWhiteSpace(emisor)
             ? $"Patrón {numero}"
             : $"Patrón {numero} — Emisor marcado como \"{emisor}\"";
@@ -37,8 +39,13 @@ public partial class ElegirPatronWindow : Window
     {
         if (ListaPatrones.SelectedItem is not OpcionPatron opcion)
         {
-            System.Windows.MessageBox.Show(this, "Elegí un patrón de la lista.", "Archivero",
-                MessageBoxButton.OK, MessageBoxImage.Information);
+            System.Windows.MessageBox.Show(
+                this,
+                "Elegí un patrón de la lista.",
+                "Archivero",
+                MessageBoxButton.OK,
+                MessageBoxImage.Information
+            );
             return;
         }
 

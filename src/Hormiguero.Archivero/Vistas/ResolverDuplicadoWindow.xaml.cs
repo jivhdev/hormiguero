@@ -24,8 +24,8 @@ public partial class ResolverDuplicadoWindow : Window
         _rutaDestinoConflicto = rutaDestinoConflicto;
 
         TxtRutaConflicto.Text =
-            $"Documento nuevo: {Path.GetFileName(rutaArchivoNuevo)}\n" +
-            $"Ya existe en: {rutaDestinoConflicto}";
+            $"Documento nuevo: {Path.GetFileName(rutaArchivoNuevo)}\n"
+            + $"Ya existe en: {rutaDestinoConflicto}";
     }
 
     private void BtnRevisar_Click(object sender, RoutedEventArgs e)
@@ -50,8 +50,13 @@ public partial class ResolverDuplicadoWindow : Window
         }
         catch (Exception ex)
         {
-            System.Windows.MessageBox.Show(this, $"No se pudo mostrar la comparación: {ex.Message}", "Archivero",
-                MessageBoxButton.OK, MessageBoxImage.Warning);
+            System.Windows.MessageBox.Show(
+                this,
+                $"No se pudo mostrar la comparación: {ex.Message}",
+                "Archivero",
+                MessageBoxButton.OK,
+                MessageBoxImage.Warning
+            );
         }
     }
 
@@ -77,7 +82,10 @@ public partial class ResolverDuplicadoWindow : Window
     /// layout, así que el ScrollChanged que provoca llega después: se marca ese ScrollViewer para
     /// ignorar ese único evento y no rebotar el movimiento de vuelta al original.
     /// </summary>
-    private void Scroll_ScrollChanged(object sender, System.Windows.Controls.ScrollChangedEventArgs e)
+    private void Scroll_ScrollChanged(
+        object sender,
+        System.Windows.Controls.ScrollChangedEventArgs e
+    )
     {
         var origen = (System.Windows.Controls.ScrollViewer)sender;
 
@@ -87,16 +95,28 @@ public partial class ResolverDuplicadoWindow : Window
             return;
         }
 
-        if (ChkSincronizarScroll?.IsChecked != true || (e.HorizontalChange == 0 && e.VerticalChange == 0))
+        if (
+            ChkSincronizarScroll?.IsChecked != true
+            || (e.HorizontalChange == 0 && e.VerticalChange == 0)
+        )
         {
             return;
         }
 
         var destino = origen == ScrollExistente ? ScrollNuevo : ScrollExistente;
-        var horizontal = origen.ScrollableWidth > 0 ? origen.HorizontalOffset / origen.ScrollableWidth * destino.ScrollableWidth : destino.HorizontalOffset;
-        var vertical = origen.ScrollableHeight > 0 ? origen.VerticalOffset / origen.ScrollableHeight * destino.ScrollableHeight : destino.VerticalOffset;
+        var horizontal =
+            origen.ScrollableWidth > 0
+                ? origen.HorizontalOffset / origen.ScrollableWidth * destino.ScrollableWidth
+                : destino.HorizontalOffset;
+        var vertical =
+            origen.ScrollableHeight > 0
+                ? origen.VerticalOffset / origen.ScrollableHeight * destino.ScrollableHeight
+                : destino.VerticalOffset;
 
-        if (Math.Abs(horizontal - destino.HorizontalOffset) < 0.5 && Math.Abs(vertical - destino.VerticalOffset) < 0.5)
+        if (
+            Math.Abs(horizontal - destino.HorizontalOffset) < 0.5
+            && Math.Abs(vertical - destino.VerticalOffset) < 0.5
+        )
         {
             return;
         }
@@ -116,9 +136,12 @@ public partial class ResolverDuplicadoWindow : Window
     {
         var confirmar = System.Windows.MessageBox.Show(
             this,
-            $"¿Eliminar el documento nuevo que acaba de llegar?\n\n{_rutaArchivoNuevo}\n\n" +
-            "El que ya estaba guardado no se toca.",
-            "Archivero", MessageBoxButton.YesNo, MessageBoxImage.Warning);
+            $"¿Eliminar el documento nuevo que acaba de llegar?\n\n{_rutaArchivoNuevo}\n\n"
+                + "El que ya estaba guardado no se toca.",
+            "Archivero",
+            MessageBoxButton.YesNo,
+            MessageBoxImage.Warning
+        );
 
         if (confirmar != MessageBoxResult.Yes)
         {
@@ -130,16 +153,26 @@ public partial class ResolverDuplicadoWindow : Window
             File.Delete(_rutaArchivoNuevo);
             _pendientes.Quitar(_rutaArchivoNuevo);
 
-            System.Windows.MessageBox.Show(this, "Documento nuevo eliminado. Se mantuvo el que ya estaba guardado.", "Archivero",
-                MessageBoxButton.OK, MessageBoxImage.Information);
+            System.Windows.MessageBox.Show(
+                this,
+                "Documento nuevo eliminado. Se mantuvo el que ya estaba guardado.",
+                "Archivero",
+                MessageBoxButton.OK,
+                MessageBoxImage.Information
+            );
 
             DialogResult = true;
             Close();
         }
         catch (Exception ex)
         {
-            System.Windows.MessageBox.Show(this, $"No se pudo eliminar: {ex.Message}", "Archivero",
-                MessageBoxButton.OK, MessageBoxImage.Error);
+            System.Windows.MessageBox.Show(
+                this,
+                $"No se pudo eliminar: {ex.Message}",
+                "Archivero",
+                MessageBoxButton.OK,
+                MessageBoxImage.Error
+            );
         }
     }
 
@@ -147,8 +180,15 @@ public partial class ResolverDuplicadoWindow : Window
     {
         var pagina = LectorPdf.RenderizarPagina(rutaPdf, 0);
         var bitmap = BitmapSource.Create(
-            pagina.Ancho, pagina.Alto, 96, 96, System.Windows.Media.PixelFormats.Bgra32, null,
-            pagina.PixelesBgra, pagina.Ancho * 4);
+            pagina.Ancho,
+            pagina.Alto,
+            96,
+            96,
+            System.Windows.Media.PixelFormats.Bgra32,
+            null,
+            pagina.PixelesBgra,
+            pagina.Ancho * 4
+        );
         bitmap.Freeze();
         return bitmap;
     }
@@ -160,16 +200,26 @@ public partial class ResolverDuplicadoWindow : Window
             ClasificadorService.ReemplazarYClasificar(_rutaArchivoNuevo, _rutaDestinoConflicto);
             _pendientes.Quitar(_rutaArchivoNuevo);
 
-            System.Windows.MessageBox.Show(this, $"Reemplazado:\n{_rutaDestinoConflicto}", "Archivero",
-                MessageBoxButton.OK, MessageBoxImage.Information);
+            System.Windows.MessageBox.Show(
+                this,
+                $"Reemplazado:\n{_rutaDestinoConflicto}",
+                "Archivero",
+                MessageBoxButton.OK,
+                MessageBoxImage.Information
+            );
 
             DialogResult = true;
             Close();
         }
         catch (Exception ex)
         {
-            System.Windows.MessageBox.Show(this, $"No se pudo reemplazar: {ex.Message}", "Archivero",
-                MessageBoxButton.OK, MessageBoxImage.Error);
+            System.Windows.MessageBox.Show(
+                this,
+                $"No se pudo reemplazar: {ex.Message}",
+                "Archivero",
+                MessageBoxButton.OK,
+                MessageBoxImage.Error
+            );
         }
     }
 
@@ -183,7 +233,7 @@ public partial class ResolverDuplicadoWindow : Window
     {
         using var dialogo = new System.Windows.Forms.FolderBrowserDialog
         {
-            Description = "Elegir dónde guardar este documento como excepción"
+            Description = "Elegir dónde guardar este documento como excepción",
         };
 
         if (dialogo.ShowDialog() != System.Windows.Forms.DialogResult.OK)
@@ -199,22 +249,36 @@ public partial class ResolverDuplicadoWindow : Window
             ClasificadorService.GuardarComoExcepcion(_rutaArchivoNuevo, rutaExcepcion);
             _pendientes.Quitar(_rutaArchivoNuevo);
 
-            System.Windows.MessageBox.Show(this, $"Guardado como excepción en:\n{rutaExcepcion}", "Archivero",
-                MessageBoxButton.OK, MessageBoxImage.Information);
+            System.Windows.MessageBox.Show(
+                this,
+                $"Guardado como excepción en:\n{rutaExcepcion}",
+                "Archivero",
+                MessageBoxButton.OK,
+                MessageBoxImage.Information
+            );
 
             DialogResult = true;
             Close();
         }
         catch (ArchivoDuplicadoException)
         {
-            System.Windows.MessageBox.Show(this,
+            System.Windows.MessageBox.Show(
+                this,
                 $"También existe un archivo con ese nombre ahí:\n{rutaExcepcion}\nElegí otra carpeta.",
-                "Archivero", MessageBoxButton.OK, MessageBoxImage.Warning);
+                "Archivero",
+                MessageBoxButton.OK,
+                MessageBoxImage.Warning
+            );
         }
         catch (Exception ex)
         {
-            System.Windows.MessageBox.Show(this, $"No se pudo guardar: {ex.Message}", "Archivero",
-                MessageBoxButton.OK, MessageBoxImage.Error);
+            System.Windows.MessageBox.Show(
+                this,
+                $"No se pudo guardar: {ex.Message}",
+                "Archivero",
+                MessageBoxButton.OK,
+                MessageBoxImage.Error
+            );
         }
     }
 }

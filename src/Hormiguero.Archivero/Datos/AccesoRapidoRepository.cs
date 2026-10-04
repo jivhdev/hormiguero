@@ -22,11 +22,17 @@ public class AccesoRapidoRepository
 
         try
         {
-            return JsonSerializer.Deserialize<List<string>>(json)?
-                .Select(nombre => Enum.TryParse<FormatoCarpeta>(nombre, out var formato) ? formato : (FormatoCarpeta?)null)
-                .Where(formato => formato is not null)
-                .Select(formato => formato!.Value)
-                .ToList() ?? [];
+            return JsonSerializer
+                    .Deserialize<List<string>>(json)
+                    ?.Select(nombre =>
+                        Enum.TryParse<FormatoCarpeta>(nombre, out var formato)
+                            ? formato
+                            : (FormatoCarpeta?)null
+                    )
+                    .Where(formato => formato is not null)
+                    .Select(formato => formato!.Value)
+                    .ToList()
+                ?? [];
         }
         catch (JsonException)
         {
@@ -35,5 +41,8 @@ public class AccesoRapidoRepository
     }
 
     public void Guardar(IEnumerable<FormatoCarpeta> accesos) =>
-        _configuracion.Guardar(Clave, JsonSerializer.Serialize(accesos.Select(a => a.ToString()).ToList()));
+        _configuracion.Guardar(
+            Clave,
+            JsonSerializer.Serialize(accesos.Select(a => a.ToString()).ToList())
+        );
 }

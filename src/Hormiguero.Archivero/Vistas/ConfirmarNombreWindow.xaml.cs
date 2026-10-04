@@ -17,7 +17,11 @@ public partial class ConfirmarNombreWindow : Window
     private readonly CamposExtraidos _campos;
     private readonly PendienteRepository _pendientes = new();
 
-    public ConfirmarNombreWindow(string rutaArchivo, ConfiguracionDocumento configuracionConPatronCoincidente, CamposExtraidos campos)
+    public ConfirmarNombreWindow(
+        string rutaArchivo,
+        ConfiguracionDocumento configuracionConPatronCoincidente,
+        CamposExtraidos campos
+    )
     {
         InitializeComponent();
         _rutaArchivo = rutaArchivo;
@@ -30,7 +34,16 @@ public partial class ConfirmarNombreWindow : Window
         try
         {
             TxtCarpeta.Text = Path.GetDirectoryName(
-                ClasificadorService.CalcularRutaDestino(rutaArchivo, _configuracion with { Renombrar = false }, campos.Fecha, null));
+                ClasificadorService.CalcularRutaDestino(
+                    rutaArchivo,
+                    _configuracion with
+                    {
+                        Renombrar = false,
+                    },
+                    campos.Fecha,
+                    null
+                )
+            );
         }
         catch (ValidacionSeguridadException)
         {
@@ -58,7 +71,11 @@ public partial class ConfirmarNombreWindow : Window
 
         try
         {
-            var resultado = GuardadoAutomaticoService.GuardarConNombreConfirmado(_rutaArchivo, _configuracion, nombre);
+            var resultado = GuardadoAutomaticoService.GuardarConNombreConfirmado(
+                _rutaArchivo,
+                _configuracion,
+                nombre
+            );
             switch (resultado.Resultado)
             {
                 case ResultadoGuardadoAutomatico.Guardado:
@@ -84,15 +101,27 @@ public partial class ConfirmarNombreWindow : Window
         }
     }
 
-    private ConfiguracionDocumento ConfiguracionConNombre => _configuracion with { Renombrar = true, PreguntarNombre = false };
+    private ConfiguracionDocumento ConfiguracionConNombre =>
+        _configuracion with
+        {
+            Renombrar = true,
+            PreguntarNombre = false,
+        };
 
     private void ResolverDuplicado(string nombre)
     {
-        var rutaConflicto = ClasificadorService.CalcularRutaDestino(_rutaArchivo, ConfiguracionConNombre, _campos.Fecha, nombre);
+        var rutaConflicto = ClasificadorService.CalcularRutaDestino(
+            _rutaArchivo,
+            ConfiguracionConNombre,
+            _campos.Fecha,
+            nombre
+        );
         var resolver = new ResolverDuplicadoWindow(_rutaArchivo, rutaConflicto) { Owner = this };
         if (resolver.ShowDialog() != true)
         {
-            MostrarError("Ya existe un archivo con ese nombre en la carpeta. Se puede cambiar el nombre e intentar de nuevo.");
+            MostrarError(
+                "Ya existe un archivo con ese nombre en la carpeta. Se puede cambiar el nombre e intentar de nuevo."
+            );
             return;
         }
 
@@ -102,9 +131,15 @@ public partial class ConfirmarNombreWindow : Window
     /// <summary>La carpeta del período todavía no existe: misma pantalla de siempre (Caso-1, punto 2), ya con el nombre confirmado.</summary>
     private void CrearPeriodo(string nombre, string carpetaPeriodo)
     {
-        var ventana = new CrearPeriodoWindow(_rutaArchivo, ConfiguracionConNombre, _campos.Fecha ?? DateTime.Now, nombre, carpetaPeriodo)
+        var ventana = new CrearPeriodoWindow(
+            _rutaArchivo,
+            ConfiguracionConNombre,
+            _campos.Fecha ?? DateTime.Now,
+            nombre,
+            carpetaPeriodo
+        )
         {
-            Owner = this
+            Owner = this,
         };
 
         if (ventana.ShowDialog() == true)
@@ -116,11 +151,18 @@ public partial class ConfirmarNombreWindow : Window
     private void TerminarGuardado(string rutaFinal)
     {
         _pendientes.Quitar(_rutaArchivo);
-        AuditoriaService.Registrar("NOMBRE_CONFIRMADO",
-            $"Emisor={_configuracion.Emisor}; Tipo={_configuracion.Tipo}; Ruta={rutaFinal}");
+        AuditoriaService.Registrar(
+            "NOMBRE_CONFIRMADO",
+            $"Emisor={_configuracion.Emisor}; Tipo={_configuracion.Tipo}; Ruta={rutaFinal}"
+        );
 
-        System.Windows.MessageBox.Show(this, $"Documento guardado en:\n{rutaFinal}", "Archivero",
-            MessageBoxButton.OK, MessageBoxImage.Information);
+        System.Windows.MessageBox.Show(
+            this,
+            $"Documento guardado en:\n{rutaFinal}",
+            "Archivero",
+            MessageBoxButton.OK,
+            MessageBoxImage.Information
+        );
 
         DialogResult = true;
     }

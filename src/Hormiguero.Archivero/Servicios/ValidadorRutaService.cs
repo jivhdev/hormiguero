@@ -8,7 +8,8 @@ public class ValidacionSeguridadException : Exception
 {
     public MotivoPendiente Motivo { get; }
 
-    public ValidacionSeguridadException(MotivoPendiente motivo) : base(motivo.DescripcionLegible())
+    public ValidacionSeguridadException(MotivoPendiente motivo)
+        : base(motivo.DescripcionLegible())
     {
         Motivo = motivo;
     }
@@ -26,13 +27,45 @@ public static class ValidadorRutaService
     public const int MaximoCaracteresNombreArchivo = 200;
     public const int MaximoCaracteresRutaCompleta = 240;
 
-    private static readonly char[] CaracteresInvalidosWindows = ['<', '>', ':', '"', '/', '\\', '|', '?', '*'];
+    private static readonly char[] CaracteresInvalidosWindows =
+    [
+        '<',
+        '>',
+        ':',
+        '"',
+        '/',
+        '\\',
+        '|',
+        '?',
+        '*',
+    ];
 
-    private static readonly HashSet<string> NombresReservados = new(StringComparer.OrdinalIgnoreCase)
+    private static readonly HashSet<string> NombresReservados = new(
+        StringComparer.OrdinalIgnoreCase
+    )
     {
-        "CON", "PRN", "AUX", "NUL",
-        "COM1", "COM2", "COM3", "COM4", "COM5", "COM6", "COM7", "COM8", "COM9",
-        "LPT1", "LPT2", "LPT3", "LPT4", "LPT5", "LPT6", "LPT7", "LPT8", "LPT9"
+        "CON",
+        "PRN",
+        "AUX",
+        "NUL",
+        "COM1",
+        "COM2",
+        "COM3",
+        "COM4",
+        "COM5",
+        "COM6",
+        "COM7",
+        "COM8",
+        "COM9",
+        "LPT1",
+        "LPT2",
+        "LPT3",
+        "LPT4",
+        "LPT5",
+        "LPT6",
+        "LPT7",
+        "LPT8",
+        "LPT9",
     };
 
     /// <summary>
@@ -52,7 +85,9 @@ public static class ValidadorRutaService
             throw new ValidacionSeguridadException(MotivoPendiente.TextoConCaracteresInvalidos);
         }
 
-        var saneado = new string(texto.Select(c => Array.IndexOf(CaracteresInvalidosWindows, c) >= 0 ? '_' : c).ToArray());
+        var saneado = new string(
+            texto.Select(c => Array.IndexOf(CaracteresInvalidosWindows, c) >= 0 ? '_' : c).ToArray()
+        );
         saneado = saneado.TrimStart(' ').TrimEnd(' ', '.');
 
         var nombreSinExtension = Path.GetFileNameWithoutExtension(saneado);
@@ -74,10 +109,17 @@ public static class ValidadorRutaService
     /// </summary>
     public static void ValidarContenidaEnCarpeta(string rutaResuelta, string carpetaBaseResuelta)
     {
-        var baseSinBarraFinal = carpetaBaseResuelta.TrimEnd(Path.DirectorySeparatorChar, Path.AltDirectorySeparatorChar);
+        var baseSinBarraFinal = carpetaBaseResuelta.TrimEnd(
+            Path.DirectorySeparatorChar,
+            Path.AltDirectorySeparatorChar
+        );
 
-        var contenida = string.Equals(rutaResuelta, baseSinBarraFinal, StringComparison.OrdinalIgnoreCase)
-            || rutaResuelta.StartsWith(baseSinBarraFinal + Path.DirectorySeparatorChar, StringComparison.OrdinalIgnoreCase);
+        var contenida =
+            string.Equals(rutaResuelta, baseSinBarraFinal, StringComparison.OrdinalIgnoreCase)
+            || rutaResuelta.StartsWith(
+                baseSinBarraFinal + Path.DirectorySeparatorChar,
+                StringComparison.OrdinalIgnoreCase
+            );
 
         if (!contenida)
         {
@@ -88,7 +130,10 @@ public static class ValidadorRutaService
     /// <summary>Caso-9, mejora 1(f): nombre de archivo (sin extensión) máximo 200 caracteres; ruta completa final máximo 240.</summary>
     public static void ValidarLargos(string nombreSinExtension, string rutaCompleta)
     {
-        if (nombreSinExtension.Length > MaximoCaracteresNombreArchivo || rutaCompleta.Length > MaximoCaracteresRutaCompleta)
+        if (
+            nombreSinExtension.Length > MaximoCaracteresNombreArchivo
+            || rutaCompleta.Length > MaximoCaracteresRutaCompleta
+        )
         {
             throw new ValidacionSeguridadException(MotivoPendiente.NombreORutaDemasiadoLarga);
         }

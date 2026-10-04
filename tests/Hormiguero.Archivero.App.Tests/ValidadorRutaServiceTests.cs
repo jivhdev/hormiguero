@@ -21,7 +21,9 @@ public class ValidadorRutaServiceTests
     [InlineData("Factura\rFalsa")]
     public void ValidarYSanearSegmento_ConCaracterDeControlOByteNulo_Rechaza(string texto)
     {
-        var ex = Assert.Throws<ValidacionSeguridadException>(() => ValidadorRutaService.ValidarYSanearSegmento(texto));
+        var ex = Assert.Throws<ValidacionSeguridadException>(() =>
+            ValidadorRutaService.ValidarYSanearSegmento(texto)
+        );
 
         Assert.Equal(MotivoPendiente.TextoConCaracteresInvalidos, ex.Motivo);
     }
@@ -32,7 +34,10 @@ public class ValidadorRutaServiceTests
     [InlineData("Factura<1>.pdf", "Factura_1_.pdf")]
     [InlineData("Reporte: Ventas", "Reporte_ Ventas")]
     [InlineData("A\"B/C\\D|E?F*G", "A_B_C_D_E_F_G")]
-    public void ValidarYSanearSegmento_ConCaracteresInvalidosDeWindows_LosReemplazaPorGuionBajo(string texto, string esperado)
+    public void ValidarYSanearSegmento_ConCaracteresInvalidosDeWindows_LosReemplazaPorGuionBajo(
+        string texto,
+        string esperado
+    )
     {
         var resultado = ValidadorRutaService.ValidarYSanearSegmento(texto);
 
@@ -53,7 +58,9 @@ public class ValidadorRutaServiceTests
     [InlineData("con.txt")]
     public void ValidarYSanearSegmento_ConNombreReservadoDeWindows_Rechaza(string texto)
     {
-        var ex = Assert.Throws<ValidacionSeguridadException>(() => ValidadorRutaService.ValidarYSanearSegmento(texto));
+        var ex = Assert.Throws<ValidacionSeguridadException>(() =>
+            ValidadorRutaService.ValidarYSanearSegmento(texto)
+        );
 
         Assert.Equal(MotivoPendiente.NombreReservadoPorWindows, ex.Motivo);
     }
@@ -89,7 +96,10 @@ public class ValidadorRutaServiceTests
     [InlineData("Factura.pdf   ", "Factura.pdf")]
     [InlineData("Factura...", "Factura")]
     [InlineData("  Factura  ", "Factura")]
-    public void ValidarYSanearSegmento_ConEspaciosOPuntosSobrantes_LosQuita(string texto, string esperado)
+    public void ValidarYSanearSegmento_ConEspaciosOPuntosSobrantes_LosQuita(
+        string texto,
+        string esperado
+    )
     {
         var resultado = ValidadorRutaService.ValidarYSanearSegmento(texto);
 
@@ -109,7 +119,11 @@ public class ValidadorRutaServiceTests
     {
         // "C:\Docs\FooBar" NO es "C:\Docs\Foo" solo porque el texto empieza igual.
         var ex = Assert.Throws<ValidacionSeguridadException>(() =>
-            ValidadorRutaService.ValidarContenidaEnCarpeta(@"C:\Docs\FooBar\archivo.pdf", @"C:\Docs\Foo"));
+            ValidadorRutaService.ValidarContenidaEnCarpeta(
+                @"C:\Docs\FooBar\archivo.pdf",
+                @"C:\Docs\Foo"
+            )
+        );
 
         Assert.Equal(MotivoPendiente.RutaFueraDeCarpetaConfigurada, ex.Motivo);
     }
@@ -120,7 +134,8 @@ public class ValidadorRutaServiceTests
         var rutaResuelta = Path.GetFullPath(@"C:\Docs\Foo\..\..\Windows\evil.pdf");
 
         var ex = Assert.Throws<ValidacionSeguridadException>(() =>
-            ValidadorRutaService.ValidarContenidaEnCarpeta(rutaResuelta, @"C:\Docs\Foo"));
+            ValidadorRutaService.ValidarContenidaEnCarpeta(rutaResuelta, @"C:\Docs\Foo")
+        );
 
         Assert.Equal(MotivoPendiente.RutaFueraDeCarpetaConfigurada, ex.Motivo);
     }
@@ -139,7 +154,8 @@ public class ValidadorRutaServiceTests
         var nombreLargo = new string('a', 201);
 
         var ex = Assert.Throws<ValidacionSeguridadException>(() =>
-            ValidadorRutaService.ValidarLargos(nombreLargo, @"C:\Docs\" + nombreLargo + ".pdf"));
+            ValidadorRutaService.ValidarLargos(nombreLargo, @"C:\Docs\" + nombreLargo + ".pdf")
+        );
 
         Assert.Equal(MotivoPendiente.NombreORutaDemasiadoLarga, ex.Motivo);
     }
@@ -158,7 +174,8 @@ public class ValidadorRutaServiceTests
         var rutaLarga = @"C:\" + new string('a', 240);
 
         var ex = Assert.Throws<ValidacionSeguridadException>(() =>
-            ValidadorRutaService.ValidarLargos("nombre", rutaLarga));
+            ValidadorRutaService.ValidarLargos("nombre", rutaLarga)
+        );
 
         Assert.Equal(MotivoPendiente.NombreORutaDemasiadoLarga, ex.Motivo);
     }

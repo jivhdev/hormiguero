@@ -38,7 +38,8 @@ public partial class OrganizacionCarpetaControl : UserControl
 
     public bool FechaEsAplicable => _tipoOrganizacion is not (null or FormatoCarpeta.Directo);
 
-    public bool FechaEsOpcional => _tipoOrganizacion is { } tipo && OrganizacionCarpetaService.FechaEsOpcional(tipo);
+    public bool FechaEsOpcional =>
+        _tipoOrganizacion is { } tipo && OrganizacionCarpetaService.FechaEsOpcional(tipo);
 
     public OrganizacionCarpetaControl()
     {
@@ -105,9 +106,10 @@ public partial class OrganizacionCarpetaControl : UserControl
         var patron = LeerPatronElegido();
         if (string.IsNullOrWhiteSpace(patron))
         {
-            error = _tipoOrganizacion == FormatoCarpeta.Personalizado
-                ? "Escribir el patrón personalizado."
-                : "Elegir cuál de los ejemplos de patrón se parece a tus carpetas.";
+            error =
+                _tipoOrganizacion == FormatoCarpeta.Personalizado
+                    ? "Escribir el patrón personalizado."
+                    : "Elegir cuál de los ejemplos de patrón se parece a tus carpetas.";
             return false;
         }
 
@@ -143,7 +145,8 @@ public partial class OrganizacionCarpetaControl : UserControl
         ContenedorAccesosRapidos.Children.Clear();
 
         var accesos = _accesosRapidos.Obtener();
-        TxtSinAccesosRapidos.Visibility = accesos.Count == 0 ? Visibility.Visible : Visibility.Collapsed;
+        TxtSinAccesosRapidos.Visibility =
+            accesos.Count == 0 ? Visibility.Visible : Visibility.Collapsed;
 
         foreach (var acceso in accesos)
         {
@@ -152,7 +155,7 @@ public partial class OrganizacionCarpetaControl : UserControl
                 Content = OrganizacionCarpetaService.NombreDe(acceso),
                 Tag = acceso,
                 Padding = new Thickness(6, 4, 6, 4),
-                Margin = new Thickness(0, 0, 0, 6)
+                Margin = new Thickness(0, 0, 0, 6),
             };
             boton.Click += (_, _) => SeleccionarTipo((FormatoCarpeta)boton.Tag);
             ContenedorAccesosRapidos.Children.Add(boton);
@@ -163,14 +166,18 @@ public partial class OrganizacionCarpetaControl : UserControl
     {
         ContenedorListaCompleta.Children.Clear();
 
-        foreach (var tipo in OrganizacionCarpetaService.TodosLosTipos.Concat([OrganizacionCarpetaService.OpcionPersonalizada]))
+        foreach (
+            var tipo in OrganizacionCarpetaService.TodosLosTipos.Concat([
+                OrganizacionCarpetaService.OpcionPersonalizada,
+            ])
+        )
         {
             var boton = new Button
             {
                 Content = tipo.Nombre,
                 Tag = tipo.Formato,
                 Padding = new Thickness(6, 4, 6, 4),
-                Margin = new Thickness(0, 0, 0, 6)
+                Margin = new Thickness(0, 0, 0, 6),
             };
             boton.Click += (_, _) => IniciarEnlazado((FormatoCarpeta)boton.Tag);
             ContenedorListaCompleta.Children.Add(boton);
@@ -212,16 +219,17 @@ public partial class OrganizacionCarpetaControl : UserControl
             {
                 Content = $"Reemplazar \"{OrganizacionCarpetaService.NombreDe(accesos[indice])}\"",
                 Padding = new Thickness(6, 4, 6, 4),
-                Margin = new Thickness(0, 0, 0, 6)
+                Margin = new Thickness(0, 0, 0, 6),
             };
             boton.Click += (_, _) => EnlazarReemplazando(indice);
             ContenedorReemplazos.Children.Add(boton);
         }
 
         TxtTipoPendienteEnlazar.Text = $"Elegiste: {OrganizacionCarpetaService.NombreDe(tipo)}";
-        TxtPreguntaEnlazar.Text = accesos.Count > 0
-            ? "¿Con cuál de tus accesos rápidos actuales querés reemplazar esta opción?"
-            : "¿Querés dejarla como acceso rápido para las próximas veces?";
+        TxtPreguntaEnlazar.Text =
+            accesos.Count > 0
+                ? "¿Con cuál de tus accesos rápidos actuales querés reemplazar esta opción?"
+                : "¿Querés dejarla como acceso rápido para las próximas veces?";
 
         PanelListaCompleta.Visibility = Visibility.Collapsed;
         PanelEnlazar.Visibility = Visibility.Visible;
@@ -287,8 +295,12 @@ public partial class OrganizacionCarpetaControl : UserControl
 
         BtnCambiarTipo.Visibility = _bloqueado ? Visibility.Collapsed : Visibility.Visible;
         ContenedorEjemplos.Children.Clear();
-        PanelPatronPersonalizado.Visibility = tipo == FormatoCarpeta.Personalizado ? Visibility.Visible : Visibility.Collapsed;
-        TxtAvisoFechaHoy.Visibility = tipo != FormatoCarpeta.Directo && fechaEsSupuesta ? Visibility.Visible : Visibility.Collapsed;
+        PanelPatronPersonalizado.Visibility =
+            tipo == FormatoCarpeta.Personalizado ? Visibility.Visible : Visibility.Collapsed;
+        TxtAvisoFechaHoy.Visibility =
+            tipo != FormatoCarpeta.Directo && fechaEsSupuesta
+                ? Visibility.Visible
+                : Visibility.Collapsed;
 
         if (tipo == FormatoCarpeta.Directo)
         {
@@ -301,18 +313,29 @@ public partial class OrganizacionCarpetaControl : UserControl
         }
         else
         {
-            TxtTipoElegido.Text = $"{OrganizacionCarpetaService.NombreDe(tipo.Value)} — ¿cuál de estos ejemplos se parece a lo que ya usás?";
+            TxtTipoElegido.Text =
+                $"{OrganizacionCarpetaService.NombreDe(tipo.Value)} — ¿cuál de estos ejemplos se parece a lo que ya usás?";
 
             var ejemplos = OrganizacionCarpetaService.ObtenerEjemplos(tipo.Value, fechaReferencia);
 
             // En modo edición el patrón guardado puede ser uno que ya no está entre los ejemplos
             // (ej. uno detectado por evidencia antes de Caso-3, como "'Año 'yyyy"): se conserva
             // como opción adicional para no obligar a cambiarlo.
-            if (_patronSeleccionado is not null && ejemplos.All(e => e.Patron != _patronSeleccionado))
+            if (
+                _patronSeleccionado is not null
+                && ejemplos.All(e => e.Patron != _patronSeleccionado)
+            )
             {
-                ejemplos.Insert(0, new EjemploPatron(
-                    _patronSeleccionado,
-                    OrganizacionCarpetaService.FormatearEjemplo(_patronSeleccionado, fechaReferencia) + " (el actual)"));
+                ejemplos.Insert(
+                    0,
+                    new EjemploPatron(
+                        _patronSeleccionado,
+                        OrganizacionCarpetaService.FormatearEjemplo(
+                            _patronSeleccionado,
+                            fechaReferencia
+                        ) + " (el actual)"
+                    )
+                );
             }
 
             foreach (var ejemplo in ejemplos)
@@ -323,7 +346,7 @@ public partial class OrganizacionCarpetaControl : UserControl
                     Tag = ejemplo.Patron,
                     GroupName = "EjemplosPatron" + GetHashCode(),
                     Margin = new Thickness(0, 0, 0, 6),
-                    IsEnabled = !_bloqueado
+                    IsEnabled = !_bloqueado,
                 };
                 radio.Checked += Ejemplo_Checked;
                 ContenedorEjemplos.Children.Add(radio);
@@ -366,7 +389,11 @@ public partial class OrganizacionCarpetaControl : UserControl
         var (fechaReferencia, _) = _proveedorFecha();
         var patron = OrganizacionCarpetaService.NormalizarPatronPersonalizado(texto);
 
-        TxtEjemploPersonalizado.Text = OrganizacionCarpetaService.EsPatronValido(patron, fechaReferencia, out var error)
+        TxtEjemploPersonalizado.Text = OrganizacionCarpetaService.EsPatronValido(
+            patron,
+            fechaReferencia,
+            out var error
+        )
             ? "Ejemplo: " + OrganizacionCarpetaService.FormatearEjemplo(patron, fechaReferencia)
             : error;
     }
@@ -381,7 +408,9 @@ public partial class OrganizacionCarpetaControl : UserControl
         if (_tipoOrganizacion == FormatoCarpeta.Personalizado)
         {
             var texto = TxtPatronPersonalizado.Text.Trim();
-            return texto.Length == 0 ? null : OrganizacionCarpetaService.NormalizarPatronPersonalizado(texto);
+            return texto.Length == 0
+                ? null
+                : OrganizacionCarpetaService.NormalizarPatronPersonalizado(texto);
         }
 
         return _patronSeleccionado;

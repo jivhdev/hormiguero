@@ -35,7 +35,7 @@ public class TrayIconService : IDisposable
             Icon = _iconoNormal,
             Text = "Archivero",
             Visible = true,
-            ContextMenuStrip = menu
+            ContextMenuStrip = menu,
         };
         _notifyIcon.Click += (_, _) => MostrarVentanaSolicitado?.Invoke();
 

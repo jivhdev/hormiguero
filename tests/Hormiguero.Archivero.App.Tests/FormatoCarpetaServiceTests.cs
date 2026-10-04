@@ -10,7 +10,10 @@ public class FormatoCarpetaServiceTests : IDisposable
 
     public FormatoCarpetaServiceTests()
     {
-        _carpetaTemporal = Path.Combine(Path.GetTempPath(), "archivero-tests-" + Guid.NewGuid().ToString("N"));
+        _carpetaTemporal = Path.Combine(
+            Path.GetTempPath(),
+            "archivero-tests-" + Guid.NewGuid().ToString("N")
+        );
         Directory.CreateDirectory(_carpetaTemporal);
     }
 
@@ -107,7 +110,13 @@ public class FormatoCarpetaServiceTests : IDisposable
         var resultado = FormatoCarpetaService.Detectar(_carpetaTemporal);
 
         Assert.Equal(FormatoCarpeta.Anio, resultado.Formato);
-        Assert.Equal("Año 2026", new DateTime(2026, 1, 1).ToString(resultado.PatronCarpeta!, CultureInfo.GetCultureInfo("es-ES")));
+        Assert.Equal(
+            "Año 2026",
+            new DateTime(2026, 1, 1).ToString(
+                resultado.PatronCarpeta!,
+                CultureInfo.GetCultureInfo("es-ES")
+            )
+        );
     }
 
     [Fact]
@@ -138,15 +147,26 @@ public class FormatoCarpetaServiceTests : IDisposable
         Assert.Equal(FormatoCarpeta.AnioMes, resultado.Formato);
         Assert.Equal(
             "Mes de septiembre",
-            new DateTime(2026, 9, 1).ToString(resultado.PatronCarpeta!.Split('\\')[1], CultureInfo.GetCultureInfo("es-ES")));
+            new DateTime(2026, 9, 1).ToString(
+                resultado.PatronCarpeta!.Split('\\')[1],
+                CultureInfo.GetCultureInfo("es-ES")
+            )
+        );
     }
 
     [Theory]
     [InlineData("yyyy", "2026")]
     [InlineData("yy", "26")]
-    public void ConstruirSubcarpeta_ConFormatoAnio_DevuelveElAnioSegunElPatron(string patron, string esperado)
+    public void ConstruirSubcarpeta_ConFormatoAnio_DevuelveElAnioSegunElPatron(
+        string patron,
+        string esperado
+    )
     {
-        var resultado = FormatoCarpetaService.ConstruirSubcarpeta(FormatoCarpeta.Anio, patron, new DateTime(2026, 9, 12));
+        var resultado = FormatoCarpetaService.ConstruirSubcarpeta(
+            FormatoCarpeta.Anio,
+            patron,
+            new DateTime(2026, 9, 12)
+        );
 
         Assert.Equal(esperado, resultado);
     }
@@ -154,7 +174,11 @@ public class FormatoCarpetaServiceTests : IDisposable
     [Fact]
     public void ConstruirSubcarpeta_ConFormatoAnioMes_DevuelveRutaConAnioYMes()
     {
-        var resultado = FormatoCarpetaService.ConstruirSubcarpeta(FormatoCarpeta.AnioMes, "yyyy\\MM", new DateTime(2026, 9, 12));
+        var resultado = FormatoCarpetaService.ConstruirSubcarpeta(
+            FormatoCarpeta.AnioMes,
+            "yyyy\\MM",
+            new DateTime(2026, 9, 12)
+        );
 
         Assert.Equal("2026\\09", resultado);
     }
@@ -162,7 +186,11 @@ public class FormatoCarpetaServiceTests : IDisposable
     [Fact]
     public void ConstruirSubcarpeta_ConFormatoAnioMesConcatenado_DevuelveAnioYAnioMesJuntos()
     {
-        var resultado = FormatoCarpetaService.ConstruirSubcarpeta(FormatoCarpeta.AnioMes, "yyyy\\yyyyMM", new DateTime(2026, 9, 12));
+        var resultado = FormatoCarpetaService.ConstruirSubcarpeta(
+            FormatoCarpeta.AnioMes,
+            "yyyy\\yyyyMM",
+            new DateTime(2026, 9, 12)
+        );
 
         Assert.Equal("2026\\202609", resultado);
     }
@@ -170,7 +198,11 @@ public class FormatoCarpetaServiceTests : IDisposable
     [Fact]
     public void ConstruirSubcarpeta_ConFormatoDirecto_DevuelveVacio()
     {
-        var resultado = FormatoCarpetaService.ConstruirSubcarpeta(FormatoCarpeta.Directo, null, DateTime.Now);
+        var resultado = FormatoCarpetaService.ConstruirSubcarpeta(
+            FormatoCarpeta.Directo,
+            null,
+            DateTime.Now
+        );
 
         Assert.Equal(string.Empty, resultado);
     }

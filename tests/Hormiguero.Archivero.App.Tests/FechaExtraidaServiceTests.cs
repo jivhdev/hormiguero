@@ -19,7 +19,12 @@ public class FechaExtraidaServiceTests
     [InlineData("1 de enero de 2026", 2026, 1, 1)]
     [InlineData("15-SEP-2026", 2026, 9, 15)]
     [InlineData("15-SET-2026", 2026, 9, 15)]
-    public void TryParsear_ConFormatosSoportados_InterpretaLaFechaCorrecta(string texto, int anio, int mes, int dia)
+    public void TryParsear_ConFormatosSoportados_InterpretaLaFechaCorrecta(
+        string texto,
+        int anio,
+        int mes,
+        int dia
+    )
     {
         var pudo = FechaExtraidaService.TryParsear(texto, out var fecha);
 

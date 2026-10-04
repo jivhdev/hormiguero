@@ -19,15 +19,15 @@ public class GuardadoRecienteRepository
 
         using (var insertar = conexion.CreateCommand())
         {
-            insertar.CommandText = "INSERT INTO GuardadosRecientes (RutaFinal, FechaHora) VALUES ($ruta, $fecha);";
+            insertar.CommandText =
+                "INSERT INTO GuardadosRecientes (RutaFinal, FechaHora) VALUES ($ruta, $fecha);";
             insertar.Parameters.AddWithValue("$ruta", rutaFinal);
             insertar.Parameters.AddWithValue("$fecha", DateTime.Now.ToString("O"));
             insertar.ExecuteNonQuery();
         }
 
         using var recortar = conexion.CreateCommand();
-        recortar.CommandText =
-            """
+        recortar.CommandText = """
             DELETE FROM GuardadosRecientes
             WHERE Id NOT IN (SELECT Id FROM GuardadosRecientes ORDER BY Id DESC LIMIT $maximo);
             """;
@@ -39,13 +39,16 @@ public class GuardadoRecienteRepository
     {
         using var conexion = BaseDeDatos.CrearConexion();
         using var comando = conexion.CreateCommand();
-        comando.CommandText = "SELECT RutaFinal, FechaHora FROM GuardadosRecientes ORDER BY Id DESC;";
+        comando.CommandText =
+            "SELECT RutaFinal, FechaHora FROM GuardadosRecientes ORDER BY Id DESC;";
 
         var resultado = new List<GuardadoReciente>();
         using var lector = comando.ExecuteReader();
         while (lector.Read())
         {
-            resultado.Add(new GuardadoReciente(DateTime.Parse(lector.GetString(1)), lector.GetString(0)));
+            resultado.Add(
+                new GuardadoReciente(DateTime.Parse(lector.GetString(1)), lector.GetString(0))
+            );
         }
 
         return resultado;

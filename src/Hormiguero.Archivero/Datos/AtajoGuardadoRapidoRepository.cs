@@ -14,13 +14,16 @@ public class AtajoGuardadoRapidoRepository
         using var lector = comando.ExecuteReader();
         while (lector.Read())
         {
-            resultado.Add(new AtajoGuardadoRapido(
-                lector.GetInt32(0),
-                lector.GetString(1),
-                lector.GetString(2),
-                Enum.Parse<FormatoCarpeta>(lector.GetString(3)),
-                lector.IsDBNull(4) ? null : lector.GetString(4),
-                LeerRegla(lector.GetString(5))));
+            resultado.Add(
+                new AtajoGuardadoRapido(
+                    lector.GetInt32(0),
+                    lector.GetString(1),
+                    lector.GetString(2),
+                    Enum.Parse<FormatoCarpeta>(lector.GetString(3)),
+                    lector.IsDBNull(4) ? null : lector.GetString(4),
+                    LeerRegla(lector.GetString(5))
+                )
+            );
         }
 
         return resultado;
@@ -36,12 +39,17 @@ public class AtajoGuardadoRapidoRepository
     }
 
     /// <summary>Guarda el atajo; si ya hay uno con ese nombre, lo reemplaza (el usuario lo confirma antes en la UI).</summary>
-    public void Guardar(string nombre, string carpetaMadre, FormatoCarpeta formato, string? patron, IEnumerable<OperacionNombre> reglaNombre)
+    public void Guardar(
+        string nombre,
+        string carpetaMadre,
+        FormatoCarpeta formato,
+        string? patron,
+        IEnumerable<OperacionNombre> reglaNombre
+    )
     {
         using var conexion = BaseDeDatos.CrearConexion();
         using var comando = conexion.CreateCommand();
-        comando.CommandText =
-            """
+        comando.CommandText = """
             INSERT INTO AtajosGuardadoRapido (Nombre, CarpetaMadre, FormatoCarpeta, PatronCarpeta, ReglaNombre)
             VALUES ($nombre, $carpeta, $formato, $patron, $regla)
             ON CONFLICT(Nombre) DO UPDATE SET
@@ -60,8 +68,11 @@ public class AtajoGuardadoRapidoRepository
 
     // Un valor desconocido (ej. de una versión futura) se ignora en vez de romper la lista de atajos.
     private static List<OperacionNombre> LeerRegla(string texto) =>
-        texto.Split(',', StringSplitOptions.RemoveEmptyEntries)
-            .Select(p => Enum.TryParse<OperacionNombre>(p, out var op) ? op : (OperacionNombre?)null)
+        texto
+            .Split(',', StringSplitOptions.RemoveEmptyEntries)
+            .Select(p =>
+                Enum.TryParse<OperacionNombre>(p, out var op) ? op : (OperacionNombre?)null
+            )
             .Where(op => op is not null)
             .Select(op => op!.Value)
             .ToList();

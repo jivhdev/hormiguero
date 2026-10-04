@@ -38,8 +38,12 @@ public partial class GuardarAtajoWindow : Window
         if (_atajos.ExisteNombre(nombre))
         {
             var reemplazar = System.Windows.MessageBox.Show(
-                this, $"Ya existe un acceso rápido llamado \"{nombre}\". ¿Reemplazarlo por este?",
-                "Archivero", MessageBoxButton.YesNo, MessageBoxImage.Question);
+                this,
+                $"Ya existe un acceso rápido llamado \"{nombre}\". ¿Reemplazarlo por este?",
+                "Archivero",
+                MessageBoxButton.YesNo,
+                MessageBoxImage.Question
+            );
 
             if (reemplazar != MessageBoxResult.Yes)
             {

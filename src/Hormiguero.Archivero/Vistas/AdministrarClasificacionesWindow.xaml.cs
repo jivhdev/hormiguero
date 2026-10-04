@@ -33,7 +33,8 @@ public partial class AdministrarClasificacionesWindow : Window
 
     private void CargarClasificaciones()
     {
-        _todas = _configuraciones.ObtenerTodas()
+        _todas = _configuraciones
+            .ObtenerTodas()
             .Select(c => new FilaClasificacion(c, Directory.Exists(c.CarpetaDestino)))
             .ToList();
 
@@ -46,14 +47,18 @@ public partial class AdministrarClasificacionesWindow : Window
 
         ListaClasificaciones.ItemsSource = string.IsNullOrWhiteSpace(filtro)
             ? _todas
-            : _todas.Where(f =>
-                f.Emisor.Contains(filtro, StringComparison.OrdinalIgnoreCase) ||
-                f.Tipo.Contains(filtro, StringComparison.OrdinalIgnoreCase)).ToList();
+            : _todas
+                .Where(f =>
+                    f.Emisor.Contains(filtro, StringComparison.OrdinalIgnoreCase)
+                    || f.Tipo.Contains(filtro, StringComparison.OrdinalIgnoreCase)
+                )
+                .ToList();
     }
 
     private void CmbBusqueda_TextChanged(object sender, TextChangedEventArgs e)
     {
-        var sugerencias = _entidades.Buscar(CategoriaEntidad.Emisor, CmbBusqueda.Text)
+        var sugerencias = _entidades
+            .Buscar(CategoriaEntidad.Emisor, CmbBusqueda.Text)
             .Concat(_entidades.Buscar(CategoriaEntidad.Tipo, CmbBusqueda.Text))
             .Distinct()
             .ToList();
@@ -67,7 +72,10 @@ public partial class AdministrarClasificacionesWindow : Window
         CargarClasificaciones();
     }
 
-    private void ListaClasificaciones_MouseDoubleClick(object sender, System.Windows.Input.MouseButtonEventArgs e) => Editar();
+    private void ListaClasificaciones_MouseDoubleClick(
+        object sender,
+        System.Windows.Input.MouseButtonEventArgs e
+    ) => Editar();
 
     private void BtnEditar_Click(object sender, RoutedEventArgs e) => Editar();
 
@@ -75,8 +83,13 @@ public partial class AdministrarClasificacionesWindow : Window
     {
         if (ListaClasificaciones.SelectedItem is not FilaClasificacion fila)
         {
-            System.Windows.MessageBox.Show(this, "Seleccioná una clasificación de la lista para editar.", "Archivero",
-                MessageBoxButton.OK, MessageBoxImage.Information);
+            System.Windows.MessageBox.Show(
+                this,
+                "Seleccioná una clasificación de la lista para editar.",
+                "Archivero",
+                MessageBoxButton.OK,
+                MessageBoxImage.Information
+            );
             return;
         }
 
@@ -84,8 +97,13 @@ public partial class AdministrarClasificacionesWindow : Window
         var configuracion = _configuraciones.BuscarPorEmisorYTipo(fila.Emisor, fila.Tipo);
         if (configuracion is null || configuracion.Patrones.Count == 0)
         {
-            System.Windows.MessageBox.Show(this, "Esta configuración no tiene ningún patrón de reconocimiento guardado.", "Archivero",
-                MessageBoxButton.OK, MessageBoxImage.Warning);
+            System.Windows.MessageBox.Show(
+                this,
+                "Esta configuración no tiene ningún patrón de reconocimiento guardado.",
+                "Archivero",
+                MessageBoxButton.OK,
+                MessageBoxImage.Warning
+            );
             return;
         }
 
@@ -104,7 +122,7 @@ public partial class AdministrarClasificacionesWindow : Window
         using var dialogoArchivo = new OpenFileDialog
         {
             Title = "Elegir un PDF de ejemplo de este diseño para revisar/corregir las marcas",
-            Filter = "Documentos PDF (*.pdf)|*.pdf"
+            Filter = "Documentos PDF (*.pdf)|*.pdf",
         };
 
         if (dialogoArchivo.ShowDialog() != System.Windows.Forms.DialogResult.OK)
@@ -112,7 +130,14 @@ public partial class AdministrarClasificacionesWindow : Window
             return;
         }
 
-        var asistente = new IdentificarDocumentoWindow(dialogoArchivo.FileName, configuracion, patron) { Owner = this };
+        var asistente = new IdentificarDocumentoWindow(
+            dialogoArchivo.FileName,
+            configuracion,
+            patron
+        )
+        {
+            Owner = this,
+        };
         if (asistente.ShowDialog() == true)
         {
             HuboConfiguracionesEditadas = true;
@@ -124,17 +149,25 @@ public partial class AdministrarClasificacionesWindow : Window
     {
         if (ListaClasificaciones.SelectedItem is not FilaClasificacion fila)
         {
-            System.Windows.MessageBox.Show(this, "Seleccioná una clasificación de la lista para borrar.", "Archivero",
-                MessageBoxButton.OK, MessageBoxImage.Information);
+            System.Windows.MessageBox.Show(
+                this,
+                "Seleccioná una clasificación de la lista para borrar.",
+                "Archivero",
+                MessageBoxButton.OK,
+                MessageBoxImage.Information
+            );
             return;
         }
 
         var confirmar = System.Windows.MessageBox.Show(
             this,
-            $"¿Borrar la configuración de \"{fila.Emisor}\" / \"{fila.Tipo}\"?\n\n" +
-            "Los documentos que ya se guardaron con ella no se tocan ni se mueven. " +
-            "Los próximos documentos de este Emisor y Tipo van a volver a pedir identificación.",
-            "Archivero", MessageBoxButton.YesNo, MessageBoxImage.Warning);
+            $"¿Borrar la configuración de \"{fila.Emisor}\" / \"{fila.Tipo}\"?\n\n"
+                + "Los documentos que ya se guardaron con ella no se tocan ni se mueven. "
+                + "Los próximos documentos de este Emisor y Tipo van a volver a pedir identificación.",
+            "Archivero",
+            MessageBoxButton.YesNo,
+            MessageBoxImage.Warning
+        );
 
         if (confirmar != MessageBoxResult.Yes)
         {
@@ -142,7 +175,10 @@ public partial class AdministrarClasificacionesWindow : Window
         }
 
         _configuraciones.EliminarConfiguracion(fila.Configuracion.Id);
-        Servicios.AuditoriaService.Registrar("CLASIFICACION_BORRADA", $"Emisor={fila.Emisor}; Tipo={fila.Tipo}");
+        Servicios.AuditoriaService.Registrar(
+            "CLASIFICACION_BORRADA",
+            $"Emisor={fila.Emisor}; Tipo={fila.Tipo}"
+        );
         CargarClasificaciones();
     }
 
@@ -152,7 +188,7 @@ public partial class AdministrarClasificacionesWindow : Window
         {
             Title = "Exportar clasificaciones",
             Filter = "Archivo JSON (*.json)|*.json",
-            FileName = $"archivero-clasificaciones-{DateTime.Now:yyyy-MM-dd}.json"
+            FileName = $"archivero-clasificaciones-{DateTime.Now:yyyy-MM-dd}.json",
         };
 
         if (dialogo.ShowDialog() != System.Windows.Forms.DialogResult.OK)
@@ -161,11 +197,19 @@ public partial class AdministrarClasificacionesWindow : Window
         }
 
         var datos = _configuraciones.ObtenerTodasConPatrones();
-        var json = JsonSerializer.Serialize(datos, new JsonSerializerOptions { WriteIndented = true });
+        var json = JsonSerializer.Serialize(
+            datos,
+            new JsonSerializerOptions { WriteIndented = true }
+        );
         File.WriteAllText(dialogo.FileName, json);
 
-        System.Windows.MessageBox.Show(this, $"Clasificaciones exportadas a:\n{dialogo.FileName}", "Archivero",
-            MessageBoxButton.OK, MessageBoxImage.Information);
+        System.Windows.MessageBox.Show(
+            this,
+            $"Clasificaciones exportadas a:\n{dialogo.FileName}",
+            "Archivero",
+            MessageBoxButton.OK,
+            MessageBoxImage.Information
+        );
     }
 
     private void BtnCerrar_Click(object sender, RoutedEventArgs e) => Close();

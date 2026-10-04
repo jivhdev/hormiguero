@@ -14,7 +14,10 @@ public class PatronCarpetaTests : IDisposable
 
     public PatronCarpetaTests()
     {
-        _carpetaTemporal = Path.Combine(Path.GetTempPath(), "archivero-tests-" + Guid.NewGuid().ToString("N"));
+        _carpetaTemporal = Path.Combine(
+            Path.GetTempPath(),
+            "archivero-tests-" + Guid.NewGuid().ToString("N")
+        );
         Directory.CreateDirectory(_carpetaTemporal);
     }
 
@@ -41,7 +44,11 @@ public class PatronCarpetaTests : IDisposable
     [InlineData("dd", "2026-03-15", "15")]
     [InlineData("yyyyMMdd", "2026-03-15", "20260315")]
     [InlineData("'Mes 'MM", "2026-03-15", "Mes 03")]
-    public void FormatearNivel_ConTokensDelCatalogo_GeneraElNombreEsperado(string nivel, string fechaTexto, string esperado)
+    public void FormatearNivel_ConTokensDelCatalogo_GeneraElNombreEsperado(
+        string nivel,
+        string fechaTexto,
+        string esperado
+    )
     {
         var resultado = FormatoCarpetaService.FormatearNivel(nivel, DateTime.Parse(fechaTexto));
 
@@ -56,9 +63,15 @@ public class PatronCarpetaTests : IDisposable
     [InlineData("2026-06-01", 1)] // junio 2026 empieza lunes: semana 1 = 1 al 7
     [InlineData("2026-06-07", 1)]
     [InlineData("2026-06-08", 2)]
-    public void FormatearNivel_SemanaDelMes_CuentaSemanasLunesADomingoTocandoElMes(string fechaTexto, int semanaEsperada)
+    public void FormatearNivel_SemanaDelMes_CuentaSemanasLunesADomingoTocandoElMes(
+        string fechaTexto,
+        int semanaEsperada
+    )
     {
-        var resultado = FormatoCarpetaService.FormatearNivel("'Semana 'N", DateTime.Parse(fechaTexto));
+        var resultado = FormatoCarpetaService.FormatearNivel(
+            "'Semana 'N",
+            DateTime.Parse(fechaTexto)
+        );
 
         Assert.Equal($"Semana {semanaEsperada}", resultado);
     }
@@ -69,7 +82,10 @@ public class PatronCarpetaTests : IDisposable
         // "MMM" no es un token del motor propio: el nivel se formatea con DateTime.ToString como
         // antes de Caso-3, para que cualquier patrón viejo o exótico siga funcionando igual.
         var fecha = new DateTime(2026, 3, 15);
-        var esperado = fecha.ToString("MMM", System.Globalization.CultureInfo.GetCultureInfo("es-ES"));
+        var esperado = fecha.ToString(
+            "MMM",
+            System.Globalization.CultureInfo.GetCultureInfo("es-ES")
+        );
 
         Assert.Equal(esperado, FormatoCarpetaService.FormatearNivel("MMM", fecha));
     }
@@ -78,7 +94,10 @@ public class PatronCarpetaTests : IDisposable
     public void ConstruirSubcarpeta_ConTresNiveles_CombinaLasPartes()
     {
         var resultado = FormatoCarpetaService.ConstruirSubcarpeta(
-            FormatoCarpeta.AnioMesDia, @"yyyy\MM\dd", new DateTime(2026, 3, 15));
+            FormatoCarpeta.AnioMesDia,
+            @"yyyy\MM\dd",
+            new DateTime(2026, 3, 15)
+        );
 
         Assert.Equal(Path.Combine("2026", "03", "15"), resultado);
     }
@@ -87,7 +106,10 @@ public class PatronCarpetaTests : IDisposable
     public void ConstruirSubcarpeta_ConQuincenaDeTresNiveles_CombinaLasPartes()
     {
         var resultado = FormatoCarpetaService.ConstruirSubcarpeta(
-            FormatoCarpeta.AnioQuincena, @"yyyy\MM\'Q'H", new DateTime(2026, 3, 20));
+            FormatoCarpeta.AnioQuincena,
+            @"yyyy\MM\'Q'H",
+            new DateTime(2026, 3, 20)
+        );
 
         Assert.Equal(Path.Combine("2026", "03", "Q2"), resultado);
     }
@@ -97,12 +119,16 @@ public class PatronCarpetaTests : IDisposable
     [InlineData("yy", "26")]
     [InlineData(@"yyyy\MM", @"2026\03")]
     [InlineData(@"yyyy\yyyyMM", @"2026\202603")]
-    public void ConstruirSubcarpeta_ConPatronesAnterioresACaso3_SigueFuncionandoIgual(string patron, string esperado)
+    public void ConstruirSubcarpeta_ConPatronesAnterioresACaso3_SigueFuncionandoIgual(
+        string patron,
+        string esperado
+    )
     {
         var resultado = FormatoCarpetaService.ConstruirSubcarpeta(
             patron.Contains('\\') ? FormatoCarpeta.AnioMes : FormatoCarpeta.Anio,
             patron,
-            new DateTime(2026, 3, 15));
+            new DateTime(2026, 3, 15)
+        );
 
         Assert.Equal(esperado.Replace('\\', Path.DirectorySeparatorChar), resultado);
     }
@@ -111,7 +137,10 @@ public class PatronCarpetaTests : IDisposable
     public void ConstruirSubcarpeta_ConPatronDetectadoPorEvidenciaAntesDeCaso3_SigueFuncionando()
     {
         var resultado = FormatoCarpetaService.ConstruirSubcarpeta(
-            FormatoCarpeta.Anio, "'Año 'yyyy", new DateTime(2026, 3, 15));
+            FormatoCarpeta.Anio,
+            "'Año 'yyyy",
+            new DateTime(2026, 3, 15)
+        );
 
         Assert.Equal("Año 2026", resultado);
     }
@@ -131,9 +160,18 @@ public class PatronCarpetaTests : IDisposable
     [InlineData(FormatoCarpeta.Personalizado, "'Semestre 'S", "2026-03-15", "2026-09-15")]
     [InlineData(FormatoCarpeta.Personalizado, "yyyy-'W'WW", "2026-03-15", "2026-03-22")]
     [InlineData(FormatoCarpeta.Personalizado, "yyyy-MM-dd", "2026-03-15", "2026-03-16")]
-    public void SiguientePeriodo_AvanzaUnPeriodoSegunElTipo(FormatoCarpeta formato, string? patron, string fechaTexto, string esperado)
+    public void SiguientePeriodo_AvanzaUnPeriodoSegunElTipo(
+        FormatoCarpeta formato,
+        string? patron,
+        string fechaTexto,
+        string esperado
+    )
     {
-        var resultado = FormatoCarpetaService.SiguientePeriodo(formato, DateTime.Parse(fechaTexto), patron);
+        var resultado = FormatoCarpetaService.SiguientePeriodo(
+            formato,
+            DateTime.Parse(fechaTexto),
+            patron
+        );
 
         Assert.Equal(DateTime.Parse(esperado), resultado);
     }
@@ -142,7 +180,10 @@ public class PatronCarpetaTests : IDisposable
     public void SiguientePeriodo_PersonalizadoSinTokensDeFecha_AvanzaUnAnio()
     {
         var resultado = FormatoCarpetaService.SiguientePeriodo(
-            FormatoCarpeta.Personalizado, new DateTime(2026, 3, 15), "'Solo texto'");
+            FormatoCarpeta.Personalizado,
+            new DateTime(2026, 3, 15),
+            "'Solo texto'"
+        );
 
         Assert.Equal(new DateTime(2027, 3, 15), resultado);
     }
@@ -154,15 +195,44 @@ public class PatronCarpetaTests : IDisposable
         // tests no deben romperse con el paso de los años.
         var anterior = DateTime.Today.AddMonths(-1);
         var siguiente = anterior.AddDays(1);
-        Directory.CreateDirectory(Path.Combine(_carpetaTemporal, FormatoCarpetaService.ConstruirSubcarpeta(FormatoCarpeta.AnioMesDia, @"yyyy\MM\dd", anterior)));
-        Directory.CreateDirectory(Path.Combine(_carpetaTemporal, FormatoCarpetaService.ConstruirSubcarpeta(FormatoCarpeta.AnioMesDia, @"yyyy\MM\dd", siguiente)));
+        Directory.CreateDirectory(
+            Path.Combine(
+                _carpetaTemporal,
+                FormatoCarpetaService.ConstruirSubcarpeta(
+                    FormatoCarpeta.AnioMesDia,
+                    @"yyyy\MM\dd",
+                    anterior
+                )
+            )
+        );
+        Directory.CreateDirectory(
+            Path.Combine(
+                _carpetaTemporal,
+                FormatoCarpetaService.ConstruirSubcarpeta(
+                    FormatoCarpeta.AnioMesDia,
+                    @"yyyy\MM\dd",
+                    siguiente
+                )
+            )
+        );
 
         var resultado = FormatoCarpetaService.BuscarCarpetaAnteriorReal(
-            _carpetaTemporal, FormatoCarpeta.AnioMesDia, @"yyyy\MM\dd");
+            _carpetaTemporal,
+            FormatoCarpeta.AnioMesDia,
+            @"yyyy\MM\dd"
+        );
 
         Assert.Equal(
-            Path.Combine(_carpetaTemporal, FormatoCarpetaService.ConstruirSubcarpeta(FormatoCarpeta.AnioMesDia, @"yyyy\MM\dd", siguiente)),
-            resultado);
+            Path.Combine(
+                _carpetaTemporal,
+                FormatoCarpetaService.ConstruirSubcarpeta(
+                    FormatoCarpeta.AnioMesDia,
+                    @"yyyy\MM\dd",
+                    siguiente
+                )
+            ),
+            resultado
+        );
     }
 
     [Fact]
@@ -175,7 +245,10 @@ public class PatronCarpetaTests : IDisposable
         Directory.CreateDirectory(Path.Combine(_carpetaTemporal, anio, "Marzo"));
 
         var resultado = FormatoCarpetaService.BuscarCarpetaAnteriorReal(
-            _carpetaTemporal, FormatoCarpeta.AnioMes, @"yyyy\MMMM");
+            _carpetaTemporal,
+            FormatoCarpeta.AnioMes,
+            @"yyyy\MMMM"
+        );
 
         Assert.Equal(Path.Combine(_carpetaTemporal, anio, "Abril"), resultado);
     }
@@ -189,7 +262,10 @@ public class PatronCarpetaTests : IDisposable
         Directory.CreateDirectory(Path.Combine(_carpetaTemporal, anio, "marzo"));
 
         var resultado = FormatoCarpetaService.BuscarCarpetaAnteriorReal(
-            _carpetaTemporal, FormatoCarpeta.AnioMes, @"yyyy\MMMM");
+            _carpetaTemporal,
+            FormatoCarpeta.AnioMes,
+            @"yyyy\MMMM"
+        );
 
         Assert.Equal(Path.Combine(_carpetaTemporal, anio, "marzo"), resultado);
     }
@@ -200,7 +276,10 @@ public class PatronCarpetaTests : IDisposable
         Directory.CreateDirectory(Path.Combine(_carpetaTemporal, "Facturas"));
 
         var resultado = FormatoCarpetaService.BuscarCarpetaAnteriorReal(
-            _carpetaTemporal, FormatoCarpeta.AnioSemana, @"yyyy\'Semana 'WW");
+            _carpetaTemporal,
+            FormatoCarpeta.AnioSemana,
+            @"yyyy\'Semana 'WW"
+        );
 
         Assert.Null(resultado);
     }
@@ -214,7 +293,10 @@ public class PatronCarpetaTests : IDisposable
         Directory.CreateDirectory(Path.Combine(_carpetaTemporal, anioActual));
 
         var resultado = FormatoCarpetaService.BuscarCarpetaAnteriorReal(
-            _carpetaTemporal, FormatoCarpeta.AnioMes, @"yyyy\MM");
+            _carpetaTemporal,
+            FormatoCarpeta.AnioMes,
+            @"yyyy\MM"
+        );
 
         Assert.Equal(Path.Combine(_carpetaTemporal, anioAnterior, "12"), resultado);
     }

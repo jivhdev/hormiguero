@@ -17,7 +17,10 @@ internal static class CreadorPdfDePrueba
     /// banda vertical (ver ObtenerBandaDeLinea), bien separadas entre sí.
     /// </summary>
     public static string CrearConLineas(string carpetaDestino, params string[] lineas) =>
-        ConstruirPdf(carpetaDestino, lineas.Select((linea, indice) => (linea, 780 - indice * 160)).ToArray());
+        ConstruirPdf(
+            carpetaDestino,
+            lineas.Select((linea, indice) => (linea, 780 - indice * 160)).ToArray()
+        );
 
     /// <summary>
     /// Rectángulo (fracción de página) que cubre con margen la línea de índice <paramref name="indice"/>
@@ -30,8 +33,9 @@ internal static class CreadorPdfDePrueba
     {
         var ruta = Path.Combine(carpetaDestino, $"prueba_{Guid.NewGuid():N}.pdf");
 
-        var contenido = string.Concat(lineas.Select(l =>
-            $"BT /F1 24 Tf 50 {l.Y} Td ({Escapar(l.Texto)}) Tj ET\n"));
+        var contenido = string.Concat(
+            lineas.Select(l => $"BT /F1 24 Tf 50 {l.Y} Td ({Escapar(l.Texto)}) Tj ET\n")
+        );
         var contenidoBytes = Encoding.ASCII.GetBytes(contenido);
 
         using var stream = new MemoryStream();
@@ -48,7 +52,9 @@ internal static class CreadorPdfDePrueba
         Escribir("2 0 obj\n<< /Type /Pages /Kids [3 0 R] /Count 1 >>\nendobj\n");
 
         offsets[3] = stream.Position;
-        Escribir("3 0 obj\n<< /Type /Page /Parent 2 0 R /Resources << /Font << /F1 4 0 R >> >> /MediaBox [0 0 595 842] /Contents 5 0 R >>\nendobj\n");
+        Escribir(
+            "3 0 obj\n<< /Type /Page /Parent 2 0 R /Resources << /Font << /F1 4 0 R >> >> /MediaBox [0 0 595 842] /Contents 5 0 R >>\nendobj\n"
+        );
 
         offsets[4] = stream.Position;
         Escribir("4 0 obj\n<< /Type /Font /Subtype /Type1 /BaseFont /Helvetica >>\nendobj\n");

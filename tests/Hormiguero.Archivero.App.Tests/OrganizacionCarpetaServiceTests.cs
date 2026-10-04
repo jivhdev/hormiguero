@@ -29,7 +29,8 @@ public class OrganizacionCarpetaServiceTests
                 "Por mes (sin año)",
                 "Por semana del mes",
             ],
-            nombres);
+            nombres
+        );
     }
 
     [Fact]
@@ -50,13 +51,17 @@ public class OrganizacionCarpetaServiceTests
                 FormatoCarpeta.MesSinAnio,
                 FormatoCarpeta.SemanaDelMes,
             ],
-            formatos);
+            formatos
+        );
     }
 
     [Fact]
     public void ObtenerEjemplos_PorAnio_MuestraSoloElAnioConcreto()
     {
-        var textos = OrganizacionCarpetaService.ObtenerEjemplos(FormatoCarpeta.Anio, FechaDoc).Select(e => e.Texto).ToList();
+        var textos = OrganizacionCarpetaService
+            .ObtenerEjemplos(FormatoCarpeta.Anio, FechaDoc)
+            .Select(e => e.Texto)
+            .ToList();
 
         Assert.Equal(["2026"], textos);
     }
@@ -64,7 +69,10 @@ public class OrganizacionCarpetaServiceTests
     [Fact]
     public void ObtenerEjemplos_PorAnioYSemestre_CoincideConLaTablaDeCaso3()
     {
-        var textos = OrganizacionCarpetaService.ObtenerEjemplos(FormatoCarpeta.AnioSemestre, FechaDoc).Select(e => e.Texto).ToList();
+        var textos = OrganizacionCarpetaService
+            .ObtenerEjemplos(FormatoCarpeta.AnioSemestre, FechaDoc)
+            .Select(e => e.Texto)
+            .ToList();
 
         Assert.Equal(["2026/S1", "2026-S1", "2026/Semestre 1"], textos);
     }
@@ -72,7 +80,10 @@ public class OrganizacionCarpetaServiceTests
     [Fact]
     public void ObtenerEjemplos_PorAnioYTrimestre_CoincideConLaTablaDeCaso3()
     {
-        var textos = OrganizacionCarpetaService.ObtenerEjemplos(FormatoCarpeta.AnioTrimestre, FechaDoc).Select(e => e.Texto).ToList();
+        var textos = OrganizacionCarpetaService
+            .ObtenerEjemplos(FormatoCarpeta.AnioTrimestre, FechaDoc)
+            .Select(e => e.Texto)
+            .ToList();
 
         Assert.Equal(["2026/T1", "2026-T1", "2026/Q1"], textos);
     }
@@ -80,17 +91,26 @@ public class OrganizacionCarpetaServiceTests
     [Fact]
     public void ObtenerEjemplos_PorAnioYMes_CoincideConLaTablaDeCaso3MasLaVariantePedidaPorJavier()
     {
-        var textos = OrganizacionCarpetaService.ObtenerEjemplos(FormatoCarpeta.AnioMes, FechaDoc).Select(e => e.Texto).ToList();
+        var textos = OrganizacionCarpetaService
+            .ObtenerEjemplos(FormatoCarpeta.AnioMes, FechaDoc)
+            .Select(e => e.Texto)
+            .ToList();
 
         // El último (2026/202603) es la variante yyyy\yyyyMM que Javier pidió explícitamente
         // en una sesión anterior y confirmó conservar para Caso-3.
-        Assert.Equal(["2026/03", "202603", "2026-03", "03-2026", "2026/Marzo", "2026/202603"], textos);
+        Assert.Equal(
+            ["2026/03", "202603", "2026-03", "03-2026", "2026/Marzo", "2026/202603"],
+            textos
+        );
     }
 
     [Fact]
     public void ObtenerEjemplos_PorAnioYQuincena_CoincideConLaTablaDeCaso3()
     {
-        var textos = OrganizacionCarpetaService.ObtenerEjemplos(FormatoCarpeta.AnioQuincena, FechaDoc).Select(e => e.Texto).ToList();
+        var textos = OrganizacionCarpetaService
+            .ObtenerEjemplos(FormatoCarpeta.AnioQuincena, FechaDoc)
+            .Select(e => e.Texto)
+            .ToList();
 
         Assert.Equal(["2026/03/Q1", "2026-03-Q1", "2026/Marzo - 1ra quincena"], textos);
     }
@@ -98,7 +118,10 @@ public class OrganizacionCarpetaServiceTests
     [Fact]
     public void ObtenerEjemplos_PorAnioYSemana_CoincideConLaTablaDeCaso3()
     {
-        var textos = OrganizacionCarpetaService.ObtenerEjemplos(FormatoCarpeta.AnioSemana, FechaDoc).Select(e => e.Texto).ToList();
+        var textos = OrganizacionCarpetaService
+            .ObtenerEjemplos(FormatoCarpeta.AnioSemana, FechaDoc)
+            .Select(e => e.Texto)
+            .ToList();
 
         Assert.Equal(["2026/Semana 11", "2026-W11"], textos);
     }
@@ -106,7 +129,10 @@ public class OrganizacionCarpetaServiceTests
     [Fact]
     public void ObtenerEjemplos_PorAnioMesYDia_CoincideConLaTablaDeCaso3()
     {
-        var textos = OrganizacionCarpetaService.ObtenerEjemplos(FormatoCarpeta.AnioMesDia, FechaDoc).Select(e => e.Texto).ToList();
+        var textos = OrganizacionCarpetaService
+            .ObtenerEjemplos(FormatoCarpeta.AnioMesDia, FechaDoc)
+            .Select(e => e.Texto)
+            .ToList();
 
         Assert.Equal(["2026/03/15", "20260315", "2026-03-15"], textos);
     }
@@ -114,7 +140,10 @@ public class OrganizacionCarpetaServiceTests
     [Fact]
     public void ObtenerEjemplos_PorMesSinAnio_CoincideConLaTablaDeCaso3()
     {
-        var textos = OrganizacionCarpetaService.ObtenerEjemplos(FormatoCarpeta.MesSinAnio, FechaDoc).Select(e => e.Texto).ToList();
+        var textos = OrganizacionCarpetaService
+            .ObtenerEjemplos(FormatoCarpeta.MesSinAnio, FechaDoc)
+            .Select(e => e.Texto)
+            .ToList();
 
         Assert.Equal(["03", "Marzo", "Mes 03"], textos);
     }
@@ -124,7 +153,10 @@ public class OrganizacionCarpetaServiceTests
     {
         // 15-mar-2026 cae en la Semana 3 con la regla que eligió Javier (semanas de calendario
         // lunes-domingo que tocan el mes; la Semana 1 es la que contiene al día 1).
-        var textos = OrganizacionCarpetaService.ObtenerEjemplos(FormatoCarpeta.SemanaDelMes, FechaDoc).Select(e => e.Texto).ToList();
+        var textos = OrganizacionCarpetaService
+            .ObtenerEjemplos(FormatoCarpeta.SemanaDelMes, FechaDoc)
+            .Select(e => e.Texto)
+            .ToList();
 
         Assert.Equal(["03/Semana 3", "Marzo/Semana 3", "Mes 03/Semana 3"], textos);
     }
@@ -138,23 +170,41 @@ public class OrganizacionCarpetaServiceTests
     [Fact]
     public void LosEjemplosDeLaTabla_AlFormatearOtraFecha_CambianLosValoresYSiguenConLaMismaForma()
     {
-        var ejemplos = OrganizacionCarpetaService.ObtenerEjemplos(FormatoCarpeta.AnioQuincena, new DateTime(2026, 7, 20));
+        var ejemplos = OrganizacionCarpetaService.ObtenerEjemplos(
+            FormatoCarpeta.AnioQuincena,
+            new DateTime(2026, 7, 20)
+        );
 
-        Assert.Equal(["2026/07/Q2", "2026-07-Q2", "2026/Julio - 2da quincena"], ejemplos.Select(e => e.Texto).ToList());
+        Assert.Equal(
+            ["2026/07/Q2", "2026-07-Q2", "2026/Julio - 2da quincena"],
+            ejemplos.Select(e => e.Texto).ToList()
+        );
     }
 
     [Fact]
     public void NombreDe_TiposNuevos_DevuelveElNombreDelCatalogo()
     {
-        Assert.Equal("Por año y trimestre", OrganizacionCarpetaService.NombreDe(FormatoCarpeta.AnioTrimestre));
-        Assert.Equal("Patrón personalizado", OrganizacionCarpetaService.NombreDe(FormatoCarpeta.Personalizado));
+        Assert.Equal(
+            "Por año y trimestre",
+            OrganizacionCarpetaService.NombreDe(FormatoCarpeta.AnioTrimestre)
+        );
+        Assert.Equal(
+            "Patrón personalizado",
+            OrganizacionCarpetaService.NombreDe(FormatoCarpeta.Personalizado)
+        );
     }
 
     [Fact]
     public void NormalizarPatronPersonalizado_AceptaBarraOBarraInvertidaComoSeparador()
     {
-        Assert.Equal(@"yyyy\MM", OrganizacionCarpetaService.NormalizarPatronPersonalizado(" yyyy/MM "));
-        Assert.Equal(@"yyyy\MM", OrganizacionCarpetaService.NormalizarPatronPersonalizado(@"yyyy\MM"));
+        Assert.Equal(
+            @"yyyy\MM",
+            OrganizacionCarpetaService.NormalizarPatronPersonalizado(" yyyy/MM ")
+        );
+        Assert.Equal(
+            @"yyyy\MM",
+            OrganizacionCarpetaService.NormalizarPatronPersonalizado(@"yyyy\MM")
+        );
     }
 
     [Theory]

@@ -16,8 +16,10 @@ public class LimpiezaNombreServiceTests
     [Fact]
     public void AplicarRegla_SoloNumerosYQuitarCeros_LasAplicaEnOrden()
     {
-        var resultado = LimpiezaNombreService.AplicarRegla("Guia N° 000456",
-            [OperacionNombre.DejarSoloNumeros, OperacionNombre.QuitarCerosIzquierda]);
+        var resultado = LimpiezaNombreService.AplicarRegla(
+            "Guia N° 000456",
+            [OperacionNombre.DejarSoloNumeros, OperacionNombre.QuitarCerosIzquierda]
+        );
 
         Assert.Equal("456", resultado);
     }
@@ -25,13 +27,24 @@ public class LimpiezaNombreServiceTests
     [Fact]
     public void AplicarRegla_ConBorrar_DejaElNombreVacioParaEscribirlo()
     {
-        Assert.Equal(string.Empty, LimpiezaNombreService.AplicarRegla("Guia 123", [OperacionNombre.Borrar]));
+        Assert.Equal(
+            string.Empty,
+            LimpiezaNombreService.AplicarRegla("Guia 123", [OperacionNombre.Borrar])
+        );
     }
 
     [Theory]
     [InlineData(@"C:\Documentos\Guías firmadas", FormatoCarpeta.Directo, "Guías firmadas")]
-    [InlineData(@"C:\Documentos\Guías firmadas\", FormatoCarpeta.AnioMes, "Guías firmadas (Por año y mes)")]
-    public void SugerirNombreAtajo_UsaElNombreDeLaCarpetaYElTipo(string carpeta, FormatoCarpeta formato, string esperado)
+    [InlineData(
+        @"C:\Documentos\Guías firmadas\",
+        FormatoCarpeta.AnioMes,
+        "Guías firmadas (Por año y mes)"
+    )]
+    public void SugerirNombreAtajo_UsaElNombreDeLaCarpetaYElTipo(
+        string carpeta,
+        FormatoCarpeta formato,
+        string esperado
+    )
     {
         Assert.Equal(esperado, LimpiezaNombreService.SugerirNombreAtajo(carpeta, formato));
     }

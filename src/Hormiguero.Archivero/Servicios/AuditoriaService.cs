@@ -20,8 +20,12 @@ public static class AuditoriaService
     private static readonly object CandadoEscritura = new();
 
     /// <summary>%LocalAppData%\Archivero\auditoria.log, junto a la base SQLite (mismo criterio de ADR-002). Configurable para tests.</summary>
-    public static string RutaLog { get; set; } = Path.Combine(
-        Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData), "Archivero", "auditoria.log");
+    public static string RutaLog { get; set; } =
+        Path.Combine(
+            Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData),
+            "Archivero",
+            "auditoria.log"
+        );
 
     /// <summary>
     /// Escribe una línea: "[fecha-hora ISO-8601] TIPO_DE_EVENTO — detalle". Nunca lanza -- si
@@ -39,7 +43,8 @@ public static class AuditoriaService
                 RotarSiHaceFalta(ruta);
 
                 var fecha = DateTime.Now.ToString("yyyy-MM-ddTHH:mm:ss");
-                var linea = $"[{fecha}] {Sanear(tipoEvento)} — {Sanear(detalle)}{Environment.NewLine}";
+                var linea =
+                    $"[{fecha}] {Sanear(tipoEvento)} — {Sanear(detalle)}{Environment.NewLine}";
                 File.AppendAllText(ruta, linea);
             }
         }

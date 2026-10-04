@@ -17,7 +17,7 @@ public enum FormatoCarpeta
     AnioMesDia,
     MesSinAnio,
     SemanaDelMes,
-    Personalizado
+    Personalizado,
 }
 
 public enum CampoMarca
@@ -25,7 +25,7 @@ public enum CampoMarca
     Emisor,
     Tipo,
     Fecha,
-    NombreArchivo
+    NombreArchivo,
 }
 
 /// <summary>Por qué un archivo terminó en "pendientes por reconocer" — determina qué pantalla abrir al revisarlo.</summary>
@@ -65,7 +65,7 @@ public enum MotivoPendiente
     ArchivoDanado,
 
     /// <summary>Coincidió con una configuración que pide confirmar el nombre cada vez (Caso-11, punto 1): la carpeta ya está resuelta, falta el nombre.</summary>
-    NombrePorConfirmar
+    NombrePorConfirmar,
 }
 
 /// <summary>Texto legible para mostrarle al usuario por qué un documento quedó pendiente (Caso-9).</summary>
@@ -78,22 +78,26 @@ public static class MotivoPendienteExtensiones
     public static bool EsPendienteDeDistribuir(this MotivoPendiente motivo) =>
         motivo is MotivoPendiente.SinTextoExtraible or MotivoPendiente.ArchivoDanado;
 
-    public static string DescripcionLegible(this MotivoPendiente motivo) => motivo switch
-    {
-        MotivoPendiente.NuevoDocumento => "No coincide con ninguna configuración guardada.",
-        MotivoPendiente.ValorInvalido => "Un valor extraído del documento no tiene forma válida.",
-        MotivoPendiente.Duplicado => "Ya existe un archivo con ese nombre en el destino.",
-        MotivoPendiente.CarpetaNoDisponible => "La carpeta de destino no está disponible ahora mismo.",
-        MotivoPendiente.PeriodoNuevo => "La carpeta del período actual todavía no existe.",
-        MotivoPendiente.SinTextoExtraible => "El documento no tiene texto que se pueda leer.",
-        MotivoPendiente.TextoConCaracteresInvalidos => "Texto con caracteres inválidos",
-        MotivoPendiente.NombreReservadoPorWindows => "Nombre de archivo reservado por Windows",
-        MotivoPendiente.RutaFueraDeCarpetaConfigurada => "La ubicación calculada no corresponde a la carpeta configurada",
-        MotivoPendiente.NombreORutaDemasiadoLarga => "Nombre o ruta demasiado larga",
-        MotivoPendiente.ArchivoDanado => "No se pudo leer este archivo (puede estar dañado).",
-        MotivoPendiente.NombrePorConfirmar => "Falta confirmar el nombre con el que se guarda.",
-        _ => motivo.ToString()
-    };
+    public static string DescripcionLegible(this MotivoPendiente motivo) =>
+        motivo switch
+        {
+            MotivoPendiente.NuevoDocumento => "No coincide con ninguna configuración guardada.",
+            MotivoPendiente.ValorInvalido =>
+                "Un valor extraído del documento no tiene forma válida.",
+            MotivoPendiente.Duplicado => "Ya existe un archivo con ese nombre en el destino.",
+            MotivoPendiente.CarpetaNoDisponible =>
+                "La carpeta de destino no está disponible ahora mismo.",
+            MotivoPendiente.PeriodoNuevo => "La carpeta del período actual todavía no existe.",
+            MotivoPendiente.SinTextoExtraible => "El documento no tiene texto que se pueda leer.",
+            MotivoPendiente.TextoConCaracteresInvalidos => "Texto con caracteres inválidos",
+            MotivoPendiente.NombreReservadoPorWindows => "Nombre de archivo reservado por Windows",
+            MotivoPendiente.RutaFueraDeCarpetaConfigurada =>
+                "La ubicación calculada no corresponde a la carpeta configurada",
+            MotivoPendiente.NombreORutaDemasiadoLarga => "Nombre o ruta demasiado larga",
+            MotivoPendiente.ArchivoDanado => "No se pudo leer este archivo (puede estar dañado).",
+            MotivoPendiente.NombrePorConfirmar => "Falta confirmar el nombre con el que se guarda.",
+            _ => motivo.ToString(),
+        };
 }
 
 /// <summary>
@@ -102,7 +106,15 @@ public static class MotivoPendienteExtensiones
 /// este valor, no contra el nombre de la entidad — porque el campo marcado no siempre es el
 /// nombre visible (ej. puede ser un RUT o un código, si el nombre es un logo/imagen).
 /// </summary>
-public record Marca(CampoMarca Campo, int Pagina, double X, double Y, double Ancho, double Alto, string? TextoReferencia = null);
+public record Marca(
+    CampoMarca Campo,
+    int Pagina,
+    double X,
+    double Y,
+    double Ancho,
+    double Alto,
+    string? TextoReferencia = null
+);
 
 /// <summary>
 /// Un conjunto completo de marcas para UN diseño de documento. Una Configuracion puede tener
@@ -138,14 +150,19 @@ public record ConfiguracionDocumento
 /// reconocimiento automático, solo un lugar ya usado antes al que volver rápido sin repetir el
 /// asistente ni navegar a mano por el explorador de Windows.
 /// </summary>
-public record UbicacionSinTexto(int Id, string CarpetaMadre, FormatoCarpeta Formato, string? Patron);
+public record UbicacionSinTexto(
+    int Id,
+    string CarpetaMadre,
+    FormatoCarpeta Formato,
+    string? Patron
+);
 
 /// <summary>Un botón de limpieza de nombre del paso final del flujo sin texto (Caso-4 punto 4, Caso-11 punto 6).</summary>
 public enum OperacionNombre
 {
     Borrar,
     DejarSoloNumeros,
-    QuitarCerosIzquierda
+    QuitarCerosIzquierda,
 }
 
 /// <summary>
@@ -160,4 +177,5 @@ public record AtajoGuardadoRapido(
     string CarpetaMadre,
     FormatoCarpeta Formato,
     string? Patron,
-    IReadOnlyList<OperacionNombre> ReglaNombre);
+    IReadOnlyList<OperacionNombre> ReglaNombre
+);

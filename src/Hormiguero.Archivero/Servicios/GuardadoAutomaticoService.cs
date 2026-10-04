@@ -12,14 +12,15 @@ public enum ResultadoGuardadoAutomatico
     CarpetaNoDisponible,
     PeriodoNuevo,
     ValidacionFallida,
-    NombrePorConfirmar
+    NombrePorConfirmar,
 }
 
 public record ResultadoProcesamiento(
     ResultadoGuardadoAutomatico Resultado,
     string? RutaFinal = null,
     string? Detalle = null,
-    MotivoPendiente? MotivoValidacion = null);
+    MotivoPendiente? MotivoValidacion = null
+);
 
 public record CamposExtraidos(DateTime? Fecha, string? NombreExtraido);
 
@@ -32,7 +33,9 @@ public static class GuardadoAutomaticoService
     /// (REQ-002), sin tener que guardar esos valores en la base.
     /// </summary>
     public static (CamposExtraidos? Campos, string? Error) ExtraerCamposParaClasificar(
-        string rutaArchivo, ConfiguracionDocumento configuracionConPatronCoincidente)
+        string rutaArchivo,
+        ConfiguracionDocumento configuracionConPatronCoincidente
+    )
     {
         var marcas = configuracionConPatronCoincidente.Patrones.Single().Marcas;
 
@@ -45,7 +48,11 @@ public static class GuardadoAutomaticoService
                 return (null, "El patrón no tiene marca de Fecha.");
             }
 
-            var textoFecha = LectorPdf.ExtraerTexto(rutaArchivo, marcaFecha.Pagina, ARect(marcaFecha));
+            var textoFecha = LectorPdf.ExtraerTexto(
+                rutaArchivo,
+                marcaFecha.Pagina,
+                ARect(marcaFecha)
+            );
             if (!FechaExtraidaService.TryParsear(textoFecha, out var fechaParseada))
             {
                 return (null, $"Fecha extraída inválida: \"{textoFecha}\".");
@@ -63,7 +70,11 @@ public static class GuardadoAutomaticoService
                 return (null, "El patrón no tiene marca de Nombre de archivo.");
             }
 
-            nombreExtraido = LectorPdf.ExtraerTexto(rutaArchivo, marcaNombre.Pagina, ARect(marcaNombre));
+            nombreExtraido = LectorPdf.ExtraerTexto(
+                rutaArchivo,
+                marcaNombre.Pagina,
+                ARect(marcaNombre)
+            );
             if (string.IsNullOrWhiteSpace(nombreExtraido))
             {
                 return (null, "No se pudo extraer un nombre de archivo válido.");
@@ -73,12 +84,21 @@ public static class GuardadoAutomaticoService
         return (new CamposExtraidos(fecha, nombreExtraido), null);
     }
 
-    public static ResultadoProcesamiento Procesar(string rutaArchivo, ConfiguracionDocumento configuracionConPatronCoincidente)
+    public static ResultadoProcesamiento Procesar(
+        string rutaArchivo,
+        ConfiguracionDocumento configuracionConPatronCoincidente
+    )
     {
-        var (campos, error) = ExtraerCamposParaClasificar(rutaArchivo, configuracionConPatronCoincidente);
+        var (campos, error) = ExtraerCamposParaClasificar(
+            rutaArchivo,
+            configuracionConPatronCoincidente
+        );
         if (campos is null)
         {
-            return new ResultadoProcesamiento(ResultadoGuardadoAutomatico.ValorInvalido, Detalle: error);
+            return new ResultadoProcesamiento(
+                ResultadoGuardadoAutomatico.ValorInvalido,
+                Detalle: error
+            );
         }
 
         // Caso-11, punto 1: se pregunta antes que el período nuevo, para que el nombre confirmado
@@ -97,42 +117,85 @@ public static class GuardadoAutomaticoService
     /// duplicados y validaciones son los mismos de siempre.
     /// </summary>
     public static ResultadoProcesamiento GuardarConNombreConfirmado(
-        string rutaArchivo, ConfiguracionDocumento configuracionConPatronCoincidente, string nombreConfirmado)
+        string rutaArchivo,
+        ConfiguracionDocumento configuracionConPatronCoincidente,
+        string nombreConfirmado
+    )
     {
-        var (campos, error) = ExtraerCamposParaClasificar(rutaArchivo, configuracionConPatronCoincidente with { Renombrar = false });
+        var (campos, error) = ExtraerCamposParaClasificar(
+            rutaArchivo,
+            configuracionConPatronCoincidente with
+            {
+                Renombrar = false,
+            }
+        );
         if (campos is null)
         {
-            return new ResultadoProcesamiento(ResultadoGuardadoAutomatico.ValorInvalido, Detalle: error);
+            return new ResultadoProcesamiento(
+                ResultadoGuardadoAutomatico.ValorInvalido,
+                Detalle: error
+            );
         }
 
-        var configuracionConNombre = configuracionConPatronCoincidente with { Renombrar = true, PreguntarNombre = false };
-        return Guardar(rutaArchivo, configuracionConNombre, campos with { NombreExtraido = nombreConfirmado });
+        var configuracionConNombre = configuracionConPatronCoincidente with
+        {
+            Renombrar = true,
+            PreguntarNombre = false,
+        };
+        return Guardar(
+            rutaArchivo,
+            configuracionConNombre,
+            campos with
+            {
+                NombreExtraido = nombreConfirmado,
+            }
+        );
     }
 
-    private static ResultadoProcesamiento Guardar(string rutaArchivo, ConfiguracionDocumento configuracionConPatronCoincidente, CamposExtraidos campos)
+    private static ResultadoProcesamiento Guardar(
+        string rutaArchivo,
+        ConfiguracionDocumento configuracionConPatronCoincidente,
+        CamposExtraidos campos
+    )
     {
         // Caso-1, punto 2 (ultimo parrafo): si la carpeta del periodo actual todavia no existe,
         // Archivero no la crea sola -- eso pasa a ser una decision activa del usuario (pendiente
         // con su propia pantalla), nunca una suposicion automatica del programa.
-        if (configuracionConPatronCoincidente.FormatoCarpeta != FormatoCarpeta.Directo
-            && Directory.Exists(configuracionConPatronCoincidente.CarpetaDestino))
+        if (
+            configuracionConPatronCoincidente.FormatoCarpeta != FormatoCarpeta.Directo
+            && Directory.Exists(configuracionConPatronCoincidente.CarpetaDestino)
+        )
         {
             var rutaDestinoCalculada = ClasificadorService.CalcularRutaDestino(
-                rutaArchivo, configuracionConPatronCoincidente, campos.Fecha, campos.NombreExtraido);
+                rutaArchivo,
+                configuracionConPatronCoincidente,
+                campos.Fecha,
+                campos.NombreExtraido
+            );
             var carpetaPeriodo = Path.GetDirectoryName(rutaDestinoCalculada)!;
 
             if (!Directory.Exists(carpetaPeriodo))
             {
-                return new ResultadoProcesamiento(ResultadoGuardadoAutomatico.PeriodoNuevo, Detalle: carpetaPeriodo);
+                return new ResultadoProcesamiento(
+                    ResultadoGuardadoAutomatico.PeriodoNuevo,
+                    Detalle: carpetaPeriodo
+                );
             }
         }
 
         try
         {
-            var rutaFinal = ClasificadorService.Clasificar(rutaArchivo, configuracionConPatronCoincidente, campos.Fecha, campos.NombreExtraido);
+            var rutaFinal = ClasificadorService.Clasificar(
+                rutaArchivo,
+                configuracionConPatronCoincidente,
+                campos.Fecha,
+                campos.NombreExtraido
+            );
 
-            AuditoriaService.Registrar("DOCUMENTO_GUARDADO",
-                $"Emisor={configuracionConPatronCoincidente.Emisor}; Tipo={configuracionConPatronCoincidente.Tipo}; Ruta={rutaFinal}");
+            AuditoriaService.Registrar(
+                "DOCUMENTO_GUARDADO",
+                $"Emisor={configuracionConPatronCoincidente.Emisor}; Tipo={configuracionConPatronCoincidente.Tipo}; Ruta={rutaFinal}"
+            );
 
             if (configuracionConPatronCoincidente.AbrirDespuesDeGuardar)
             {
@@ -143,21 +206,32 @@ public static class GuardadoAutomaticoService
         }
         catch (ArchivoDuplicadoException ex)
         {
-            return new ResultadoProcesamiento(ResultadoGuardadoAutomatico.Duplicado, Detalle: ex.Message);
+            return new ResultadoProcesamiento(
+                ResultadoGuardadoAutomatico.Duplicado,
+                Detalle: ex.Message
+            );
         }
         catch (ValidacionSeguridadException ex)
         {
             // Caso-9, mejora 1(g): nunca un guardado silencioso -- el documento queda pendiente
             // con un motivo específico y legible, nunca una excepción sin manejar.
-            return new ResultadoProcesamiento(ResultadoGuardadoAutomatico.ValidacionFallida, Detalle: ex.Message, MotivoValidacion: ex.Motivo);
+            return new ResultadoProcesamiento(
+                ResultadoGuardadoAutomatico.ValidacionFallida,
+                Detalle: ex.Message,
+                MotivoValidacion: ex.Motivo
+            );
         }
         catch (Exception ex) when (ex is IOException or UnauthorizedAccessException)
         {
-            return new ResultadoProcesamiento(ResultadoGuardadoAutomatico.CarpetaNoDisponible, Detalle: ex.Message);
+            return new ResultadoProcesamiento(
+                ResultadoGuardadoAutomatico.CarpetaNoDisponible,
+                Detalle: ex.Message
+            );
         }
     }
 
-    private static RectanguloFraccion ARect(Marca marca) => new(marca.X, marca.Y, marca.Ancho, marca.Alto);
+    private static RectanguloFraccion ARect(Marca marca) =>
+        new(marca.X, marca.Y, marca.Ancho, marca.Alto);
 
     /// <summary>
     /// Caso-1, punto 5: reemplaza la apertura automática que hacía PDFCreator antes de que
@@ -168,10 +242,10 @@ public static class GuardadoAutomaticoService
     {
         try
         {
-            System.Diagnostics.Process.Start(new System.Diagnostics.ProcessStartInfo(rutaArchivo) { UseShellExecute = true });
+            System.Diagnostics.Process.Start(
+                new System.Diagnostics.ProcessStartInfo(rutaArchivo) { UseShellExecute = true }
+            );
         }
-        catch
-        {
-        }
+        catch { }
     }
 }

@@ -38,8 +38,7 @@ public class BorradorRepository
     {
         using var conexion = BaseDeDatos.CrearConexion();
         using var comando = conexion.CreateCommand();
-        comando.CommandText =
-            """
+        comando.CommandText = """
             INSERT INTO Borradores (RutaArchivo, Datos) VALUES ($ruta, $datos)
             ON CONFLICT(RutaArchivo) DO UPDATE SET Datos = excluded.Datos;
             """;

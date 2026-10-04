@@ -2,7 +2,12 @@ using System.IO;
 
 namespace Archivero.Datos;
 
-public record ArchivoPendiente(int Id, string RutaArchivo, DateTime FechaDetectado, MotivoPendiente Motivo)
+public record ArchivoPendiente(
+    int Id,
+    string RutaArchivo,
+    DateTime FechaDetectado,
+    MotivoPendiente Motivo
+)
 {
     public string NombreArchivo => Path.GetFileName(RutaArchivo);
 }
@@ -29,7 +34,8 @@ public class PendienteRepository
                 if (motivoActual != motivo.ToString())
                 {
                     using var actualizar = conexion.CreateCommand();
-                    actualizar.CommandText = "UPDATE Pendientes SET Motivo = $motivo WHERE RutaArchivo = $ruta;";
+                    actualizar.CommandText =
+                        "UPDATE Pendientes SET Motivo = $motivo WHERE RutaArchivo = $ruta;";
                     actualizar.Parameters.AddWithValue("$motivo", motivo.ToString());
                     actualizar.Parameters.AddWithValue("$ruta", rutaArchivo);
                     actualizar.ExecuteNonQuery();
@@ -40,8 +46,7 @@ public class PendienteRepository
         }
 
         using var insertar = conexion.CreateCommand();
-        insertar.CommandText =
-            """
+        insertar.CommandText = """
             INSERT INTO Pendientes (RutaArchivo, FechaDetectado, Motivo) VALUES ($ruta, $fecha, $motivo);
             """;
         insertar.Parameters.AddWithValue("$ruta", rutaArchivo);
@@ -63,17 +68,21 @@ public class PendienteRepository
     {
         using var conexion = BaseDeDatos.CrearConexion();
         using var comando = conexion.CreateCommand();
-        comando.CommandText = "SELECT Id, RutaArchivo, FechaDetectado, Motivo FROM Pendientes ORDER BY FechaDetectado;";
+        comando.CommandText =
+            "SELECT Id, RutaArchivo, FechaDetectado, Motivo FROM Pendientes ORDER BY FechaDetectado;";
 
         var resultado = new List<ArchivoPendiente>();
         using var lector = comando.ExecuteReader();
         while (lector.Read())
         {
-            resultado.Add(new ArchivoPendiente(
-                lector.GetInt32(0),
-                lector.GetString(1),
-                DateTime.Parse(lector.GetString(2)),
-                Enum.Parse<MotivoPendiente>(lector.GetString(3))));
+            resultado.Add(
+                new ArchivoPendiente(
+                    lector.GetInt32(0),
+                    lector.GetString(1),
+                    DateTime.Parse(lector.GetString(2)),
+                    Enum.Parse<MotivoPendiente>(lector.GetString(3))
+                )
+            );
         }
 
         return resultado;

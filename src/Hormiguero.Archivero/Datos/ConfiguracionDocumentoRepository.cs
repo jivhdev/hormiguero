@@ -13,8 +13,7 @@ public class ConfiguracionDocumentoRepository
     {
         using var conexion = BaseDeDatos.CrearConexion();
         using var comando = conexion.CreateCommand();
-        comando.CommandText =
-            """
+        comando.CommandText = """
             SELECT c.Id, ce.Nombre, ct.Nombre, c.CarpetaDestino, c.FormatoCarpeta, c.PatronCarpeta, c.Renombrar, c.AbrirDespuesDeGuardar, c.PreguntarNombre
             FROM Configuraciones c
             JOIN EntidadesConocidas ce ON ce.Id = c.EmisorId
@@ -34,15 +33,17 @@ public class ConfiguracionDocumentoRepository
         var configuracion = LeerConfiguracion(lector);
         lector.Close();
 
-        return configuracion with { Patrones = ObtenerPatrones(conexion, configuracionId) };
+        return configuracion with
+        {
+            Patrones = ObtenerPatrones(conexion, configuracionId),
+        };
     }
 
     public List<ConfiguracionDocumento> ObtenerTodas()
     {
         using var conexion = BaseDeDatos.CrearConexion();
         using var comando = conexion.CreateCommand();
-        comando.CommandText =
-            """
+        comando.CommandText = """
             SELECT c.Id, ce.Nombre, ct.Nombre, c.CarpetaDestino, c.FormatoCarpeta, c.PatronCarpeta, c.Renombrar, c.AbrirDespuesDeGuardar, c.PreguntarNombre
             FROM Configuraciones c
             JOIN EntidadesConocidas ce ON ce.Id = c.EmisorId
@@ -60,12 +61,19 @@ public class ConfiguracionDocumentoRepository
         return resultado;
     }
 
-    public void ActualizarDestino(int configuracionId, string carpetaDestino, FormatoCarpeta formatoCarpeta, string? patronCarpeta, bool renombrar, bool abrirDespuesDeGuardar, bool preguntarNombre)
+    public void ActualizarDestino(
+        int configuracionId,
+        string carpetaDestino,
+        FormatoCarpeta formatoCarpeta,
+        string? patronCarpeta,
+        bool renombrar,
+        bool abrirDespuesDeGuardar,
+        bool preguntarNombre
+    )
     {
         using var conexion = BaseDeDatos.CrearConexion();
         using var comando = conexion.CreateCommand();
-        comando.CommandText =
-            """
+        comando.CommandText = """
             UPDATE Configuraciones
             SET CarpetaDestino = $carpetaDestino, FormatoCarpeta = $formato, PatronCarpeta = $patron, Renombrar = $renombrar,
                 AbrirDespuesDeGuardar = $abrirDespuesDeGuardar, PreguntarNombre = $preguntarNombre
@@ -85,8 +93,7 @@ public class ConfiguracionDocumentoRepository
     {
         using var conexion = BaseDeDatos.CrearConexion();
         using var comando = conexion.CreateCommand();
-        comando.CommandText =
-            """
+        comando.CommandText = """
             SELECT c.Id, ce.Nombre, ct.Nombre, c.CarpetaDestino, c.FormatoCarpeta, c.PatronCarpeta, c.Renombrar, c.AbrirDespuesDeGuardar, c.PreguntarNombre
             FROM Configuraciones c
             JOIN EntidadesConocidas ce ON ce.Id = c.EmisorId
@@ -116,7 +123,8 @@ public class ConfiguracionDocumentoRepository
         bool renombrar,
         List<Marca> marcas,
         bool abrirDespuesDeGuardar = false,
-        bool preguntarNombre = false)
+        bool preguntarNombre = false
+    )
     {
         var emisorId = _entidades.ObtenerOCrear(CategoriaEntidad.Emisor, emisor);
         var tipoId = _entidades.ObtenerOCrear(CategoriaEntidad.Tipo, tipo);
@@ -128,8 +136,7 @@ public class ConfiguracionDocumentoRepository
         using (var insertarConfig = conexion.CreateCommand())
         {
             insertarConfig.Transaction = transaccion;
-            insertarConfig.CommandText =
-                """
+            insertarConfig.CommandText = """
                 INSERT INTO Configuraciones (EmisorId, TipoId, CarpetaDestino, FormatoCarpeta, PatronCarpeta, Renombrar, AbrirDespuesDeGuardar, PreguntarNombre)
                 VALUES ($emisorId, $tipoId, $carpetaDestino, $formato, $patron, $renombrar, $abrirDespuesDeGuardar, $preguntarNombre);
                 SELECT last_insert_rowid();
@@ -139,9 +146,15 @@ public class ConfiguracionDocumentoRepository
             insertarConfig.Parameters.AddWithValue("$tipoId", tipoId);
             insertarConfig.Parameters.AddWithValue("$carpetaDestino", carpetaDestino);
             insertarConfig.Parameters.AddWithValue("$formato", formatoCarpeta.ToString());
-            insertarConfig.Parameters.AddWithValue("$patron", (object?)patronCarpeta ?? DBNull.Value);
+            insertarConfig.Parameters.AddWithValue(
+                "$patron",
+                (object?)patronCarpeta ?? DBNull.Value
+            );
             insertarConfig.Parameters.AddWithValue("$renombrar", renombrar ? 1 : 0);
-            insertarConfig.Parameters.AddWithValue("$abrirDespuesDeGuardar", abrirDespuesDeGuardar ? 1 : 0);
+            insertarConfig.Parameters.AddWithValue(
+                "$abrirDespuesDeGuardar",
+                abrirDespuesDeGuardar ? 1 : 0
+            );
 
             configuracionId = (int)(long)insertarConfig.ExecuteScalar()!;
         }
@@ -164,8 +177,7 @@ public class ConfiguracionDocumentoRepository
         using (var borrarMarcas = conexion.CreateCommand())
         {
             borrarMarcas.Transaction = transaccion;
-            borrarMarcas.CommandText =
-                """
+            borrarMarcas.CommandText = """
                 DELETE FROM Marcas
                 WHERE PatronId IN (SELECT Id FROM PatronesReconocimiento WHERE ConfiguracionId = $configuracionId);
                 """;
@@ -176,7 +188,8 @@ public class ConfiguracionDocumentoRepository
         using (var borrarPatrones = conexion.CreateCommand())
         {
             borrarPatrones.Transaction = transaccion;
-            borrarPatrones.CommandText = "DELETE FROM PatronesReconocimiento WHERE ConfiguracionId = $configuracionId;";
+            borrarPatrones.CommandText =
+                "DELETE FROM PatronesReconocimiento WHERE ConfiguracionId = $configuracionId;";
             borrarPatrones.Parameters.AddWithValue("$configuracionId", configuracionId);
             borrarPatrones.ExecuteNonQuery();
         }
@@ -184,7 +197,8 @@ public class ConfiguracionDocumentoRepository
         using (var borrarConfiguracion = conexion.CreateCommand())
         {
             borrarConfiguracion.Transaction = transaccion;
-            borrarConfiguracion.CommandText = "DELETE FROM Configuraciones WHERE Id = $configuracionId;";
+            borrarConfiguracion.CommandText =
+                "DELETE FROM Configuraciones WHERE Id = $configuracionId;";
             borrarConfiguracion.Parameters.AddWithValue("$configuracionId", configuracionId);
             borrarConfiguracion.ExecuteNonQuery();
         }
@@ -218,8 +232,7 @@ public class ConfiguracionDocumentoRepository
         {
             using var insertarMarca = conexion.CreateCommand();
             insertarMarca.Transaction = transaccion;
-            insertarMarca.CommandText =
-                """
+            insertarMarca.CommandText = """
                 INSERT INTO Marcas (PatronId, Campo, Pagina, X, Y, Ancho, Alto, TextoReferencia)
                 VALUES ($patronId, $campo, $pagina, $x, $y, $ancho, $alto, $textoReferencia);
                 """;
@@ -230,21 +243,28 @@ public class ConfiguracionDocumentoRepository
             insertarMarca.Parameters.AddWithValue("$y", marca.Y);
             insertarMarca.Parameters.AddWithValue("$ancho", marca.Ancho);
             insertarMarca.Parameters.AddWithValue("$alto", marca.Alto);
-            insertarMarca.Parameters.AddWithValue("$textoReferencia", (object?)marca.TextoReferencia ?? DBNull.Value);
+            insertarMarca.Parameters.AddWithValue(
+                "$textoReferencia",
+                (object?)marca.TextoReferencia ?? DBNull.Value
+            );
             insertarMarca.ExecuteNonQuery();
         }
 
         transaccion.Commit();
     }
 
-    private static void AgregarPatron(SqliteConnection conexion, SqliteTransaction transaccion, int configuracionId, List<Marca> marcas)
+    private static void AgregarPatron(
+        SqliteConnection conexion,
+        SqliteTransaction transaccion,
+        int configuracionId,
+        List<Marca> marcas
+    )
     {
         int patronId;
         using (var insertarPatron = conexion.CreateCommand())
         {
             insertarPatron.Transaction = transaccion;
-            insertarPatron.CommandText =
-                """
+            insertarPatron.CommandText = """
                 INSERT INTO PatronesReconocimiento (ConfiguracionId) VALUES ($configuracionId);
                 SELECT last_insert_rowid();
                 """;
@@ -256,8 +276,7 @@ public class ConfiguracionDocumentoRepository
         {
             using var insertarMarca = conexion.CreateCommand();
             insertarMarca.Transaction = transaccion;
-            insertarMarca.CommandText =
-                """
+            insertarMarca.CommandText = """
                 INSERT INTO Marcas (PatronId, Campo, Pagina, X, Y, Ancho, Alto, TextoReferencia)
                 VALUES ($patronId, $campo, $pagina, $x, $y, $ancho, $alto, $textoReferencia);
                 """;
@@ -268,7 +287,10 @@ public class ConfiguracionDocumentoRepository
             insertarMarca.Parameters.AddWithValue("$y", marca.Y);
             insertarMarca.Parameters.AddWithValue("$ancho", marca.Ancho);
             insertarMarca.Parameters.AddWithValue("$alto", marca.Alto);
-            insertarMarca.Parameters.AddWithValue("$textoReferencia", (object?)marca.TextoReferencia ?? DBNull.Value);
+            insertarMarca.Parameters.AddWithValue(
+                "$textoReferencia",
+                (object?)marca.TextoReferencia ?? DBNull.Value
+            );
             insertarMarca.ExecuteNonQuery();
         }
     }
@@ -277,7 +299,8 @@ public class ConfiguracionDocumentoRepository
     {
         using var conexion = BaseDeDatos.CrearConexion();
         using var comando = conexion.CreateCommand();
-        comando.CommandText = "SELECT DISTINCT PatronCarpeta FROM Configuraciones WHERE PatronCarpeta IS NOT NULL;";
+        comando.CommandText =
+            "SELECT DISTINCT PatronCarpeta FROM Configuraciones WHERE PatronCarpeta IS NOT NULL;";
 
         var resultado = new List<string>();
         using var lector = comando.ExecuteReader();
@@ -289,21 +312,25 @@ public class ConfiguracionDocumentoRepository
         return resultado;
     }
 
-    private static ConfiguracionDocumento LeerConfiguracion(SqliteDataReader lector) => new()
-    {
-        Id = lector.GetInt32(0),
-        Emisor = lector.GetString(1),
-        Tipo = lector.GetString(2),
-        CarpetaDestino = lector.GetString(3),
-        FormatoCarpeta = Enum.Parse<FormatoCarpeta>(lector.GetString(4)),
-        PatronCarpeta = lector.IsDBNull(5) ? null : lector.GetString(5),
-        Renombrar = lector.GetInt32(6) != 0,
-        AbrirDespuesDeGuardar = lector.GetInt32(7) != 0,
-        PreguntarNombre = lector.GetInt32(8) != 0,
-        Patrones = []
-    };
+    private static ConfiguracionDocumento LeerConfiguracion(SqliteDataReader lector) =>
+        new()
+        {
+            Id = lector.GetInt32(0),
+            Emisor = lector.GetString(1),
+            Tipo = lector.GetString(2),
+            CarpetaDestino = lector.GetString(3),
+            FormatoCarpeta = Enum.Parse<FormatoCarpeta>(lector.GetString(4)),
+            PatronCarpeta = lector.IsDBNull(5) ? null : lector.GetString(5),
+            Renombrar = lector.GetInt32(6) != 0,
+            AbrirDespuesDeGuardar = lector.GetInt32(7) != 0,
+            PreguntarNombre = lector.GetInt32(8) != 0,
+            Patrones = [],
+        };
 
-    private static List<PatronReconocimiento> ObtenerPatrones(SqliteConnection conexion, int configuracionId)
+    private static List<PatronReconocimiento> ObtenerPatrones(
+        SqliteConnection conexion,
+        int configuracionId
+    )
     {
         // Se buscan primero los patrones y despues las marcas por separado (en vez de un solo
         // JOIN): un patron "sin texto" (Caso-1, punto 1) no tiene ninguna marca, y un INNER JOIN
@@ -312,7 +339,8 @@ public class ConfiguracionDocumentoRepository
 
         using (var comandoPatrones = conexion.CreateCommand())
         {
-            comandoPatrones.CommandText = "SELECT Id FROM PatronesReconocimiento WHERE ConfiguracionId = $configuracionId ORDER BY Id;";
+            comandoPatrones.CommandText =
+                "SELECT Id FROM PatronesReconocimiento WHERE ConfiguracionId = $configuracionId ORDER BY Id;";
             comandoPatrones.Parameters.AddWithValue("$configuracionId", configuracionId);
             using var lectorPatrones = comandoPatrones.ExecuteReader();
             while (lectorPatrones.Read())
@@ -323,8 +351,7 @@ public class ConfiguracionDocumentoRepository
 
         using (var comandoMarcas = conexion.CreateCommand())
         {
-            comandoMarcas.CommandText =
-                """
+            comandoMarcas.CommandText = """
                 SELECT m.PatronId, m.Campo, m.Pagina, m.X, m.Y, m.Ancho, m.Alto, m.TextoReferencia
                 FROM Marcas m
                 JOIN PatronesReconocimiento p ON p.Id = m.PatronId
@@ -336,14 +363,18 @@ public class ConfiguracionDocumentoRepository
             while (lectorMarcas.Read())
             {
                 var patronId = lectorMarcas.GetInt32(0);
-                patrones[patronId].Add(new Marca(
-                    Enum.Parse<CampoMarca>(lectorMarcas.GetString(1)),
-                    lectorMarcas.GetInt32(2),
-                    lectorMarcas.GetDouble(3),
-                    lectorMarcas.GetDouble(4),
-                    lectorMarcas.GetDouble(5),
-                    lectorMarcas.GetDouble(6),
-                    lectorMarcas.IsDBNull(7) ? null : lectorMarcas.GetString(7)));
+                patrones[patronId]
+                    .Add(
+                        new Marca(
+                            Enum.Parse<CampoMarca>(lectorMarcas.GetString(1)),
+                            lectorMarcas.GetInt32(2),
+                            lectorMarcas.GetDouble(3),
+                            lectorMarcas.GetDouble(4),
+                            lectorMarcas.GetDouble(5),
+                            lectorMarcas.GetDouble(6),
+                            lectorMarcas.IsDBNull(7) ? null : lectorMarcas.GetString(7)
+                        )
+                    );
             }
         }
 

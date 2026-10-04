@@ -10,7 +10,8 @@ namespace Archivero.Servicios;
 /// </summary>
 public static class LimpiezaNombreService
 {
-    public static string DejarSoloNumeros(string nombre) => new(nombre.Where(char.IsDigit).ToArray());
+    public static string DejarSoloNumeros(string nombre) =>
+        new(nombre.Where(char.IsDigit).ToArray());
 
     /// <summary>
     /// Quita los ceros de relleno a la izquierda de un nombre puramente numérico ("00123" → "123").
@@ -30,13 +31,17 @@ public static class LimpiezaNombreService
 
     /// <summary>Repite sobre un nombre nuevo, en el mismo orden, los botones de limpieza guardados en un atajo (Caso-11, punto 4).</summary>
     public static string AplicarRegla(string nombreOriginal, IEnumerable<OperacionNombre> regla) =>
-        regla.Aggregate(nombreOriginal, (nombre, operacion) => operacion switch
-        {
-            OperacionNombre.Borrar => string.Empty,
-            OperacionNombre.DejarSoloNumeros => DejarSoloNumeros(nombre),
-            OperacionNombre.QuitarCerosIzquierda => QuitarCerosIzquierda(nombre),
-            _ => nombre
-        });
+        regla.Aggregate(
+            nombreOriginal,
+            (nombre, operacion) =>
+                operacion switch
+                {
+                    OperacionNombre.Borrar => string.Empty,
+                    OperacionNombre.DejarSoloNumeros => DejarSoloNumeros(nombre),
+                    OperacionNombre.QuitarCerosIzquierda => QuitarCerosIzquierda(nombre),
+                    _ => nombre,
+                }
+        );
 
     /// <summary>Nombre sugerido para un atajo nuevo: la carpeta madre y, si organiza por fecha, el tipo de organización.</summary>
     public static string SugerirNombreAtajo(string carpetaMadre, FormatoCarpeta formato)

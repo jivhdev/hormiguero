@@ -29,8 +29,13 @@ public partial class VerGuardadoWindow : Window
     {
         if (!File.Exists(_rutaArchivo))
         {
-            System.Windows.MessageBox.Show(this, "El archivo ya no está en esa ubicación (se movió o se borró por fuera de Archivero).",
-                "Archivero", MessageBoxButton.OK, MessageBoxImage.Warning);
+            System.Windows.MessageBox.Show(
+                this,
+                "El archivo ya no está en esa ubicación (se movió o se borró por fuera de Archivero).",
+                "Archivero",
+                MessageBoxButton.OK,
+                MessageBoxImage.Warning
+            );
             return;
         }
 
@@ -41,25 +46,45 @@ public partial class VerGuardadoWindow : Window
     {
         if (!File.Exists(_rutaArchivo))
         {
-            System.Windows.MessageBox.Show(this, "El archivo ya no está en esa ubicación (se movió o se borró por fuera de Archivero).",
-                "Archivero", MessageBoxButton.OK, MessageBoxImage.Warning);
+            System.Windows.MessageBox.Show(
+                this,
+                "El archivo ya no está en esa ubicación (se movió o se borró por fuera de Archivero).",
+                "Archivero",
+                MessageBoxButton.OK,
+                MessageBoxImage.Warning
+            );
             return;
         }
 
         var configuraciones = _configuraciones.ObtenerTodasConPatrones();
-        var coincidencia = CoincidenciaAutomaticaService.BuscarConfiguracionQueCoincide(_rutaArchivo, configuraciones);
+        var coincidencia = CoincidenciaAutomaticaService.BuscarConfiguracionQueCoincide(
+            _rutaArchivo,
+            configuraciones
+        );
 
         if (coincidencia is null)
         {
-            System.Windows.MessageBox.Show(this,
-                "No se pudo volver a reconocer este documento contra ninguna configuración guardada. " +
-                "Probá editarlo desde \"Administrar clasificaciones\".",
-                "Archivero", MessageBoxButton.OK, MessageBoxImage.Warning);
+            System.Windows.MessageBox.Show(
+                this,
+                "No se pudo volver a reconocer este documento contra ninguna configuración guardada. "
+                    + "Probá editarlo desde \"Administrar clasificaciones\".",
+                "Archivero",
+                MessageBoxButton.OK,
+                MessageBoxImage.Warning
+            );
             return;
         }
 
         var owner = Owner;
-        var asistente = new IdentificarDocumentoWindow(_rutaArchivo, coincidencia, coincidencia.Patrones.Single(), comenzarEnPasoCarpeta: true) { Owner = owner };
+        var asistente = new IdentificarDocumentoWindow(
+            _rutaArchivo,
+            coincidencia,
+            coincidencia.Patrones.Single(),
+            comenzarEnPasoCarpeta: true
+        )
+        {
+            Owner = owner,
+        };
         Close();
         ConfiguracionEditada = asistente.ShowDialog() == true;
     }

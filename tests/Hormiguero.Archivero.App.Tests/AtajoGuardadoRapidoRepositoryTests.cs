@@ -9,7 +9,10 @@ public class AtajoGuardadoRapidoRepositoryTests : IDisposable
 
     public AtajoGuardadoRapidoRepositoryTests()
     {
-        _rutaDbTemporal = Path.Combine(Path.GetTempPath(), $"archivero-tests-{Guid.NewGuid():N}.db");
+        _rutaDbTemporal = Path.Combine(
+            Path.GetTempPath(),
+            $"archivero-tests-{Guid.NewGuid():N}.db"
+        );
         BaseDeDatos.RutaArchivo = _rutaDbTemporal;
         BaseDeDatos.AsegurarEsquema();
     }
@@ -25,15 +28,23 @@ public class AtajoGuardadoRapidoRepositoryTests : IDisposable
     {
         var repo = new AtajoGuardadoRapidoRepository();
 
-        repo.Guardar("Guías firmadas", @"C:\Guias", FormatoCarpeta.AnioMes, @"yyyy\MM",
-            [OperacionNombre.DejarSoloNumeros, OperacionNombre.QuitarCerosIzquierda]);
+        repo.Guardar(
+            "Guías firmadas",
+            @"C:\Guias",
+            FormatoCarpeta.AnioMes,
+            @"yyyy\MM",
+            [OperacionNombre.DejarSoloNumeros, OperacionNombre.QuitarCerosIzquierda]
+        );
 
         var atajo = Assert.Single(repo.ObtenerTodos());
         Assert.Equal("Guías firmadas", atajo.Nombre);
         Assert.Equal(@"C:\Guias", atajo.CarpetaMadre);
         Assert.Equal(FormatoCarpeta.AnioMes, atajo.Formato);
         Assert.Equal(@"yyyy\MM", atajo.Patron);
-        Assert.Equal([OperacionNombre.DejarSoloNumeros, OperacionNombre.QuitarCerosIzquierda], atajo.ReglaNombre);
+        Assert.Equal(
+            [OperacionNombre.DejarSoloNumeros, OperacionNombre.QuitarCerosIzquierda],
+            atajo.ReglaNombre
+        );
     }
 
     [Fact]

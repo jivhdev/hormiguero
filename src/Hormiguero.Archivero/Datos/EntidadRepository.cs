@@ -3,7 +3,7 @@ namespace Archivero.Datos;
 public enum CategoriaEntidad
 {
     Emisor,
-    Tipo
+    Tipo,
 }
 
 public class EntidadRepository
@@ -12,8 +12,7 @@ public class EntidadRepository
     {
         using var conexion = BaseDeDatos.CrearConexion();
         using var comando = conexion.CreateCommand();
-        comando.CommandText =
-            """
+        comando.CommandText = """
             SELECT Nombre FROM EntidadesConocidas
             WHERE Categoria = $categoria AND Nombre LIKE $filtro
             ORDER BY Nombre
@@ -38,7 +37,8 @@ public class EntidadRepository
 
         using (var buscar = conexion.CreateCommand())
         {
-            buscar.CommandText = "SELECT Id FROM EntidadesConocidas WHERE Categoria = $categoria AND Nombre = $nombre";
+            buscar.CommandText =
+                "SELECT Id FROM EntidadesConocidas WHERE Categoria = $categoria AND Nombre = $nombre";
             buscar.Parameters.AddWithValue("$categoria", categoria.ToString());
             buscar.Parameters.AddWithValue("$nombre", nombre);
 
@@ -50,8 +50,7 @@ public class EntidadRepository
         }
 
         using var insertar = conexion.CreateCommand();
-        insertar.CommandText =
-            """
+        insertar.CommandText = """
             INSERT INTO EntidadesConocidas (Categoria, Nombre) VALUES ($categoria, $nombre);
             SELECT last_insert_rowid();
             """;

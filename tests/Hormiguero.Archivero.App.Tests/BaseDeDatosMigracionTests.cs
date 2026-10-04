@@ -14,7 +14,10 @@ public class BaseDeDatosMigracionTests : IDisposable
 
     public BaseDeDatosMigracionTests()
     {
-        _rutaDbTemporal = Path.Combine(Path.GetTempPath(), $"archivero-tests-{Guid.NewGuid():N}.db");
+        _rutaDbTemporal = Path.Combine(
+            Path.GetTempPath(),
+            $"archivero-tests-{Guid.NewGuid():N}.db"
+        );
         BaseDeDatos.RutaArchivo = _rutaDbTemporal;
         CrearBaseConEsquemaAnteriorACaso3();
     }
@@ -26,8 +29,7 @@ public class BaseDeDatosMigracionTests : IDisposable
         using var conexion = new SqliteConnection($"Data Source={_rutaDbTemporal}");
         conexion.Open();
         using var comando = conexion.CreateCommand();
-        comando.CommandText =
-            """
+        comando.CommandText = """
             CREATE TABLE Configuracion (
                 Clave TEXT PRIMARY KEY,
                 Valor TEXT NOT NULL
@@ -109,7 +111,15 @@ public class BaseDeDatosMigracionTests : IDisposable
 
         // El CHECK nuevo acepta los tipos de Caso-3, y la columna de Caso-11 sobrevive a la
         // recreación de la tabla (se agrega después de reconstruirla, no antes).
-        repo.ActualizarDestino(config.Id, @"C:\Destino", FormatoCarpeta.SemanaDelMes, @"MM\'Semana 'N", true, true, true);
+        repo.ActualizarDestino(
+            config.Id,
+            @"C:\Destino",
+            FormatoCarpeta.SemanaDelMes,
+            @"MM\'Semana 'N",
+            true,
+            true,
+            true
+        );
         var actualizada = repo.BuscarPorEmisorYTipo("Proveedor X", "Factura")!;
         Assert.Equal(FormatoCarpeta.SemanaDelMes, actualizada.FormatoCarpeta);
         Assert.Equal(@"MM\'Semana 'N", actualizada.PatronCarpeta);
@@ -118,7 +128,15 @@ public class BaseDeDatosMigracionTests : IDisposable
 
         // Y crear configuraciones nuevas sigue funcionando tras la recreación de la tabla
         // (AUTOINCREMENT intacto).
-        var idNueva = repo.GuardarNueva("Otro", "Otro Tipo", @"C:\Otro", FormatoCarpeta.AnioTrimestre, @"yyyy\'T'T", false, new List<Marca>());
+        var idNueva = repo.GuardarNueva(
+            "Otro",
+            "Otro Tipo",
+            @"C:\Otro",
+            FormatoCarpeta.AnioTrimestre,
+            @"yyyy\'T'T",
+            false,
+            new List<Marca>()
+        );
         Assert.True(idNueva > actualizada.Id);
         Assert.NotNull(repo.BuscarPorEmisorYTipo("Otro", "Otro Tipo"));
     }
@@ -146,9 +164,20 @@ public class BaseDeDatosMigracionTests : IDisposable
         BaseDeDatos.AsegurarEsquema();
 
         var repo = new ConfiguracionDocumentoRepository();
-        repo.GuardarNueva("Proveedor Y", "Guía", @"C:\Destino", FormatoCarpeta.AnioSemana, @"yyyy\'Semana 'WW", false, new List<Marca>());
+        repo.GuardarNueva(
+            "Proveedor Y",
+            "Guía",
+            @"C:\Destino",
+            FormatoCarpeta.AnioSemana,
+            @"yyyy\'Semana 'WW",
+            false,
+            new List<Marca>()
+        );
 
-        Assert.Equal(FormatoCarpeta.AnioSemana, repo.BuscarPorEmisorYTipo("Proveedor Y", "Guía")!.FormatoCarpeta);
+        Assert.Equal(
+            FormatoCarpeta.AnioSemana,
+            repo.BuscarPorEmisorYTipo("Proveedor Y", "Guía")!.FormatoCarpeta
+        );
     }
 
     public void Dispose()

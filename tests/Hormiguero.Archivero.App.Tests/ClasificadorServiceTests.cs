@@ -18,17 +18,18 @@ public class ClasificadorServiceTests : IDisposable
         Directory.CreateDirectory(_carpetaDestino);
     }
 
-    private ConfiguracionDocumento Configuracion() => new()
-    {
-        Id = 1,
-        Emisor = "Banco de Prueba SA",
-        Tipo = "Resumen de cuenta",
-        CarpetaDestino = _carpetaDestino,
-        FormatoCarpeta = FormatoCarpeta.Directo,
-        PatronCarpeta = null,
-        Renombrar = false,
-        Patrones = []
-    };
+    private ConfiguracionDocumento Configuracion() =>
+        new()
+        {
+            Id = 1,
+            Emisor = "Banco de Prueba SA",
+            Tipo = "Resumen de cuenta",
+            CarpetaDestino = _carpetaDestino,
+            FormatoCarpeta = FormatoCarpeta.Directo,
+            PatronCarpeta = null,
+            Renombrar = false,
+            Patrones = [],
+        };
 
     private string CrearArchivo(string carpeta, string nombre, string contenido = "contenido")
     {
@@ -55,7 +56,8 @@ public class ClasificadorServiceTests : IDisposable
         CrearArchivo(_carpetaDestino, "factura.pdf", "viejo");
 
         var ex = Assert.Throws<ArchivoDuplicadoException>(() =>
-            ClasificadorService.Clasificar(origen, Configuracion(), null, null));
+            ClasificadorService.Clasificar(origen, Configuracion(), null, null)
+        );
 
         Assert.Equal(Path.Combine(_carpetaDestino, "factura.pdf"), ex.RutaDestino);
         Assert.True(File.Exists(origen), "El original no se debe tocar ante un duplicado");
@@ -96,9 +98,13 @@ public class ClasificadorServiceTests : IDisposable
         var rutaExcepcion = CrearArchivo(carpetaExcepcion, "factura.pdf");
 
         Assert.Throws<ArchivoDuplicadoException>(() =>
-            ClasificadorService.GuardarComoExcepcion(origen, rutaExcepcion));
+            ClasificadorService.GuardarComoExcepcion(origen, rutaExcepcion)
+        );
 
-        Assert.True(File.Exists(origen), "El original no se debe tocar si tambien hay duplicado en la excepcion");
+        Assert.True(
+            File.Exists(origen),
+            "El original no se debe tocar si tambien hay duplicado en la excepcion"
+        );
     }
 
     // ----- Caso-9, mejora 1: estos tests describen el comportamiento pedido y tienen que fallar
@@ -112,7 +118,12 @@ public class ClasificadorServiceTests : IDisposable
         var origen = CrearArchivo(_carpetaOrigen, "factura.pdf");
         var configuracion = Configuracion() with { Renombrar = true };
 
-        var ruta = ClasificadorService.CalcularRutaDestino(origen, configuracion, null, @"..\..\fuera");
+        var ruta = ClasificadorService.CalcularRutaDestino(
+            origen,
+            configuracion,
+            null,
+            @"..\..\fuera"
+        );
 
         var rutaResuelta = Path.GetFullPath(ruta);
         var destinoResuelto = Path.GetFullPath(_carpetaDestino);
@@ -138,7 +149,8 @@ public class ClasificadorServiceTests : IDisposable
         var configuracion = Configuracion() with { Renombrar = true };
 
         Assert.Throws<ValidacionSeguridadException>(() =>
-            ClasificadorService.Clasificar(origen, configuracion, null, "CON"));
+            ClasificadorService.Clasificar(origen, configuracion, null, "CON")
+        );
 
         Assert.True(File.Exists(origen), "El original no se debe tocar ante un nombre reservado");
     }
@@ -150,7 +162,8 @@ public class ClasificadorServiceTests : IDisposable
         var configuracion = Configuracion() with { Renombrar = true };
 
         Assert.Throws<ValidacionSeguridadException>(() =>
-            ClasificadorService.Clasificar(origen, configuracion, null, "Factura\u0000Falsa"));
+            ClasificadorService.Clasificar(origen, configuracion, null, "Factura\u0000Falsa")
+        );
 
         Assert.True(File.Exists(origen));
     }
@@ -163,7 +176,8 @@ public class ClasificadorServiceTests : IDisposable
         var nombreLargo = new string('a', 250);
 
         Assert.Throws<ValidacionSeguridadException>(() =>
-            ClasificadorService.Clasificar(origen, configuracion, null, nombreLargo));
+            ClasificadorService.Clasificar(origen, configuracion, null, nombreLargo)
+        );
 
         Assert.True(File.Exists(origen));
     }
@@ -175,10 +189,15 @@ public class ClasificadorServiceTests : IDisposable
         var configuracion = Configuracion() with
         {
             FormatoCarpeta = FormatoCarpeta.Personalizado,
-            PatronCarpeta = "'Año: 'yyyy"
+            PatronCarpeta = "'Año: 'yyyy",
         };
 
-        var ruta = ClasificadorService.CalcularRutaDestino(origen, configuracion, new DateTime(2026, 3, 15), null);
+        var ruta = ClasificadorService.CalcularRutaDestino(
+            origen,
+            configuracion,
+            new DateTime(2026, 3, 15),
+            null
+        );
 
         Assert.Equal(Path.Combine(_carpetaDestino, "Año_ 2026", "factura.pdf"), ruta);
     }

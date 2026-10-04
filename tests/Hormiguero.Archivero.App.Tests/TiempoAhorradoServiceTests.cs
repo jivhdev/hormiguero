@@ -9,7 +9,10 @@ public class TiempoAhorradoServiceTests : IDisposable
 
     public TiempoAhorradoServiceTests()
     {
-        _rutaDbTemporal = Path.Combine(Path.GetTempPath(), $"archivero-tests-{Guid.NewGuid():N}.db");
+        _rutaDbTemporal = Path.Combine(
+            Path.GetTempPath(),
+            $"archivero-tests-{Guid.NewGuid():N}.db"
+        );
         BaseDeDatos.RutaArchivo = _rutaDbTemporal;
         BaseDeDatos.AsegurarEsquema();
     }
@@ -38,10 +41,22 @@ public class TiempoAhorradoServiceTests : IDisposable
     [InlineData(0, "0 documentos archivados automáticamente — tiempo humano ahorrado: ~0 minutos")]
     [InlineData(1, "1 documento archivado automáticamente — tiempo humano ahorrado: ~0 minutos")]
     [InlineData(20, "20 documentos archivados automáticamente — tiempo humano ahorrado: ~1 minuto")]
-    [InlineData(1200, "1200 documentos archivados automáticamente — tiempo humano ahorrado: ~1 hora")]
-    [InlineData(1220, "1220 documentos archivados automáticamente — tiempo humano ahorrado: ~1 hora y 1 minuto")]
-    [InlineData(2410, "2410 documentos archivados automáticamente — tiempo humano ahorrado: ~2 horas y 1 minuto")]
-    public void FormatearResumen_ConDistintosTotales_DaElTextoEsperado(int total, string tituloEsperado)
+    [InlineData(
+        1200,
+        "1200 documentos archivados automáticamente — tiempo humano ahorrado: ~1 hora"
+    )]
+    [InlineData(
+        1220,
+        "1220 documentos archivados automáticamente — tiempo humano ahorrado: ~1 hora y 1 minuto"
+    )]
+    [InlineData(
+        2410,
+        "2410 documentos archivados automáticamente — tiempo humano ahorrado: ~2 horas y 1 minuto"
+    )]
+    public void FormatearResumen_ConDistintosTotales_DaElTextoEsperado(
+        int total,
+        string tituloEsperado
+    )
     {
         var (titulo, _) = TiempoAhorradoService.FormatearResumen(total);
 
@@ -71,7 +86,10 @@ public class TiempoAhorradoServiceTests : IDisposable
     {
         var (_, aclaracion) = TiempoAhorradoService.FormatearResumen(10);
 
-        Assert.Equal("(estimado a ~3 segundos de atención manual ahorrados por documento)", aclaracion);
+        Assert.Equal(
+            "(estimado a ~3 segundos de atención manual ahorrados por documento)",
+            aclaracion
+        );
     }
 
     public void Dispose()

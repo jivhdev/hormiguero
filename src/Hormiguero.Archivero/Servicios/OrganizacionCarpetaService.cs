@@ -35,7 +35,10 @@ public static class OrganizacionCarpetaService
         new(FormatoCarpeta.SemanaDelMes, "Por semana del mes"),
     ];
 
-    public static readonly TipoOrganizacion OpcionPersonalizada = new(FormatoCarpeta.Personalizado, NombrePersonalizadoEnLista);
+    public static readonly TipoOrganizacion OpcionPersonalizada = new(
+        FormatoCarpeta.Personalizado,
+        NombrePersonalizadoEnLista
+    );
 
     /// <summary>
     /// Ejemplos de patrón por tipo, como niveles de carpeta (se unen con "\" al guardar y se
@@ -110,8 +113,12 @@ public static class OrganizacionCarpetaService
             : TodosLosTipos.FirstOrDefault(t => t.Formato == formato)?.Nombre ?? formato.ToString();
 
     /// <summary>Ejemplos concretos del tipo para la fecha de referencia, en el orden de la tabla de 3c.</summary>
-    public static List<EjemploPatron> ObtenerEjemplos(FormatoCarpeta formato, DateTime fechaReferencia) =>
-        NivelesPorTipo.GetValueOrDefault(formato, [])
+    public static List<EjemploPatron> ObtenerEjemplos(
+        FormatoCarpeta formato,
+        DateTime fechaReferencia
+    ) =>
+        NivelesPorTipo
+            .GetValueOrDefault(formato, [])
             .Select(niveles =>
             {
                 var patron = string.Join("\\", niveles);
@@ -121,7 +128,12 @@ public static class OrganizacionCarpetaService
 
     /// <summary>Texto concreto que un patrón produce para una fecha, con los niveles unidos por "/" (para mostrar).</summary>
     public static string FormatearEjemplo(string patron, DateTime fechaReferencia) =>
-        string.Join("/", patron.Split('\\').Select(nivel => FormatoCarpetaService.FormatearNivel(nivel, fechaReferencia)));
+        string.Join(
+            "/",
+            patron
+                .Split('\\')
+                .Select(nivel => FormatoCarpetaService.FormatearNivel(nivel, fechaReferencia))
+        );
 
     /// <summary>Convierte lo que el usuario escribe a mano en el patrón interno (acepta "/" o "\" como separador de niveles).</summary>
     public static string NormalizarPatronPersonalizado(string texto) =>
@@ -140,8 +152,15 @@ public static class OrganizacionCarpetaService
 
         try
         {
-            var subcarpeta = FormatoCarpetaService.ConstruirSubcarpeta(FormatoCarpeta.Personalizado, patron, fechaReferencia);
-            var nombres = subcarpeta.Split(Path.DirectorySeparatorChar, Path.AltDirectorySeparatorChar);
+            var subcarpeta = FormatoCarpetaService.ConstruirSubcarpeta(
+                FormatoCarpeta.Personalizado,
+                patron,
+                fechaReferencia
+            );
+            var nombres = subcarpeta.Split(
+                Path.DirectorySeparatorChar,
+                Path.AltDirectorySeparatorChar
+            );
 
             if (nombres.Any(string.IsNullOrWhiteSpace))
             {
@@ -149,10 +168,13 @@ public static class OrganizacionCarpetaService
                 return false;
             }
 
-            var invalidos = Path.GetInvalidFileNameChars().Where(c => nombres.Any(n => n.Contains(c))).ToList();
+            var invalidos = Path.GetInvalidFileNameChars()
+                .Where(c => nombres.Any(n => n.Contains(c)))
+                .ToList();
             if (invalidos.Count > 0)
             {
-                error = $"El patrón produce caracteres que Windows no permite en una carpeta: {string.Join(" ", invalidos.Select(c => $"\"{c}\""))}.";
+                error =
+                    $"El patrón produce caracteres que Windows no permite en una carpeta: {string.Join(" ", invalidos.Select(c => $"\"{c}\""))}.";
                 return false;
             }
         }

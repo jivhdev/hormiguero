@@ -3,17 +3,17 @@ using System.Windows.Media;
 using System.Windows.Media.Imaging;
 using Archivero.Datos;
 using Archivero.Servicios.Pdf;
-using Point = System.Windows.Point;
-using Rectangle = System.Windows.Shapes.Rectangle;
-using UserControl = System.Windows.Controls.UserControl;
-using TextBlock = System.Windows.Controls.TextBlock;
-using MouseEventArgs = System.Windows.Input.MouseEventArgs;
+using Brushes = System.Windows.Media.Brushes;
+using Canvas = System.Windows.Controls.Canvas;
+using Color = System.Windows.Media.Color;
 using MouseButtonEventArgs = System.Windows.Input.MouseButtonEventArgs;
 using MouseButtonState = System.Windows.Input.MouseButtonState;
-using Canvas = System.Windows.Controls.Canvas;
-using Brushes = System.Windows.Media.Brushes;
-using Color = System.Windows.Media.Color;
+using MouseEventArgs = System.Windows.Input.MouseEventArgs;
+using Point = System.Windows.Point;
+using Rectangle = System.Windows.Shapes.Rectangle;
 using SolidColorBrush = System.Windows.Media.SolidColorBrush;
+using TextBlock = System.Windows.Controls.TextBlock;
+using UserControl = System.Windows.Controls.UserControl;
 
 namespace Archivero.Vistas;
 
@@ -61,7 +61,9 @@ public partial class VisorPdfConMarcado : UserControl
     }
 
     /// <summary>Reemplaza el conjunto de marcas ya confirmadas que se dibujan en la página (una por campo).</summary>
-    public void MostrarMarcas(IEnumerable<(CampoMarca Campo, int Pagina, RectanguloFraccion Rect)> marcas)
+    public void MostrarMarcas(
+        IEnumerable<(CampoMarca Campo, int Pagina, RectanguloFraccion Rect)> marcas
+    )
     {
         _marcasGuardadas = marcas.ToList();
         RedibujarMarcasPersistentes();
@@ -74,7 +76,15 @@ public partial class VisorPdfConMarcado : UserControl
         _altoPaginaActual = pagina.Alto;
 
         var bitmap = BitmapSource.Create(
-            pagina.Ancho, pagina.Alto, 96, 96, PixelFormats.Bgra32, null, pagina.PixelesBgra, pagina.Ancho * 4);
+            pagina.Ancho,
+            pagina.Alto,
+            96,
+            96,
+            PixelFormats.Bgra32,
+            null,
+            pagina.PixelesBgra,
+            pagina.Ancho * 4
+        );
         bitmap.Freeze();
 
         ImagenPagina.Source = bitmap;
@@ -117,7 +127,7 @@ public partial class VisorPdfConMarcado : UserControl
             Height = alto,
             Stroke = new SolidColorBrush(color),
             StrokeThickness = 3,
-            Fill = new SolidColorBrush(Color.FromArgb(40, color.R, color.G, color.B))
+            Fill = new SolidColorBrush(Color.FromArgb(40, color.R, color.G, color.B)),
         };
         Canvas.SetLeft(rectangulo, x);
         Canvas.SetTop(rectangulo, y);
@@ -129,30 +139,32 @@ public partial class VisorPdfConMarcado : UserControl
             Background = new SolidColorBrush(color),
             Foreground = Brushes.White,
             Padding = new Thickness(3, 1, 3, 1),
-            FontSize = 12
+            FontSize = 12,
         };
         Canvas.SetLeft(etiqueta, x);
         Canvas.SetTop(etiqueta, Math.Max(0, y - 18));
         CapaMarcas.Children.Add(etiqueta);
     }
 
-    private static Color ColorParaCampo(CampoMarca campo) => campo switch
-    {
-        CampoMarca.Emisor => Colors.Crimson,
-        CampoMarca.Tipo => Colors.DodgerBlue,
-        CampoMarca.Fecha => Colors.SeaGreen,
-        CampoMarca.NombreArchivo => Colors.DarkOrange,
-        _ => Colors.Gray
-    };
+    private static Color ColorParaCampo(CampoMarca campo) =>
+        campo switch
+        {
+            CampoMarca.Emisor => Colors.Crimson,
+            CampoMarca.Tipo => Colors.DodgerBlue,
+            CampoMarca.Fecha => Colors.SeaGreen,
+            CampoMarca.NombreArchivo => Colors.DarkOrange,
+            _ => Colors.Gray,
+        };
 
-    private static string NombreCampo(CampoMarca campo) => campo switch
-    {
-        CampoMarca.Emisor => "Emisor",
-        CampoMarca.Tipo => "Tipo",
-        CampoMarca.Fecha => "Fecha",
-        CampoMarca.NombreArchivo => "Nombre archivo",
-        _ => campo.ToString()
-    };
+    private static string NombreCampo(CampoMarca campo) =>
+        campo switch
+        {
+            CampoMarca.Emisor => "Emisor",
+            CampoMarca.Tipo => "Tipo",
+            CampoMarca.Fecha => "Fecha",
+            CampoMarca.NombreArchivo => "Nombre archivo",
+            _ => campo.ToString(),
+        };
 
     private void BtnAnterior_Click(object sender, RoutedEventArgs e)
     {
@@ -186,14 +198,18 @@ public partial class VisorPdfConMarcado : UserControl
         {
             Stroke = Brushes.DodgerBlue,
             StrokeThickness = 2,
-            Fill = new SolidColorBrush(Color.FromArgb(60, 30, 144, 255))
+            Fill = new SolidColorBrush(Color.FromArgb(60, 30, 144, 255)),
         };
         CapaMarcas.Children.Add(_rectanguloArrastre);
     }
 
     private void LienzoPagina_MouseMove(object sender, MouseEventArgs e)
     {
-        if (_inicioArrastre is not { } inicio || _rectanguloArrastre is null || e.LeftButton != MouseButtonState.Pressed)
+        if (
+            _inicioArrastre is not { } inicio
+            || _rectanguloArrastre is null
+            || e.LeftButton != MouseButtonState.Pressed
+        )
         {
             return;
         }

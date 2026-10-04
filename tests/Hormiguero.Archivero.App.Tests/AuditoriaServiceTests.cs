@@ -15,7 +15,11 @@ public class AuditoriaServiceTests : IDisposable
     public AuditoriaServiceTests()
     {
         _rutaLogOriginal = AuditoriaService.RutaLog;
-        _rutaLogTemporal = Path.Combine(Path.GetTempPath(), $"archivero-tests-{Guid.NewGuid():N}", "auditoria.log");
+        _rutaLogTemporal = Path.Combine(
+            Path.GetTempPath(),
+            $"archivero-tests-{Guid.NewGuid():N}",
+            "auditoria.log"
+        );
         AuditoriaService.RutaLog = _rutaLogTemporal;
     }
 
@@ -27,7 +31,10 @@ public class AuditoriaServiceTests : IDisposable
         Assert.True(File.Exists(_rutaLogTemporal));
         var linea = File.ReadAllLines(_rutaLogTemporal).Single();
 
-        Assert.Matches(@"^\[\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}\] DOCUMENTO_DETECTADO — C:\\Observada\\factura\.pdf$", linea);
+        Assert.Matches(
+            @"^\[\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}\] DOCUMENTO_DETECTADO — C:\\Observada\\factura\.pdf$",
+            linea
+        );
     }
 
     [Fact]
@@ -62,7 +69,10 @@ public class AuditoriaServiceTests : IDisposable
     {
         // El texto sigue apareciendo (saneado), pero como parte de LA MISMA línea -- nunca como
         // una segunda entrada de log que finja ser un evento real aparte.
-        AuditoriaService.Registrar("VALIDACION_RECHAZADA", "Factura\n[2026-01-01T00:00:00] DOCUMENTO_GUARDADO — falso");
+        AuditoriaService.Registrar(
+            "VALIDACION_RECHAZADA",
+            "Factura\n[2026-01-01T00:00:00] DOCUMENTO_GUARDADO — falso"
+        );
 
         Assert.Single(File.ReadAllLines(_rutaLogTemporal));
     }
@@ -70,7 +80,10 @@ public class AuditoriaServiceTests : IDisposable
     [Fact]
     public void Registrar_ConRetornoDeCarroEnElDetalle_NuncaAgregaUnaLineaDeMas()
     {
-        AuditoriaService.Registrar("VALIDACION_RECHAZADA", "Factura\r\n[fecha-inventada] EVENTO_FALSO — x");
+        AuditoriaService.Registrar(
+            "VALIDACION_RECHAZADA",
+            "Factura\r\n[fecha-inventada] EVENTO_FALSO — x"
+        );
 
         Assert.Single(File.ReadAllLines(_rutaLogTemporal));
     }
@@ -88,7 +101,10 @@ public class AuditoriaServiceTests : IDisposable
     [Fact]
     public void Sanear_ConTextoNormal_NoLoToca()
     {
-        Assert.Equal("Banco de Prueba SA — Factura (1).pdf", AuditoriaService.Sanear("Banco de Prueba SA — Factura (1).pdf"));
+        Assert.Equal(
+            "Banco de Prueba SA — Factura (1).pdf",
+            AuditoriaService.Sanear("Banco de Prueba SA — Factura (1).pdf")
+        );
     }
 
     // ----- Falla al escribir nunca detiene la app -----
@@ -100,7 +116,9 @@ public class AuditoriaServiceTests : IDisposable
         // falle: Registrar tiene que tragarse el error, nunca propagarlo.
         Directory.CreateDirectory(_rutaLogTemporal);
 
-        var ex = Record.Exception(() => AuditoriaService.Registrar("DOCUMENTO_DETECTADO", "factura.pdf"));
+        var ex = Record.Exception(() =>
+            AuditoriaService.Registrar("DOCUMENTO_DETECTADO", "factura.pdf")
+        );
 
         Assert.Null(ex);
     }
@@ -111,7 +129,10 @@ public class AuditoriaServiceTests : IDisposable
     public void Registrar_ConElArchivoSuperandoElTamanioMaximo_RotaAntesDeEscribir()
     {
         Directory.CreateDirectory(Path.GetDirectoryName(_rutaLogTemporal)!);
-        File.WriteAllText(_rutaLogTemporal, new string('a', (int)AuditoriaService.TamanioMaximoBytes));
+        File.WriteAllText(
+            _rutaLogTemporal,
+            new string('a', (int)AuditoriaService.TamanioMaximoBytes)
+        );
 
         AuditoriaService.Registrar("DOCUMENTO_DETECTADO", "factura.pdf");
 
@@ -126,7 +147,10 @@ public class AuditoriaServiceTests : IDisposable
     {
         var carpeta = Path.GetDirectoryName(_rutaLogTemporal)!;
         Directory.CreateDirectory(carpeta);
-        File.WriteAllText(_rutaLogTemporal, new string('a', (int)AuditoriaService.TamanioMaximoBytes));
+        File.WriteAllText(
+            _rutaLogTemporal,
+            new string('a', (int)AuditoriaService.TamanioMaximoBytes)
+        );
         File.WriteAllText($"{_rutaLogTemporal}.1", "contenido-1-viejo");
         File.WriteAllText($"{_rutaLogTemporal}.2", "contenido-2-viejo");
         File.WriteAllText($"{_rutaLogTemporal}.3", "contenido-3-el-mas-viejo-de-todos");
@@ -135,7 +159,10 @@ public class AuditoriaServiceTests : IDisposable
 
         Assert.Equal("contenido-1-viejo", File.ReadAllText($"{_rutaLogTemporal}.2"));
         Assert.Equal("contenido-2-viejo", File.ReadAllText($"{_rutaLogTemporal}.3"));
-        Assert.False(File.Exists($"{_rutaLogTemporal}.4"), "Nunca se conservan más de 3 archivos rotados");
+        Assert.False(
+            File.Exists($"{_rutaLogTemporal}.4"),
+            "Nunca se conservan más de 3 archivos rotados"
+        );
     }
 
     public void Dispose()

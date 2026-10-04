@@ -23,18 +23,20 @@ public partial class IdentificarSinTextoWindow : Window
     private class FilaUbicacion(UbicacionSinTexto ubicacion)
     {
         public UbicacionSinTexto Ubicacion { get; } = ubicacion;
-        public string Texto { get; } = ubicacion.Formato == FormatoCarpeta.Directo
-            ? ubicacion.CarpetaMadre
-            : $"{ubicacion.CarpetaMadre} — {OrganizacionCarpetaService.NombreDe(ubicacion.Formato)}";
+        public string Texto { get; } =
+            ubicacion.Formato == FormatoCarpeta.Directo
+                ? ubicacion.CarpetaMadre
+                : $"{ubicacion.CarpetaMadre} — {OrganizacionCarpetaService.NombreDe(ubicacion.Formato)}";
     }
 
     private class FilaAtajo(AtajoGuardadoRapido atajo)
     {
         public AtajoGuardadoRapido Atajo { get; } = atajo;
         public string Texto { get; } = atajo.Nombre;
-        public string Detalle { get; } = atajo.Formato == FormatoCarpeta.Directo
-            ? atajo.CarpetaMadre
-            : $"{atajo.CarpetaMadre} — {OrganizacionCarpetaService.NombreDe(atajo.Formato)}";
+        public string Detalle { get; } =
+            atajo.Formato == FormatoCarpeta.Directo
+                ? atajo.CarpetaMadre
+                : $"{atajo.CarpetaMadre} — {OrganizacionCarpetaService.NombreDe(atajo.Formato)}";
     }
 
     /// <summary>Por qué camino se llegó al paso final: define si se ofrece guardar un atajo y si hace falta pedir la fecha ahí.</summary>
@@ -42,7 +44,7 @@ public partial class IdentificarSinTextoWindow : Window
     {
         CrearNueva,
         UbicacionExistente,
-        Atajo
+        Atajo,
     }
 
     private readonly string _rutaArchivo;
@@ -73,8 +75,9 @@ public partial class IdentificarSinTextoWindow : Window
         if (esArchivoDanado)
         {
             TxtTitulo.Text = "No se pudo leer este archivo";
-            TxtInstruccion.Text = "Puede estar dañado, vacío o incompleto. Igual se puede elegir dónde guardarlo, " +
-                                  "con lo que se sepa por el nombre del archivo.";
+            TxtInstruccion.Text =
+                "Puede estar dañado, vacío o incompleto. Igual se puede elegir dónde guardarlo, "
+                + "con lo que se sepa por el nombre del archivo.";
         }
 
         try
@@ -86,8 +89,9 @@ public partial class IdentificarSinTextoWindow : Window
             // Caso-11, punto 5: sin vista previa, pero el ruteo manual sigue disponible.
             Visor.Visibility = Visibility.Collapsed;
             AvisoSinVista.Visibility = Visibility.Visible;
-            TxtAvisoSinVista.Text = $"{Path.GetFileName(rutaArchivo)}\n\nNo se puede mostrar el documento, " +
-                                    "pero se puede guardar igual eligiendo una ubicación a la derecha.";
+            TxtAvisoSinVista.Text =
+                $"{Path.GetFileName(rutaArchivo)}\n\nNo se puede mostrar el documento, "
+                + "pero se puede guardar igual eligiendo una ubicación a la derecha.";
         }
 
         ControlOrganizacion.ConfigurarProveedorDeFecha(LeerFechaReferencia);
@@ -105,7 +109,17 @@ public partial class IdentificarSinTextoWindow : Window
 
     private void MostrarPanel(FrameworkElement panel)
     {
-        foreach (var p in new FrameworkElement[] { PanelElegir, PanelCarpetaMadre, PanelOrganizacion, PanelVerUbicaciones, PanelNavegar, PanelNombreArchivo })
+        foreach (
+            var p in new FrameworkElement[]
+            {
+                PanelElegir,
+                PanelCarpetaMadre,
+                PanelOrganizacion,
+                PanelVerUbicaciones,
+                PanelNavegar,
+                PanelNombreArchivo,
+            }
+        )
         {
             p.Visibility = p == panel ? Visibility.Visible : Visibility.Collapsed;
         }
@@ -115,13 +129,15 @@ public partial class IdentificarSinTextoWindow : Window
 
     // ----- 3a: Crear ubicación nueva -----
 
-    private void BtnCrearUbicacionNueva_Click(object sender, RoutedEventArgs e) => MostrarPanel(PanelCarpetaMadre);
+    private void BtnCrearUbicacionNueva_Click(object sender, RoutedEventArgs e) =>
+        MostrarPanel(PanelCarpetaMadre);
 
     private void BtnElegirCarpetaMadre_Click(object sender, RoutedEventArgs e)
     {
         using var dialogo = new System.Windows.Forms.FolderBrowserDialog
         {
-            Description = "Elegir la carpeta madre: la raíz donde va a vivir todo lo de este tipo de documento"
+            Description =
+                "Elegir la carpeta madre: la raíz donde va a vivir todo lo de este tipo de documento",
         };
 
         if (dialogo.ShowDialog() != System.Windows.Forms.DialogResult.OK)
@@ -138,7 +154,10 @@ public partial class IdentificarSinTextoWindow : Window
             var directo = System.Windows.MessageBox.Show(
                 this,
                 "Esta carpeta madre está vacía. ¿Guardar el documento directo ahí, sin subcarpetas?",
-                "Archivero", MessageBoxButton.YesNo, MessageBoxImage.Question);
+                "Archivero",
+                MessageBoxButton.YesNo,
+                MessageBoxImage.Question
+            );
 
             if (directo == MessageBoxResult.Yes)
             {
@@ -160,8 +179,12 @@ public partial class IdentificarSinTextoWindow : Window
 
     private void ActualizarVisibilidadMarcarFecha()
     {
-        PanelMarcarFecha.Visibility = ControlOrganizacion.FechaEsAplicable ? Visibility.Visible : Visibility.Collapsed;
-        TxtFechaOpcional.Visibility = ControlOrganizacion.FechaEsOpcional ? Visibility.Visible : Visibility.Collapsed;
+        PanelMarcarFecha.Visibility = ControlOrganizacion.FechaEsAplicable
+            ? Visibility.Visible
+            : Visibility.Collapsed;
+        TxtFechaOpcional.Visibility = ControlOrganizacion.FechaEsOpcional
+            ? Visibility.Visible
+            : Visibility.Collapsed;
     }
 
     private void TxtFechaManual_TextChanged(object sender, TextChangedEventArgs e) =>
@@ -169,7 +192,10 @@ public partial class IdentificarSinTextoWindow : Window
 
     private (DateTime Fecha, bool EsSupuesta) LeerFechaReferencia()
     {
-        if (!string.IsNullOrWhiteSpace(TxtFechaManual.Text) && FechaExtraidaService.TryParsear(TxtFechaManual.Text, out var fecha))
+        if (
+            !string.IsNullOrWhiteSpace(TxtFechaManual.Text)
+            && FechaExtraidaService.TryParsear(TxtFechaManual.Text, out var fecha)
+        )
         {
             return (fecha, false);
         }
@@ -188,8 +214,11 @@ public partial class IdentificarSinTextoWindow : Window
         var formato = ControlOrganizacion.FormatoElegido!.Value;
         var patron = formato == FormatoCarpeta.Directo ? null : ControlOrganizacion.PatronElegido;
 
-        if (ControlOrganizacion.FechaEsAplicable && !ControlOrganizacion.FechaEsOpcional
-            && string.IsNullOrWhiteSpace(TxtFechaManual.Text))
+        if (
+            ControlOrganizacion.FechaEsAplicable
+            && !ControlOrganizacion.FechaEsOpcional
+            && string.IsNullOrWhiteSpace(TxtFechaManual.Text)
+        )
         {
             MostrarError("Escribir la fecha del documento.");
             return;
@@ -197,7 +226,9 @@ public partial class IdentificarSinTextoWindow : Window
 
         var (fecha, _) = LeerFechaReferencia();
         var subcarpeta = FormatoCarpetaService.ConstruirSubcarpeta(formato, patron, fecha);
-        _carpetaDestinoFinal = string.IsNullOrEmpty(subcarpeta) ? _carpetaMadre : Path.Combine(_carpetaMadre, subcarpeta);
+        _carpetaDestinoFinal = string.IsNullOrEmpty(subcarpeta)
+            ? _carpetaMadre
+            : Path.Combine(_carpetaMadre, subcarpeta);
 
         _ubicaciones.ObtenerOCrear(_carpetaMadre, formato, patron);
 
@@ -211,14 +242,19 @@ public partial class IdentificarSinTextoWindow : Window
     private void BtnVerUbicaciones_Click(object sender, RoutedEventArgs e)
     {
         var ubicaciones = _ubicaciones.ObtenerTodas();
-        TxtSinUbicaciones.Visibility = ubicaciones.Count == 0 ? Visibility.Visible : Visibility.Collapsed;
+        TxtSinUbicaciones.Visibility =
+            ubicaciones.Count == 0 ? Visibility.Visible : Visibility.Collapsed;
         ListaUbicaciones.ItemsSource = ubicaciones.Select(u => new FilaUbicacion(u)).ToList();
         MostrarPanel(PanelVerUbicaciones);
     }
 
-    private void BtnVolverAElegir_Click(object sender, RoutedEventArgs e) => MostrarPanel(PanelElegir);
+    private void BtnVolverAElegir_Click(object sender, RoutedEventArgs e) =>
+        MostrarPanel(PanelElegir);
 
-    private void ListaUbicaciones_MouseDoubleClick(object sender, System.Windows.Input.MouseButtonEventArgs e)
+    private void ListaUbicaciones_MouseDoubleClick(
+        object sender,
+        System.Windows.Input.MouseButtonEventArgs e
+    )
     {
         if (ListaUbicaciones.SelectedItem is not FilaUbicacion fila)
         {
@@ -230,8 +266,12 @@ public partial class IdentificarSinTextoWindow : Window
         if (ubicacion.Formato == FormatoCarpeta.Directo)
         {
             var confirmar = System.Windows.MessageBox.Show(
-                this, $"¿Guardar este documento en:\n{ubicacion.CarpetaMadre}?",
-                "Archivero", MessageBoxButton.YesNo, MessageBoxImage.Question);
+                this,
+                $"¿Guardar este documento en:\n{ubicacion.CarpetaMadre}?",
+                "Archivero",
+                MessageBoxButton.YesNo,
+                MessageBoxImage.Question
+            );
 
             if (confirmar == MessageBoxResult.Yes)
             {
@@ -257,17 +297,22 @@ public partial class IdentificarSinTextoWindow : Window
     {
         TxtRutaNavegacion.Text = _carpetaNavegacionActual;
 
-        var subcarpetas = Directory.GetDirectories(_carpetaNavegacionActual)
+        var subcarpetas = Directory
+            .GetDirectories(_carpetaNavegacionActual)
             .Select(Path.GetFileName)
             .OrderDescending(StringComparer.OrdinalIgnoreCase)
             .ToList();
 
-        TxtSinSubcarpetas.Visibility = subcarpetas.Count == 0 ? Visibility.Visible : Visibility.Collapsed;
+        TxtSinSubcarpetas.Visibility =
+            subcarpetas.Count == 0 ? Visibility.Visible : Visibility.Collapsed;
         ListaNavegacion.ItemsSource = subcarpetas;
         MostrarPanel(PanelNavegar);
     }
 
-    private void ListaNavegacion_MouseDoubleClick(object sender, System.Windows.Input.MouseButtonEventArgs e)
+    private void ListaNavegacion_MouseDoubleClick(
+        object sender,
+        System.Windows.Input.MouseButtonEventArgs e
+    )
     {
         if (ListaNavegacion.SelectedItem is not string nombreCarpeta)
         {
@@ -287,7 +332,8 @@ public partial class IdentificarSinTextoWindow : Window
         MostrarNivelNavegacion();
     }
 
-    private void BtnVolverNavegacion_Click(object sender, RoutedEventArgs e) => MostrarPanel(PanelVerUbicaciones);
+    private void BtnVolverNavegacion_Click(object sender, RoutedEventArgs e) =>
+        MostrarPanel(PanelVerUbicaciones);
 
     // ----- 3c: Accesos rápidos (Caso-11, punto 4) -----
 
@@ -305,12 +351,17 @@ public partial class IdentificarSinTextoWindow : Window
         _atajoUsado = atajo.Nombre;
 
         IrANombreArchivo(OrigenDestino.Atajo);
-        TxtNombreArchivo.Text = LimpiezaNombreService.AplicarRegla(TxtNombreArchivo.Text, atajo.ReglaNombre);
+        TxtNombreArchivo.Text = LimpiezaNombreService.AplicarRegla(
+            TxtNombreArchivo.Text,
+            atajo.ReglaNombre
+        );
     }
 
-    private bool AtajoNecesitaFecha => _origen == OrigenDestino.Atajo && _formato != FormatoCarpeta.Directo;
+    private bool AtajoNecesitaFecha =>
+        _origen == OrigenDestino.Atajo && _formato != FormatoCarpeta.Directo;
 
-    private void TxtFechaAtajo_TextChanged(object sender, TextChangedEventArgs e) => ActualizarTextoDestino();
+    private void TxtFechaAtajo_TextChanged(object sender, TextChangedEventArgs e) =>
+        ActualizarTextoDestino();
 
     /// <summary>
     /// Misma regla que el paso de organización del flujo manual: fecha obligatoria salvo en los
@@ -340,7 +391,9 @@ public partial class IdentificarSinTextoWindow : Window
         }
 
         var subcarpeta = FormatoCarpetaService.ConstruirSubcarpeta(_formato, _patron, fecha);
-        destino = string.IsNullOrEmpty(subcarpeta) ? _carpetaMadre : Path.Combine(_carpetaMadre, subcarpeta);
+        destino = string.IsNullOrEmpty(subcarpeta)
+            ? _carpetaMadre
+            : Path.Combine(_carpetaMadre, subcarpeta);
         return true;
     }
 
@@ -398,7 +451,9 @@ public partial class IdentificarSinTextoWindow : Window
 
     private void BtnQuitarCeros_Click(object sender, RoutedEventArgs e)
     {
-        TxtNombreArchivo.Text = LimpiezaNombreService.QuitarCerosIzquierda(TxtNombreArchivo.Text.Trim());
+        TxtNombreArchivo.Text = LimpiezaNombreService.QuitarCerosIzquierda(
+            TxtNombreArchivo.Text.Trim()
+        );
         _reglaNombre.Add(OperacionNombre.QuitarCerosIzquierda);
     }
 
@@ -425,9 +480,12 @@ public partial class IdentificarSinTextoWindow : Window
         // Se pregunta una sola vez: si el guardado falla (ej. duplicado) y se reintenta, no se repite.
         if (_origen == OrigenDestino.CrearNueva && !_preguntaAtajoHecha)
         {
-            var dialogo = new GuardarAtajoWindow(LimpiezaNombreService.SugerirNombreAtajo(_carpetaMadre, _formato), _atajos)
+            var dialogo = new GuardarAtajoWindow(
+                LimpiezaNombreService.SugerirNombreAtajo(_carpetaMadre, _formato),
+                _atajos
+            )
             {
-                Owner = this
+                Owner = this,
             };
             _nombreAtajoAGuardar = dialogo.ShowDialog() == true ? dialogo.NombreElegido : null;
             _preguntaAtajoHecha = true;
@@ -446,20 +504,30 @@ public partial class IdentificarSinTextoWindow : Window
                 FormatoCarpeta = FormatoCarpeta.Directo,
                 PatronCarpeta = null,
                 Renombrar = true,
-                Patrones = []
+                Patrones = [],
             };
 
             string rutaFinal;
             try
             {
-                rutaFinal = ClasificadorService.Clasificar(_rutaArchivo, configuracionTemporal, null, nombre);
+                rutaFinal = ClasificadorService.Clasificar(
+                    _rutaArchivo,
+                    configuracionTemporal,
+                    null,
+                    nombre
+                );
             }
             catch (ArchivoDuplicadoException ex)
             {
-                var resolver = new ResolverDuplicadoWindow(_rutaArchivo, ex.RutaDestino) { Owner = this };
+                var resolver = new ResolverDuplicadoWindow(_rutaArchivo, ex.RutaDestino)
+                {
+                    Owner = this,
+                };
                 if (resolver.ShowDialog() != true)
                 {
-                    MostrarError("Documento dejado pendiente por nombre duplicado. Se puede intentar de nuevo o cerrar.");
+                    MostrarError(
+                        "Documento dejado pendiente por nombre duplicado. Se puede intentar de nuevo o cerrar."
+                    );
                     return;
                 }
 
@@ -467,8 +535,12 @@ public partial class IdentificarSinTextoWindow : Window
             }
 
             _pendientes.Quitar(_rutaArchivo);
-            AuditoriaService.Registrar("GUARDADO_MANUAL_SIN_TEXTO",
-                _atajoUsado is null ? $"Ruta={rutaFinal}" : $"Ruta={rutaFinal}; AccesoRapido={_atajoUsado}");
+            AuditoriaService.Registrar(
+                "GUARDADO_MANUAL_SIN_TEXTO",
+                _atajoUsado is null
+                    ? $"Ruta={rutaFinal}"
+                    : $"Ruta={rutaFinal}; AccesoRapido={_atajoUsado}"
+            );
 
             var mensaje = $"Documento guardado en:\n{rutaFinal}";
             if (_nombreAtajoAGuardar is not null)
@@ -476,8 +548,13 @@ public partial class IdentificarSinTextoWindow : Window
                 mensaje += "\n\n" + GuardarAtajo(_nombreAtajoAGuardar);
             }
 
-            System.Windows.MessageBox.Show(this, mensaje, "Archivero",
-                MessageBoxButton.OK, MessageBoxImage.Information);
+            System.Windows.MessageBox.Show(
+                this,
+                mensaje,
+                "Archivero",
+                MessageBoxButton.OK,
+                MessageBoxImage.Information
+            );
 
             DialogResult = true;
             Close();
@@ -497,8 +574,10 @@ public partial class IdentificarSinTextoWindow : Window
         try
         {
             _atajos.Guardar(nombreAtajo, _carpetaMadre, _formato, _patron, _reglaNombre);
-            AuditoriaService.Registrar("ACCESO_RAPIDO_GUARDADO",
-                $"Nombre={nombreAtajo}; Carpeta={_carpetaMadre}; Formato={_formato}; Regla={string.Join(",", _reglaNombre)}");
+            AuditoriaService.Registrar(
+                "ACCESO_RAPIDO_GUARDADO",
+                $"Nombre={nombreAtajo}; Carpeta={_carpetaMadre}; Formato={_formato}; Regla={string.Join(",", _reglaNombre)}"
+            );
             return $"Acceso rápido guardado: \"{nombreAtajo}\".";
         }
         catch (Exception ex)

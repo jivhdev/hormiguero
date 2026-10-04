@@ -5,10 +5,12 @@ namespace Archivero.Datos;
 
 public static class BaseDeDatos
 {
-    public static string RutaArchivo { get; set; } = Path.Combine(
-        Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData),
-        "Archivero",
-        "archivero.db");
+    public static string RutaArchivo { get; set; } =
+        Path.Combine(
+            Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData),
+            "Archivero",
+            "archivero.db"
+        );
 
     public static SqliteConnection CrearConexion()
     {
@@ -22,8 +24,7 @@ public static class BaseDeDatos
     {
         using var conexion = CrearConexion();
         using var comando = conexion.CreateCommand();
-        comando.CommandText =
-            """
+        comando.CommandText = """
             CREATE TABLE IF NOT EXISTS Configuracion (
                 Clave TEXT PRIMARY KEY,
                 Valor TEXT NOT NULL
@@ -103,14 +104,29 @@ public static class BaseDeDatos
         comando.ExecuteNonQuery();
 
         AgregarColumnaSiFalta(conexion, "Marcas", "TextoReferencia", "TEXT NULL");
-        AgregarColumnaSiFalta(conexion, "Pendientes", "Motivo", "TEXT NOT NULL DEFAULT 'NuevoDocumento'");
-        AgregarColumnaSiFalta(conexion, "Configuraciones", "AbrirDespuesDeGuardar", "INTEGER NOT NULL DEFAULT 0");
+        AgregarColumnaSiFalta(
+            conexion,
+            "Pendientes",
+            "Motivo",
+            "TEXT NOT NULL DEFAULT 'NuevoDocumento'"
+        );
+        AgregarColumnaSiFalta(
+            conexion,
+            "Configuraciones",
+            "AbrirDespuesDeGuardar",
+            "INTEGER NOT NULL DEFAULT 0"
+        );
 
         MigrarCheckFormatoCarpeta(conexion);
 
         // Después de la migración de Caso-3 a propósito: esa migración recrea Configuraciones
         // copiando una lista fija de columnas, y una columna agregada antes se perdería.
-        AgregarColumnaSiFalta(conexion, "Configuraciones", "PreguntarNombre", "INTEGER NOT NULL DEFAULT 0");
+        AgregarColumnaSiFalta(
+            conexion,
+            "Configuraciones",
+            "PreguntarNombre",
+            "INTEGER NOT NULL DEFAULT 0"
+        );
     }
 
     /// <summary>
@@ -125,7 +141,8 @@ public static class BaseDeDatos
         string? sqlActual;
         using (var leerSql = conexion.CreateCommand())
         {
-            leerSql.CommandText = "SELECT sql FROM sqlite_master WHERE type = 'table' AND name = 'Configuraciones';";
+            leerSql.CommandText =
+                "SELECT sql FROM sqlite_master WHERE type = 'table' AND name = 'Configuraciones';";
             sqlActual = leerSql.ExecuteScalar() as string;
         }
 
@@ -148,8 +165,7 @@ public static class BaseDeDatos
             using (var crear = conexion.CreateCommand())
             {
                 crear.Transaction = transaccion;
-                crear.CommandText =
-                    """
+                crear.CommandText = """
                     CREATE TABLE Configuraciones_Nueva (
                         Id INTEGER PRIMARY KEY AUTOINCREMENT,
                         EmisorId INTEGER NOT NULL REFERENCES EntidadesConocidas (Id),
@@ -187,7 +203,9 @@ public static class BaseDeDatos
         using var lector = verificarFks.ExecuteReader();
         if (lector.Read())
         {
-            throw new InvalidOperationException("La migración de Configuraciones rompió una referencia existente.");
+            throw new InvalidOperationException(
+                "La migración de Configuraciones rompió una referencia existente."
+            );
         }
     }
 
@@ -195,7 +213,12 @@ public static class BaseDeDatos
     /// Migración mínima para bases ya existentes: agrega una columna nueva si todavía no está,
     /// sin tocar los datos ya guardados. SQLite no soporta "ADD COLUMN IF NOT EXISTS" directo.
     /// </summary>
-    private static void AgregarColumnaSiFalta(SqliteConnection conexion, string tabla, string columna, string definicionSql)
+    private static void AgregarColumnaSiFalta(
+        SqliteConnection conexion,
+        string tabla,
+        string columna,
+        string definicionSql
+    )
     {
         using (var verificar = conexion.CreateCommand())
         {
