@@ -1,0 +1,236 @@
+<UserControl
+  x:Class="Hormiguero.Archivero.PantallaPrincipal"
+  xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+  xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+  Background="{DynamicResource Hormiguero.Fondo}"
+>
+  <Grid>
+    <Grid.ColumnDefinitions>
+      <ColumnDefinition Width="*" />
+      <ColumnDefinition Width="*" />
+    </Grid.ColumnDefinitions>
+
+    <!-- Columna izquierda: vigilancia y avisos -->
+    <ScrollViewer Grid.Column="0" Margin="{DynamicResource Hormiguero.Margen}">
+      <StackPanel HorizontalAlignment="Stretch">
+        <Border
+          Background="{DynamicResource Hormiguero.Superficie}"
+          BorderBrush="{DynamicResource Hormiguero.Borde}"
+          BorderThickness="1"
+          CornerRadius="{DynamicResource Hormiguero.Radio}"
+          Padding="{DynamicResource Hormiguero.Margen}"
+        >
+          <StackPanel>
+            <TextBlock
+              Text="Carpetas vigiladas"
+              FontSize="{DynamicResource Hormiguero.TextoTitulo}"
+              Foreground="{DynamicResource Hormiguero.Texto}"
+              Margin="0,0,0,8"
+            />
+            <ItemsControl x:Name="ListaCarpetas">
+              <ItemsControl.ItemTemplate>
+                <DataTemplate>
+                  <Grid Margin="0,4">
+                    <Grid.ColumnDefinitions>
+                      <ColumnDefinition Width="*" />
+                      <ColumnDefinition Width="Auto" />
+                    </Grid.ColumnDefinitions>
+                    <TextBlock
+                      Grid.Column="0"
+                      Text="{Binding Ruta}"
+                      FontSize="{DynamicResource Hormiguero.TextoNormal}"
+                      Foreground="{DynamicResource Hormiguero.Texto}"
+                      VerticalAlignment="Center"
+                      TextTrimming="CharacterEllipsis"
+                      Margin="0,0,8,0"
+                    />
+                    <TextBlock
+                      Grid.Column="1"
+                      Text="{Binding TextoEstado}"
+                      FontSize="{DynamicResource Hormiguero.TextoNormal}"
+                      Foreground="{Binding ColorEstado}"
+                      VerticalAlignment="Center"
+                    />
+                  </Grid>
+                </DataTemplate>
+              </ItemsControl.ItemTemplate>
+            </ItemsControl>
+            <StackPanel Orientation="Horizontal" Margin="0,12,0,0">
+              <Button
+                x:Name="BtnRevisarAhora"
+                Content="Revisar ahora"
+                FontSize="{DynamicResource Hormiguero.TextoNormal}"
+                Padding="12,4"
+                Margin="0,0,8,0"
+                Click="RevisarAhora_Click"
+              />
+              <Button
+                x:Name="BtnCambiarCarpetas"
+                Content="Cambiar carpetas"
+                FontSize="{DynamicResource Hormiguero.TextoNormal}"
+                Padding="12,4"
+                Click="CambiarCarpetas_Click"
+              />
+            </StackPanel>
+          </StackPanel>
+        </Border>
+
+        <Border
+          Background="{DynamicResource Hormiguero.Superficie}"
+          BorderBrush="{DynamicResource Hormiguero.Borde}"
+          BorderThickness="1"
+          CornerRadius="{DynamicResource Hormiguero.Radio}"
+          Padding="{DynamicResource Hormiguero.Margen}"
+          Margin="0,12,0,0"
+        >
+          <StackPanel>
+            <TextBlock
+              Text="Avisos"
+              FontSize="{DynamicResource Hormiguero.TextoTitulo}"
+              Foreground="{DynamicResource Hormiguero.Texto}"
+              Margin="0,0,0,8"
+            />
+            <ItemsControl x:Name="ListaAvisos">
+              <ItemsControl.ItemTemplate>
+                <DataTemplate>
+                  <StackPanel Margin="0,0,0,12">
+                    <TextBlock
+                      Text="{Binding Titulo}"
+                      FontSize="{DynamicResource Hormiguero.TextoNormal}"
+                      FontWeight="SemiBold"
+                      Foreground="{DynamicResource Hormiguero.Texto}"
+                    />
+                    <ItemsControl ItemsSource="{Binding Filas}" Margin="8,0,0,0">
+                      <ItemsControl.ItemTemplate>
+                        <DataTemplate>
+                          <Grid Margin="0,4">
+                            <Grid.ColumnDefinitions>
+                              <ColumnDefinition Width="*" />
+                              <ColumnDefinition Width="Auto" />
+                            </Grid.ColumnDefinitions>
+                            <StackPanel Grid.Column="0" Orientation="Horizontal">
+                              <TextBlock
+                                Text="{Binding Nombre}"
+                                FontSize="{DynamicResource Hormiguero.TextoNormal}"
+                                Foreground="{DynamicResource Hormiguero.Texto}"
+                                VerticalAlignment="Center"
+                                TextTrimming="CharacterEllipsis"
+                                Margin="0,0,8,0"
+                              />
+                              <TextBlock
+                                Text="{Binding Detalle}"
+                                FontSize="{DynamicResource Hormiguero.TextoNormal}"
+                                Foreground="{DynamicResource Hormiguero.TextoSecundario}"
+                                VerticalAlignment="Center"
+                                TextTrimming="CharacterEllipsis"
+                                Visibility="{Binding VisibilidadDetalle}"
+                              />
+                            </StackPanel>
+                            <Button
+                              Grid.Column="1"
+                              Content="{Binding TextoBoton}"
+                              FontSize="{DynamicResource Hormiguero.TextoNormal}"
+                              Padding="12,4"
+                              VerticalAlignment="Center"
+                              Visibility="{Binding VisibilidadBoton}"
+                              Tag="{Binding}"
+                              Click="Pendiente_Click"
+                            />
+                          </Grid>
+                        </DataTemplate>
+                      </ItemsControl.ItemTemplate>
+                    </ItemsControl>
+                  </StackPanel>
+                </DataTemplate>
+              </ItemsControl.ItemTemplate>
+            </ItemsControl>
+            <TextBlock
+              x:Name="SinAvisos"
+              Text="Sin avisos: todo está en su lugar"
+              FontSize="{DynamicResource Hormiguero.TextoNormal}"
+              Foreground="{DynamicResource Hormiguero.TextoSecundario}"
+              Margin="0,4,0,0"
+            />
+          </StackPanel>
+        </Border>
+      </StackPanel>
+    </ScrollViewer>
+
+    <!-- Columna derecha: guardados recientes -->
+    <ScrollViewer Grid.Column="1" Margin="{DynamicResource Hormiguero.Margen}">
+      <Border
+        Background="{DynamicResource Hormiguero.Superficie}"
+        BorderBrush="{DynamicResource Hormiguero.Borde}"
+        BorderThickness="1"
+        CornerRadius="{DynamicResource Hormiguero.Radio}"
+        Padding="{DynamicResource Hormiguero.Margen}"
+      >
+        <StackPanel>
+          <TextBlock
+            Text="Guardados recientes"
+            FontSize="{DynamicResource Hormiguero.TextoTitulo}"
+            Foreground="{DynamicResource Hormiguero.Texto}"
+            Margin="0,0,0,8"
+          />
+          <TextBlock
+            x:Name="SinRecientes"
+            Text="Todavía no se han guardado documentos"
+            FontSize="{DynamicResource Hormiguero.TextoNormal}"
+            Foreground="{DynamicResource Hormiguero.TextoSecundario}"
+            Margin="0,4,0,0"
+          />
+          <ItemsControl x:Name="ListaRecientes">
+            <ItemsControl.ItemTemplate>
+              <DataTemplate>
+                <Border
+                  BorderBrush="{DynamicResource Hormiguero.Borde}"
+                  BorderThickness="0,0,0,1"
+                  Margin="0,8"
+                  Padding="0,0,0,8"
+                >
+                  <StackPanel>
+                    <TextBlock
+                      Text="{Binding Titulo}"
+                      FontSize="{DynamicResource Hormiguero.TextoTitulo}"
+                      Foreground="{Binding ColorTitulo}"
+                      TextWrapping="Wrap"
+                    />
+                    <TextBlock
+                      Text="{Binding Detalle}"
+                      FontSize="{DynamicResource Hormiguero.TextoNormal}"
+                      Foreground="{DynamicResource Hormiguero.TextoSecundario}"
+                      TextWrapping="Wrap"
+                      Margin="0,4,0,0"
+                      Visibility="{Binding VisibilidadDetalle}"
+                    />
+                    <StackPanel
+                      Orientation="Horizontal"
+                      Margin="0,8,0,0"
+                      Visibility="{Binding VisibilidadBotones}"
+                    >
+                      <Button
+                        Content="Abrir"
+                        FontSize="{DynamicResource Hormiguero.TextoNormal}"
+                        Padding="12,4"
+                        Margin="0,0,8,0"
+                        Tag="{Binding}"
+                        Click="Abrir_Click"
+                      />
+                      <Button
+                        Content="Carpeta"
+                        FontSize="{DynamicResource Hormiguero.TextoNormal}"
+                        Padding="12,4"
+                        Tag="{Binding}"
+                        Click="Carpeta_Click"
+                      />
+                    </StackPanel>
+                  </StackPanel>
+                </Border>
+              </DataTemplate>
+            </ItemsControl.ItemTemplate>
+          </ItemsControl>
+        </StackPanel>
+      </Border>
+    </ScrollViewer>
+  </Grid>
+</UserControl>
