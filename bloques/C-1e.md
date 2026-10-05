@@ -2,7 +2,7 @@
 bloque: C-1e
 app: Núcleo
 fase: C
-estado: pendiente
+estado: hecho
 agente: Codex
 modelo: codex
 archivos_permitidos: [src/Hormiguero.Nucleo/**, tests/Hormiguero.Nucleo.Tests/**]
@@ -24,3 +24,13 @@ Pruebas: migración nueva/repetida/sobre v7 con datos; regla válida e inválida
 `dotnet build` sin advertencias; `dotnet test` todo pasa; `dotnet csharpier check .` sin errores. Si algo no está definido en el diseño, **decide lo más simple y seguro, anótalo en el reporte y sigue** (no te detengas). Reporte al final.
 
 ## Reporte del agente
+
+Implementé la migración v8 con reglas de alerta, alertas e historial; repositorio para crear, editar y anular reglas, crear alertas manuales o desde regla, calcular vencimientos, cambiar estados, consultar historial y listar por estado, cadena, versión o documento con contador. El historial/auditoría se guarda en la misma transacción que la operación. Triggers impiden borrar alertas o editar/borrar historial.
+
+Decisiones para lo que el diseño dejaba abierto:
+- La identidad idempotente de alerta automática es regla + cadena + vagón destino; la clave de evento se conserva como dato. `repetir` queda almacenado para el evaluador C-1f y no permite duplicados en C-1e.
+- Una alerta manual se asocia a una cadena (con vagón opcional) o a una versión de documento. Fecha/texto y parámetros calculados quedan como copia en la alerta.
+- Resolver y descartar exigen motivo según el alcance del bloque; reabrir vuelve a pendiente. Marcar vencida es una transición explícita; no hay evaluación automática.
+- Las alertas conservan su cálculo ante cambios posteriores de la regla o del calendario.
+
+Verificación: `dotnet build` correcto, 0 advertencias; `dotnet test` correcto: 116 Núcleo, 9 Diseño, 284 Archivero, 119 Mensajero y 130 Buscadero; `dotnet csharpier check .` correcto (248 archivos).

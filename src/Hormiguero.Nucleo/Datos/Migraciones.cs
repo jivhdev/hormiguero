@@ -151,6 +151,38 @@ public static class Migraciones
                 + "CREATE INDEX IF NOT EXISTS idx_feriados_calendario_fecha_activo "
                 + "ON feriados(calendario_id, fecha, activo);"
         ),
+        (
+            8,
+            "CREATE TABLE IF NOT EXISTS reglas_alerta("
+                + "id INTEGER PRIMARY KEY, nombre TEXT NOT NULL, modelo_cadena_id INTEGER NOT NULL REFERENCES modelos_cadena(id), "
+                + "vagon_origen_modelo_id INTEGER NOT NULL, vagon_destino_modelo_id INTEGER NOT NULL, evento TEXT NOT NULL, "
+                + "dias INTEGER NOT NULL CHECK(dias BETWEEN 0 AND 3650), modo_dias TEXT NOT NULL CHECK(modo_dias IN ('corridos','habiles')), "
+                + "calendario_id INTEGER NULL REFERENCES calendarios_feriados(id), texto_aviso TEXT NOT NULL, repetir INTEGER NOT NULL DEFAULT 0 CHECK(repetir IN (0,1)), "
+                + "estado TEXT NOT NULL DEFAULT 'activa' CHECK(estado IN ('activa','anulada')), creada_en TEXT NOT NULL, actualizada_en TEXT NOT NULL, "
+                + "fecha_anulacion TEXT NULL, FOREIGN KEY(modelo_cadena_id,vagon_origen_modelo_id) REFERENCES vagones_modelo(modelo_id,id), "
+                + "FOREIGN KEY(modelo_cadena_id,vagon_destino_modelo_id) REFERENCES vagones_modelo(modelo_id,id)); "
+                + "CREATE INDEX IF NOT EXISTS idx_reglas_alerta_modelo_estado ON reglas_alerta(modelo_cadena_id,estado); "
+                + "CREATE TABLE IF NOT EXISTS alertas("
+                + "id INTEGER PRIMARY KEY, regla_id INTEGER NULL REFERENCES reglas_alerta(id), cadena_id INTEGER NULL REFERENCES cadenas(id), "
+                + "vagon_cadena_id INTEGER NULL, version_id INTEGER NULL REFERENCES versiones_documento(id), clave_evento TEXT NULL, "
+                + "texto TEXT NOT NULL, estado TEXT NOT NULL CHECK(estado IN ('pendiente','vencida','resuelta','descartada')), motivo TEXT NULL, "
+                + "fecha_base TEXT NULL, cantidad_dias INTEGER NULL, modo_dias TEXT NULL, calendario_id INTEGER NULL REFERENCES calendarios_feriados(id), "
+                + "fecha_objetivo TEXT NOT NULL, creada_en TEXT NOT NULL, actualizada_en TEXT NOT NULL, resuelta_en TEXT NULL, descartada_en TEXT NULL, "
+                + "FOREIGN KEY(cadena_id,vagon_cadena_id) REFERENCES vagones_cadena(cadena_id,id), "
+                + "CHECK((regla_id IS NULL) OR (cadena_id IS NOT NULL AND vagon_cadena_id IS NOT NULL)), "
+                + "CHECK((cadena_id IS NOT NULL) OR (version_id IS NOT NULL))); "
+                + "CREATE UNIQUE INDEX IF NOT EXISTS idx_alertas_idempotencia_regla ON alertas(regla_id,cadena_id,vagon_cadena_id) WHERE regla_id IS NOT NULL; "
+                + "CREATE INDEX IF NOT EXISTS idx_alertas_estado_fecha ON alertas(estado,fecha_objetivo); "
+                + "CREATE INDEX IF NOT EXISTS idx_alertas_cadena_estado ON alertas(cadena_id,estado); "
+                + "CREATE INDEX IF NOT EXISTS idx_alertas_version_estado ON alertas(version_id,estado); "
+                + "CREATE TABLE IF NOT EXISTS historial_alertas("
+                + "id INTEGER PRIMARY KEY, alerta_id INTEGER NOT NULL REFERENCES alertas(id), accion TEXT NOT NULL, estado_anterior TEXT NULL, "
+                + "estado_nuevo TEXT NOT NULL, motivo TEXT NULL, datos_anteriores TEXT NULL, datos_nuevos TEXT NULL, fecha TEXT NOT NULL, app TEXT NOT NULL); "
+                + "CREATE INDEX IF NOT EXISTS idx_historial_alertas_alerta_fecha ON historial_alertas(alerta_id,fecha,id); "
+                + "CREATE TRIGGER IF NOT EXISTS trg_alertas_no_borrar BEFORE DELETE ON alertas BEGIN SELECT RAISE(ABORT,'Las alertas no se borran.'); END; "
+                + "CREATE TRIGGER IF NOT EXISTS trg_historial_alertas_no_editar BEFORE UPDATE ON historial_alertas BEGIN SELECT RAISE(ABORT,'El historial de alertas es inmutable.'); END; "
+                + "CREATE TRIGGER IF NOT EXISTS trg_historial_alertas_no_borrar BEFORE DELETE ON historial_alertas BEGIN SELECT RAISE(ABORT,'El historial de alertas es inmutable.'); END;"
+        ),
     ];
 
     public static void Aplicar(
