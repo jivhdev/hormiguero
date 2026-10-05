@@ -119,10 +119,28 @@ public partial class MainWindow : Window
             Dispatcher.Invoke(ActualizarContadorDudosos);
         _lineas = new ServicioLineas(repositorioLineas);
 
+        _ = EvaluarAlertasAlAbrirAsync();
         CargarCarpetas();
         ActualizarSugerenciasCarpeta();
         RefrescarLineas();
         _indexadoEnSegundoPlano.Pedir();
+    }
+
+    private async Task EvaluarAlertasAlAbrirAsync()
+    {
+        string ruta = Hormiguero.Nucleo.Datos.DocumentosGuardados.RutaBaseComun;
+        try
+        {
+            await Task.Run(() =>
+            {
+                using var conexion = Hormiguero.Nucleo.Datos.BaseComun.Abrir(ruta);
+                new Hormiguero.Nucleo.Datos.EvaluadorAlertas(conexion).Evaluar();
+            });
+        }
+        catch (Exception error)
+        {
+            MostrarMensaje($"No se pudieron evaluar las alertas: {error.Message}");
+        }
     }
 
     private void CargarCarpetas()

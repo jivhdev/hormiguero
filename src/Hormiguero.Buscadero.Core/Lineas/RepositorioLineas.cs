@@ -289,6 +289,7 @@ public sealed class RepositorioLineas : IDisposable
         {
             if (enlaceActivo is not null)
                 _enlaces.DeshacerEnlace(enlaceActivo.Id);
+            EvaluarAlertasEnSegundoPlano();
             return;
         }
         var (_, version) = _documentos.AsegurarDocumentoYVersionVigente(rutaDocumento);
@@ -320,9 +321,34 @@ public sealed class RepositorioLineas : IDisposable
                     $"No se pudieron revisar los enlaces autom\u00e1ticos de la cadena {cadenaId}: {error.Message}"
                 );
             }
+            try
+            {
+                new EvaluadorAlertas(conexion).Evaluar();
+            }
+            catch (Exception error)
+            {
+                ErrorRevisionMotor?.Invoke($"No se pudieron evaluar las alertas: {error.Message}");
+            }
             finally
             {
                 RevisionMotorCompletada?.Invoke();
+            }
+        });
+    }
+
+    private void EvaluarAlertasEnSegundoPlano()
+    {
+        string ruta = _rutaBaseComun;
+        _revisionMotor = Task.Run(() =>
+        {
+            try
+            {
+                using var conexion = BaseComun.Abrir(ruta);
+                new EvaluadorAlertas(conexion).Evaluar();
+            }
+            catch (Exception error)
+            {
+                ErrorRevisionMotor?.Invoke($"No se pudieron evaluar las alertas: {error.Message}");
             }
         });
     }
@@ -471,7 +497,13 @@ public sealed class RepositorioLineas : IDisposable
         return "Hace falta revisar estos documentos antes de enlazarlos.";
     }
 
-    public bool AceptarDudoso(long id) => _enlaces.AceptarDudoso(id);
+    public bool AceptarDudoso(long id)
+    {
+        bool aceptado = _enlaces.AceptarDudoso(id);
+        if (aceptado)
+            EvaluarAlertasEnSegundoPlano();
+        return aceptado;
+    }
 
     public bool RechazarDudoso(long id) => _enlaces.RechazarDudoso(id);
 
