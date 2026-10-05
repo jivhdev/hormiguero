@@ -22,6 +22,7 @@ public partial class VentanaPrincipal : Window
     private string? rutaPdfGuia;
     private bool editorAbierto;
     private VentanaFacturas? ventanaFacturas;
+    private VentanaPlantillas? ventanaPlantillas;
 
     public VentanaPrincipal()
     {
@@ -122,6 +123,21 @@ public partial class VentanaPrincipal : Window
         if (ventanaFacturas.WindowState == WindowState.Minimized)
             ventanaFacturas.WindowState = WindowState.Normal;
         ventanaFacturas.Activate();
+    }
+
+    private void AbrirPlantillas_Click(object sender, RoutedEventArgs e)
+    {
+        if (ventanaPlantillas is null)
+        {
+            ventanaPlantillas = new VentanaPlantillas(almacen) { Owner = this };
+            ventanaPlantillas.Closed += (_, _) => ventanaPlantillas = null;
+            ventanaPlantillas.Show();
+            return;
+        }
+
+        if (ventanaPlantillas.WindowState == WindowState.Minimized)
+            ventanaPlantillas.WindowState = WindowState.Normal;
+        ventanaPlantillas.Activate();
     }
 
     private void UltimoAsunto_Click(object sender, RoutedEventArgs e) => CopiarUltimoAsunto();
