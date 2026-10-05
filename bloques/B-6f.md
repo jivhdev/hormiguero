@@ -25,4 +25,8 @@ Pruebas: coincidencia única → enlace; empate → dudoso; valor corto → dudo
 
 `dotnet build` sin advertencias; `dotnet test` todo pasa; `dotnet csharpier check .` sin errores. Reporte al final.
 
+## Decisión de Claude (respuesta a la pregunta de Codex, 2026-10-04)
+
+Confianza de lectura: un valor **sin confianza informada** (texto extraído del PDF, que hoy es exacto) o **corregido a mano** es confiable. Un valor **con confianza informada** (OCR futuro) es confiable solo si es **≥ 0,90**; si no, el caso va a dudosos con el motivo "la lectura no es segura". El 0,90 es un valor configurable (guardado como configuración, con 0,90 por defecto), no fijo en el código. Sigue con el bloque completo.
+
 ## Reporte del agente
