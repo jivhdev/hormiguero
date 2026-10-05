@@ -1,3 +1,6 @@
+using System.Collections.ObjectModel;
+using System.ComponentModel;
+using System.Runtime.CompilerServices;
 using System.Windows;
 using System.Windows.Controls;
 using Archivero.Datos;
@@ -7,6 +10,53 @@ using Button = System.Windows.Controls.Button;
 using RadioButton = System.Windows.Controls.RadioButton;
 
 namespace Archivero.Vistas;
+
+public sealed class CampoPropioEdicion : INotifyPropertyChanged
+{
+    private string _nombre;
+    private string _estado;
+
+    public CampoPropioEdicion(
+        string nombre,
+        string nombreEstable,
+        string estado = "Todavía no marcado."
+    )
+    {
+        _nombre = nombre;
+        NombreEstable = nombreEstable;
+        _estado = estado;
+    }
+
+    public event PropertyChangedEventHandler? PropertyChanged;
+    public string Nombre
+    {
+        get => _nombre;
+        set
+        {
+            _nombre = value;
+            AvisarCambio();
+        }
+    }
+    public string NombreEstable { get; }
+    public string Estado
+    {
+        get => _estado;
+        set
+        {
+            _estado = value;
+            AvisarCambio();
+        }
+    }
+    public bool Marcado { get; set; }
+    public int Pagina { get; set; }
+    public double X { get; set; }
+    public double Y { get; set; }
+    public double Ancho { get; set; }
+    public double Alto { get; set; }
+
+    private void AvisarCambio([CallerMemberName] string? propiedad = null) =>
+        PropertyChanged?.Invoke(this, new PropertyChangedEventArgs(propiedad));
+}
 
 public partial class IdentificarDocumentoWindow : Window
 {
@@ -25,11 +75,13 @@ public partial class IdentificarDocumentoWindow : Window
     private readonly PendienteRepository _pendientes = new();
     private readonly BorradorRepository _borradores = new();
     private readonly Dictionary<CampoMarca, Marca> _marcas = new();
+    private readonly ObservableCollection<CampoPropioEdicion> _camposPropios = [];
     private readonly Stack<Paso> _pasosRecorridos = new();
 
     private Paso _paso;
     private Paso _pasoInicial = Paso.EmisorTipo;
     private CampoMarca? _campoActivoParaMarcar;
+    private CampoPropioEdicion? _campoPropioActivoParaMarcar;
     private bool _draftYaResuelto;
 
     private string _emisor = string.Empty;
@@ -52,6 +104,7 @@ public partial class IdentificarDocumentoWindow : Window
     public IdentificarDocumentoWindow(string rutaArchivo)
     {
         InitializeComponent();
+        ListaCamposPropios.ItemsSource = _camposPropios;
         _rutaArchivo = rutaArchivo;
         ControlOrganizacion.ConfigurarProveedorDeFecha(LeerFechaPreview);
 
@@ -102,8 +155,10 @@ public partial class IdentificarDocumentoWindow : Window
     )
     {
         InitializeComponent();
+        ListaCamposPropios.ItemsSource = _camposPropios;
         _rutaArchivo = rutaArchivo;
         _edicion = (configuracion, patron.Id);
+        CargarCamposPropios(configuracion.CamposPropios);
         BtnPosponer.Visibility = Visibility.Collapsed;
         ControlOrganizacion.ConfigurarProveedorDeFecha(LeerFechaPreview);
 
@@ -362,6 +417,7 @@ public partial class IdentificarDocumentoWindow : Window
 
     private void ArmarMarca(CampoMarca campo)
     {
+        _campoPropioActivoParaMarcar = null;
         _campoActivoParaMarcar = campo;
         TxtInstruccionPaso.Text =
             $"Dibujar un rectángulo sobre el PDF donde aparece: {NombreCampo(campo)}.";
@@ -416,6 +472,12 @@ public partial class IdentificarDocumentoWindow : Window
 
     private void Visor_MarcaRealizada(int pagina, RectanguloFraccion fraccion)
     {
+        if (_campoPropioActivoParaMarcar is { } campoPropio)
+        {
+            ActualizarCampoPropioMarcado(pagina, fraccion, campoPropio);
+            _campoPropioActivoParaMarcar = null;
+            return;
+        }
         if (_campoActivoParaMarcar is not { } campo)
         {
             return;
@@ -455,6 +517,135 @@ public partial class IdentificarDocumentoWindow : Window
             (m.Campo, m.Pagina, new RectanguloFraccion(m.X, m.Y, m.Ancho, m.Alto))
         );
         Visor.MostrarMarcas(marcas);
+        Visor.MostrarCamposPropios(
+            _camposPropios
+                .Where(c => c.Marcado)
+                .Select(c =>
+                    (c.Nombre, c.Pagina, new RectanguloFraccion(c.X, c.Y, c.Ancho, c.Alto))
+                )
+        );
+    }
+
+    private void CargarCamposPropios(IEnumerable<CampoPropio> campos)
+    {
+        _camposPropios.Clear();
+        foreach (var campo in campos)
+        {
+            var texto = LectorPdf.ExtraerTexto(
+                _rutaArchivo,
+                campo.Pagina,
+                new(campo.X, campo.Y, campo.Ancho, campo.Alto)
+            );
+            var edicion = CrearCampoPropioEdicion(
+                campo.Nombre,
+                campo.NombreEstable,
+                string.IsNullOrWhiteSpace(texto)
+                    ? "Zona guardada; no se pudo leer un valor de ejemplo."
+                    : $"Valor de ejemplo: \"{texto}\" (página {campo.Pagina + 1})."
+            );
+            edicion.Marcado = true;
+            edicion.Pagina = campo.Pagina;
+            edicion.X = campo.X;
+            edicion.Y = campo.Y;
+            edicion.Ancho = campo.Ancho;
+            edicion.Alto = campo.Alto;
+            _camposPropios.Add(edicion);
+        }
+    }
+
+    private void BtnAgregarCampoPropio_Click(object sender, RoutedEventArgs e) =>
+        _camposPropios.Add(CrearCampoPropioEdicion(string.Empty, $"campo_{Guid.NewGuid():N}"));
+
+    private CampoPropioEdicion CrearCampoPropioEdicion(
+        string nombre,
+        string nombreEstable,
+        string estado = "Todavía no marcado."
+    )
+    {
+        var campo = new CampoPropioEdicion(nombre, nombreEstable, estado);
+        campo.PropertyChanged += (_, args) =>
+        {
+            if (args.PropertyName == nameof(CampoPropioEdicion.Nombre))
+                ActualizarMarcasEnVisor();
+        };
+        return campo;
+    }
+
+    private void BtnQuitarCampoPropio_Click(object sender, RoutedEventArgs e)
+    {
+        if (sender is Button { DataContext: CampoPropioEdicion campo })
+        {
+            _camposPropios.Remove(campo);
+            if (ReferenceEquals(_campoPropioActivoParaMarcar, campo))
+                _campoPropioActivoParaMarcar = null;
+            ActualizarMarcasEnVisor();
+        }
+    }
+
+    private void BtnMarcarCampoPropio_Click(object sender, RoutedEventArgs e)
+    {
+        if (sender is not Button { DataContext: CampoPropioEdicion campo })
+            return;
+        if (string.IsNullOrWhiteSpace(campo.Nombre))
+        {
+            MostrarError("Escribe el nombre del dato antes de marcar su zona.");
+            return;
+        }
+
+        _campoActivoParaMarcar = null;
+        ResaltarBotonActivo(null);
+        _campoPropioActivoParaMarcar = campo;
+        TxtInstruccionPaso.Text =
+            $"Dibujar un rectángulo sobre el PDF donde aparece: {campo.Nombre.Trim()}.";
+    }
+
+    private void ActualizarCampoPropioMarcado(
+        int pagina,
+        RectanguloFraccion fraccion,
+        CampoPropioEdicion campo
+    )
+    {
+        var texto = LectorPdf.ExtraerTexto(_rutaArchivo, pagina, fraccion);
+        campo.Marcado = true;
+        campo.Pagina = pagina;
+        campo.X = fraccion.X;
+        campo.Y = fraccion.Y;
+        campo.Ancho = fraccion.Ancho;
+        campo.Alto = fraccion.Alto;
+        campo.Estado = string.IsNullOrWhiteSpace(texto)
+            ? $"Zona marcada en la página {pagina + 1}, pero no se pudo leer texto."
+            : $"Valor de ejemplo: \"{texto}\" (página {pagina + 1}).";
+        ActualizarMarcasEnVisor();
+    }
+
+    private List<CampoPropio> LeerCamposPropiosValidados()
+    {
+        var campos = new List<CampoPropio>();
+        var nombres = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
+        foreach (var campo in _camposPropios)
+        {
+            var nombre = campo.Nombre.Trim();
+            if (string.IsNullOrWhiteSpace(nombre) || !campo.Marcado)
+                throw new InvalidOperationException(
+                    "Cada dato propio necesita un nombre y una zona marcada en el PDF."
+                );
+            if (!nombres.Add(nombre))
+                throw new InvalidOperationException(
+                    $"El nombre de dato \"{nombre}\" está repetido."
+                );
+            campos.Add(
+                new(
+                    nombre,
+                    campo.NombreEstable,
+                    campo.Pagina,
+                    campo.X,
+                    campo.Y,
+                    campo.Ancho,
+                    campo.Alto
+                )
+            );
+        }
+        return campos;
     }
 
     private void ActualizarEstadosDeMarca()
@@ -583,6 +774,8 @@ public partial class IdentificarDocumentoWindow : Window
     private void AplicarConfiguracionExistente(ConfiguracionDocumento existente)
     {
         _configuracionExistente = existente;
+        CargarCamposPropios(existente.CamposPropios);
+        ActualizarMarcasEnVisor();
         _carpetaDestino = existente.CarpetaDestino;
         _formato = existente.FormatoCarpeta;
         _patronCarpeta = existente.PatronCarpeta;
@@ -982,6 +1175,7 @@ public partial class IdentificarDocumentoWindow : Window
     {
         try
         {
+            var camposPropios = LeerCamposPropiosValidados();
             var marcas = _marcas.Values.ToList();
 
             DateTime? fecha = null;
@@ -1044,6 +1238,7 @@ public partial class IdentificarDocumentoWindow : Window
                     _abrirDespuesDeGuardar,
                     _preguntarNombre
                 );
+                _configuraciones.GuardarCamposPropios(edicion.Configuracion.Id, camposPropios);
                 AuditoriaService.Registrar(
                     "CLASIFICACION_EDITADA",
                     $"Emisor={_emisor}; Tipo={_tipo}"
@@ -1144,6 +1339,10 @@ public partial class IdentificarDocumentoWindow : Window
                 _configuracionExistente.Id,
                 marcas
             );
+            _configuraciones.GuardarCamposPropios(
+                _configuracionExistente.Id,
+                LeerCamposPropiosValidados()
+            );
             AuditoriaService.Registrar(
                 "CLASIFICACION_VINCULADA",
                 $"Emisor={_emisor}; Tipo={_tipo}"
@@ -1151,7 +1350,7 @@ public partial class IdentificarDocumentoWindow : Window
         }
         else
         {
-            _configuraciones.GuardarNueva(
+            var configuracionId = _configuraciones.GuardarNueva(
                 _emisor,
                 _tipo,
                 _carpetaDestino,
@@ -1162,6 +1361,7 @@ public partial class IdentificarDocumentoWindow : Window
                 _abrirDespuesDeGuardar,
                 _preguntarNombre
             );
+            _configuraciones.GuardarCamposPropios(configuracionId, LeerCamposPropiosValidados());
             AuditoriaService.Registrar("CLASIFICACION_CREADA", $"Emisor={_emisor}; Tipo={_tipo}");
         }
 

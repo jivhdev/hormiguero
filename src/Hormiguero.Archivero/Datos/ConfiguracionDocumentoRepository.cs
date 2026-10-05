@@ -125,12 +125,12 @@ public class ConfiguracionDocumentoRepository
     {
         using var conexion = BaseDeDatos.CrearConexion();
         using var tx = conexion.BeginTransaction();
-        using (var borrar = conexion.CreateCommand())
+        using (var desactivar = conexion.CreateCommand())
         {
-            borrar.Transaction = tx;
-            borrar.CommandText = "DELETE FROM CamposPropios WHERE ConfiguracionId=$id;";
-            borrar.Parameters.AddWithValue("$id", configuracionId);
-            borrar.ExecuteNonQuery();
+            desactivar.Transaction = tx;
+            desactivar.CommandText = "UPDATE CamposPropios SET Activo=0 WHERE ConfiguracionId=$id;";
+            desactivar.Parameters.AddWithValue("$id", configuracionId);
+            desactivar.ExecuteNonQuery();
         }
         foreach (var campo in campos)
         {
@@ -138,8 +138,13 @@ public class ConfiguracionDocumentoRepository
             ArgumentException.ThrowIfNullOrWhiteSpace(campo.NombreEstable);
             using var insertar = conexion.CreateCommand();
             insertar.Transaction = tx;
-            insertar.CommandText =
-                "INSERT INTO CamposPropios(ConfiguracionId,Nombre,NombreEstable,Pagina,X,Y,Ancho,Alto) VALUES($id,$n,$e,$p,$x,$y,$a,$l);";
+            insertar.CommandText = """
+                INSERT INTO CamposPropios(ConfiguracionId,Nombre,NombreEstable,Activo,Pagina,X,Y,Ancho,Alto)
+                VALUES($id,$n,$e,1,$p,$x,$y,$a,$l)
+                ON CONFLICT(ConfiguracionId,NombreEstable) DO UPDATE SET
+                    Nombre=excluded.Nombre,Activo=1,Pagina=excluded.Pagina,X=excluded.X,Y=excluded.Y,
+                    Ancho=excluded.Ancho,Alto=excluded.Alto;
+                """;
             insertar.Parameters.AddWithValue("$id", configuracionId);
             insertar.Parameters.AddWithValue("$n", campo.Nombre.Trim());
             insertar.Parameters.AddWithValue("$e", campo.NombreEstable.Trim());
@@ -160,7 +165,7 @@ public class ConfiguracionDocumentoRepository
     {
         using var cmd = conexion.CreateCommand();
         cmd.CommandText =
-            "SELECT Nombre,NombreEstable,Pagina,X,Y,Ancho,Alto FROM CamposPropios WHERE ConfiguracionId=$id ORDER BY Id;";
+            "SELECT Nombre,NombreEstable,Pagina,X,Y,Ancho,Alto FROM CamposPropios WHERE ConfiguracionId=$id AND Activo=1 ORDER BY Id;";
         cmd.Parameters.AddWithValue("$id", configuracionId);
         using var lector = cmd.ExecuteReader();
         var campos = new List<CampoPropio>();

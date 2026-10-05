@@ -26,7 +26,18 @@ public partial class VisorPdfConMarcado : UserControl
     private int _altoPaginaActual;
     private Point? _inicioArrastre;
     private Rectangle? _rectanguloArrastre;
-    private List<(CampoMarca Campo, int Pagina, RectanguloFraccion Rect)> _marcasGuardadas = [];
+    private List<(
+        string Etiqueta,
+        Color Color,
+        int Pagina,
+        RectanguloFraccion Rect
+    )> _marcasGuardadas = [];
+    private List<(
+        string Etiqueta,
+        Color Color,
+        int Pagina,
+        RectanguloFraccion Rect
+    )> _marcasPropias = [];
 
     public event Action<int, RectanguloFraccion>? MarcaRealizada;
 
@@ -65,7 +76,19 @@ public partial class VisorPdfConMarcado : UserControl
         IEnumerable<(CampoMarca Campo, int Pagina, RectanguloFraccion Rect)> marcas
     )
     {
-        _marcasGuardadas = marcas.ToList();
+        _marcasGuardadas = marcas
+            .Select(m => (NombreCampo(m.Campo), ColorParaCampo(m.Campo), m.Pagina, m.Rect))
+            .ToList();
+        RedibujarMarcasPersistentes();
+    }
+
+    public void MostrarCamposPropios(
+        IEnumerable<(string Nombre, int Pagina, RectanguloFraccion Rect)> marcas
+    )
+    {
+        _marcasPropias = marcas
+            .Select(m => (m.Nombre, Colors.MediumPurple, m.Pagina, m.Rect))
+            .ToList();
         RedibujarMarcasPersistentes();
     }
 
@@ -102,20 +125,19 @@ public partial class VisorPdfConMarcado : UserControl
     {
         CapaMarcas.Children.Clear();
 
-        foreach (var (campo, pagina, rect) in _marcasGuardadas)
+        foreach (var (etiqueta, color, pagina, rect) in _marcasGuardadas.Concat(_marcasPropias))
         {
             if (pagina != _paginaActual)
             {
                 continue;
             }
 
-            DibujarMarcaPersistente(campo, rect);
+            DibujarMarcaPersistente(etiqueta, color, rect);
         }
     }
 
-    private void DibujarMarcaPersistente(CampoMarca campo, RectanguloFraccion rect)
+    private void DibujarMarcaPersistente(string etiqueta, Color color, RectanguloFraccion rect)
     {
-        var color = ColorParaCampo(campo);
         var x = rect.X * _anchoPaginaActual;
         var y = rect.Y * _altoPaginaActual;
         var ancho = rect.Ancho * _anchoPaginaActual;
@@ -133,17 +155,17 @@ public partial class VisorPdfConMarcado : UserControl
         Canvas.SetTop(rectangulo, y);
         CapaMarcas.Children.Add(rectangulo);
 
-        var etiqueta = new TextBlock
+        var elementoEtiqueta = new TextBlock
         {
-            Text = NombreCampo(campo),
+            Text = etiqueta,
             Background = new SolidColorBrush(color),
             Foreground = Brushes.White,
             Padding = new Thickness(3, 1, 3, 1),
             FontSize = 12,
         };
-        Canvas.SetLeft(etiqueta, x);
-        Canvas.SetTop(etiqueta, Math.Max(0, y - 18));
-        CapaMarcas.Children.Add(etiqueta);
+        Canvas.SetLeft(elementoEtiqueta, x);
+        Canvas.SetTop(elementoEtiqueta, Math.Max(0, y - 18));
+        CapaMarcas.Children.Add(elementoEtiqueta);
     }
 
     private static Color ColorParaCampo(CampoMarca campo) =>
