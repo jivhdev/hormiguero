@@ -20,5 +20,6 @@
 
   <ItemGroup>
     <ProjectReference Include="..\..\src\Hormiguero.Buscadero.Core\Hormiguero.Buscadero.Core.csproj" />
+    <ProjectReference Include="..\..\src\Hormiguero.Buscadero\Hormiguero.Buscadero.csproj" />
   </ItemGroup>
 </Project>

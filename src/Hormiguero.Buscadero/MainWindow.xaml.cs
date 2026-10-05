@@ -118,12 +118,14 @@ public partial class MainWindow : Window
         repositorioLineas.RevisionMotorCompletada += () =>
             Dispatcher.Invoke(ActualizarContadorDudosos);
         _lineas = new ServicioLineas(repositorioLineas);
+        Closed += (_, _) => _lineas.Dispose();
 
         _ = EvaluarAlertasAlAbrirAsync();
         CargarCarpetas();
         ActualizarSugerenciasCarpeta();
         RefrescarLineas();
         _indexadoEnSegundoPlano.Pedir();
+        ActualizarContadorAlertas();
     }
 
     private async Task EvaluarAlertasAlAbrirAsync()
@@ -141,6 +143,7 @@ public partial class MainWindow : Window
         {
             MostrarMensaje($"No se pudieron evaluar las alertas: {error.Message}");
         }
+        ActualizarContadorAlertas();
     }
 
     private void CargarCarpetas()
@@ -1072,6 +1075,70 @@ public partial class MainWindow : Window
         ActualizarContadorDudosos();
     }
 
+    private void ActualizarContadorAlertas()
+    {
+        try
+        {
+            using var conexion = Hormiguero.Nucleo.Datos.BaseComun.Abrir(
+                Hormiguero.Nucleo.Datos.DocumentosGuardados.RutaBaseComun
+            );
+            var alertas = new Hormiguero.Nucleo.Datos.RepositorioAlertas(conexion)
+                .Listar(limite: 10000)
+                .Alertas;
+            int abiertas = alertas.Count(a => a.Estado is "pendiente" or "vencida");
+            int vencidas = alertas.Count(a => a.Estado == "vencida");
+            BotonAlertas.Content = $"{abiertas} alertas";
+            BotonAlertas.Background =
+                vencidas > 0
+                    ? (Brush)Application.Current.FindResource("Hormiguero.AvisoSuave")
+                    : (Brush)Application.Current.FindResource("Hormiguero.Superficie");
+            BotonAlertas.BorderBrush =
+                vencidas > 0
+                    ? (Brush)Application.Current.FindResource("Hormiguero.Aviso")
+                    : (Brush)Application.Current.FindResource("Hormiguero.Borde");
+        }
+        catch (Exception error)
+        {
+            BotonAlertas.Content = "Alertas no disponibles";
+            MostrarMensaje($"No se pudieron cargar las alertas: {error.Message}");
+        }
+    }
+
+    private void BotonAlertas_Click(object sender, RoutedEventArgs e)
+    {
+        try
+        {
+            var ruta = Hormiguero.Nucleo.Datos.DocumentosGuardados.RutaBaseComun;
+            using (var conexion = Hormiguero.Nucleo.Datos.BaseComun.Abrir(ruta))
+                new Hormiguero.Nucleo.Datos.EvaluadorAlertas(conexion).Evaluar();
+            var dialogo = new DialogoAlertas(ruta, MostrarCadena) { Owner = this };
+            dialogo.ShowDialog();
+        }
+        catch (Exception error)
+        {
+            MostrarMensaje($"No se pudieron abrir las alertas: {error.Message}");
+        }
+        ActualizarContadorAlertas();
+    }
+
+    private void BotonRecordarme_Click(object sender, RoutedEventArgs e)
+    {
+        if (_cadenaActivaId is not long cadenaId)
+            return;
+        var dialogo = new DialogoRecordatorio(cadenaId) { Owner = this };
+        if (dialogo.ShowDialog() == true)
+        {
+            ActualizarContadorAlertas();
+            ActualizarAlertasCadena(cadenaId);
+        }
+    }
+
+    private void BotonCalcularFecha_Click(object sender, RoutedEventArgs e) =>
+        new DialogoCalculadoraFechas { Owner = this }.ShowDialog();
+
+    private void BotonFeriados_Click(object sender, RoutedEventArgs e) =>
+        new DialogoFeriados { Owner = this }.ShowDialog();
+
     private void RefrescarPlantillas()
     {
         var idSeleccionada = (ListaPlantillas.SelectedItem as PlantillaLinea)?.Id;
@@ -1106,6 +1173,27 @@ public partial class MainWindow : Window
 
     private void ListaPlantillas_SelectionChanged(object sender, SelectionChangedEventArgs e) =>
         RefrescarArbolPlantilla();
+
+    private void BotonReglaAlerta_Click(object sender, RoutedEventArgs e)
+    {
+        if (ListaPlantillas.SelectedItem is not PlantillaLinea modelo)
+        {
+            MostrarMensaje("Elija un modelo de cadena para configurar el aviso.");
+            return;
+        }
+        var vagones = _lineas
+            .ObtenerArbolPlantilla(modelo.Id)
+            .SelectMany(nodo => new[] { nodo.Vagon }.Concat(nodo.Hijos.Select(hijo => hijo.Vagon)))
+            .ToList();
+        if (vagones.Count < 2)
+        {
+            MostrarMensaje("El modelo necesita al menos dos documentos para configurar el aviso.");
+            return;
+        }
+        var dialogo = new DialogoReglaAlerta(modelo.Id, vagones) { Owner = this };
+        if (dialogo.ShowDialog() == true)
+            MostrarMensaje("El aviso quedó configurado para este modelo.");
+    }
 
     private void ArbolPlantilla_SelectedItemChanged(
         object sender,
@@ -1153,6 +1241,36 @@ public partial class MainWindow : Window
         PanelEntrada.Visibility = Visibility.Collapsed;
         PanelCadena.Visibility = Visibility.Visible;
         ListaFilasCadena.ItemsSource = ConstruirFilas(cadenaId, string.Empty);
+        ActualizarAlertasCadena(cadenaId);
+        Pestanas.SelectedIndex = 1;
+    }
+
+    private void ActualizarAlertasCadena(long cadenaId)
+    {
+        try
+        {
+            using var conexion = Hormiguero.Nucleo.Datos.BaseComun.Abrir(
+                Hormiguero.Nucleo.Datos.DocumentosGuardados.RutaBaseComun
+            );
+            var alertas = new Hormiguero.Nucleo.Datos.RepositorioAlertas(conexion)
+                .Listar(cadenaId: cadenaId, limite: 10000)
+                .Alertas;
+            var abiertas = alertas.Where(a => a.Estado is "pendiente" or "vencida").ToList();
+            TextoAlertasCadena.Text =
+                abiertas.Count == 0
+                    ? "No hay avisos pendientes para esta cadena."
+                    : string.Join(
+                        "\n",
+                        abiertas.Select(a =>
+                            $"{a.Texto} — {Buscadero.Core.Alertas.PresentacionAlertas.ParaCuando(a.FechaObjetivo, DateOnly.FromDateTime(DateTime.Today), Hormiguero.Nucleo.Utilidades.TipoDias.Habiles)} ({(a.Estado == "vencida" ? "Vencida" : "Pendiente")})"
+                        )
+                    );
+        }
+        catch (Exception error)
+        {
+            TextoAlertasCadena.Text =
+                $"No se pudieron cargar los avisos de esta cadena: {error.Message}";
+        }
     }
 
     private async void CajaCadena_MouseLeftButtonDown(object sender, MouseButtonEventArgs e)

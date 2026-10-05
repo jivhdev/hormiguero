@@ -7,10 +7,10 @@
   xmlns:local="clr-namespace:Buscadero.App"
   mc:Ignorable="d"
   Title="Buscadero"
-  Height="720"
-  Width="1000"
-  MinHeight="520"
-  MinWidth="760"
+  Height="768"
+  Width="1366"
+  MinHeight="650"
+  MinWidth="1000"
   PreviewMouseLeftButtonUp="Ventana_PreviewMouseLeftButtonUp"
 >
   <TabControl x:Name="Pestanas" Margin="8">
@@ -483,6 +483,12 @@
               Margin="0,0,6,6"
               Click="BotonBorrarVagon_Click"
             />
+            <Button
+              Content="Avisarme si falta un documento"
+              Padding="8,4"
+              Margin="0,0,6,6"
+              Click="BotonReglaAlerta_Click"
+            />
           </WrapPanel>
           <TextBlock
             x:Name="TextoEstadoPlantilla"
@@ -535,6 +541,28 @@
             HorizontalAlignment="Left"
             Click="BotonDudosos_Click"
           />
+          <Button
+            x:Name="BotonAlertas"
+            Content="0 alertas"
+            Padding="14,10"
+            Margin="8,10,0,0"
+            HorizontalAlignment="Left"
+            Click="BotonAlertas_Click"
+          />
+          <Button
+            Content="Calcular fecha"
+            Padding="10,7"
+            Margin="0,8,8,0"
+            HorizontalAlignment="Left"
+            Click="BotonCalcularFecha_Click"
+          />
+          <Button
+            Content="Feriados"
+            Padding="10,7"
+            Margin="0,8,8,0"
+            HorizontalAlignment="Left"
+            Click="BotonFeriados_Click"
+          />
         </StackPanel>
 
         <DockPanel x:Name="PanelCadena" Visibility="Collapsed">
@@ -561,6 +589,12 @@
                 Click="BotonCerrarCadena_Click"
               />
               <Button
+                Content="Recordarme..."
+                Padding="8,4"
+                Margin="0,0,6,6"
+                Click="BotonRecordarme_Click"
+              />
+              <Button
                 x:Name="BotonBorrarCadena"
                 Content="Borrar cadena"
                 Padding="8,4"
@@ -575,6 +609,12 @@
                 Click="BotonAbrirModelos_Click"
               />
             </WrapPanel>
+            <TextBlock
+              x:Name="TextoAlertasCadena"
+              TextWrapping="Wrap"
+              Margin="0,4,0,0"
+              Foreground="{DynamicResource Hormiguero.TextoSecundario}"
+            />
           </StackPanel>
           <TextBlock
             x:Name="TextoEstadoCadena"
