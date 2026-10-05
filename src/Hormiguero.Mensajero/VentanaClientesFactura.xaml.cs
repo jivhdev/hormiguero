@@ -4,6 +4,7 @@ using System.Windows.Controls;
 using System.Windows.Input;
 using System.Windows.Media;
 using Hormiguero.Mensajero.Core;
+using Hormiguero.Mensajero.Core.ClickFactura;
 using Microsoft.Win32;
 
 namespace Hormiguero.Mensajero.App;
@@ -40,6 +41,15 @@ public partial class VentanaClientesFactura : Window
         }
         try
         {
+            correo = CorreoFactura.NormalizarParaGuardar(correo);
+        }
+        catch (FormatException excepcion)
+        {
+            MostrarAviso("Correo no válido", excepcion.Message, false);
+            return;
+        }
+        try
+        {
             almacen.GuardarClienteFactura(rut, razon, correo, DateTime.Now);
             MostrarAviso("Éxito", $"Cliente {rut} guardado correctamente.", true);
             CampoRut.Clear();
@@ -49,6 +59,7 @@ public partial class VentanaClientesFactura : Window
         }
         catch (Exception excepcion)
         {
+            MensajeroLog.RegistrarError("Guardar cliente de facturas", excepcion);
             MostrarAviso("Error", $"No se pudo guardar: {excepcion.Message}", false);
         }
     }
@@ -89,6 +100,7 @@ public partial class VentanaClientesFactura : Window
         }
         catch (Exception excepcion)
         {
+            MensajeroLog.RegistrarError("Importar clientes de ClickFactura", excepcion);
             MostrarAviso(
                 "Error",
                 $"No se pudieron importar los clientes: {excepcion.Message}",
@@ -113,6 +125,8 @@ public partial class VentanaClientesFactura : Window
 
     private void MostrarAviso(string titulo, string mensaje, bool exito)
     {
+        if (!exito)
+            MensajeroLog.Registrar("AVISO_ERROR", titulo);
         var ventana = new Window
         {
             Title = titulo,

@@ -219,4 +219,64 @@ public sealed class AlmacenMensajeroTests : IDisposable
         Assert.Equal(@"D:\Otra", otra.LeerValor("factura.carpeta_temporal"));
         Assert.Equal("", otra.LeerCarpetaOcc());
     }
+
+    [Fact]
+    public void Normaliza_y_valida_varios_correos_al_guardar_cliente()
+    {
+        using var almacen = new AlmacenMensajero(RutaBase);
+
+        almacen.GuardarClienteFactura(
+            "76000000-1",
+            "Empresa",
+            "uno@ejemplo.cl, dos@ejemplo.cl\n tres@ejemplo.cl",
+            DateTime.Now
+        );
+
+        Assert.Equal(
+            "uno@ejemplo.cl; dos@ejemplo.cl; tres@ejemplo.cl",
+            almacen.BuscarClienteFactura("76000000-1")!.Correo
+        );
+        Assert.Throws<FormatException>(() =>
+            almacen.GuardarClienteFactura("76000000-2", "Empresa", "correo-invalido", DateTime.Now)
+        );
+    }
+
+    [Fact]
+    public void Recuerda_estados_de_envio_por_periodo_y_rut()
+    {
+        using (var almacen = new AlmacenMensajero(RutaBase))
+        {
+            almacen.PrepararEstadosEnvioFactura("semana julio 2026", ["76000000-1", "77000000-2"]);
+            almacen.GuardarEstadoEnvioFactura("semana julio 2026", "77000000-2", true);
+            almacen.GuardarEstadoEnvioFactura("semana julio 2026", "76000000-1", false);
+        }
+
+        using var otra = new AlmacenMensajero(RutaBase);
+        Assert.Equal(["77000000-2"], otra.LeerRutsEnviadosFactura("semana julio 2026"));
+        Assert.Empty(otra.LeerRutsEnviadosFactura("otra semana"));
+        Assert.Equal(
+            ["76000000-1"],
+            EstadoEnvioFactura.Filtrar(
+                new[] { "76000000-1", "77000000-2" },
+                rut => rut,
+                otra.LeerRutsEnviadosFactura("semana julio 2026"),
+                FiltroEstadoEnvioFactura.Pendientes
+            )
+        );
+        otra.PrepararEstadosEnvioFactura("semana julio 2026", ["76000000-1", "77000000-2"]);
+        Assert.Equal(["77000000-2"], otra.LeerRutsEnviadosFactura("semana julio 2026"));
+    }
+
+    [Theory]
+    [InlineData("a@ejemplo.cl", new[] { "a@ejemplo.cl" })]
+    [InlineData("a@ejemplo.cl, b@ejemplo.cl", new[] { "a@ejemplo.cl", "b@ejemplo.cl" })]
+    [InlineData(
+        "Juan Pérez <juan@ejemplo.cl>; x@y",
+        new[] { "Juan Pérez <juan@ejemplo.cl>", "x@y" }
+    )]
+    [InlineData("", new string[0])]
+    public void Separar_correos_para_mostrar_nunca_falla(string entrada, string[] esperado)
+    {
+        Assert.Equal(esperado, CorreoFactura.Separar(entrada));
+    }
 }

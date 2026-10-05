@@ -47,6 +47,7 @@ public partial class EditorClientes : Window
         }
         catch (Exception excepcion)
         {
+            MensajeroLog.RegistrarError("Guardar clientes de Ofisuiza", excepcion);
             MessageBox.Show(
                 this,
                 $"No se pudieron guardar los clientes: {excepcion.Message}",

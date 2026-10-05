@@ -29,7 +29,9 @@ public sealed class AlmacenMensajero : IDisposable
                 + "CREATE TABLE IF NOT EXISTS clientes_nvv(orden INTEGER PRIMARY KEY, linea TEXT NOT NULL); "
                 // Mismas columnas que la tabla clientes de ClickFactura (D-68: se conservan tal cual).
                 + "CREATE TABLE IF NOT EXISTS clientes_factura(rut TEXT PRIMARY KEY, razon_social TEXT NOT NULL, "
-                + "correo TEXT NOT NULL, activo INTEGER NOT NULL DEFAULT 1, creado TEXT NOT NULL, actualizado TEXT NOT NULL);"
+                + "correo TEXT NOT NULL, activo INTEGER NOT NULL DEFAULT 1, creado TEXT NOT NULL, actualizado TEXT NOT NULL); "
+                + "CREATE TABLE IF NOT EXISTS estados_envio_factura(periodo TEXT NOT NULL, rut TEXT NOT NULL, "
+                + "enviado INTEGER NOT NULL DEFAULT 0, actualizado TEXT NOT NULL, PRIMARY KEY(periodo, rut));"
         );
     }
 
@@ -142,6 +144,7 @@ public sealed class AlmacenMensajero : IDisposable
     /// </summary>
     public void GuardarClienteFactura(string rut, string razonSocial, string correo, DateTime ahora)
     {
+        correo = ClickFactura.CorreoFactura.NormalizarParaGuardar(correo);
         string fecha = ahora.ToString("yyyy-MM-dd HH:mm:ss", CultureInfo.InvariantCulture);
         using var comando = conexion.CreateCommand();
         comando.CommandText =
@@ -154,6 +157,57 @@ public sealed class AlmacenMensajero : IDisposable
         comando.Parameters.AddWithValue("$correo", correo);
         comando.Parameters.AddWithValue("$fecha", fecha);
         comando.ExecuteNonQuery();
+    }
+
+    public void PrepararEstadosEnvioFactura(string periodo, IEnumerable<string> ruts)
+    {
+        using var transaccion = conexion.BeginTransaction();
+        foreach (string rut in ruts.Distinct(StringComparer.Ordinal))
+        {
+            using var comando = conexion.CreateCommand();
+            comando.Transaction = transaccion;
+            comando.CommandText =
+                "INSERT OR IGNORE INTO estados_envio_factura(periodo, rut, enviado, actualizado) "
+                + "VALUES ($periodo, $rut, 0, $actualizado);";
+            comando.Parameters.AddWithValue("$periodo", periodo);
+            comando.Parameters.AddWithValue("$rut", rut);
+            comando.Parameters.AddWithValue(
+                "$actualizado",
+                DateTime.Now.ToString("yyyy-MM-dd HH:mm:ss", CultureInfo.InvariantCulture)
+            );
+            comando.ExecuteNonQuery();
+        }
+        transaccion.Commit();
+    }
+
+    public void GuardarEstadoEnvioFactura(string periodo, string rut, bool enviado)
+    {
+        using var comando = conexion.CreateCommand();
+        comando.CommandText =
+            "INSERT INTO estados_envio_factura(periodo, rut, enviado, actualizado) "
+            + "VALUES ($periodo, $rut, $enviado, $actualizado) "
+            + "ON CONFLICT(periodo, rut) DO UPDATE SET enviado = excluded.enviado, actualizado = excluded.actualizado;";
+        comando.Parameters.AddWithValue("$periodo", periodo);
+        comando.Parameters.AddWithValue("$rut", rut);
+        comando.Parameters.AddWithValue("$enviado", enviado ? 1 : 0);
+        comando.Parameters.AddWithValue(
+            "$actualizado",
+            DateTime.Now.ToString("yyyy-MM-dd HH:mm:ss", CultureInfo.InvariantCulture)
+        );
+        comando.ExecuteNonQuery();
+    }
+
+    public IReadOnlySet<string> LeerRutsEnviadosFactura(string periodo)
+    {
+        using var comando = conexion.CreateCommand();
+        comando.CommandText =
+            "SELECT rut FROM estados_envio_factura WHERE periodo = $periodo AND enviado = 1;";
+        comando.Parameters.AddWithValue("$periodo", periodo);
+        using var lector = comando.ExecuteReader();
+        var ruts = new HashSet<string>(StringComparer.Ordinal);
+        while (lector.Read())
+            ruts.Add(lector.GetString(0));
+        return ruts;
     }
 
     /// <summary>

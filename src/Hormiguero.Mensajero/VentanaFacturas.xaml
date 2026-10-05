@@ -262,10 +262,19 @@
       />
       <StackPanel Grid.Row="1" Margin="0,8">
         <TextBlock x:Name="TextoClienteActual" FontSize="16" FontWeight="Bold" />
+        <DockPanel Margin="0,4,0,6">
+          <TextBlock x:Name="TextoConteoEstados" VerticalAlignment="Center" />
+          <ComboBox
+            x:Name="FiltroEnvios"
+            Width="165"
+            Margin="12,0,0,0"
+            SelectionChanged="FiltroEnvios_Changed"
+          />
+        </DockPanel>
         <DockPanel>
           <Button DockPanel.Dock="Right" Content="📋 Copiar correo" Click="CopiarCorreo_Click" />
-          <TextBlock Text="Correo: (Alt+A)  " VerticalAlignment="Center" />
-          <TextBlock x:Name="TextoCorreo" FontWeight="Bold" VerticalAlignment="Center" />
+          <TextBlock Text="Correo (Alt+A):" VerticalAlignment="Top" Margin="0,0,8,0" />
+          <TextBlock x:Name="TextoCorreo" FontWeight="Bold" TextWrapping="Wrap" />
         </DockPanel>
       </StackPanel>
       <DataGrid
@@ -309,30 +318,39 @@
           />
         </Grid>
       </GroupBox>
-      <WrapPanel Grid.Row="4" HorizontalAlignment="Center" Margin="0,5">
-        <Button
-          x:Name="BotonPreparar"
-          Content="📋 Preparar Envío (Alt+F)"
-          Click="PrepararEnvio_Click"
-          Margin="3"
-          Padding="10,7"
+      <StackPanel Grid.Row="4" Margin="0,5">
+        <WrapPanel HorizontalAlignment="Center">
+          <Button
+            x:Name="BotonPreparar"
+            Content="📋 Preparar Envío (Alt+F)"
+            Click="PrepararEnvio_Click"
+            Margin="3"
+            Padding="10,7"
+          />
+          <Button
+            x:Name="BotonPendiente"
+            Content="⏳ Dejar Pendiente"
+            Click="Pendiente_Click"
+            Margin="3"
+            Padding="10,7"
+          />
+          <Button
+            x:Name="BotonEnviado"
+            Content="✅ Marcar como Enviado"
+            Click="Enviado_Click"
+            IsEnabled="False"
+            Margin="3"
+            Padding="10,7"
+          />
+        </WrapPanel>
+        <TextBlock
+          Text="Copia los PDF de este cliente a una carpeta y los deja listos para pegar en el correo (Ctrl+V)."
+          TextWrapping="Wrap"
+          TextAlignment="Center"
+          Foreground="{DynamicResource Hormiguero.TextoSecundario}"
+          Margin="0,2,0,0"
         />
-        <Button
-          x:Name="BotonPendiente"
-          Content="⏳ Dejar Pendiente"
-          Click="Pendiente_Click"
-          Margin="3"
-          Padding="10,7"
-        />
-        <Button
-          x:Name="BotonEnviado"
-          Content="✅ Marcar como Enviado"
-          Click="Enviado_Click"
-          IsEnabled="False"
-          Margin="3"
-          Padding="10,7"
-        />
-      </WrapPanel>
+      </StackPanel>
       <DockPanel Grid.Row="5" Margin="0,6,0,0">
         <Button Content="← Volver al análisis" Click="VolverAnalisis_Click" Padding="12,6" />
       </DockPanel>
