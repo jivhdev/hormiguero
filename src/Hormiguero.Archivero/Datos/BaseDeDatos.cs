@@ -59,6 +59,7 @@ public static class BaseDeDatos
                 ConfiguracionId INTEGER NOT NULL REFERENCES Configuraciones(Id),
                 Nombre TEXT NOT NULL,
                 NombreEstable TEXT NOT NULL,
+                Activo INTEGER NOT NULL DEFAULT 1,
                 Pagina INTEGER NOT NULL,
                 X REAL NOT NULL,
                 Y REAL NOT NULL,
@@ -129,6 +130,7 @@ public static class BaseDeDatos
             "AbrirDespuesDeGuardar",
             "INTEGER NOT NULL DEFAULT 0"
         );
+        AgregarColumnaSiFalta(conexion, "CamposPropios", "Activo", "INTEGER NOT NULL DEFAULT 1");
 
         MigrarCheckFormatoCarpeta(conexion);
 

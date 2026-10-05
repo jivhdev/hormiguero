@@ -20,256 +20,326 @@
 
     <local:VisorPdfConMarcado x:Name="Visor" Grid.Column="0" Margin="0,0,16,0" />
 
-    <StackPanel Grid.Column="1">
-      <TextBlock
-        Name="TxtTituloPaso"
-        FontSize="15"
-        FontWeight="Bold"
-        Margin="0,0,0,4"
-        TextWrapping="Wrap"
-      />
-      <TextBlock
-        Name="TxtInstruccionPaso"
-        Foreground="{DynamicResource Hormiguero.TextoSecundario}"
-        TextWrapping="Wrap"
-        Margin="0,0,0,16"
-      />
-
-      <!-- Paso 1: Emisor y Tipo -->
-      <StackPanel Name="PanelEmisorTipo">
-        <TextBlock Text="Emisor" FontWeight="Bold" />
-        <Button
-          Name="BtnMarcarEmisor"
-          Content="Marcar Emisor en el PDF"
-          Margin="0,4,0,4"
-          Padding="6,4"
-          Click="BtnMarcarEmisor_Click"
-        />
+    <ScrollViewer Grid.Column="1" VerticalScrollBarVisibility="Auto">
+      <StackPanel>
         <TextBlock
-          Name="TxtEstadoMarcaEmisor"
-          Foreground="{DynamicResource Hormiguero.TextoSecundario}"
-          Margin="0,0,0,4"
-          TextWrapping="Wrap"
-        />
-        <ComboBox
-          Name="CmbEmisor"
-          IsEditable="True"
-          Margin="0,0,0,16"
-          TextBoxBase.TextChanged="CmbEmisor_TextChanged"
-        />
-
-        <TextBlock Text="Tipo de documento" FontWeight="Bold" />
-        <Button
-          Name="BtnMarcarTipo"
-          Content="Marcar Tipo en el PDF"
-          Margin="0,4,0,4"
-          Padding="6,4"
-          Click="BtnMarcarTipo_Click"
-        />
-        <TextBlock
-          Name="TxtEstadoMarcaTipo"
-          Foreground="{DynamicResource Hormiguero.TextoSecundario}"
-          Margin="0,0,0,4"
-          TextWrapping="Wrap"
-        />
-        <ComboBox Name="CmbTipo" IsEditable="True" TextBoxBase.TextChanged="CmbTipo_TextChanged" />
-      </StackPanel>
-
-      <!-- Paso 2 (Caso-3, revisado): carpeta madre + eleccion explicita Directo/Subcarpetas -->
-      <StackPanel Name="PanelCarpeta" Visibility="Collapsed">
-        <TextBlock Text="Carpeta madre" FontWeight="Bold" />
-        <TextBlock
-          Text="La carpeta raíz donde va a vivir todo lo de este tipo de documento."
-          Foreground="{DynamicResource Hormiguero.TextoSecundario}"
-          TextWrapping="Wrap"
-          Margin="0,2,0,0"
-        />
-        <TextBox Name="TxtCarpetaDestino" IsReadOnly="True" Margin="0,8,0,8" />
-        <Button
-          Name="BtnElegirCarpeta"
-          Content="Elegir carpeta…"
-          Padding="6,4"
-          HorizontalAlignment="Left"
-          Click="BtnElegirCarpeta_Click"
-        />
-
-        <TextBlock
-          Text="¿Cómo se va a guardar dentro de esa carpeta?"
+          Name="TxtTituloPaso"
+          FontSize="15"
           FontWeight="Bold"
-          Margin="0,16,0,8"
+          Margin="0,0,0,4"
+          TextWrapping="Wrap"
         />
-        <RadioButton
-          Name="RbGuardarDirecto"
-          Content="Guardar directo en esta carpeta"
-          Margin="0,0,0,6"
-        />
-        <RadioButton
-          Name="RbGuardarSubcarpetas"
-          Content="Guardar en subcarpetas dentro de esta carpeta"
-          Margin="0,0,0,6"
-        />
-      </StackPanel>
-
-      <!-- Paso 3 (Caso-3, nuevo): tipo de organizacion, patron con ejemplos concretos (control compartido con Caso-4), y fecha de referencia -->
-      <StackPanel Name="PanelOrganizacion" Visibility="Collapsed">
-        <local:OrganizacionCarpetaControl
-          x:Name="ControlOrganizacion"
-          SeleccionCambiada="ControlOrganizacion_SeleccionCambiada"
+        <TextBlock
+          Name="TxtInstruccionPaso"
+          Foreground="{DynamicResource Hormiguero.TextoSecundario}"
+          TextWrapping="Wrap"
+          Margin="0,0,0,16"
         />
 
-        <StackPanel Name="PanelMarcarFecha">
-          <TextBlock Text="Fecha del documento" FontWeight="Bold" />
+        <!-- Paso 1: Emisor y Tipo -->
+        <StackPanel Name="PanelEmisorTipo">
+          <TextBlock Text="Emisor" FontWeight="Bold" />
           <Button
-            Name="BtnMarcarFecha"
-            Content="Marcar fecha en el PDF"
+            Name="BtnMarcarEmisor"
+            Content="Marcar Emisor en el PDF"
             Margin="0,4,0,4"
             Padding="6,4"
-            Click="BtnMarcarFecha_Click"
+            Click="BtnMarcarEmisor_Click"
           />
           <TextBlock
-            Name="TxtEstadoMarcaFecha"
+            Name="TxtEstadoMarcaEmisor"
             Foreground="{DynamicResource Hormiguero.TextoSecundario}"
-            TextWrapping="Wrap"
-          />
-          <TextBlock
-            Name="TxtFechaOpcional"
-            Visibility="Collapsed"
-            Foreground="{DynamicResource Hormiguero.TextoSecundario}"
-            TextWrapping="Wrap"
-            Margin="0,4,0,0"
-            Text="Para este tipo de organización la fecha es opcional: si no la marcas, los ejemplos y la vista previa usan la fecha de hoy."
-          />
-        </StackPanel>
-      </StackPanel>
-
-      <!-- Paso 4: Nombre de archivo -->
-      <StackPanel Name="PanelNombreArchivo" Visibility="Collapsed">
-        <TextBlock
-          Text="Nombre con el que se guarda el archivo"
-          FontWeight="Bold"
-          Margin="0,0,0,8"
-        />
-        <RadioButton
-          Name="RbMantenerNombre"
-          Content="Mantener el nombre original"
-          Margin="0,0,0,6"
-          Checked="OpcionNombre_Changed"
-        />
-        <RadioButton
-          Name="RbExtraerNombre"
-          Content="Extraer de una coordenada del PDF"
-          Margin="0,0,0,6"
-          Checked="OpcionNombre_Changed"
-        />
-        <RadioButton
-          Name="RbPreguntarNombre"
-          Content="Preguntar el nombre cada vez"
-          Margin="0,0,0,2"
-          Checked="OpcionNombre_Changed"
-        />
-        <TextBlock
-          Foreground="{DynamicResource Hormiguero.TextoSecundario}"
-          TextWrapping="Wrap"
-          Margin="20,0,0,6"
-          Text="La carpeta se sigue eligiendo sola; antes de guardar, el documento queda en &quot;Pendientes por reconocer&quot; para escribir o confirmar su nombre."
-        />
-
-        <StackPanel Name="PanelMarcarNombre" Visibility="Collapsed" Margin="0,8,0,0">
-          <Button
-            Name="BtnMarcarNombreArchivo"
-            Content="Marcar el campo en el PDF"
             Margin="0,0,0,4"
-            Padding="6,4"
-            Click="BtnMarcarNombreArchivo_Click"
-          />
-          <TextBlock
-            Name="TxtEstadoMarcaNombre"
-            Foreground="{DynamicResource Hormiguero.TextoSecundario}"
             TextWrapping="Wrap"
           />
-        </StackPanel>
-      </StackPanel>
+          <ComboBox
+            Name="CmbEmisor"
+            IsEditable="True"
+            Margin="0,0,0,16"
+            TextBoxBase.TextChanged="CmbEmisor_TextChanged"
+          />
 
-      <!-- Paso 5: Confirmar -->
-      <StackPanel Name="PanelConfirmar" Visibility="Collapsed">
-        <TextBlock Name="TxtResumen" TextWrapping="Wrap" Margin="0,0,0,12" />
-
-        <!-- Caso-11, punto 1: con "Preguntar el nombre cada vez", también para este primer documento -->
-        <StackPanel Name="PanelNombreEsteDocumento" Visibility="Collapsed" Margin="0,0,0,12">
-          <TextBlock Text="Nombre para este documento" FontWeight="Bold" Margin="0,0,0,4" />
-          <TextBox Name="TxtNombreEsteDocumento" />
-        </StackPanel>
-
-        <CheckBox
-          Name="ChkAbrirDespuesDeGuardar"
-          Content="Abrir el documento después de guardarlo automáticamente"
-          Checked="ChkAbrirDespuesDeGuardar_Changed"
-          Unchecked="ChkAbrirDespuesDeGuardar_Changed"
-        />
-      </StackPanel>
-
-      <!-- Preview obligatorio de anterior/actual/futuro (Caso-1, punto 3). Visible desde
-                 el paso de Formato en adelante, se actualiza solo al cambiar algo relevante, y
-                 tambien con el boton, para ver el efecto en vivo de una correccion. -->
-      <Border
-        Name="PanelPreview"
-        Visibility="Collapsed"
-        Margin="0,16,0,0"
-        Padding="10"
-        Background="{DynamicResource Hormiguero.Encabezado}"
-        BorderBrush="{DynamicResource Hormiguero.Borde}"
-        BorderThickness="1"
-      >
-        <StackPanel>
-          <TextBlock
-            Text="Vista previa de dónde va a quedar guardado"
-            FontWeight="Bold"
-            Margin="0,0,0,6"
-            TextWrapping="Wrap"
-          />
-          <TextBlock
-            Text="Carpeta anterior (ya existente):"
-            FontWeight="SemiBold"
-            TextWrapping="Wrap"
-          />
-          <TextBlock
-            Name="TxtPreviewAnterior"
-            Foreground="{DynamicResource Hormiguero.TextoSecundario}"
-            TextWrapping="Wrap"
-            Margin="0,0,0,8"
-          />
-          <TextBlock Text="Este documento quedaría en:" FontWeight="SemiBold" TextWrapping="Wrap" />
-          <TextBlock Name="TxtPreviewActual" TextWrapping="Wrap" Margin="0,0,0,8" />
-          <TextBlock
-            Name="TxtPreviewFuturaTitulo"
-            Text="Cuando llegue el próximo período, se crearía:"
-            FontWeight="SemiBold"
-            TextWrapping="Wrap"
-          />
-          <TextBlock
-            Name="TxtPreviewFutura"
-            Foreground="{DynamicResource Hormiguero.TextoSecundario}"
-            TextWrapping="Wrap"
-            Margin="0,0,0,8"
-          />
+          <TextBlock Text="Tipo de documento" FontWeight="Bold" />
           <Button
-            Name="BtnActualizarPreview"
-            Content="Actualizar vista previa"
+            Name="BtnMarcarTipo"
+            Content="Marcar Tipo en el PDF"
+            Margin="0,4,0,4"
+            Padding="6,4"
+            Click="BtnMarcarTipo_Click"
+          />
+          <TextBlock
+            Name="TxtEstadoMarcaTipo"
+            Foreground="{DynamicResource Hormiguero.TextoSecundario}"
+            Margin="0,0,0,4"
+            TextWrapping="Wrap"
+          />
+          <ComboBox
+            Name="CmbTipo"
+            IsEditable="True"
+            TextBoxBase.TextChanged="CmbTipo_TextChanged"
+          />
+
+          <Expander
+            Header="Datos propios de este tipo de documento"
+            Margin="0,12,0,0"
+            IsExpanded="True"
+          >
+            <StackPanel Margin="0,6,0,0">
+              <TextBlock
+                Text="Agrega datos que aparecen en este documento, como un número de orden."
+                Foreground="{DynamicResource Hormiguero.TextoSecundario}"
+                TextWrapping="Wrap"
+                Margin="0,0,0,6"
+              />
+              <ItemsControl Name="ListaCamposPropios">
+                <ItemsControl.ItemTemplate>
+                  <DataTemplate>
+                    <Border
+                      BorderBrush="{DynamicResource Hormiguero.Borde}"
+                      BorderThickness="1"
+                      Padding="6"
+                      Margin="0,0,0,6"
+                    >
+                      <StackPanel>
+                        <TextBox
+                          Text="{Binding Nombre, UpdateSourceTrigger=LostFocus}"
+                          ToolTip="Nombre del dato"
+                        />
+                        <TextBlock
+                          Text="{Binding Estado}"
+                          TextWrapping="Wrap"
+                          Foreground="{DynamicResource Hormiguero.TextoSecundario}"
+                          Margin="0,3,0,4"
+                        />
+                        <StackPanel Orientation="Horizontal">
+                          <Button
+                            Content="Marcar zona en el PDF"
+                            Padding="5,3"
+                            Click="BtnMarcarCampoPropio_Click"
+                          />
+                          <Button
+                            Content="Quitar"
+                            Padding="5,3"
+                            Margin="6,0,0,0"
+                            Click="BtnQuitarCampoPropio_Click"
+                          />
+                        </StackPanel>
+                      </StackPanel>
+                    </Border>
+                  </DataTemplate>
+                </ItemsControl.ItemTemplate>
+              </ItemsControl>
+              <Button
+                Name="BtnAgregarCampoPropio"
+                Content="Agregar dato"
+                Padding="6,4"
+                HorizontalAlignment="Left"
+                Click="BtnAgregarCampoPropio_Click"
+              />
+            </StackPanel>
+          </Expander>
+        </StackPanel>
+
+        <!-- Paso 2 (Caso-3, revisado): carpeta madre + eleccion explicita Directo/Subcarpetas -->
+        <StackPanel Name="PanelCarpeta" Visibility="Collapsed">
+          <TextBlock Text="Carpeta madre" FontWeight="Bold" />
+          <TextBlock
+            Text="La carpeta raíz donde va a vivir todo lo de este tipo de documento."
+            Foreground="{DynamicResource Hormiguero.TextoSecundario}"
+            TextWrapping="Wrap"
+            Margin="0,2,0,0"
+          />
+          <TextBox Name="TxtCarpetaDestino" IsReadOnly="True" Margin="0,8,0,8" />
+          <Button
+            Name="BtnElegirCarpeta"
+            Content="Elegir carpeta…"
             Padding="6,4"
             HorizontalAlignment="Left"
-            Click="BtnActualizarPreview_Click"
+            Click="BtnElegirCarpeta_Click"
+          />
+
+          <TextBlock
+            Text="¿Cómo se va a guardar dentro de esa carpeta?"
+            FontWeight="Bold"
+            Margin="0,16,0,8"
+          />
+          <RadioButton
+            Name="RbGuardarDirecto"
+            Content="Guardar directo en esta carpeta"
+            Margin="0,0,0,6"
+          />
+          <RadioButton
+            Name="RbGuardarSubcarpetas"
+            Content="Guardar en subcarpetas dentro de esta carpeta"
+            Margin="0,0,0,6"
           />
         </StackPanel>
-      </Border>
 
-      <TextBlock
-        Name="TxtError"
-        Foreground="{DynamicResource Hormiguero.Error}"
-        TextWrapping="Wrap"
-        Margin="0,16,0,0"
-        Visibility="Collapsed"
-      />
-    </StackPanel>
+        <!-- Paso 3 (Caso-3, nuevo): tipo de organizacion, patron con ejemplos concretos (control compartido con Caso-4), y fecha de referencia -->
+        <StackPanel Name="PanelOrganizacion" Visibility="Collapsed">
+          <local:OrganizacionCarpetaControl
+            x:Name="ControlOrganizacion"
+            SeleccionCambiada="ControlOrganizacion_SeleccionCambiada"
+          />
+
+          <StackPanel Name="PanelMarcarFecha">
+            <TextBlock Text="Fecha del documento" FontWeight="Bold" />
+            <Button
+              Name="BtnMarcarFecha"
+              Content="Marcar fecha en el PDF"
+              Margin="0,4,0,4"
+              Padding="6,4"
+              Click="BtnMarcarFecha_Click"
+            />
+            <TextBlock
+              Name="TxtEstadoMarcaFecha"
+              Foreground="{DynamicResource Hormiguero.TextoSecundario}"
+              TextWrapping="Wrap"
+            />
+            <TextBlock
+              Name="TxtFechaOpcional"
+              Visibility="Collapsed"
+              Foreground="{DynamicResource Hormiguero.TextoSecundario}"
+              TextWrapping="Wrap"
+              Margin="0,4,0,0"
+              Text="Para este tipo de organización la fecha es opcional: si no la marcas, los ejemplos y la vista previa usan la fecha de hoy."
+            />
+          </StackPanel>
+        </StackPanel>
+
+        <!-- Paso 4: Nombre de archivo -->
+        <StackPanel Name="PanelNombreArchivo" Visibility="Collapsed">
+          <TextBlock
+            Text="Nombre con el que se guarda el archivo"
+            FontWeight="Bold"
+            Margin="0,0,0,8"
+          />
+          <RadioButton
+            Name="RbMantenerNombre"
+            Content="Mantener el nombre original"
+            Margin="0,0,0,6"
+            Checked="OpcionNombre_Changed"
+          />
+          <RadioButton
+            Name="RbExtraerNombre"
+            Content="Extraer de una coordenada del PDF"
+            Margin="0,0,0,6"
+            Checked="OpcionNombre_Changed"
+          />
+          <RadioButton
+            Name="RbPreguntarNombre"
+            Content="Preguntar el nombre cada vez"
+            Margin="0,0,0,2"
+            Checked="OpcionNombre_Changed"
+          />
+          <TextBlock
+            Foreground="{DynamicResource Hormiguero.TextoSecundario}"
+            TextWrapping="Wrap"
+            Margin="20,0,0,6"
+            Text="La carpeta se sigue eligiendo sola; antes de guardar, el documento queda en &quot;Pendientes por reconocer&quot; para escribir o confirmar su nombre."
+          />
+
+          <StackPanel Name="PanelMarcarNombre" Visibility="Collapsed" Margin="0,8,0,0">
+            <Button
+              Name="BtnMarcarNombreArchivo"
+              Content="Marcar el campo en el PDF"
+              Margin="0,0,0,4"
+              Padding="6,4"
+              Click="BtnMarcarNombreArchivo_Click"
+            />
+            <TextBlock
+              Name="TxtEstadoMarcaNombre"
+              Foreground="{DynamicResource Hormiguero.TextoSecundario}"
+              TextWrapping="Wrap"
+            />
+          </StackPanel>
+        </StackPanel>
+
+        <!-- Paso 5: Confirmar -->
+        <StackPanel Name="PanelConfirmar" Visibility="Collapsed">
+          <TextBlock Name="TxtResumen" TextWrapping="Wrap" Margin="0,0,0,12" />
+
+          <!-- Caso-11, punto 1: con "Preguntar el nombre cada vez", también para este primer documento -->
+          <StackPanel Name="PanelNombreEsteDocumento" Visibility="Collapsed" Margin="0,0,0,12">
+            <TextBlock Text="Nombre para este documento" FontWeight="Bold" Margin="0,0,0,4" />
+            <TextBox Name="TxtNombreEsteDocumento" />
+          </StackPanel>
+
+          <CheckBox
+            Name="ChkAbrirDespuesDeGuardar"
+            Content="Abrir el documento después de guardarlo automáticamente"
+            Checked="ChkAbrirDespuesDeGuardar_Changed"
+            Unchecked="ChkAbrirDespuesDeGuardar_Changed"
+          />
+        </StackPanel>
+
+        <!-- Preview obligatorio de anterior/actual/futuro (Caso-1, punto 3). Visible desde
+                 el paso de Formato en adelante, se actualiza solo al cambiar algo relevante, y
+                 tambien con el boton, para ver el efecto en vivo de una correccion. -->
+        <Border
+          Name="PanelPreview"
+          Visibility="Collapsed"
+          Margin="0,16,0,0"
+          Padding="10"
+          Background="{DynamicResource Hormiguero.Encabezado}"
+          BorderBrush="{DynamicResource Hormiguero.Borde}"
+          BorderThickness="1"
+        >
+          <StackPanel>
+            <TextBlock
+              Text="Vista previa de dónde va a quedar guardado"
+              FontWeight="Bold"
+              Margin="0,0,0,6"
+              TextWrapping="Wrap"
+            />
+            <TextBlock
+              Text="Carpeta anterior (ya existente):"
+              FontWeight="SemiBold"
+              TextWrapping="Wrap"
+            />
+            <TextBlock
+              Name="TxtPreviewAnterior"
+              Foreground="{DynamicResource Hormiguero.TextoSecundario}"
+              TextWrapping="Wrap"
+              Margin="0,0,0,8"
+            />
+            <TextBlock
+              Text="Este documento quedaría en:"
+              FontWeight="SemiBold"
+              TextWrapping="Wrap"
+            />
+            <TextBlock Name="TxtPreviewActual" TextWrapping="Wrap" Margin="0,0,0,8" />
+            <TextBlock
+              Name="TxtPreviewFuturaTitulo"
+              Text="Cuando llegue el próximo período, se crearía:"
+              FontWeight="SemiBold"
+              TextWrapping="Wrap"
+            />
+            <TextBlock
+              Name="TxtPreviewFutura"
+              Foreground="{DynamicResource Hormiguero.TextoSecundario}"
+              TextWrapping="Wrap"
+              Margin="0,0,0,8"
+            />
+            <Button
+              Name="BtnActualizarPreview"
+              Content="Actualizar vista previa"
+              Padding="6,4"
+              HorizontalAlignment="Left"
+              Click="BtnActualizarPreview_Click"
+            />
+          </StackPanel>
+        </Border>
+
+        <TextBlock
+          Name="TxtError"
+          Foreground="{DynamicResource Hormiguero.Error}"
+          TextWrapping="Wrap"
+          Margin="0,16,0,0"
+          Visibility="Collapsed"
+        />
+      </StackPanel>
+    </ScrollViewer>
 
     <StackPanel
       Grid.Row="1"

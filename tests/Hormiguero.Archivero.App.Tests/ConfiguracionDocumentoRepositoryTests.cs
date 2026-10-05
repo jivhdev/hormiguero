@@ -406,6 +406,96 @@ public class ConfiguracionDocumentoRepositoryTests : IDisposable
         Assert.Equal(2, todas.Count);
     }
 
+    [Fact]
+    public void CamposPropios_AgregarRenombrarCambiarZonaYDesactivar_ConservaCampoPublicado()
+    {
+        var repo = new ConfiguracionDocumentoRepository();
+        var id = repo.GuardarNueva(
+            "Emisor",
+            "Factura",
+            Path.GetTempPath(),
+            FormatoCarpeta.Directo,
+            null,
+            false,
+            []
+        );
+        var rutaPdf = CreadorPdfDePrueba.CrearConLineas(
+            Path.GetTempPath(),
+            "OC-000123",
+            "OC-000987"
+        );
+        try
+        {
+            const string clave = "campo_orden_compra";
+            var zonaInicial = CreadorPdfDePrueba.ObtenerBandaDeLinea(0);
+            repo.GuardarCamposPropios(
+                id,
+                [
+                    new(
+                        "N° OC",
+                        clave,
+                        0,
+                        zonaInicial.X,
+                        zonaInicial.Y,
+                        zonaInicial.Ancho,
+                        zonaInicial.Alto
+                    ),
+                ]
+            );
+
+            var agregado = Assert.Single(
+                repo.BuscarPorEmisorYTipo("Emisor", "Factura")!.CamposPropios
+            );
+            Assert.Equal("N° OC", agregado.Nombre);
+            Assert.Equal(
+                "OC-000123",
+                Servicios.Pdf.LectorPdf.ExtraerTexto(
+                    rutaPdf,
+                    agregado.Pagina,
+                    new(agregado.X, agregado.Y, agregado.Ancho, agregado.Alto)
+                )
+            );
+
+            var zonaNueva = CreadorPdfDePrueba.ObtenerBandaDeLinea(1);
+            repo.GuardarCamposPropios(
+                id,
+                [new("Orden", clave, 0, zonaNueva.X, zonaNueva.Y, zonaNueva.Ancho, zonaNueva.Alto)]
+            );
+
+            var renombrado = Assert.Single(
+                repo.BuscarPorEmisorYTipo("Emisor", "Factura")!.CamposPropios
+            );
+            Assert.Equal("Orden", renombrado.Nombre);
+            Assert.Equal(clave, renombrado.NombreEstable);
+            Assert.Equal(
+                "OC-000987",
+                Servicios.Pdf.LectorPdf.ExtraerTexto(
+                    rutaPdf,
+                    renombrado.Pagina,
+                    new(renombrado.X, renombrado.Y, renombrado.Ancho, renombrado.Alto)
+                )
+            );
+
+            repo.GuardarCamposPropios(id, []);
+
+            Assert.Empty(repo.BuscarPorEmisorYTipo("Emisor", "Factura")!.CamposPropios);
+            using var conexion = BaseDeDatos.CrearConexion();
+            using var comando = conexion.CreateCommand();
+            comando.CommandText =
+                "SELECT Nombre,NombreEstable,Activo FROM CamposPropios WHERE ConfiguracionId=$id;";
+            comando.Parameters.AddWithValue("$id", id);
+            using var lector = comando.ExecuteReader();
+            Assert.True(lector.Read());
+            Assert.Equal("Orden", lector.GetString(0));
+            Assert.Equal(clave, lector.GetString(1));
+            Assert.Equal(0, lector.GetInt32(2));
+        }
+        finally
+        {
+            File.Delete(rutaPdf);
+        }
+    }
+
     public void Dispose()
     {
         // Microsoft.Data.Sqlite reutiliza handles nativos por cadena de conexion (pooling);
