@@ -529,7 +529,14 @@ public partial class VentanaPrincipal : Window
                         ? "_______________"
                         : ListaBloques.SelectedItem?.ToString();
             }
-            VistaRetiro.Text = MensajesRetiro.Generar(proveedor, datos.Occ, datos.Ocl, dia, bloque);
+            VistaRetiro.Text = PlantillasMensajero.GenerarRetiro(
+                almacen,
+                proveedor,
+                datos.Occ,
+                datos.Ocl,
+                dia,
+                bloque
+            );
             MostrarToast($"✅ Vista previa generada - {proveedor}", "success");
         }
         catch (Exception excepcion)
@@ -604,7 +611,8 @@ public partial class VentanaPrincipal : Window
             DiaAyer.IsChecked == true ? OpcionDia.Ayer
             : DiaOtro.IsChecked == true ? OpcionDia.Otro
             : OpcionDia.Hoy;
-        VistaGuia.Text = MensajeGuia.Generar(
+        VistaGuia.Text = PlantillasMensajero.GenerarGuia(
+            almacen,
             CampoObra.Text.Trim(),
             CampoComuna.Text.Trim(),
             dia,

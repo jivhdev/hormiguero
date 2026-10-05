@@ -380,7 +380,18 @@ public partial class VentanaFacturas : Window
             ))
             .ToArray();
         CampoAsunto.Text = cliente.Mensaje.Asunto;
-        CampoCuerpo.Text = cliente.Mensaje.Cuerpo;
+        CampoCuerpo.Text = PlantillasMensajero.GenerarCuerpoFactura(
+            almacen,
+            cliente.RazonSocial,
+            descripcionSemana,
+            cliente
+                .Documentos.Select(documento => new DocumentoFactura(
+                    documento.Tipo,
+                    documento.Numero,
+                    documento.Entidad
+                ))
+                .ToArray()
+        );
         BotonPreparar.IsEnabled = true;
         BotonPendiente.IsEnabled = true;
         BotonEnviado.IsEnabled = false;

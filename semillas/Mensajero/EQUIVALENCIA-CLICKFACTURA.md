@@ -44,3 +44,9 @@ La respuesta de las funciones sin interfaz se genera con `tests/Hormiguero.Mensa
 - No hay automatización de Outlook en el original de esta copia.
 - No se implementó lectura/escritura de la base real. Solo queda documentado su esquema; la prueba crea una base SQLite temporal con clientes falsos.
 - La carpeta temporal fija que usa la ventana original y `TEMP_DIR` no coinciden; M-A5 usa `%LOCALAPPDATA%\ClickFactura\temp_envios` como valor predeterminado. La elección de otra carpeta y el botón para abrirla quedan pendientes por ser mejoras solicitadas en `Arreglos click factura.txt`.
+
+## Cambio aprobado (D-72, 2026-10-04)
+
+La fila 7 conserva la generación original probada en `Equivalencia/`. La pantalla de Mensajero usa ahora la plantilla configurable aprobada para el cuerpo del correo de facturas; el asunto no cambia y la copia del cuerpo agrega una línea en blanco final para la firma. La plantilla se guarda en `AlmacenMensajero` con la clave `plantilla.facturas.cuerpo`. No hay pantalla para editarla todavía.
+
+Marcadores: `{TIPO_DOCUMENTOS}` es «facturas», «notas de crédito» o «facturas y notas de crédito» según los documentos; `{SEMANA}` es la descripción seleccionada del período y `{RAZON_SOCIAL}` es el nombre del cliente. Los marcadores desconocidos permanecen sin cambios.
