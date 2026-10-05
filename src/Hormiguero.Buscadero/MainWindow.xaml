@@ -527,6 +527,14 @@
             HorizontalAlignment="Left"
             Click="BotonAbrirModelos_Click"
           />
+          <Button
+            x:Name="BotonDudosos"
+            Content="0 dudosos"
+            Padding="14,10"
+            Margin="0,10,0,0"
+            HorizontalAlignment="Left"
+            Click="BotonDudosos_Click"
+          />
         </StackPanel>
 
         <DockPanel x:Name="PanelCadena" Visibility="Collapsed">

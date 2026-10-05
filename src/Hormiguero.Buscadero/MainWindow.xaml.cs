@@ -115,6 +115,8 @@ public partial class MainWindow : Window
         );
         repositorioLineas.ErrorRevisionMotor += mensaje =>
             Dispatcher.Invoke(() => MostrarMensaje(mensaje));
+        repositorioLineas.RevisionMotorCompletada += () =>
+            Dispatcher.Invoke(ActualizarContadorDudosos);
         _lineas = new ServicioLineas(repositorioLineas);
 
         CargarCarpetas();
@@ -1039,6 +1041,17 @@ public partial class MainWindow : Window
         RefrescarPlantillas();
         RefrescarPrevisualizacion();
         RefrescarCadenas();
+        ActualizarContadorDudosos();
+    }
+
+    private void ActualizarContadorDudosos() =>
+        BotonDudosos.Content = $"{_lineas.ContarDudosos()} dudosos";
+
+    private void BotonDudosos_Click(object sender, RoutedEventArgs e)
+    {
+        var dialogo = new DialogoDudosos(_lineas) { Owner = this };
+        dialogo.ShowDialog();
+        ActualizarContadorDudosos();
     }
 
     private void RefrescarPlantillas()
@@ -1287,7 +1300,7 @@ public partial class MainWindow : Window
             acciones.Add(
                 new AccionCadenaVm
                 {
-                    Texto = "Quitar vínculo",
+                    Texto = "Deshacer vínculo",
                     Accion = TipoAccion.QuitarVinculo,
                     InstanciaId = cadenaId,
                     InstanciaVagonId = documento.Id,
