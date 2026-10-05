@@ -1,0 +1,51 @@
+<Window
+  x:Class="Buscadero.App.DialogoReglaAlerta"
+  xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+  xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+  Title="Avisarme si falta un documento"
+  Height="560"
+  Width="620"
+  MinHeight="500"
+  MinWidth="520"
+  Background="{DynamicResource Hormiguero.Fondo}"
+  Foreground="{DynamicResource Hormiguero.Texto}"
+>
+  <ScrollViewer VerticalScrollBarVisibility="Auto">
+    <StackPanel Margin="20">
+      <TextBlock Text="Cuando llegue…" Margin="0,0,0,5" />
+      <ComboBox
+        x:Name="Origen"
+        DisplayMemberPath="Nombre"
+        SelectionChanged="ActualizarFrase_Click"
+      />
+      <TextBlock Text="…y falte…" Margin="0,12,0,5" />
+      <ComboBox
+        x:Name="Destino"
+        DisplayMemberPath="Nombre"
+        SelectionChanged="ActualizarFrase_Click"
+      />
+      <TextBlock Text="Esperar cuántos días" Margin="0,12,0,5" />
+      <TextBox x:Name="Dias" Text="5" Padding="8" TextChanged="ActualizarFrase_Click" />
+      <TextBlock Text="Contar días" Margin="0,12,0,5" />
+      <ComboBox x:Name="Modo" SelectedIndex="0" SelectionChanged="ActualizarFrase_Click">
+        <ComboBoxItem Content="Hábiles" />
+        <ComboBoxItem Content="Corridos" />
+      </ComboBox>
+      <TextBlock Text="Calendario" Margin="0,12,0,5" />
+      <ComboBox x:Name="Calendario" DisplayMemberPath="Nombre" />
+      <TextBlock Text="Texto del aviso" Margin="0,12,0,5" />
+      <TextBox x:Name="Aviso" TextChanged="ActualizarFrase_Click" Padding="8" />
+      <TextBlock Text="Frase completa" FontWeight="Bold" Margin="0,14,0,5" />
+      <TextBlock
+        x:Name="Frase"
+        TextWrapping="Wrap"
+        Padding="10"
+        Background="{DynamicResource Hormiguero.Superficie}"
+      />
+      <StackPanel Orientation="Horizontal" HorizontalAlignment="Right" Margin="0,18,0,0">
+        <Button Content="Guardar" Padding="14,9" Margin="0,0,8,0" Click="Guardar_Click" />
+        <Button Content="Cancelar" Padding="14,9" Click="Cancelar_Click" />
+      </StackPanel>
+    </StackPanel>
+  </ScrollViewer>
+</Window>

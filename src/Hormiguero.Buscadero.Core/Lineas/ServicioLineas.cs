@@ -2,7 +2,7 @@ using System.Text.Json;
 
 namespace Buscadero.Core.Lineas;
 
-public sealed class ServicioLineas
+public sealed class ServicioLineas : IDisposable
 {
     private readonly RepositorioLineas _repositorio;
 
@@ -10,6 +10,8 @@ public sealed class ServicioLineas
     {
         _repositorio = repositorio;
     }
+
+    public void Dispose() => _repositorio.Dispose();
 
     // ----- Modelos de cadena -----
 

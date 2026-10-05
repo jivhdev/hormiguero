@@ -2,7 +2,7 @@
 bloque: C-1g
 app: Buscadero (seguimiento)
 fase: C
-estado: pendiente
+estado: hecho
 agente: Codex
 modelo: codex
 archivos_permitidos: [src/Hormiguero.Buscadero/**, src/Hormiguero.Buscadero.Core/**, tests/Hormiguero.Buscadero.Core.Tests/**]
@@ -25,3 +25,18 @@ Secciones 4 y 6 de `definicion/DISENO-C1-ALERTAS-Y-VENCIMIENTOS.md`; repositorio
 Pruebas en Core para lo que no sea solo pantalla (textos "vence hoy/en N/venció hace N", frase de la regla, filtros). Si algo no está definido, **decide lo más simple, anótalo y sigue**. `dotnet build` sin advertencias; `dotnet test` todo pasa; `dotnet csharpier check .` sin errores. Reporte al final.
 
 ## Reporte del agente
+
+Completado en Buscadero, sin cambios en Núcleo.
+
+- Se agregó el contador y la lista de alertas con filtros y acciones para abrir una cadena, resolver, descartar con motivo y reabrir. Las cadenas muestran sus avisos pendientes y vencidos.
+- Se agregó configuración de aviso por modelo con selección de documentos, espera, calendario y frase de revisión; recordatorio manual asociado a una cadena; calculadora con `CalculoFechas`; y consulta, alta, anulación e importación/exportación CSV de feriados.
+- Se usa la base común de `DocumentosGuardados.RutaBaseComun`; las ventanas usan recursos dinámicos del tema. La ventana principal abre a 1366×768. La prueba STA construye la ventana principal y las nuevas ventanas en temas claro y oscuro con `HORMIGUERO_DATOS` temporal.
+- Decisión de presentación: al mostrar «para cuándo» se cuentan días hábiles, porque el contrato que expone `Alerta` no devuelve el modo ni el calendario guardados. Los cálculos y fechas objetivo se siguen haciendo mediante Núcleo; mostrar el modo histórico exacto requeriría exponer esos datos desde Núcleo, fuera del alcance permitido.
+
+Verificación:
+
+- `dotnet build`: correcto, cero advertencias y cero errores.
+- `dotnet test -m:1`: correcto; pasaron 668 pruebas en los cinco proyectos de pruebas.
+- `dotnet csharpier check .`: correcto.
+
+- Pendiente menor: "para cuándo" cuenta siempre días hábiles en pantalla (el contrato de `Alerta` no expone modo/calendario); exponerlo desde el Núcleo en un bloque futuro.
