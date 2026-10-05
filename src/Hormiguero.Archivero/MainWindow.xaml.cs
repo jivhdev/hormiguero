@@ -210,6 +210,7 @@ public partial class MainWindow : Window
         }
         catch (Exception ex)
         {
+            AuditoriaService.Registrar("REPROCESO_PENDIENTES_FALLIDO", ex.ToString());
             System.Windows.MessageBox.Show(
                 this,
                 $"No se pudieron reprocesar los pendientes: {ex.Message}",
@@ -275,43 +276,56 @@ public partial class MainWindow : Window
             return;
         }
 
-        if (pendiente.Motivo == MotivoPendiente.NombrePorConfirmar)
+        try
         {
-            AbrirConfirmacionDeNombre(pendiente.RutaArchivo);
+            if (pendiente.Motivo == MotivoPendiente.NombrePorConfirmar)
+            {
+                AbrirConfirmacionDeNombre(pendiente.RutaArchivo);
+            }
+            else if (pendiente.Motivo == MotivoPendiente.Duplicado)
+            {
+                AbrirResolucionDeDuplicado(pendiente.RutaArchivo);
+            }
+            else if (pendiente.Motivo == MotivoPendiente.PeriodoNuevo)
+            {
+                AbrirCreacionDePeriodo(pendiente.RutaArchivo);
+            }
+            else if (
+                pendiente.Motivo
+                is MotivoPendiente.TextoConCaracteresInvalidos
+                    or MotivoPendiente.NombreReservadoPorWindows
+                    or MotivoPendiente.RutaFueraDeCarpetaConfigurada
+                    or MotivoPendiente.NombreORutaDemasiadoLarga
+            )
+            {
+                // El mismo dato problemático persistirá al reabrir el asistente; se informa para revisión manual.
+                System.Windows.MessageBox.Show(
+                    this,
+                    $"Este documento no se puede guardar automáticamente:\n\n{pendiente.Motivo.DescripcionLegible()}\n\n"
+                        + "Revísalo a mano; si corresponde, muévelo tú mismo a su carpeta.",
+                    "Archivero",
+                    MessageBoxButton.OK,
+                    MessageBoxImage.Warning
+                );
+            }
+            else
+            {
+                AbrirAsistenteIdentificacion(pendiente.RutaArchivo);
+            }
+
+            CargarPendientes();
         }
-        else if (pendiente.Motivo == MotivoPendiente.Duplicado)
+        catch (Exception ex)
         {
-            AbrirResolucionDeDuplicado(pendiente.RutaArchivo);
-        }
-        else if (pendiente.Motivo == MotivoPendiente.PeriodoNuevo)
-        {
-            AbrirCreacionDePeriodo(pendiente.RutaArchivo);
-        }
-        else if (
-            pendiente.Motivo
-            is MotivoPendiente.TextoConCaracteresInvalidos
-                or MotivoPendiente.NombreReservadoPorWindows
-                or MotivoPendiente.RutaFueraDeCarpetaConfigurada
-                or MotivoPendiente.NombreORutaDemasiadoLarga
-        )
-        {
-            // Caso-9, mejora 1: no tiene sentido reabrir el asistente -- el dato extraído es el
-            // mismo texto problemático de siempre. Se explica el motivo y se deja para revisar a mano.
+            AuditoriaService.Registrar("ABRIR_PENDIENTE_FALLIDO", $"{pendiente.RutaArchivo}: {ex}");
             System.Windows.MessageBox.Show(
                 this,
-                $"Este documento no se puede guardar automáticamente:\n\n{pendiente.Motivo.DescripcionLegible()}\n\n"
-                    + "Revísalo a mano; si corresponde, muévelo tú mismo a su carpeta.",
+                $"No se pudo abrir el documento pendiente: {ex.Message}",
                 "Archivero",
                 MessageBoxButton.OK,
                 MessageBoxImage.Warning
             );
         }
-        else
-        {
-            AbrirAsistenteIdentificacion(pendiente.RutaArchivo);
-        }
-
-        CargarPendientes();
     }
 
     private void BtnRecargarPendientesDistribucion_Click(object sender, RoutedEventArgs e) =>
@@ -343,34 +357,10 @@ public partial class MainWindow : Window
     {
         if (!File.Exists(rutaArchivo))
         {
-            return;
-        }
-
-        // Se recalcula todo en el momento (coincidencia + campos extraidos) en vez de guardarlo
-        // en la base: es el mismo documento y la misma configuracion, asi que da lo mismo, y
-        // evita duplicar el estado en Pendientes.
-        var configuraciones = _configuraciones.ObtenerTodasConPatrones();
-        var coincidencia = CoincidenciaAutomaticaService.BuscarConfiguracionQueCoincide(
-            rutaArchivo,
-            configuraciones
-        );
-        if (coincidencia is null)
-        {
-            // Ya no coincide con ninguna configuracion (por ejemplo, se borro) -> tratarlo
-            // como documento nuevo en vez de romper.
-            AbrirAsistenteIdentificacion(rutaArchivo);
-            return;
-        }
-
-        var (campos, error) = GuardadoAutomaticoService.ExtraerCamposParaClasificar(
-            rutaArchivo,
-            coincidencia
-        );
-        if (campos is null)
-        {
+            AuditoriaService.Registrar("DUPLICADO_PENDIENTE_NO_ENCONTRADO", rutaArchivo);
             System.Windows.MessageBox.Show(
                 this,
-                $"No se pudo volver a leer los datos de este documento ({error}). Prueba abrirlo desde \"Administrar clasificaciones\" para revisar el patrón.",
+                "El documento pendiente ya no está en esa ubicación. Actualiza la lista e inténtalo de nuevo.",
                 "Archivero",
                 MessageBoxButton.OK,
                 MessageBoxImage.Warning
@@ -378,18 +368,67 @@ public partial class MainWindow : Window
             return;
         }
 
-        var rutaDestinoConflicto = ClasificadorService.CalcularRutaDestino(
-            rutaArchivo,
-            coincidencia,
-            campos.Fecha,
-            campos.NombreExtraido
-        );
-
-        var resolver = new ResolverDuplicadoWindow(rutaArchivo, rutaDestinoConflicto)
+        try
         {
-            Owner = this,
-        };
-        resolver.ShowDialog();
+            // Se recalcula todo en el momento (coincidencia + campos extraidos) en vez de guardarlo
+            // en la base: es el mismo documento y la misma configuracion, asi que da lo mismo, y
+            // evita duplicar el estado en Pendientes.
+            var configuraciones = _configuraciones.ObtenerTodasConPatrones();
+            var coincidencia = CoincidenciaAutomaticaService.BuscarConfiguracionQueCoincide(
+                rutaArchivo,
+                configuraciones
+            );
+            if (coincidencia is null)
+            {
+                // Ya no coincide con ninguna configuracion (por ejemplo, se borro) -> tratarlo
+                // como documento nuevo en vez de romper.
+                AbrirAsistenteIdentificacion(rutaArchivo);
+                return;
+            }
+
+            var (campos, error) = GuardadoAutomaticoService.ExtraerCamposParaClasificar(
+                rutaArchivo,
+                coincidencia
+            );
+            if (campos is null)
+            {
+                System.Windows.MessageBox.Show(
+                    this,
+                    $"No se pudo volver a leer los datos de este documento ({error}). Prueba abrirlo desde \"Administrar clasificaciones\" para revisar el patrón.",
+                    "Archivero",
+                    MessageBoxButton.OK,
+                    MessageBoxImage.Warning
+                );
+                return;
+            }
+
+            var rutaDestinoConflicto = ClasificadorService.CalcularRutaDestino(
+                rutaArchivo,
+                coincidencia,
+                campos.Fecha,
+                campos.NombreExtraido
+            );
+
+            var resolver = new ResolverDuplicadoWindow(rutaArchivo, rutaDestinoConflicto)
+            {
+                Owner = this,
+            };
+            resolver.ShowDialog();
+        }
+        catch (Exception ex)
+        {
+            AuditoriaService.Registrar(
+                "ABRIR_RESOLUCION_DUPLICADO_FALLIDO",
+                $"{rutaArchivo}: {ex}"
+            );
+            System.Windows.MessageBox.Show(
+                this,
+                $"No se pudo abrir la resolución del duplicado: {ex.Message}",
+                "Archivero",
+                MessageBoxButton.OK,
+                MessageBoxImage.Warning
+            );
+        }
     }
 
     private void AbrirConfirmacionDeNombre(string rutaArchivo)

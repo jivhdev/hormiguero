@@ -1,5 +1,6 @@
 using Archivero.Datos;
 using Archivero.Servicios;
+using Hormiguero.Nucleo.Utilidades;
 
 namespace Archivero.Tests;
 
@@ -64,7 +65,34 @@ public class ClasificadorServiceTests : IDisposable
     }
 
     [Fact]
-    public void ReemplazarYClasificar_BorraElExistenteYGuardaElNuevo()
+    public void Clasificar_ConContenidoYaExistentePorHuella_DetectaElDuplicadoYConservaElOriginal()
+    {
+        var origen = CrearArchivo(_carpetaOrigen, "factura.pdf", "mismo contenido");
+        CrearArchivo(_carpetaDestino, "factura.pdf", "mismo contenido");
+
+        var ex = Assert.Throws<ArchivoDuplicadoException>(() =>
+            ClasificadorService.Clasificar(origen, Configuracion(), null, null)
+        );
+
+        Assert.Equal(Path.Combine(_carpetaDestino, "factura.pdf"), ex.RutaDestino);
+        Assert.True(File.Exists(origen));
+    }
+
+    [Fact]
+    public void MovedorSeguro_ConDestinoDeLaMismaHuella_IdentificaElDuplicadoSinMoverElOrigen()
+    {
+        var origen = CrearArchivo(_carpetaOrigen, "factura-nueva.pdf", "mismo contenido");
+        var destino = CrearArchivo(_carpetaDestino, "factura.pdf", "mismo contenido");
+
+        var traslado = MovedorSeguro.Mover(origen, destino);
+
+        Assert.Equal(ResultadoTraslado.YaEstabaIgual, traslado.Resultado);
+        Assert.True(File.Exists(origen));
+        Assert.True(File.Exists(destino));
+    }
+
+    [Fact]
+    public void ReemplazarYClasificar_RespaldaElExistenteYGuardaElNuevo()
     {
         var origen = CrearArchivo(_carpetaOrigen, "factura.pdf", "contenido nuevo");
         var destino = CrearArchivo(_carpetaDestino, "factura.pdf", "contenido viejo");
@@ -74,7 +102,37 @@ public class ClasificadorServiceTests : IDisposable
         Assert.False(File.Exists(origen));
         Assert.True(File.Exists(destino));
         Assert.Equal("contenido nuevo", File.ReadAllText(destino));
+        Assert.Equal("contenido viejo", File.ReadAllText(destino + ".respaldo"));
         Assert.Empty(Directory.GetFiles(_carpetaDestino, "*.reemplazo"));
+    }
+
+    [Fact]
+    public void DescartarDuplicado_MueveElNuevoSinBorrarloDefinitivamente()
+    {
+        var origen = CrearArchivo(_carpetaOrigen, "factura.pdf", "nuevo");
+        var destino = CrearArchivo(_carpetaDestino, "factura.pdf", "guardado");
+
+        var descartado = ClasificadorService.DescartarDuplicado(origen, destino);
+
+        Assert.False(File.Exists(origen));
+        Assert.True(File.Exists(destino));
+        Assert.Equal("nuevo", File.ReadAllText(descartado));
+        Assert.Contains(Path.Combine("Descartados", "factura.pdf"), descartado);
+    }
+
+    [Fact]
+    public void GuardarAmbos_ConservaLosDosYUsaSufijoUnico()
+    {
+        var origen = CrearArchivo(_carpetaOrigen, "factura.pdf", "nuevo");
+        var destino = CrearArchivo(_carpetaDestino, "factura.pdf", "guardado");
+        CrearArchivo(_carpetaDestino, "factura (copia).pdf", "otra copia");
+
+        var nuevoDestino = ClasificadorService.GuardarAmbos(origen, destino);
+
+        Assert.False(File.Exists(origen));
+        Assert.Equal("guardado", File.ReadAllText(destino));
+        Assert.Equal("nuevo", File.ReadAllText(nuevoDestino));
+        Assert.EndsWith("factura (copia) 2.pdf", nuevoDestino);
     }
 
     // Fase B-5: antes se borraba lo anterior antes de copiar lo nuevo; si la copia

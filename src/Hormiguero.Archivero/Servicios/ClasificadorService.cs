@@ -107,8 +107,76 @@ public static class ClasificadorService
         // copia y verifica aparte, y recién entonces reemplaza a lo anterior.
         string temporal = rutaDestino + ".reemplazo";
         Trasladar(rutaArchivoOrigen, temporal);
-        File.Move(temporal, rutaDestino, overwrite: true);
+        var respaldo = ObtenerRutaDisponible(rutaDestino + ".respaldo");
+        var respaldoCreado = false;
+        try
+        {
+            File.Move(rutaDestino, respaldo);
+            respaldoCreado = true;
+            File.Move(temporal, rutaDestino);
+        }
+        catch
+        {
+            if (respaldoCreado && !File.Exists(rutaDestino))
+            {
+                File.Move(respaldo, rutaDestino);
+            }
+            if (File.Exists(temporal) && !File.Exists(rutaArchivoOrigen))
+            {
+                File.Move(temporal, rutaArchivoOrigen);
+            }
+            else if (
+                File.Exists(temporal)
+                && Huella.Calcular(temporal) == Huella.Calcular(rutaArchivoOrigen)
+            )
+            {
+                File.Delete(temporal);
+            }
+            throw;
+        }
         Avisar(rutaDestino);
+    }
+
+    public static string GuardarAmbos(string rutaArchivoOrigen, string rutaDestino)
+    {
+        var nombre = Path.GetFileNameWithoutExtension(rutaDestino);
+        var extension = Path.GetExtension(rutaDestino);
+        var carpeta = Path.GetDirectoryName(rutaDestino)!;
+        var destino = ObtenerRutaDisponible(Path.Combine(carpeta, $"{nombre} (copia){extension}"));
+        Directory.CreateDirectory(carpeta);
+        CopiarVerificarBorrar(rutaArchivoOrigen, destino);
+        return destino;
+    }
+
+    public static string DescartarDuplicado(string rutaArchivoNuevo, string rutaDestinoConflicto)
+    {
+        var carpeta = Path.Combine(Path.GetDirectoryName(rutaDestinoConflicto)!, "Descartados");
+        Directory.CreateDirectory(carpeta);
+        var destino = ObtenerRutaDisponible(
+            Path.Combine(carpeta, Path.GetFileName(rutaArchivoNuevo))
+        );
+        Trasladar(rutaArchivoNuevo, destino);
+        return destino;
+    }
+
+    private static string ObtenerRutaDisponible(string ruta)
+    {
+        if (!File.Exists(ruta))
+        {
+            return ruta;
+        }
+
+        var carpeta = Path.GetDirectoryName(ruta)!;
+        var nombre = Path.GetFileNameWithoutExtension(ruta);
+        var extension = Path.GetExtension(ruta);
+        for (var indice = 2; ; indice++)
+        {
+            var candidata = Path.Combine(carpeta, $"{nombre} {indice}{extension}");
+            if (!File.Exists(candidata))
+            {
+                return candidata;
+            }
+        }
     }
 
     /// <summary>Resolución de duplicado (REQ-002), opción "Guardar en otra ubicación como excepción".</summary>

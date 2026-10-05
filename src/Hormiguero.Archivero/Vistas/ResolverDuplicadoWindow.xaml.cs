@@ -8,8 +8,7 @@ using Archivero.Servicios.Pdf;
 namespace Archivero.Vistas;
 
 /// <summary>
-/// Resolución de nombre de archivo duplicado (REQ-002): Revisar lado a lado, Reemplazar,
-/// Dejar pendiente, o Guardar en otra ubicación como excepción — en ese orden, como pide SPEC.md.
+/// Resolución de un documento duplicado con comparación visual y acciones reversibles.
 /// </summary>
 public partial class ResolverDuplicadoWindow : Window
 {
@@ -50,6 +49,10 @@ public partial class ResolverDuplicadoWindow : Window
         }
         catch (Exception ex)
         {
+            AuditoriaService.Registrar(
+                "COMPARACION_DUPLICADO_FALLIDA",
+                $"{_rutaArchivoNuevo}: {ex}"
+            );
             System.Windows.MessageBox.Show(
                 this,
                 $"No se pudo mostrar la comparación: {ex.Message}",
@@ -65,7 +68,7 @@ public partial class ResolverDuplicadoWindow : Window
     private void SliderZoom_ValueChanged(object sender, RoutedPropertyChangedEventArgs<double> e)
     {
         // El slider dispara ValueChanged durante InitializeComponent, antes de que existan las escalas.
-        if (EscalaExistente is null || EscalaNuevo is null)
+        if (EscalaExistente is null || EscalaNuevo is null || TxtZoom is null)
         {
             return;
         }
@@ -128,15 +131,18 @@ public partial class ResolverDuplicadoWindow : Window
 
     private void ChkConfirmarMismoDocumento_Changed(object sender, RoutedEventArgs e)
     {
-        BtnEliminarDuplicado.IsEnabled = ChkConfirmarMismoDocumento.IsChecked == true;
+        if (BtnEliminarDuplicado is not null && ChkConfirmarMismoDocumento is not null)
+        {
+            BtnEliminarDuplicado.IsEnabled = ChkConfirmarMismoDocumento.IsChecked == true;
+        }
     }
 
-    /// <summary>Caso-5: al revés de "Reemplazar" -- se queda el archivo VIEJO tal cual estaba, se descarta el que acaba de llegar.</summary>
+    /// <summary>El nuevo documento se conserva en Descartados; nunca se elimina definitivamente.</summary>
     private void BtnEliminarDuplicado_Click(object sender, RoutedEventArgs e)
     {
         var confirmar = System.Windows.MessageBox.Show(
             this,
-            $"¿Eliminar el documento nuevo que acaba de llegar?\n\n{_rutaArchivoNuevo}\n\n"
+            $"¿Mover el documento nuevo a la carpeta Descartados?\n\n{_rutaArchivoNuevo}\n\n"
                 + "El que ya estaba guardado no se toca.",
             "Archivero",
             MessageBoxButton.YesNo,
@@ -150,12 +156,19 @@ public partial class ResolverDuplicadoWindow : Window
 
         try
         {
-            File.Delete(_rutaArchivoNuevo);
+            var rutaDescartada = ClasificadorService.DescartarDuplicado(
+                _rutaArchivoNuevo,
+                _rutaDestinoConflicto
+            );
             _pendientes.Quitar(_rutaArchivoNuevo);
+            AuditoriaService.Registrar(
+                "DUPLICADO_DESCARTADO",
+                $"{_rutaArchivoNuevo} -> {rutaDescartada}"
+            );
 
             System.Windows.MessageBox.Show(
                 this,
-                "Documento nuevo eliminado. Se mantuvo el que ya estaba guardado.",
+                $"Documento nuevo movido a:\n{rutaDescartada}\nSe mantuvo el que ya estaba guardado.",
                 "Archivero",
                 MessageBoxButton.OK,
                 MessageBoxImage.Information
@@ -166,9 +179,10 @@ public partial class ResolverDuplicadoWindow : Window
         }
         catch (Exception ex)
         {
+            AuditoriaService.Registrar("DESCARTE_DUPLICADO_FALLIDO", $"{_rutaArchivoNuevo}: {ex}");
             System.Windows.MessageBox.Show(
                 this,
-                $"No se pudo eliminar: {ex.Message}",
+                $"No se pudo mover el documento a Descartados: {ex.Message}",
                 "Archivero",
                 MessageBoxButton.OK,
                 MessageBoxImage.Error
@@ -195,10 +209,26 @@ public partial class ResolverDuplicadoWindow : Window
 
     private void BtnReemplazar_Click(object sender, RoutedEventArgs e)
     {
+        var confirmar = System.Windows.MessageBox.Show(
+            this,
+            $"¿Reemplazar el archivo guardado? Se conservará una copia de respaldo.\n\n{_rutaDestinoConflicto}",
+            "Archivero",
+            MessageBoxButton.YesNo,
+            MessageBoxImage.Warning
+        );
+        if (confirmar != MessageBoxResult.Yes)
+        {
+            return;
+        }
+
         try
         {
             ClasificadorService.ReemplazarYClasificar(_rutaArchivoNuevo, _rutaDestinoConflicto);
             _pendientes.Quitar(_rutaArchivoNuevo);
+            AuditoriaService.Registrar(
+                "DUPLICADO_REEMPLAZADO",
+                $"{_rutaDestinoConflicto} por {_rutaArchivoNuevo}"
+            );
 
             System.Windows.MessageBox.Show(
                 this,
@@ -213,9 +243,46 @@ public partial class ResolverDuplicadoWindow : Window
         }
         catch (Exception ex)
         {
+            AuditoriaService.Registrar("REEMPLAZO_DUPLICADO_FALLIDO", $"{_rutaArchivoNuevo}: {ex}");
             System.Windows.MessageBox.Show(
                 this,
                 $"No se pudo reemplazar: {ex.Message}",
+                "Archivero",
+                MessageBoxButton.OK,
+                MessageBoxImage.Error
+            );
+        }
+    }
+
+    private void BtnGuardarAmbos_Click(object sender, RoutedEventArgs e)
+    {
+        try
+        {
+            var ruta = ClasificadorService.GuardarAmbos(_rutaArchivoNuevo, _rutaDestinoConflicto);
+            _pendientes.Quitar(_rutaArchivoNuevo);
+            AuditoriaService.Registrar(
+                "DUPLICADO_GUARDADO_AMBOS",
+                $"{_rutaArchivoNuevo} -> {ruta}"
+            );
+            System.Windows.MessageBox.Show(
+                this,
+                $"Se conservaron ambos documentos.\n\nNuevo archivo:\n{ruta}",
+                "Archivero",
+                MessageBoxButton.OK,
+                MessageBoxImage.Information
+            );
+            DialogResult = true;
+            Close();
+        }
+        catch (Exception ex)
+        {
+            AuditoriaService.Registrar(
+                "GUARDAR_AMBOS_DUPLICADO_FALLIDO",
+                $"{_rutaArchivoNuevo}: {ex}"
+            );
+            System.Windows.MessageBox.Show(
+                this,
+                $"No se pudieron conservar ambos documentos: {ex.Message}",
                 "Archivero",
                 MessageBoxButton.OK,
                 MessageBoxImage.Error
@@ -272,6 +339,10 @@ public partial class ResolverDuplicadoWindow : Window
         }
         catch (Exception ex)
         {
+            AuditoriaService.Registrar(
+                "GUARDAR_EXCEPCION_DUPLICADO_FALLIDO",
+                $"{_rutaArchivoNuevo}: {ex}"
+            );
             System.Windows.MessageBox.Show(
                 this,
                 $"No se pudo guardar: {ex.Message}",
