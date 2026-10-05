@@ -88,6 +88,17 @@ public static class PublicadorDatosDocumentoService
                 $"No se pudieron revisar los enlaces autom\u00e1ticos del documento publicado (versi\u00f3n {versionId?.ToString() ?? "pendiente"}): {error.Message}"
             );
         }
+        try
+        {
+            new EvaluadorAlertas(conexion).Evaluar();
+        }
+        catch (Exception error)
+        {
+            RevisionEnlacesFallida?.Invoke(
+                versionId,
+                $"No se pudieron evaluar las alertas después de publicar el documento: {error.Message}"
+            );
+        }
     }
 
     private static IReadOnlyList<ValorDocumentoLeido> CrearValores(

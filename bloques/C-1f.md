@@ -2,7 +2,7 @@
 bloque: C-1f
 app: Núcleo, Buscadero y Archivero
 fase: C
-estado: pendiente
+estado: hecho
 agente: Codex
 modelo: codex
 archivos_permitidos: [src/Hormiguero.Nucleo/**, src/Hormiguero.Buscadero.Core/**, src/Hormiguero.Buscadero/MainWindow.xaml.cs, src/Hormiguero.Archivero/Servicios/**, tests/Hormiguero.Nucleo.Tests/**, tests/Hormiguero.Buscadero.Core.Tests/**, tests/Hormiguero.Archivero.App.Tests/**]
@@ -23,3 +23,13 @@ Pruebas: crear al faltar, no duplicar, vencer al pasar la fecha (inyecta "hoy" p
 `dotnet build` sin advertencias; `dotnet test` todo pasa; `dotnet csharpier check .` sin errores. Reporte al final.
 
 ## Reporte del agente
+
+Implementé `EvaluadorAlertas` en Núcleo. Revisa reglas activas y cadenas activas, calcula el vencimiento desde la fecha del enlace de origen con el calendario de la regla, crea alertas idempotentes, marca vencidas las alertas automáticas y manuales al llegar su fecha, y resuelve alertas existentes cuando encuentra un enlace confirmado en el vagón esperado. Si no existe el enlace de origen o la regla/cadena está anulada, conserva la alerta sin resolverla. Los errores se registran en auditoría y se propagan para mostrarlos en Buscadero o Archivero.
+
+Conecté la evaluación a la apertura de Buscadero en segundo plano, a los vínculos manuales y aceptados, a la revisión automática de enlaces y a la publicación de documentos en Archivero. Añadí pruebas de creación, idempotencia, vencimiento, resolución, regla anulada, vencimiento manual y error visible/auditable.
+
+Decisión para la fecha límite: se marca vencida cuando `fecha_objetivo <= hoy`, tanto para alertas automáticas como manuales. Un enlace se considera confirmado si está activo y su versión sigue vigente.
+
+Verificación: `dotnet build` correcto, 0 advertencias y 0 errores. `dotnet test` correcto: 664 pruebas aprobadas. `git diff --check` sin errores. `dotnet csharpier check` en los cinco archivos permitidos pasa. `dotnet csharpier check .` señala únicamente `tests/Hormiguero.Mensajero.Core.Tests/AlmacenMensajeroTests.cs` por finales de línea; no lo modifiqué porque está fuera de los archivos permitidos.
+
+- Claude: una alerta vence el día **siguiente** a su fecha objetivo (el mismo día queda pendiente, "vence hoy"); prueba ajustada.
