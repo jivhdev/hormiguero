@@ -110,9 +110,12 @@ public partial class MainWindow : Window
             Hormiguero.Nucleo.Datos.DocumentosGuardados.RutaBaseComun
         );
         Closed += (_, _) => _repositorioMarcas.Dispose();
-        _lineas = new ServicioLineas(
-            new RepositorioLineas(Hormiguero.Nucleo.Datos.DocumentosGuardados.RutaBaseComun)
+        var repositorioLineas = new RepositorioLineas(
+            Hormiguero.Nucleo.Datos.DocumentosGuardados.RutaBaseComun
         );
+        repositorioLineas.ErrorRevisionMotor += mensaje =>
+            Dispatcher.Invoke(() => MostrarMensaje(mensaje));
+        _lineas = new ServicioLineas(repositorioLineas);
 
         CargarCarpetas();
         ActualizarSugerenciasCarpeta();

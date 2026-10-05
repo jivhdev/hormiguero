@@ -10,6 +10,7 @@ public static class PublicadorDatosDocumentoService
 {
     public static bool PublicacionAutomaticaActiva { get; set; }
     public static Task? UltimaRevisionEnlaces { get; private set; }
+    public static event Action<long?, string>? RevisionEnlacesFallida;
 
     public static void PublicarGuardado(
         string ruta,
@@ -82,6 +83,10 @@ public static class PublicadorDatosDocumentoService
             catch
             { /* Un fallo de auditoría no invalida el documento publicado. */
             }
+            RevisionEnlacesFallida?.Invoke(
+                versionId,
+                $"No se pudieron revisar los enlaces autom\u00e1ticos del documento publicado (versi\u00f3n {versionId?.ToString() ?? "pendiente"}): {error.Message}"
+            );
         }
     }
 

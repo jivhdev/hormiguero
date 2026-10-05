@@ -71,6 +71,7 @@ public sealed class MotorEnlaceAutomatico(SqliteConnection conexion)
                 }
                 if (
                     versionPublicada is not null
+                    && EsVersionVigente(versionPublicada.Value)
                     && !TieneValor(versionPublicada.Value, regla.CampoOrigenId)
                 )
                 {
@@ -90,7 +91,7 @@ public sealed class MotorEnlaceAutomatico(SqliteConnection conexion)
                     continue;
                 }
                 var comparacion = NormalizarClave(valorReferencia.Value.ValorClave, regla);
-                var candidatos = BuscarCandidatos(regla)
+                var candidatos = BuscarCandidatos(regla, versionPublicada)
                     .Where(v => NormalizarClave(v.ValorClave, regla) == comparacion)
                     .ToArray();
                 foreach (var candidato in candidatos)
@@ -236,12 +237,14 @@ public sealed class MotorEnlaceAutomatico(SqliteConnection conexion)
     }
 
     private IReadOnlyList<(long VersionId, string ValorClave, double? Confianza)> BuscarCandidatos(
-        ReglaVagon regla
+        ReglaVagon regla,
+        long? versionPublicada
     )
     {
         using var cmd = conexion.CreateCommand();
         cmd.CommandText =
-            "SELECT DISTINCT x.version_id,x.valor_clave,x.confianza FROM valores_documento x JOIN versiones_documento v ON v.id=x.version_id JOIN campos_documento c ON c.id=x.campo_id WHERE x.campo_id=$campo AND c.identificacion_id=$identificacion AND x.estado='vigente' AND v.estado='vigente' ORDER BY x.version_id;";
+            "SELECT DISTINCT x.version_id,x.valor_clave,x.confianza FROM valores_documento x JOIN versiones_documento v ON v.id=x.version_id JOIN campos_documento c ON c.id=x.campo_id WHERE x.campo_id=$campo AND c.identificacion_id=$identificacion AND ((x.estado='vigente' AND v.estado='vigente') OR x.version_id=$publicada) ORDER BY x.version_id;";
+        cmd.Parameters.AddWithValue("$publicada", (object?)versionPublicada ?? DBNull.Value);
         cmd.Parameters.AddWithValue("$campo", regla.CampoOrigenId);
         cmd.Parameters.AddWithValue("$identificacion", regla.IdentificacionId);
         using var r = cmd.ExecuteReader();
