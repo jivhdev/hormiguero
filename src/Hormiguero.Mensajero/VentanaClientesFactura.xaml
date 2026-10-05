@@ -18,7 +18,19 @@
       <RowDefinition Height="*" />
       <RowDefinition Height="Auto" />
     </Grid.RowDefinitions>
-    <TextBlock Text="📋 Gestión de Clientes" FontSize="18" FontWeight="Bold" Margin="0,0,0,12" />
+    <DockPanel Margin="0,0,0,12">
+      <Button
+        DockPanel.Dock="Right"
+        Content="Importar de ClickFactura…"
+        Click="ImportarClientesFactura_Click"
+      />
+      <TextBlock
+        Text="📋 Gestión de Clientes"
+        FontSize="18"
+        FontWeight="Bold"
+        VerticalAlignment="Center"
+      />
+    </DockPanel>
     <Grid Grid.Row="1" Margin="0,0,0,10">
       <Grid.ColumnDefinitions>
         <ColumnDefinition Width="1*" />

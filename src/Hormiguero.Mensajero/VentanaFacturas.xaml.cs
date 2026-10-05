@@ -1,4 +1,5 @@
 using System.Collections.Specialized;
+using System.Diagnostics;
 using System.IO;
 using System.Runtime.InteropServices;
 using System.Windows;
@@ -30,8 +31,8 @@ public partial class VentanaFacturas : Window
     ];
 
     private readonly AlmacenMensajero almacen;
-    private readonly string baseTemporal;
-    private readonly string baseDocumentos;
+    private string baseTemporal;
+    private string baseDocumentos;
     private IReadOnlyList<DocumentoFactura> documentos = [];
     private IReadOnlyList<ClienteAnalizado> clientes = [];
     private readonly HashSet<string> clientesEnviados = new(StringComparer.Ordinal);
@@ -58,6 +59,7 @@ public partial class VentanaFacturas : Window
             ? BuscadorPdfFactura.RutaBasePredeterminada
             : documentosGuardados;
         almacen.GuardarValor("factura.carpeta_documentos", baseDocumentos);
+        ActualizarCarpetas();
 
         SemanaUno.ItemsSource = SemanaDos.ItemsSource = Enumerable.Range(1, 5).ToArray();
         SemanaUno.SelectedIndex = SemanaDos.SelectedIndex = 0;
@@ -486,6 +488,65 @@ public partial class VentanaFacturas : Window
     {
         var ventana = new VentanaClientesFactura(almacen) { Owner = this };
         ventana.ShowDialog();
+    }
+
+    private void CambiarCarpetaDocumentos_Click(object sender, RoutedEventArgs e)
+    {
+        string? carpeta = ElegirCarpeta("Seleccionar carpeta de facturas (PDF)", baseDocumentos);
+        if (carpeta is null)
+            return;
+        baseDocumentos = carpeta;
+        almacen.GuardarValor("factura.carpeta_documentos", baseDocumentos);
+        ActualizarCarpetas();
+    }
+
+    private void CambiarCarpetaTemporal_Click(object sender, RoutedEventArgs e)
+    {
+        string? carpeta = ElegirCarpeta("Seleccionar carpeta temporal para envíos", baseTemporal);
+        if (carpeta is null)
+            return;
+        baseTemporal = carpeta;
+        almacen.GuardarValor("factura.carpeta_temporal", baseTemporal);
+        ActualizarCarpetas();
+    }
+
+    private string? ElegirCarpeta(string titulo, string actual)
+    {
+        var dialogo = new OpenFolderDialog
+        {
+            Title = titulo,
+            FolderName = Directory.Exists(actual)
+                ? actual
+                : Environment.GetFolderPath(Environment.SpecialFolder.MyDocuments),
+        };
+        return dialogo.ShowDialog(this) == true ? dialogo.FolderName : null;
+    }
+
+    private void ActualizarCarpetas()
+    {
+        TextoCarpetaDocumentos.Text = baseDocumentos;
+        TextoCarpetaTemporal.Text = baseTemporal;
+        TextoEstadoDocumentos.Visibility = Directory.Exists(baseDocumentos)
+            ? Visibility.Collapsed
+            : Visibility.Visible;
+    }
+
+    private void AbrirCarpetaTemporal_Click(object sender, RoutedEventArgs e)
+    {
+        try
+        {
+            Directory.CreateDirectory(baseTemporal);
+            Process.Start(new ProcessStartInfo(baseTemporal) { UseShellExecute = true });
+        }
+        catch (Exception excepcion)
+        {
+            MostrarAviso(
+                "Error",
+                $"No se pudo abrir la carpeta: {excepcion.Message}",
+                "error",
+                this
+            );
+        }
     }
 
     private void CopiarCorreo_Click(object sender, RoutedEventArgs e) =>

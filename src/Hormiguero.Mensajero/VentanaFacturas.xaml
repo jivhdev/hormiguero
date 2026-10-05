@@ -18,6 +18,7 @@
         <RowDefinition Height="Auto" />
         <RowDefinition Height="*" />
         <RowDefinition Height="Auto" />
+        <RowDefinition Height="Auto" />
       </Grid.RowDefinitions>
       <TextBlock
         Text="📅 Configurar Período"
@@ -84,8 +85,58 @@
           Foreground="{DynamicResource Hormiguero.Texto}"
         />
       </StackPanel>
+      <GroupBox Grid.Row="2" Header="Carpetas" Padding="8" Margin="0,4,0,8">
+        <Grid>
+          <Grid.ColumnDefinitions>
+            <ColumnDefinition Width="Auto" />
+            <ColumnDefinition Width="*" />
+            <ColumnDefinition Width="Auto" />
+          </Grid.ColumnDefinitions>
+          <Grid.RowDefinitions>
+            <RowDefinition Height="Auto" />
+            <RowDefinition Height="Auto" />
+          </Grid.RowDefinitions>
+          <TextBlock
+            Text="Carpeta de facturas (PDF):"
+            VerticalAlignment="Center"
+            Margin="0,0,8,4"
+          />
+          <StackPanel Grid.Column="1" Margin="0,0,8,4">
+            <TextBlock x:Name="TextoCarpetaDocumentos" TextWrapping="Wrap" />
+            <TextBlock
+              x:Name="TextoEstadoDocumentos"
+              Text="No se encuentra esta carpeta"
+              Foreground="{DynamicResource Hormiguero.Error}"
+            />
+          </StackPanel>
+          <Button
+            Grid.Column="2"
+            Content="Cambiar…"
+            Click="CambiarCarpetaDocumentos_Click"
+            Margin="0,0,0,4"
+          />
+          <TextBlock
+            Grid.Row="1"
+            Text="Carpeta temporal para envíos:"
+            VerticalAlignment="Center"
+            Margin="0,0,8,0"
+          />
+          <TextBlock
+            x:Name="TextoCarpetaTemporal"
+            Grid.Row="1"
+            Grid.Column="1"
+            TextWrapping="Wrap"
+            VerticalAlignment="Center"
+            Margin="0,0,8,0"
+          />
+          <StackPanel Grid.Row="1" Grid.Column="2" Orientation="Horizontal">
+            <Button Content="Cambiar…" Click="CambiarCarpetaTemporal_Click" Margin="0,0,6,0" />
+            <Button Content="Abrir" Click="AbrirCarpetaTemporal_Click" />
+          </StackPanel>
+        </Grid>
+      </GroupBox>
       <Button
-        Grid.Row="2"
+        Grid.Row="3"
         Content="Siguiente →"
         Click="SiguientePeriodo_Click"
         HorizontalAlignment="Right"

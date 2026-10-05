@@ -384,6 +384,68 @@ public partial class VentanaPrincipal : Window
         RefrescarClientes(CampoBuscarCliente.Text);
     }
 
+    private void ImportarClientesNvv_Click(object sender, RoutedEventArgs e)
+    {
+        EstadoImportacionClientesNvv estado = PoliticaImportacionClientesNvv.Evaluar(clientes);
+        if (estado == EstadoImportacionClientesNvv.ListaExistente)
+        {
+            MostrarAvisoImportacion(PoliticaImportacionClientesNvv.MensajeListaExistente);
+            return;
+        }
+
+        var dialogo = new OpenFileDialog
+        {
+            Title = "Seleccionar clientes.txt de Ofisuiza",
+            Filter =
+                "Clientes de Ofisuiza (clientes.txt)|clientes.txt|Archivos de texto (*.txt)|*.txt",
+            FileName = "clientes.txt",
+        };
+        if (dialogo.ShowDialog(this) != true)
+            return;
+
+        if (
+            estado == EstadoImportacionClientesNvv.ClientesDeEjemplo
+            && MessageBox.Show(
+                this,
+                PoliticaImportacionClientesNvv.MensajeReemplazoEjemplos,
+                "Importar de Ofisuiza",
+                MessageBoxButton.YesNo,
+                MessageBoxImage.Question
+            ) != MessageBoxResult.Yes
+        )
+            return;
+
+        try
+        {
+            if (estado == EstadoImportacionClientesNvv.ClientesDeEjemplo)
+            {
+                almacen.GuardarClientesNvv([]);
+                clientes = [];
+            }
+
+            int cantidad = almacen.ImportarClientesNvv(dialogo.FileName);
+            clientes = almacen.LeerClientesNvv();
+            RefrescarClientes(CampoBuscarCliente.Text);
+            MostrarAvisoImportacion($"Se importaron {cantidad} clientes.");
+        }
+        catch (Exception excepcion)
+        {
+            MostrarAvisoImportacion(
+                $"No se pudieron importar los clientes: {excepcion.Message}",
+                true
+            );
+        }
+    }
+
+    private void MostrarAvisoImportacion(string mensaje, bool error = false) =>
+        MessageBox.Show(
+            this,
+            mensaje,
+            "Importar de Ofisuiza",
+            MessageBoxButton.OK,
+            error ? MessageBoxImage.Error : MessageBoxImage.Information
+        );
+
     private void GuardarClientes(IReadOnlyList<string> nuevos)
     {
         almacen.GuardarClientesNvv(nuevos);
