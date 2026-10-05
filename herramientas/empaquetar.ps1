@@ -1,4 +1,4 @@
-# Arma el paquete portable de Hormiguero para copiar a otro PC (no necesita instalar .NET).
+﻿# Arma el paquete portable de Hormiguero para copiar a otro PC (no necesita instalar .NET).
 # Uso: powershell -ExecutionPolicy Bypass -File herramientas\empaquetar.ps1 [-Destino E:\Hormiguero-portable]
 param([string]$Destino = 'E:\Hormiguero-portable')
 $ErrorActionPreference = 'Stop'

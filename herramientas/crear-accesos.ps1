@@ -1,4 +1,4 @@
-# Crea en el escritorio los accesos directos a las apps de Hormiguero de esta carpeta.
+﻿# Crea en el escritorio los accesos directos a las apps de Hormiguero de esta carpeta.
 # Uso: clic derecho > "Ejecutar con PowerShell" (o: powershell -ExecutionPolicy Bypass -File crear-accesos.ps1)
 $carpeta = $PSScriptRoot
 $escritorio = [Environment]::GetFolderPath('Desktop')
