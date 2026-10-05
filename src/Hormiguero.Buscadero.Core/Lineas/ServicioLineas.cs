@@ -335,9 +335,16 @@ public sealed class ServicioLineas
             );
         }
 
+        var estructura = Deserializar(padre);
         var nodo = documento.PlantillaVagonId is long plantillaVagonId
-            ? BuscarNodo(Deserializar(padre), plantillaVagonId)
-            : null;
+            ? BuscarNodo(estructura, plantillaVagonId)
+            : BuscarNodoPorNombre(
+                estructura,
+                documento.Nombre,
+                documento.Orden,
+                documento.EsMultiple,
+                documento.EsAnexo
+            );
         if (nodo is null)
         {
             throw new InvalidOperationException(
@@ -672,6 +679,30 @@ public sealed class ServicioLineas
             }
         }
 
+        return null;
+    }
+
+    private static NodoEstructura? BuscarNodoPorNombre(
+        IReadOnlyList<NodoEstructura> nodos,
+        string nombre,
+        int orden,
+        bool esMultiple,
+        bool esAnexo
+    )
+    {
+        foreach (var nodo in nodos)
+        {
+            if (
+                nodo.Nombre == nombre
+                && nodo.Orden == orden
+                && nodo.EsMultiple == esMultiple
+                && nodo.EsAnexo == esAnexo
+            )
+                return nodo;
+            var hijo = BuscarNodoPorNombre(nodo.Hijos, nombre, orden, esMultiple, esAnexo);
+            if (hijo is not null)
+                return hijo;
+        }
         return null;
     }
 }

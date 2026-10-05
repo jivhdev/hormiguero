@@ -65,6 +65,7 @@ public sealed class InstanciaVagon
     public required bool EsAnexo { get; init; }
     public string? RutaDocumento { get; init; }
     public string? NombreDocumento { get; init; }
+    public bool AvisoDocumentoModificado { get; init; }
 }
 
 public sealed class NodoInstancia

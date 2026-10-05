@@ -1,4 +1,6 @@
 using Buscadero.Core.Lineas;
+using Hormiguero.Nucleo.Datos;
+using Microsoft.Data.Sqlite;
 
 namespace Buscadero.Core.Tests;
 
@@ -184,14 +186,62 @@ public sealed class LineasTests
         var cadena = entorno.ServicioLineas.CrearInstancia(compra.Id, "Compra 1");
         var orden = DocumentoPorNombre(entorno, cadena.Id, "Orden de Compra");
 
-        entorno.ServicioLineas.VincularDocumento(orden.Id, @"C:\docs\12345.pdf");
+        entorno.ServicioLineas.VincularDocumento(orden.Id, entorno.CrearDocumento("12345.pdf"));
         Assert.Equal("12345.pdf", DocumentoPorId(entorno, cadena.Id, orden.Id).NombreDocumento);
 
-        entorno.ServicioLineas.VincularDocumento(orden.Id, @"C:\docs\99999.pdf");
+        entorno.ServicioLineas.VincularDocumento(orden.Id, entorno.CrearDocumento("99999.pdf"));
         Assert.Equal("99999.pdf", DocumentoPorId(entorno, cadena.Id, orden.Id).NombreDocumento);
 
         entorno.ServicioLineas.DesvincularDocumento(orden.Id);
         Assert.Null(DocumentoPorId(entorno, cadena.Id, orden.Id).NombreDocumento);
+        var historial = entorno.RepositorioLineas.HistorialEnlaces(orden.Id);
+        Assert.Equal(new[] { "anulado", "anulado" }, historial.Select(e => e.Estado));
+        Assert.All(historial, enlace => Assert.Equal("manual", enlace.Origen));
+    }
+
+    [Fact]
+    public void Enlace_ConservaVersionAlMoverYAdvierteCambioDeContenido()
+    {
+        using var entorno = new EntornoDePrueba();
+        var modelo = entorno.ServicioLineas.CrearPlantilla("Compra");
+        entorno.ServicioLineas.AgregarVagon(modelo.Id, null, "Orden", false, false, null);
+        var cadena = entorno.ServicioLineas.CrearInstancia(modelo.Id, "Compra 1");
+        var vagon = DocumentoPorNombre(entorno, cadena.Id, "Orden");
+        var ruta = entorno.CrearDocumento("orden.pdf", "contenido original");
+
+        using var conexionLector = BaseComun.Abrir(entorno.RutaBaseComun);
+        using var comandoLector = conexionLector.CreateCommand();
+        comandoLector.CommandText = "SELECT id FROM cadenas";
+        using var lector = comandoLector.ExecuteReader();
+        Assert.True(lector.Read());
+        entorno.ServicioLineas.VincularDocumento(vagon.Id, ruta);
+        lector.Close();
+
+        var versionEnlazada = Assert
+            .Single(entorno.RepositorioLineas.HistorialEnlaces(vagon.Id))
+            .VersionId;
+        var rutaMovida = Path.Combine(entorno.Raiz, "movido.pdf");
+        File.Move(ruta, rutaMovida);
+        entorno.ServicioLineas.VincularDocumento(vagon.Id, rutaMovida);
+        var historialMovido = entorno.RepositorioLineas.HistorialEnlaces(vagon.Id);
+        Assert.Equal(versionEnlazada, historialMovido[1].VersionId);
+        Assert.Equal("anulado", historialMovido[0].Estado);
+
+        File.WriteAllText(rutaMovida, "contenido cambiado");
+        var vagonActualizado = DocumentoPorId(entorno, cadena.Id, vagon.Id);
+
+        Assert.True(vagonActualizado.AvisoDocumentoModificado);
+        Assert.Equal("movido.pdf", vagonActualizado.NombreDocumento);
+        Assert.Equal(
+            versionEnlazada,
+            entorno.RepositorioLineas.HistorialEnlaces(vagon.Id).Last().VersionId
+        );
+        entorno.ServicioLineas.VincularDocumento(vagon.Id, rutaMovida);
+        var historialActualizado = entorno.RepositorioLineas.HistorialEnlaces(vagon.Id);
+        Assert.Equal(versionEnlazada, historialActualizado[1].VersionId);
+        Assert.NotEqual(versionEnlazada, historialActualizado[2].VersionId);
+        Assert.Equal("anulado", historialActualizado[1].Estado);
+        Assert.Equal("activo", historialActualizado[2].Estado);
     }
 
     [Fact]
@@ -242,13 +292,15 @@ public sealed class LineasTests
         var cadena = entorno.ServicioLineas.CrearCadenaVacia(compra.Id);
         var orden = DocumentoPorNombre(entorno, cadena.Id, "Orden de Compra");
         var guia = DocumentoPorNombre(entorno, cadena.Id, "Guía");
-        entorno.ServicioLineas.VincularDocumento(orden.Id, @"C:\d\orden.pdf");
+        var rutaOrden = entorno.CrearDocumento("orden.pdf");
+        entorno.ServicioLineas.VincularDocumento(orden.Id, rutaOrden);
         var hija = entorno.ServicioLineas.AgregarCadenaHija(cadena.Id, guia.Id);
         var factura = DocumentoPorNombre(entorno, hija.Id, "Factura");
-        entorno.ServicioLineas.VincularDocumento(factura.Id, @"C:\d\factura.pdf");
+        var rutaFactura = entorno.CrearDocumento("factura.pdf", "contenido de factura");
+        entorno.ServicioLineas.VincularDocumento(factura.Id, rutaFactura);
 
-        var porMadre = entorno.ServicioLineas.BuscarCadenasDeDocumento(@"C:\d\orden.pdf");
-        var porHija = entorno.ServicioLineas.BuscarCadenasDeDocumento(@"C:\d\factura.pdf");
+        var porMadre = entorno.ServicioLineas.BuscarCadenasDeDocumento(rutaOrden);
+        var porHija = entorno.ServicioLineas.BuscarCadenasDeDocumento(rutaFactura);
 
         Assert.Equal(cadena.Id, Assert.Single(porMadre).CadenaRaiz.Id);
         Assert.Equal(cadena.Id, Assert.Single(porHija).CadenaRaiz.Id);
@@ -280,7 +332,7 @@ public sealed class LineasTests
         var cadena = entorno.ServicioLineas.CrearCadenaVacia(compra.Id);
         var orden = DocumentoPorNombre(entorno, cadena.Id, "Orden de Compra");
         var guia = DocumentoPorNombre(entorno, cadena.Id, "Guía");
-        entorno.ServicioLineas.VincularDocumento(guia.Id, @"C:\d\guia.pdf");
+        entorno.ServicioLineas.VincularDocumento(guia.Id, entorno.CrearDocumento("guia.pdf"));
         var hija = entorno.ServicioLineas.AgregarCadenaHija(cadena.Id, guia.Id);
         var factura = DocumentoPorNombre(entorno, hija.Id, "Factura");
 
@@ -313,7 +365,10 @@ public sealed class LineasTests
         var facturaBisnieta = DocumentoPorNombre(entorno, facturacionBisnieta.Id, "Factura");
 
         // El archivo vive dos niveles mas abajo que compraHija (compraHija -> facturacionBisnieta -> Factura).
-        entorno.ServicioLineas.VincularDocumento(facturaBisnieta.Id, @"C:\d\factura.pdf");
+        entorno.ServicioLineas.VincularDocumento(
+            facturaBisnieta.Id,
+            entorno.CrearDocumento("factura.pdf")
+        );
 
         var documentos = entorno.ServicioLineas.ObtenerTodosLosDocumentos(compraHija.Id);
 
@@ -360,7 +415,10 @@ public sealed class LineasTests
         );
         var cadena = entorno.ServicioLineas.CrearInstancia(compra.Id, "Cadena 1");
         var ordenInstancia = DocumentoPorNombre(entorno, cadena.Id, "Orden de Compra");
-        entorno.ServicioLineas.VincularDocumento(ordenInstancia.Id, @"C:\d\orden-123.pdf");
+        entorno.ServicioLineas.VincularDocumento(
+            ordenInstancia.Id,
+            entorno.CrearDocumento("orden-123.pdf")
+        );
 
         Assert.Equal("orden-123.pdf", entorno.ServicioLineas.ObtenerNombreVisible(cadena));
     }
