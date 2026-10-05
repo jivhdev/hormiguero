@@ -1,0 +1,30 @@
+HORMIGUERO - paquete portable
+=============================
+
+Qué es: Archivero, Buscadero y Mensajero listos para usar. No hace falta instalar nada.
+
+Cómo empezar en un PC nuevo
+1. Copia esta carpeta completa a un lugar fijo del PC (por ejemplo C:\Hormiguero o D:\Hormiguero).
+   No la dejes en Descargas ni en un pendrive: los accesos directos apuntan a esta carpeta.
+2. Clic derecho en "crear-accesos.ps1" > "Ejecutar con PowerShell".
+   Se crean en el escritorio: "Archivero (Hormiguero)", "Buscadero (Hormiguero)" y "Mensajero (Hormiguero)".
+3. Abre cada app desde su acceso directo.
+
+Dónde quedan los datos
+- En %LOCALAPPDATA%\Hormiguero (base común, configuraciones y respaldos diarios).
+- La carpeta de las apps se puede reemplazar por una versión nueva sin perder datos.
+
+Tus datos de las apps viejas (Mensajero)
+- Clientes NVV de Ofisuiza: en Mensajero, "Importar de Ofisuiza…" y elige tu clientes.txt.
+- Clientes de ClickFactura: en Facturas, "Importar de ClickFactura…" y elige clickfactura.db
+  (suele estar en %LOCALAPPDATA%\ClickFactura\data).
+- La importación NUNCA modifica ni borra los archivos originales, y solo importa si Mensajero
+  todavía no tiene clientes. Las apps viejas siguen funcionando igual.
+
+Para actualizar a una versión nueva
+- Cierra las 3 apps, reemplaza las carpetas Archivero, Buscadero y Mensajero por las nuevas.
+  Los accesos directos y los datos siguen sirviendo.
+
+Si algo falla
+- Las apps viejas siguen disponibles: úsalas mientras se corrige.
+- Anota qué hiciste y qué mensaje apareció.
