@@ -42,6 +42,11 @@ public sealed class VentanasArchiveroSmokeTests
                     configuracion.Show();
                     configuracion.UpdateLayout();
                     configuracion.Close();
+
+                    var duplicado = new ResolverDuplicadoWindow(rutaPdf, rutaPdf);
+                    duplicado.Show();
+                    duplicado.UpdateLayout();
+                    duplicado.Close();
                 }
 
                 aplicacion.Shutdown();
