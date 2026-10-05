@@ -2,7 +2,7 @@
 bloque: M-A8
 app: Mensajero
 fase: C (D-72)
-estado: pendiente
+estado: hecho
 agente: Codex
 modelo: codex
 archivos_permitidos: [src/Hormiguero.Mensajero.Core/**, src/Hormiguero.Mensajero/**, tests/Hormiguero.Mensajero.Core.Tests/** (salvo Equivalencia/**), semillas/Mensajero/EQUIVALENCIA-OFISUIZA.md, semillas/Mensajero/EQUIVALENCIA-CLICKFACTURA.md]
@@ -99,3 +99,9 @@ Saludos cordiales.
 `dotnet build` sin advertencias; `dotnet test` todo pasa; `dotnet csharpier check .` sin errores. Reporte al final.
 
 ## Reporte del agente
+
+- Implementé plantillas configurables para retiro por proveedor, guía Hoffens y cuerpo de facturas. Se leen y guardan mediante `AlmacenMensajero.LeerValor/GuardarValor` con claves `plantilla.*`; los valores predeterminados son los textos aprobados en D-72. Los marcadores y sus valores están documentados en las listas de equivalencia.
+- La pantalla usa las plantillas nuevas. Las funciones originales de Ofisuiza y ClickFactura siguen intactas, y el asunto de facturas y «Proveedor no reconocido» no cambiaron.
+- Las copias de retiro, guía y cuerpo de facturas usan `PrepararCuerpoCorreo`, que agrega una línea en blanco final. La edición visual de plantillas queda pendiente.
+- Añadí pruebas de textos exactos, valores vacíos, tipo de documento, plantilla guardada y marcador desconocido.
+- Verificación: `dotnet build` correcto (0 advertencias, 0 errores); `dotnet test` correcto (617 pruebas en la solución, incluidas 112 de Mensajero); `dotnet csharpier check .` correcto (238 archivos).

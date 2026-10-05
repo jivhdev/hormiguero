@@ -32,3 +32,9 @@ Todo lo que hace la Ofisuiza en uso y su estado en Mensajero. Ninguna fila puede
 Verificado (2026-10-04): extracción idéntica al original en 13 OCC sintéticas y 36/36 campos en 6 OCC reales; pantalla probada en vivo por Claude con datos sintéticos (todos los botones, buscadores, editor y atajos).
 
 Atajos actualizados por pedido de Javier (2026-10-04): Alt+S asunto, Alt+D cuerpo, Alt+F mensaje de retiro, Alt+G mensaje de guía, Alt+A foco en el buscador de clientes y Alt+X copiar PDF. Se quitaron todos los Ctrl+1..5.
+
+## Cambio aprobado (D-72, 2026-10-04)
+
+Las filas 5 y 6 conservan las funciones y respuestas originales probadas en `Equivalencia/`. La pantalla de Mensajero ahora usa las plantillas configurables aprobadas para los mensajes de retiro y guía; las copias agregan una línea en blanco final para la firma. Las plantillas se guardan en `AlmacenMensajero` con claves `plantilla.retiro.*` y `plantilla.guia.hoffens`. No hay pantalla para editarlas todavía.
+
+Marcadores: `{OCC}` y `{OCL}` son los números extraídos; `{DIA}` y `{BLOQUE}` son los datos de retiro Hoffens (vacíos y el bloque «Manual» se muestran como `_______________`). `{FECHA_GUIA}` es `hoy`, `ayer` o `el día X`; si «Otro» está vacío se usa `hoy`. `{OBRA}` es obra y comuna cuando hay ambas; si falta la obra o es «No detectada», se muestra `_______________`. Los marcadores desconocidos permanecen sin cambios.
