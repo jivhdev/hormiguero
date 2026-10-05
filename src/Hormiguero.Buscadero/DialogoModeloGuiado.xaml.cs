@@ -288,6 +288,11 @@ public partial class DialogoModeloGuiado : Window
             return;
         }
 
+        var documentos = ObtenerOpcionesRegla(Actual.Modelo.Id);
+        var dialogoRegla = new DialogoReglaVagon(_lineas, documentos) { Owner = this };
+        if (dialogoRegla.ShowDialog() != true)
+            return;
+
         PedirYGuardarPreferenciaNombre(Actual.Modelo);
 
         if (Actual.Padre is null)
@@ -317,6 +322,25 @@ public partial class DialogoModeloGuiado : Window
         padre.SubtituloPersonalizado =
             $"'{pendiente.Nombre}' ahora está marcado como ramificado, usando el modelo '{hijo.Modelo.Nombre}'. Seguís agregando documentos a '{padre.Modelo.Nombre}'.";
         ActualizarContexto();
+    }
+
+    private IReadOnlyList<OpcionDocumentoRegla> ObtenerOpcionesRegla(long modeloId)
+    {
+        var documentos = new List<OpcionDocumentoRegla>();
+        foreach (var nodo in _lineas.ObtenerArbolPlantilla(modeloId))
+        {
+            documentos.Add(
+                new OpcionDocumentoRegla { Id = nodo.Vagon.Id, Nombre = nodo.Vagon.Nombre }
+            );
+            documentos.AddRange(
+                nodo.Hijos.Select(anexo => new OpcionDocumentoRegla
+                {
+                    Id = anexo.Vagon.Id,
+                    Nombre = $"{anexo.Vagon.Nombre} (anexo)",
+                })
+            );
+        }
+        return documentos;
     }
 
     private void PedirYGuardarPreferenciaNombre(PlantillaLinea modelo)

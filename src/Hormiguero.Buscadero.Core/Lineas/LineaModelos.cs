@@ -80,6 +80,52 @@ public sealed class CoincidenciaCadena
     public required InstanciaVagon Documento { get; init; }
 }
 
+public sealed record OpcionReglaVagon(
+    long Id,
+    string Nombre,
+    IReadOnlyList<OpcionCampoRegla> Campos
+);
+
+public sealed record OpcionCampoRegla(long Id, string Nombre, string? Configuracion = null)
+{
+    public string Etiqueta => Configuracion is null ? Nombre : $"{Nombre} ({Configuracion})";
+}
+
+public sealed record ReglaVagonConfigurada(
+    long VagonModeloId,
+    long IdentificacionId,
+    long CampoOrigenId,
+    long VagonComparacionId,
+    long CampoComparacionId,
+    bool IgnorarEspacios = true,
+    bool IgnorarGuiones = false,
+    bool IgnorarCerosIniciales = false,
+    int LargoMinimo = 6
+);
+
+public sealed record DudosoVagon(
+    long Id,
+    string NombreDocumento,
+    string NombreVagon,
+    string? ValorPropuesto,
+    string? ValorComparado,
+    string Motivo,
+    string? RutaDocumento,
+    string? NombreDocumentoComparado
+);
+
+public static class TextoReglaVagon
+{
+    public static string CrearFrase(
+        string nombreVagon,
+        string configuracion,
+        string nombreCampo,
+        string nombreVagonComparacion,
+        string nombreCampoComparacion
+    ) =>
+        $"Completar {nombreVagon} con documentos de {configuracion} cuando {nombreCampo} sea igual a {nombreCampoComparacion} de {nombreVagonComparacion}";
+}
+
 public sealed class NodoEstructura
 {
     public long PlantillaVagonId { get; set; }

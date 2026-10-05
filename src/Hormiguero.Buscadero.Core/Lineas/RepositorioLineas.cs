@@ -13,6 +13,7 @@ public sealed class RepositorioLineas : IDisposable
     private readonly string _rutaBaseComun;
     private Task? _revisionMotor;
     public event Action<string>? ErrorRevisionMotor;
+    public event Action? RevisionMotorCompletada;
 
     public RepositorioLineas(string rutaBaseComun)
     {
@@ -319,6 +320,10 @@ public sealed class RepositorioLineas : IDisposable
                     $"No se pudieron revisar los enlaces autom\u00e1ticos de la cadena {cadenaId}: {error.Message}"
                 );
             }
+            finally
+            {
+                RevisionMotorCompletada?.Invoke();
+            }
         });
     }
 
@@ -349,6 +354,126 @@ public sealed class RepositorioLineas : IDisposable
 
     public IReadOnlyList<EnlaceCadena> HistorialEnlaces(long vagonCadenaId) =>
         _enlaces.HistorialEnlaces(vagonCadenaId);
+
+    public IReadOnlyList<(
+        long Id,
+        string Nombre,
+        IReadOnlyList<OpcionCampoRegla> Campos
+    )> ListarOpcionesRegla()
+    {
+        var datos = new RepositorioDocumentosDatos(_conexion);
+        var identificaciones = new Identificaciones(_conexion).Listar();
+        return identificaciones
+            .Select(i =>
+                (
+                    i.Id,
+                    $"{i.Tipo} de {i.Emisor}",
+                    (IReadOnlyList<OpcionCampoRegla>)
+                        datos
+                            .ListarCampos(i.Id)
+                            .Select(c => new OpcionCampoRegla(c.Id, c.Nombre))
+                            .ToList()
+                )
+            )
+            .Where(i => i.Item3.Count > 0)
+            .ToList();
+    }
+
+    public long GuardarRegla(ReglaVagonConfigurada regla) =>
+        _enlaces.GuardarRegla(
+            new ReglaVagon(
+                0,
+                regla.VagonModeloId,
+                regla.IdentificacionId,
+                regla.CampoOrigenId,
+                regla.VagonComparacionId,
+                regla.CampoComparacionId,
+                "igual",
+                regla.IgnorarEspacios,
+                regla.IgnorarGuiones,
+                regla.IgnorarCerosIniciales,
+                regla.LargoMinimo,
+                "activa"
+            )
+        );
+
+    public IReadOnlyList<DudosoVagon> ListarDudosos()
+    {
+        var resultado = new List<DudosoVagon>();
+        foreach (var enlace in _enlaces.ListarDudosos())
+        {
+            var datos = _enlaces.ObtenerDatosDudoso(enlace.Id);
+            if (datos is null)
+                continue;
+            var vagon = ObtenerVagonInstancia(enlace.VagonCadenaId);
+            var regla = vagon?.PlantillaVagonId is long modeloVagon
+                ? _enlaces.ObtenerRegla(modeloVagon)
+                : null;
+            var nombreComparado = regla is null
+                ? null
+                : BuscarDocumentoComparacion(vagon!.InstanciaId, regla.VagonComparacionId);
+            resultado.Add(
+                new DudosoVagon(
+                    enlace.Id,
+                    datos.NombreDocumento,
+                    datos.NombreVagon,
+                    datos.ValorPropuesto,
+                    datos.ValorComparado,
+                    MotivoAmigable(datos.Motivo),
+                    datos.RutaDocumento,
+                    nombreComparado
+                )
+            );
+        }
+        return resultado;
+    }
+
+    private string? BuscarDocumentoComparacion(
+        long cadenaId,
+        long vagonModeloId,
+        HashSet<long>? visitadas = null
+    )
+    {
+        visitadas ??= new HashSet<long>();
+        if (!visitadas.Add(cadenaId))
+            return null;
+        foreach (var documento in ObtenerVagonesInstancia(cadenaId))
+        {
+            if (documento.PlantillaVagonId == vagonModeloId)
+                return documento.NombreDocumento ?? $"{documento.Nombre} (sin archivo)";
+            foreach (var hija in ObtenerCadenasHijas(documento.Id))
+            {
+                var encontrado = BuscarDocumentoComparacion(hija.Id, vagonModeloId, visitadas);
+                if (encontrado is not null)
+                    return encontrado;
+            }
+        }
+        if (ObtenerInstancia(cadenaId)?.CadenaMadreId is long cadenaMadreId)
+            return BuscarDocumentoComparacion(cadenaMadreId, vagonModeloId, visitadas);
+        return null;
+    }
+
+    private static string MotivoAmigable(string? motivo)
+    {
+        var texto = motivo?.ToLowerInvariant() ?? string.Empty;
+        if (texto.Contains("falta el dato"))
+            return "Falta uno de los datos para hacer la comparación.";
+        if (texto.Contains("versi\u00f3n del documento"))
+            return "El archivo cambió desde que se propuso el vínculo.";
+        if (texto.Contains("lectura no es segura"))
+            return "No se pudo confirmar con seguridad el dato leído.";
+        if (texto.Contains("demasiado corto"))
+            return "El dato tiene menos caracteres que el mínimo indicado.";
+        if (texto.Contains("documentos con el mismo dato"))
+            return "Hay varios documentos con ese mismo dato.";
+        if (texto.Contains("vag\u00f3n ya tiene"))
+            return "Este espacio ya tiene un documento.";
+        return "Hace falta revisar estos documentos antes de enlazarlos.";
+    }
+
+    public bool AceptarDudoso(long id) => _enlaces.AceptarDudoso(id);
+
+    public bool RechazarDudoso(long id) => _enlaces.RechazarDudoso(id);
 
     private List<InstanciaVagon> ObtenerVagonesInstanciaPorVagon(long id) =>
         ObtenerVagonesInstancia(

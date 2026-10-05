@@ -28,6 +28,38 @@ public sealed class ServicioLineas
 
     public IReadOnlyList<PlantillaLinea> ObtenerPlantillas() => _repositorio.ObtenerPlantillas();
 
+    public IReadOnlyList<OpcionReglaVagon> ListarOpcionesRegla() =>
+        _repositorio
+            .ListarOpcionesRegla()
+            .Select(o => new OpcionReglaVagon(o.Id, o.Nombre, o.Campos))
+            .ToList();
+
+    public long GuardarRegla(ReglaVagonConfigurada regla)
+    {
+        if (regla.LargoMinimo < 0)
+            throw new ArgumentOutOfRangeException(
+                nameof(regla),
+                "El largo mínimo no puede ser negativo."
+            );
+        if (_repositorio.ObtenerVagon(regla.VagonModeloId) is null)
+            throw new ArgumentException("El documento que se completará no existe.", nameof(regla));
+        if (_repositorio.ObtenerVagon(regla.VagonComparacionId) is null)
+            throw new ArgumentException("El documento de comparación no existe.", nameof(regla));
+        return _repositorio.GuardarRegla(regla);
+    }
+
+    public IReadOnlyList<DudosoVagon> ListarDudosos() => _repositorio.ListarDudosos();
+
+    public int ContarDudosos() => ListarDudosos().Count;
+
+    public bool AceptarDudoso(long id) => _repositorio.AceptarDudoso(id);
+
+    public bool RechazarDudoso(long id) => _repositorio.RechazarDudoso(id);
+
+    public IReadOnlyList<Hormiguero.Nucleo.Datos.EnlaceCadena> HistorialEnlaces(
+        long vagonCadenaId
+    ) => _repositorio.HistorialEnlaces(vagonCadenaId);
+
     public IReadOnlyList<PlantillaLinea> ObtenerModelosIndependientes() =>
         _repositorio.ObtenerPlantillas().Where(m => !m.EsModeloHijo).ToList();
 
