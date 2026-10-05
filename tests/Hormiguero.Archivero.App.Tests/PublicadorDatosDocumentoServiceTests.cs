@@ -51,7 +51,7 @@ public sealed class PublicadorDatosDocumentoServiceTests
     }
 
     [Fact]
-    public void Observador_publica_sin_modificar_archivo_y_registra_procedencia()
+    public async Task Observador_publica_sin_modificar_archivo_y_registra_procedencia()
     {
         string raiz = Path.Combine(
             Path.GetTempPath(),
@@ -82,6 +82,7 @@ public sealed class PublicadorDatosDocumentoServiceTests
                 config,
                 [new("Orden", "orden", "000123", "000123", "observador")]
             );
+            await (PublicadorDatosDocumentoService.UltimaRevisionEnlaces ?? Task.CompletedTask);
             Assert.Equal(original, File.ReadAllText(archivo));
             Assert.Equal(huella, Huella.Calcular(archivo));
             Assert.Equal(fecha, File.GetLastWriteTimeUtc(archivo));

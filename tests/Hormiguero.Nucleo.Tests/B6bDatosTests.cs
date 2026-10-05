@@ -256,6 +256,105 @@ public sealed class B6bDatosTests : IDisposable
     }
 
     [Fact]
+    public void Motor_enlaza_coincidencia_unica_y_deja_empate_como_dudoso()
+    {
+        long identificacion = new Identificaciones(conexion).Guardar(new(0, "OC", "Emisor", "{}"));
+        var datos = new RepositorioDocumentosDatos(conexion);
+        long campoOrigen = datos.GuardarCampo(
+            new(0, identificacion, "OC", "oc", "texto", true, "marca")
+        );
+        long campoComparacion = datos.GuardarCampo(
+            new(0, identificacion, "OC ref", "oc_ref", "texto", true, "marca")
+        );
+        long modelo = new RepositorioCadenas(conexion).CrearModelo("M", DateTime.UtcNow);
+        long comparador = new RepositorioCadenas(conexion).AgregarVagonModelo(
+            modelo,
+            null,
+            "Factura"
+        );
+        long destino = new RepositorioCadenas(conexion).AgregarVagonModelo(modelo, null, "Guía");
+        long cadena = new RepositorioCadenas(conexion).CrearCadena(modelo, "C", DateTime.UtcNow);
+        var vagones = new RepositorioCadenas(conexion)
+            .ObtenerArbolCadena(cadena)
+            .ToDictionary(n => n.Vagon.VagonModeloId!.Value, n => n.Vagon.Id);
+        long docRef = AgregarDocumento("ref");
+        long versionRef = datos.RegistrarVersion(docRef, "ref", "ref.pdf").Id;
+        datos.GuardarValor(versionRef, campoComparacion, "  OC  00123 ", "OC  00123", "manual");
+        var enlaces = new RepositorioReglasYEnlaces(conexion);
+        enlaces.CrearEnlace(vagones[comparador], versionRef, "manual");
+        long regla = enlaces.GuardarRegla(
+            new(
+                0,
+                destino,
+                identificacion,
+                campoOrigen,
+                comparador,
+                campoComparacion,
+                "igual",
+                true,
+                false,
+                false,
+                6,
+                "activa"
+            )
+        );
+        long doc = AgregarDocumento("uno");
+        long version = datos.RegistrarVersion(doc, "uno", "uno.pdf").Id;
+        datos.GuardarValor(version, campoOrigen, "OC 00123", "OC 00123", "marca");
+
+        new MotorEnlaceAutomatico(conexion).Ejecutar();
+
+        var destinoUno = enlaces.HistorialEnlaces(vagones[destino]);
+        Assert.Equal("automatico", Assert.Single(destinoUno).Origen);
+        Assert.Equal(regla, destinoUno[0].ReglaId);
+
+        long cadenaDos = new RepositorioCadenas(conexion).CrearCadena(
+            modelo,
+            "C2",
+            DateTime.UtcNow
+        );
+        var vagonesDos = new RepositorioCadenas(conexion)
+            .ObtenerArbolCadena(cadenaDos)
+            .ToDictionary(n => n.Vagon.VagonModeloId!.Value, n => n.Vagon.Id);
+        enlaces.CrearEnlace(vagonesDos[comparador], versionRef, "manual");
+        long segundoDoc = AgregarDocumento("dos");
+        long versionDos = datos.RegistrarVersion(segundoDoc, "dos", "dos.pdf").Id;
+        datos.GuardarValor(versionDos, campoOrigen, "OC 00123", "OC 00123", "marca");
+
+        new MotorEnlaceAutomatico(conexion).Ejecutar();
+
+        var propuestas = enlaces
+            .HistorialEnlaces(vagonesDos[destino])
+            .Where(e => e.Estado == "dudoso")
+            .ToArray();
+        Assert.Equal(2, propuestas.Length);
+        var propuesta = propuestas[0];
+        Assert.Contains("documentos con el mismo dato", propuesta.Motivo);
+        Assert.Equal(propuesta.Id, enlaces.ObtenerDatosDudoso(propuesta.Id)!.EnlaceId);
+        Assert.True(enlaces.RechazarDudoso(propuesta.Id));
+        new MotorEnlaceAutomatico(conexion).Ejecutar();
+        Assert.DoesNotContain(enlaces.ListarDudosos(), e => e.Id == propuesta.Id);
+    }
+
+    [Fact]
+    public void Motor_normaliza_solo_las_opciones_guardadas_y_persiste_confianza_minima()
+    {
+        var motor = new MotorEnlaceAutomatico(conexion);
+        Assert.Equal(0.90, motor.ConfianzaMinima);
+        motor.ConfianzaMinima = 0.95;
+        Assert.Equal(0.95, new MotorEnlaceAutomatico(conexion).ConfianzaMinima);
+
+        var regla = new ReglaVagon(1, 1, 1, 1, 1, 1, "igual", true, true, true, 6, "activa");
+        Assert.Equal("A 123", MotorEnlaceAutomatico.NormalizarClave(" A   123 ", regla));
+        Assert.Equal("A123", MotorEnlaceAutomatico.NormalizarClave("A-123", regla));
+        Assert.Equal("123", MotorEnlaceAutomatico.NormalizarClave("00123", regla));
+        Assert.Equal(
+            "A-123",
+            MotorEnlaceAutomatico.NormalizarClave("A-123", regla with { IgnorarGuiones = false })
+        );
+    }
+
+    [Fact]
     public void Asegurar_documento_reutiliza_ruta_huella_y_crea_version_por_cambio()
     {
         string carpeta = Path.Combine(
@@ -301,10 +400,20 @@ public sealed class B6bDatosTests : IDisposable
     private long AgregarDocumento(string huella)
     {
         new Documentos(conexion).Guardar(
-            new(@"C:\docs\a.pdf", @"C:\docs", "a.pdf", 1, DateTime.UtcNow, huella, "ok", false, [])
+            new(
+                $@"C:\docs\{huella}.pdf",
+                @"C:\docs",
+                $"{huella}.pdf",
+                1,
+                DateTime.UtcNow,
+                huella,
+                "ok",
+                false,
+                []
+            )
         );
         return Convert.ToInt64(
-            Escalar(conexion, "SELECT id FROM documentos WHERE ruta='C:\\docs\\a.pdf';")
+            Escalar(conexion, $"SELECT id FROM documentos WHERE ruta='C:\\docs\\{huella}.pdf';")
         );
     }
 

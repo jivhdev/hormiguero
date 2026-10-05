@@ -179,6 +179,66 @@ public sealed class LineasTests
     }
 
     [Fact]
+    public void BorrarModelo_ArchivaYAuditaLasReglasAntesDeBorrarLosVagones()
+    {
+        using var entorno = new EntornoDePrueba();
+        var modelo = entorno.ServicioLineas.CrearPlantilla("Modelo con regla");
+        var comparar = entorno.ServicioLineas.AgregarVagon(
+            modelo.Id,
+            null,
+            "Factura",
+            false,
+            false,
+            null
+        );
+        var destino = entorno.ServicioLineas.AgregarVagon(
+            modelo.Id,
+            null,
+            "Guía",
+            false,
+            false,
+            null
+        );
+        using (var conexion = BaseComun.Abrir(entorno.RutaBaseComun))
+        {
+            long identificacion = new Identificaciones(conexion).Guardar(
+                new(0, "Factura", "Emisor", "{}")
+            );
+            long campo = new RepositorioDocumentosDatos(conexion).GuardarCampo(
+                new(0, identificacion, "OC", "oc", "texto", true, "marca")
+            );
+            new RepositorioReglasYEnlaces(conexion).GuardarRegla(
+                new(
+                    0,
+                    destino.Id,
+                    identificacion,
+                    campo,
+                    comparar.Id,
+                    campo,
+                    "igual",
+                    true,
+                    false,
+                    false,
+                    6,
+                    "activa"
+                )
+            );
+        }
+
+        entorno.ServicioLineas.BorrarPlantilla(modelo.Id);
+
+        using var consulta = BaseComun.Abrir(entorno.RutaBaseComun);
+        using var comando = consulta.CreateCommand();
+        comando.CommandText = "SELECT COUNT(*) FROM reglas_vagon_anuladas WHERE vagon_modelo_id=$v";
+        comando.Parameters.AddWithValue("$v", destino.Id);
+        Assert.Equal(1L, Convert.ToInt64(comando.ExecuteScalar()));
+        using var auditoria = consulta.CreateCommand();
+        auditoria.CommandText =
+            "SELECT COUNT(*) FROM auditoria WHERE accion='anular_regla_por_baja_vagon'";
+        Assert.Equal(1L, Convert.ToInt64(auditoria.ExecuteScalar()));
+    }
+
+    [Fact]
     public void VincularYDesvincularDocumento_EsUnoPorDocumento()
     {
         using var entorno = new EntornoDePrueba();

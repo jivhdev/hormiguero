@@ -129,6 +129,11 @@ public static class Migraciones
                 + "estado TEXT NOT NULL DEFAULT 'activa', fecha_anulacion TEXT NULL); "
                 + "CREATE INDEX IF NOT EXISTS idx_marcas_version_estado ON marcas_version(version_id, estado);"
         ),
+        (
+            6,
+            "ALTER TABLE enlaces_cadena ADD COLUMN motivo TEXT NULL; "
+                + "CREATE TABLE IF NOT EXISTS reglas_vagon_anuladas(id INTEGER PRIMARY KEY, vagon_modelo_id INTEGER NOT NULL, identificacion_id INTEGER NOT NULL, campo_origen_id INTEGER NOT NULL, vagon_comparacion_id INTEGER NOT NULL, campo_comparacion_id INTEGER NOT NULL, operacion TEXT NOT NULL, normalizar_espacios INTEGER NOT NULL, ignorar_guiones INTEGER NOT NULL, ignorar_ceros_iniciales INTEGER NOT NULL, largo_minimo INTEGER NOT NULL, anulada_en TEXT NOT NULL);"
+        ),
     ];
 
     public static void Aplicar(
