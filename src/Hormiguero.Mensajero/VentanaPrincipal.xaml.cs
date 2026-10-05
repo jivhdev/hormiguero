@@ -52,7 +52,12 @@ public partial class VentanaPrincipal : Window
                 PrecargarPdf(ruta);
                 MostrarToast("🟢 Nuevo PDF detectado", "success");
             });
-        vigilante.Error += mensaje => Dispatcher.BeginInvoke(() => MostrarToast(mensaje, "error"));
+        vigilante.Error += mensaje =>
+            Dispatcher.BeginInvoke(() =>
+            {
+                MensajeroLog.Registrar("ERROR", "La vigilancia de carpeta notificó un error");
+                MostrarToast(mensaje, "error");
+            });
         Closed += (_, _) =>
         {
             vigilante.Dispose();
@@ -159,6 +164,7 @@ public partial class VentanaPrincipal : Window
             }
             catch (Exception excepcion)
             {
+                MensajeroLog.RegistrarError("Copiar PDF al portapapeles", excepcion);
                 MostrarToast($"❌ Error al copiar: {excepcion.Message}", "error");
                 return;
             }
@@ -221,6 +227,7 @@ public partial class VentanaPrincipal : Window
         }
         catch (Exception excepcion)
         {
+            MensajeroLog.RegistrarError("Copiar asunto de documento", excepcion);
             MostrarToast($"❌ Error: {excepcion.Message}", "error");
         }
     }
@@ -245,6 +252,7 @@ public partial class VentanaPrincipal : Window
         }
         catch (Exception excepcion)
         {
+            MensajeroLog.RegistrarError("Copiar cuerpo de documento", excepcion);
             MostrarToast($"❌ Error: {excepcion.Message}", "error");
         }
     }
@@ -430,6 +438,7 @@ public partial class VentanaPrincipal : Window
         }
         catch (Exception excepcion)
         {
+            MensajeroLog.RegistrarError("Importar clientes de Ofisuiza", excepcion);
             MostrarAvisoImportacion(
                 $"No se pudieron importar los clientes: {excepcion.Message}",
                 true
@@ -541,6 +550,7 @@ public partial class VentanaPrincipal : Window
         }
         catch (Exception excepcion)
         {
+            MensajeroLog.RegistrarError("Generar mensaje de retiro", excepcion);
             MostrarToast($"❌ Error: {excepcion.Message}", "error");
         }
     }
@@ -591,6 +601,7 @@ public partial class VentanaPrincipal : Window
             }
             catch (Exception excepcion)
             {
+                MensajeroLog.RegistrarError("Leer guía PDF", excepcion);
                 MostrarToast($"❌ Error: {excepcion.Message}", "error");
             }
         }
@@ -682,6 +693,7 @@ public partial class VentanaPrincipal : Window
             }
             catch (Exception excepcion)
             {
+                MensajeroLog.RegistrarError("Precargar PDF", excepcion);
                 Dispatcher.BeginInvoke(() =>
                     MostrarToast($"❌ Error en precarga: {excepcion.Message}", "error")
                 );
@@ -705,6 +717,7 @@ public partial class VentanaPrincipal : Window
             }
             catch (Exception excepcion)
             {
+                MensajeroLog.RegistrarError("Copiar texto al portapapeles", excepcion);
                 MostrarToast($"❌ Error al copiar: {excepcion.Message}", "error");
                 return;
             }
@@ -714,6 +727,11 @@ public partial class VentanaPrincipal : Window
 
     private void MostrarToast(string mensaje, string tipo)
     {
+        if (tipo is "error" or "warning")
+            MensajeroLog.Registrar(
+                "AVISO_" + tipo.ToUpperInvariant(),
+                "Aviso mostrado en Mensajero"
+            );
         TextoToast.Text = mensaje;
         string clave = tipo switch
         {

@@ -60,6 +60,8 @@ public partial class VentanaFacturas : Window
             : documentosGuardados;
         almacen.GuardarValor("factura.carpeta_documentos", baseDocumentos);
         ActualizarCarpetas();
+        FiltroEnvios.ItemsSource = new[] { "Todos", "Solo pendientes", "Solo enviados" };
+        FiltroEnvios.SelectedIndex = 0;
 
         SemanaUno.ItemsSource = SemanaDos.ItemsSource = Enumerable.Range(1, 5).ToArray();
         SemanaUno.SelectedIndex = SemanaDos.SelectedIndex = 0;
@@ -181,12 +183,21 @@ public partial class VentanaFacturas : Window
             if (resultado.Error is not null)
             {
                 EstadoAnalisis.Text = $"❌ Error: {resultado.Error}";
+                MensajeroLog.Registrar(
+                    "AVISO_ERROR",
+                    "El análisis del archivo no produjo resultados"
+                );
                 MostrarAviso("Atención", resultado.Error, "warning");
                 BotonAnalizar.IsEnabled = true;
                 return;
             }
             clientes = resultado.ClientesProcesados;
             clientesEnviados.Clear();
+            almacen.PrepararEstadosEnvioFactura(
+                descripcionSemana,
+                clientes.Select(cliente => cliente.Rut)
+            );
+            clientesEnviados.UnionWith(almacen.LeerRutsEnviadosFactura(descripcionSemana));
             indiceCliente = 0;
             RefrescarTablaAnalisis();
             EstadoAnalisis.Text = "✅ Análisis completado";
@@ -194,6 +205,7 @@ public partial class VentanaFacturas : Window
         }
         catch (Exception excepcion)
         {
+            MensajeroLog.RegistrarError("Analizar archivo XLS", excepcion);
             EstadoAnalisis.Text = $"❌ Error: {excepcion.Message}";
             MostrarAviso("Error", $"Error en el análisis:\n{excepcion.Message}", "error");
             BotonAnalizar.IsEnabled = true;
@@ -305,7 +317,17 @@ public partial class VentanaFacturas : Window
                 );
                 return;
             }
-            almacen.GuardarClienteFactura(rut, razon.Text.Trim(), correo.Text.Trim(), DateTime.Now);
+            string correos;
+            try
+            {
+                correos = CorreoFactura.NormalizarParaGuardar(correo.Text);
+            }
+            catch (FormatException excepcion)
+            {
+                MostrarAviso("Correo no válido", excepcion.Message, "warning", ventana);
+                return;
+            }
+            almacen.GuardarClienteFactura(rut, razon.Text.Trim(), correos, DateTime.Now);
             ventana.DialogResult = true;
         };
         contenido.Children.Add(guardar);
@@ -360,18 +382,26 @@ public partial class VentanaFacturas : Window
 
     private void CargarClienteActual()
     {
-        if (indiceCliente >= clientes.Count)
+        TextoConteoEstados.Text = $"{clientes.Count - clientesEnviados.Count} pendientes";
+        int desde = Math.Clamp(indiceCliente, 0, clientes.Count);
+        int indice = Enumerable
+            .Range(desde, clientes.Count - desde)
+            .FirstOrDefault(posicion => CoincideFiltro(clientes[posicion]), -1);
+        if (indice < 0)
         {
             BotonPreparar.IsEnabled = false;
             BotonPendiente.IsEnabled = false;
             BotonEnviado.IsEnabled = false;
-            MostrarAviso("Completado", "🎉 ¡Todos los clientes han sido procesados!", "success");
+            TextoClienteActual.Text = "No hay clientes en este filtro.";
             return;
         }
+        indiceCliente = indice;
         ClienteAnalizado cliente = clientes[indiceCliente];
+        int totalFiltro = clientes.Count(CoincideFiltro);
+        int posicionFiltro = clientes.Take(indiceCliente + 1).Count(CoincideFiltro);
         TextoClienteActual.Text =
-            $"Cliente {indiceCliente + 1} de {clientes.Count}: {cliente.RazonSocial} ({cliente.Rut})\n✅ {clientesEnviados.Count} enviados | ⏳ {clientes.Count - clientesEnviados.Count} pendientes";
-        TextoCorreo.Text = cliente.Correo;
+            $"Cliente {posicionFiltro} de {totalFiltro}: {cliente.RazonSocial} ({cliente.Rut})";
+        TextoCorreo.Text = string.Join(Environment.NewLine, CorreoFactura.Separar(cliente.Correo));
         TablaDocumentos.ItemsSource = cliente
             .Documentos.Select(documento => new FilaDocumento(
                 documento.Tipo,
@@ -397,11 +427,52 @@ public partial class VentanaFacturas : Window
         BotonEnviado.IsEnabled = false;
     }
 
+    private bool CoincideFiltro(ClienteAnalizado cliente) =>
+        EstadoEnvioFactura.Coincide(cliente.Rut, clientesEnviados, FiltroEnviosActual());
+
+    private FiltroEstadoEnvioFactura FiltroEnviosActual() =>
+        (FiltroEnvios.SelectedItem as string) switch
+        {
+            "Solo pendientes" => FiltroEstadoEnvioFactura.Pendientes,
+            "Solo enviados" => FiltroEstadoEnvioFactura.Enviados,
+            _ => FiltroEstadoEnvioFactura.Todos,
+        };
+
+    private void FiltroEnvios_Changed(object sender, SelectionChangedEventArgs e)
+    {
+        if (
+            PaginaEnvio is not null
+            && PaginaEnvio.Visibility == Visibility.Visible
+            && clientes.Count > 0
+        )
+        {
+            indiceCliente = 0;
+            CargarClienteActual();
+        }
+    }
+
     private void PrepararEnvio_Click(object sender, RoutedEventArgs e)
     {
         if (indiceCliente >= clientes.Count)
             return;
         ClienteAnalizado cliente = clientes[indiceCliente];
+        DocumentoAnalizado[] faltantes = cliente
+            .Documentos.Where(documento => documento.RutaPdf is null)
+            .ToArray();
+        if (faltantes.Length > 0)
+        {
+            string listaFaltantes = string.Join(
+                ", ",
+                faltantes.Select(documento => $"{documento.Tipo} {documento.Numero}")
+            );
+            if (
+                !Preguntar(
+                    "PDF faltantes",
+                    $"Faltan {faltantes.Length} PDF: {listaFaltantes}. ¿Desea preparar los PDF encontrados?"
+                )
+            )
+                return;
+        }
         if (cliente.PdfsEncontrados.Count == 0)
         {
             if (
@@ -429,15 +500,16 @@ public partial class VentanaFacturas : Window
                 carpetaTemporalActual
             );
             CopiarArchivos(copiados);
-            MostrarAviso(
+            MostrarAvisoPreparacion(
                 "Listo",
-                $"✅ {copiados.Count} archivos listos en:\n{carpetaTemporalActual}\n\nArrastre los archivos desde esa carpeta a su correo.",
-                "success"
+                $"{copiados.Count} PDF listos en:\n{carpetaTemporalActual}\n\n1. Pega el correo (Alt+A)\n2. Asunto (Alt+S)\n3. Cuerpo (Alt+D)\n4. Pega los PDF en el correo (Ctrl+V)\n5. Marca como enviado",
+                carpetaTemporalActual
             );
             BotonEnviado.IsEnabled = true;
         }
         catch (Exception excepcion)
         {
+            MensajeroLog.RegistrarError("Preparar envío", excepcion);
             MostrarAviso("Error", $"Error al preparar envío:\n{excepcion.Message}", "error");
         }
     }
@@ -453,6 +525,9 @@ public partial class VentanaFacturas : Window
         )
             return;
         ClienteAnalizado cliente = clientes[indiceCliente];
+        almacen.GuardarEstadoEnvioFactura(descripcionSemana, cliente.Rut, false);
+        clientesEnviados.Remove(cliente.Rut);
+        RefrescarTablaAnalisis();
         LimpiarTemporalActual();
         MostrarAviso(
             "Pendiente",
@@ -471,6 +546,7 @@ public partial class VentanaFacturas : Window
         )
             return;
         ClienteAnalizado cliente = clientes[indiceCliente];
+        almacen.GuardarEstadoEnvioFactura(descripcionSemana, cliente.Rut, true);
         clientesEnviados.Add(cliente.Rut);
         RefrescarTablaAnalisis();
         LimpiarTemporalActual();
@@ -561,7 +637,7 @@ public partial class VentanaFacturas : Window
     }
 
     private void CopiarCorreo_Click(object sender, RoutedEventArgs e) =>
-        CopiarTexto(TextoCorreo.Text);
+        CopiarTexto(string.Join("; ", CorreoFactura.Separar(TextoCorreo.Text)));
 
     private void CopiarAsunto_Click(object sender, RoutedEventArgs e) =>
         CopiarTexto(CampoAsunto.Text);
@@ -671,19 +747,32 @@ public partial class VentanaFacturas : Window
     private bool Preguntar(string titulo, string mensaje) =>
         MostrarDialogo(titulo, mensaje, "warning", true, this);
 
-    private static void MostrarAviso(
-        string titulo,
-        string mensaje,
-        string tipo,
-        Window? owner = null
-    ) => MostrarDialogo(titulo, mensaje, tipo, false, owner);
+    private void MostrarAviso(string titulo, string mensaje, string tipo, Window? owner = null)
+    {
+        if (tipo is "error" or "warning")
+            MensajeroLog.Registrar("AVISO_" + tipo.ToUpperInvariant(), titulo);
+        MostrarDialogo(titulo, mensaje, tipo, false, owner);
+    }
 
-    private static bool MostrarDialogo(
+    private void MostrarAvisoPreparacion(string titulo, string mensaje, string carpeta) =>
+        MostrarDialogo(
+            titulo,
+            mensaje,
+            "success",
+            false,
+            this,
+            "Abrir carpeta",
+            () => Process.Start(new ProcessStartInfo(carpeta) { UseShellExecute = true })
+        );
+
+    private bool MostrarDialogo(
         string titulo,
         string mensaje,
         string tipo,
         bool pregunta,
-        Window? owner
+        Window? owner,
+        string? textoAccion = null,
+        Action? alEjecutarAccion = null
     )
     {
         var ventana = new Window
@@ -742,6 +831,31 @@ public partial class VentanaFacturas : Window
             respuesta = true;
             ventana.DialogResult = true;
         };
+        if (textoAccion is not null && alEjecutarAccion is not null)
+        {
+            var accion = new Button
+            {
+                Content = textoAccion,
+                MinWidth = 100,
+                Margin = new Thickness(4, 12, 0, 0),
+                Padding = new Thickness(10, 5, 10, 5),
+            };
+            accion.Click += (_, _) =>
+            {
+                try
+                {
+                    alEjecutarAccion();
+                    ventana.DialogResult = true;
+                }
+                catch (Exception excepcion)
+                {
+                    MensajeroLog.RegistrarError("Abrir carpeta preparada", excepcion);
+                    ventana.Close();
+                    MostrarAviso("Error", "No se pudo abrir la carpeta preparada.", "error", owner);
+                }
+            };
+            botones.Children.Add(accion);
+        }
         botones.Children.Add(aceptar);
         if (pregunta)
         {

@@ -109,6 +109,12 @@
             </TextBlock.Style>
           </TextBlock>
         </Grid>
+        <TextBlock
+          Text="Si son varios correos, sepáralos con punto y coma ( ; )"
+          TextWrapping="Wrap"
+          Foreground="{DynamicResource Hormiguero.TextoSecundario}"
+          FontSize="11"
+        />
       </StackPanel>
       <Button
         Grid.Column="3"
