@@ -23,6 +23,21 @@ public static partial class RutFactura
         return $"{cuerpo}-{digito.ToUpperInvariant()}";
     }
 
+    public static string NormalizarSeguro(string? rut)
+    {
+        if (string.IsNullOrWhiteSpace(rut))
+            return "";
+
+        try
+        {
+            return Limpiar(rut);
+        }
+        catch (ArgumentOutOfRangeException)
+        {
+            return "";
+        }
+    }
+
     public static bool Validar(string rutLimpio)
     {
         if (!FormatoValido().IsMatch(rutLimpio))

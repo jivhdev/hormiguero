@@ -27,7 +27,7 @@ public partial class VentanaClientesFactura : Window
 
     private void Guardar_Click(object sender, RoutedEventArgs e)
     {
-        string rut = CampoRut.Text.Trim();
+        string rut = RutFactura.NormalizarSeguro(CampoRut.Text);
         string razon = CampoRazon.Text.Trim();
         string correo = CampoCorreo.Text.Trim();
         if (
@@ -37,6 +37,11 @@ public partial class VentanaClientesFactura : Window
         )
         {
             MostrarAviso("Error", "Todos los campos son obligatorios.", false);
+            return;
+        }
+        if (!RutFactura.Validar(rut))
+        {
+            MostrarAviso("RUT no válido", "Revisa el RUT ingresado.", false);
             return;
         }
         try

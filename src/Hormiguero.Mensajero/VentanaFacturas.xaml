@@ -97,7 +97,7 @@
             <RowDefinition Height="Auto" />
           </Grid.RowDefinitions>
           <TextBlock
-            Text="Carpeta de facturas (PDF):"
+            Text="Carpeta principal de documentos (la que contiene las carpetas FCV y NCV):"
             VerticalAlignment="Center"
             Margin="0,0,8,4"
           />

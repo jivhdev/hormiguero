@@ -20,7 +20,41 @@ public static partial class BuscadorPdfFactura
     private static partial Regex MarcaCedible();
 
     public static string RutaDocumentos(string baseDocumentos, string tipo, int anio, int mes) =>
-        Path.Combine(baseDocumentos, tipo, anio.ToString(), $"{anio}{mes:00}");
+        Path.Combine(
+            NormalizarBaseDocumentos(baseDocumentos),
+            tipo,
+            anio.ToString(),
+            $"{anio}{mes:00}"
+        );
+
+    public static string NormalizarBaseDocumentos(string baseDocumentos)
+    {
+        string ruta = Path.GetFullPath(baseDocumentos);
+        string nombre = Path.GetFileName(Path.TrimEndingDirectorySeparator(ruta));
+        if (Prefijos.ContainsKey(nombre.ToUpperInvariant()))
+            return Directory.GetParent(ruta)?.FullName ?? ruta;
+
+        try
+        {
+            if (
+                Directory.Exists(ruta)
+                && Directory
+                    .EnumerateDirectories(ruta)
+                    .Any(carpeta => int.TryParse(Path.GetFileName(carpeta), out _))
+            )
+                return Directory.GetParent(ruta)?.FullName ?? ruta;
+        }
+        catch (UnauthorizedAccessException) { }
+        catch (IOException) { }
+
+        return ruta;
+    }
+
+    public static bool TieneCarpetasTipos(string baseDocumentos)
+    {
+        string baseNormalizada = NormalizarBaseDocumentos(baseDocumentos);
+        return Prefijos.Keys.All(tipo => Directory.Exists(Path.Combine(baseNormalizada, tipo)));
+    }
 
     public static string? BuscarPdf(
         string baseDocumentos,
@@ -54,7 +88,7 @@ public static partial class BuscadorPdfFactura
                     continue;
                 if (!patron.IsMatch(nombre))
                     continue;
-                cache?.Add(clave, ruta);
+                cache?.TryAdd(clave, ruta);
                 return ruta;
             }
         }
@@ -103,7 +137,10 @@ public static partial class BuscadorPdfFactura
             cache.Remove(clave);
         }
 
-        string carpetaBase = Path.Combine(baseDocumentos, tipoNormalizado);
+        string carpetaBase = Path.Combine(
+            NormalizarBaseDocumentos(baseDocumentos),
+            tipoNormalizado
+        );
         if (!Directory.Exists(carpetaBase))
             return null;
 
@@ -127,7 +164,7 @@ public static partial class BuscadorPdfFactura
                     continue;
                 if (!patron.IsMatch(nombre))
                     continue;
-                cache?.Add(clave, ruta);
+                cache?.TryAdd(clave, ruta);
                 return ruta;
             }
         }

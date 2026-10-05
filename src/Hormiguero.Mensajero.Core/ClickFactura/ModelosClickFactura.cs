@@ -8,7 +8,8 @@ public sealed record DocumentoAnalizado(
     string Tipo,
     string Numero,
     string Entidad,
-    string? RutaPdf
+    string? RutaPdf,
+    string? Error = null
 );
 
 public sealed record MensajeFactura(string Asunto, string Cuerpo);
