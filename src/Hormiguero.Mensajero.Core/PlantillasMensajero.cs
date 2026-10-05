@@ -56,6 +56,96 @@ public static class PlantillasMensajero
         + "Adjunto las {TIPO_DOCUMENTOS} de la {SEMANA} de {RAZON_SOCIAL}.\n\n"
         + "Saludos cordiales.";
 
+    public static IReadOnlyList<PlantillaMensaje> Listar() =>
+        [
+            new(
+                ClaveCobelcar,
+                "Retiro Cobelcar",
+                RetiroCobelcar,
+                ["{OCC} = número de la OCC", "{OCL} = número de la OCL"]
+            ),
+            new(
+                ClaveHoffens,
+                "Retiro Hoffens",
+                RetiroHoffens,
+                [
+                    "{OCC} = número de la OCC",
+                    "{OCL} = número de la OCL",
+                    "{DIA} = día del retiro",
+                    "{BLOQUE} = horario del retiro",
+                ]
+            ),
+            new(
+                ClaveSensus,
+                "Retiro Sensus",
+                RetiroSensus,
+                ["{OCC} = número de la OCC", "{OCL} = número de la OCL"]
+            ),
+            new(
+                ClaveChileHdpe,
+                "Retiro Chile HDPE",
+                RetiroChileHdpe,
+                ["{OCC} = número de la OCC", "{OCL} = número de la OCL"]
+            ),
+            new(
+                ClaveGuiaHoffens,
+                "Guía Hoffens",
+                GuiaHoffens,
+                ["{FECHA_GUIA} = día de emisión de la guía", "{OBRA} = nombre y comuna de la obra"]
+            ),
+            new(
+                ClaveCuerpoFactura,
+                "Correo de facturas",
+                CuerpoFactura,
+                [
+                    "{TIPO_DOCUMENTOS} = facturas y notas de crédito",
+                    "{SEMANA} = semana informada",
+                    "{RAZON_SOCIAL} = nombre de la empresa",
+                ]
+            ),
+        ];
+
+    public static string ObtenerPredeterminada(string clave) =>
+        Listar().FirstOrDefault(plantilla => plantilla.Clave == clave)?.TextoPredeterminado
+        ?? throw new ArgumentException("La plantilla no existe.", nameof(clave));
+
+    public static string CrearVistaPrevia(string clave) =>
+        CrearVistaPrevia(clave, ObtenerPredeterminada(clave));
+
+    public static string CrearVistaPrevia(string clave, string textoPlantilla)
+    {
+        Dictionary<string, string> valores = clave switch
+        {
+            ClaveCobelcar or ClaveSensus or ClaveChileHdpe => new()
+            {
+                ["OCC"] = "104523",
+                ["OCL"] = "4500012345",
+            },
+            ClaveHoffens => new()
+            {
+                ["OCC"] = "104523",
+                ["OCL"] = "4500012345",
+                ["DIA"] = "martes 15",
+                ["BLOQUE"] = "09:00 a 12:00",
+            },
+            ClaveGuiaHoffens => new() { ["FECHA_GUIA"] = "hoy", ["OBRA"] = "Obra Ejemplo, Maipú" },
+            ClaveCuerpoFactura => new()
+            {
+                ["TIPO_DOCUMENTOS"] = "facturas y notas de crédito",
+                ["SEMANA"] = "2° semana",
+                ["RAZON_SOCIAL"] = "Empresa Ejemplo",
+            },
+            _ => throw new ArgumentException("La plantilla no existe.", nameof(clave)),
+        };
+        string texto = textoPlantilla;
+        foreach ((string marcador, string valor) in valores)
+            texto = texto.Replace("{" + marcador + "}", valor, StringComparison.Ordinal);
+        return texto;
+    }
+
+    public static void VolverAlTextoPredeterminado(AlmacenMensajero almacen, string clave) =>
+        almacen.GuardarValor(clave, ObtenerPredeterminada(clave));
+
     public static string GenerarRetiro(
         AlmacenMensajero almacen,
         string proveedor,
@@ -165,3 +255,10 @@ public static class PlantillasMensajero
         return plantilla;
     }
 }
+
+public sealed record PlantillaMensaje(
+    string Clave,
+    string Nombre,
+    string TextoPredeterminado,
+    IReadOnlyList<string> Marcadores
+);

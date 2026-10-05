@@ -112,4 +112,33 @@ public sealed class PlantillasMensajeroTests : IDisposable
             PlantillasMensajero.GenerarRetiro(almacen, "COBELCAR", "104523", "4500012345")
         );
     }
+
+    [Fact]
+    public void Vista_previa_reemplaza_marcadores_con_datos_de_ejemplo()
+    {
+        Assert.Equal(
+            "OCC 104523, OCL 4500012345",
+            PlantillasMensajero.CrearVistaPrevia(
+                PlantillasMensajero.ClaveCobelcar,
+                "OCC {OCC}, OCL {OCL}"
+            )
+        );
+        Assert.Contains(
+            "Obra Ejemplo, Maipú",
+            PlantillasMensajero.CrearVistaPrevia(PlantillasMensajero.ClaveGuiaHoffens)
+        );
+    }
+
+    [Fact]
+    public void Volver_al_texto_predeterminado_reemplaza_el_texto_guardado()
+    {
+        almacen.GuardarValor(PlantillasMensajero.ClaveCobelcar, "Texto personalizado");
+
+        PlantillasMensajero.VolverAlTextoPredeterminado(almacen, PlantillasMensajero.ClaveCobelcar);
+
+        Assert.Equal(
+            PlantillasMensajero.RetiroCobelcar,
+            almacen.LeerValor(PlantillasMensajero.ClaveCobelcar)
+        );
+    }
 }
