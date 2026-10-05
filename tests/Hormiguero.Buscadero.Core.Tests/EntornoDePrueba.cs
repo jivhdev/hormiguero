@@ -14,6 +14,7 @@ public sealed class EntornoDePrueba : IDisposable
     public string RutaBaseComun { get; }
     public RepositorioIndice RepositorioIndice { get; }
     public RepositorioMarcas RepositorioMarcas { get; }
+    public RepositorioLineas RepositorioLineas { get; }
     public ServicioLineas ServicioLineas { get; }
     public Indexador Indexador { get; }
     public ServicioCarpetas ServicioCarpetas { get; }
@@ -30,7 +31,8 @@ public sealed class EntornoDePrueba : IDisposable
         ServicioCarpetas = new ServicioCarpetas(new RepositorioCarpetas(RutaBaseDeDatos));
         RepositorioIndice = new RepositorioIndice(RutaBaseDeDatos);
         RepositorioMarcas = new RepositorioMarcas(RutaBaseComun);
-        ServicioLineas = new ServicioLineas(new RepositorioLineas(RutaBaseDeDatos));
+        RepositorioLineas = new RepositorioLineas(RutaBaseComun);
+        ServicioLineas = new ServicioLineas(RepositorioLineas);
         Indexador = new Indexador(RepositorioIndice, TimeSpan.Zero, _ => { });
         ServicioBusqueda = new ServicioBusqueda(ServicioCarpetas, Indexador, RepositorioIndice);
     }
@@ -71,6 +73,7 @@ public sealed class EntornoDePrueba : IDisposable
     public void Dispose()
     {
         RepositorioMarcas.Dispose();
+        RepositorioLineas.Dispose();
         SqliteConnection.ClearAllPools();
         try
         {

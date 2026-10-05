@@ -110,7 +110,9 @@ public partial class MainWindow : Window
             Hormiguero.Nucleo.Datos.DocumentosGuardados.RutaBaseComun
         );
         Closed += (_, _) => _repositorioMarcas.Dispose();
-        _lineas = new ServicioLineas(new RepositorioLineas(rutaBaseDeDatos));
+        _lineas = new ServicioLineas(
+            new RepositorioLineas(Hormiguero.Nucleo.Datos.DocumentosGuardados.RutaBaseComun)
+        );
 
         CargarCarpetas();
         ActualizarSugerenciasCarpeta();
@@ -1356,7 +1358,11 @@ public partial class MainWindow : Window
 
         return new CajaCadenaVm
         {
-            Texto = documento.Nombre + " — " + (documento.NombreDocumento ?? "(vacío)"),
+            Texto =
+                documento.Nombre
+                + " — "
+                + (documento.NombreDocumento ?? "(vacío)")
+                + (documento.AvisoDocumentoModificado ? " — el contenido cambió" : string.Empty),
             ColorFondo = documento.NombreDocumento is null ? FondoCajaVacia : FondoCajaConDocumento,
             ColorBorde = documento.NombreDocumento is null ? BordeCajaVacia : BordeCajaConDocumento,
             Imagen = CargarMiniatura(documento.RutaDocumento),
@@ -1454,7 +1460,15 @@ public partial class MainWindow : Window
             cajas.Add(
                 new CajaCadenaVm
                 {
-                    Texto = documento.Nombre + " — " + (documento.NombreDocumento ?? "(vacío)"),
+                    Texto =
+                        documento.Nombre
+                        + " — "
+                        + (documento.NombreDocumento ?? "(vacío)")
+                        + (
+                            documento.AvisoDocumentoModificado
+                                ? " — el contenido cambió"
+                                : string.Empty
+                        ),
                     ColorFondo =
                         esActual ? FondoCajaActual
                         : documento.NombreDocumento is null ? FondoCajaVacia
