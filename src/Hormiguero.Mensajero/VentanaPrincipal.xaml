@@ -218,6 +218,15 @@
                   />
                   <TextBox x:Name="CampoDiaHoffens" Text="_______________" />
                 </DockPanel>
+                <DockPanel Margin="0,0,0,5">
+                  <TextBlock
+                    DockPanel.Dock="Left"
+                    Text="NVV Hoffens:"
+                    VerticalAlignment="Center"
+                    Margin="0,0,8,0"
+                  />
+                  <TextBox x:Name="CampoNvvHoffens" />
+                </DockPanel>
                 <DockPanel Margin="0,0,0,6">
                   <TextBlock
                     DockPanel.Dock="Left"

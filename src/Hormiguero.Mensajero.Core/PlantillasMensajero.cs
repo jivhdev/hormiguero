@@ -13,37 +13,41 @@ public static class PlantillasMensajero
     public const string ClaveCuerpoFactura = "plantilla.facturas.cuerpo";
 
     public const string RetiroCobelcar =
-        "Retiro en BODEGA FRAY CAMILO 889\n"
-        + "Identificarse como: \"Retiro JCV\"\n\n"
-        + "OCC {OCC}\nOCL {OCL}\n\n"
-        + "Dirección: Fray Camilo Henríquez 889, Santiago\n"
-        + "Horario: lunes a viernes, 09:00 a 17:00 hrs";
+        "RETIRO COBELCAR\n"
+        + "Retirar con: OC JCV {OCC}\n"
+        + "Decir: \"Retiro JCV\"\n\n"
+        + "Fray Camilo Henríquez 889, Santiago\n"
+        + "Lunes a viernes, 09:00 a 17:00\n\n"
+        + "Ref.: OC cliente {OCL}";
 
     public const string RetiroHoffens =
-        "Retiro en HOFFENS\n"
-        + "Identificarse como: \"Retiro JCV\"\n\n"
-        + "OCC {OCC}\nOCL {OCL}\nNVV _______________\n\n"
-        + "Día: {DIA}\nBloque: {BLOQUE}\n"
-        + "Dirección: Camino Lonquen 10707, Maipú\n"
-        + "Mapa: https://maps.app.goo.gl/smWJQSwCrq2vfCcx7\n\n"
-        + "Si no se retira ese día, queda armado 3 días hábiles más, en el mismo horario.";
+        "RETIRO HOFFENS\n"
+        + "Retirar con: NVV Hoffens {NVV_HOFFENS} · OC JCV {OCC}\n"
+        + "Decir: \"Retiro JCV\"\n\n"
+        + "Día: {DIA} · Bloque: {BLOQUE}\n"
+        + "Camino Lonquen 10707, Maipú\n"
+        + "https://maps.app.goo.gl/smWJQSwCrq2vfCcx7\n\n"
+        + "Ref.: OC cliente {OCL}\n"
+        + "Si no se retira ese día, queda 3 días hábiles más, mismo horario.";
 
     public const string RetiroSensus =
-        "Retiro en SENSUS (Bodega E1 INVAC)\n"
-        + "Identificarse como: \"Retiro JCV\"\n\n"
-        + "OCC {OCC}\nOCL {OCL}\n\n"
-        + "Dirección: Camino del Cerro 290, Quilicura\n"
-        + "Mapa: https://maps.app.goo.gl/Eg8LzVUWXCSym7Yp7\n"
-        + "Horario: lunes a jueves 08:00-13:00 y 14:00-16:00 / viernes 08:00-13:00\n\n"
-        + "Antes de ir, enviar nombre y teléfono de quien retira y el día (se genera un QR para entrar).";
+        "RETIRO SENSUS (Bodega E1 INVAC)\n"
+        + "Retirar con: OC JCV {OCC}\n"
+        + "Decir: \"Retiro JCV\"\n\n"
+        + "Antes de ir, envíenos nombre, teléfono y patente de quien retira, y el día (Sensus genera un QR para entrar).\n\n"
+        + "Camino del Cerro 290, Quilicura\n"
+        + "https://maps.app.goo.gl/Eg8LzVUWXCSym7Yp7\n"
+        + "Lun a jue 08:00-13:00 y 14:00-16:00 · Vie 08:00-13:00\n\n"
+        + "Ref.: OC cliente {OCL}";
 
     public const string RetiroChileHdpe =
-        "Retiro en CHILE HDPE\n"
-        + "Identificarse como: \"Retiro JCV\"\n\n"
-        + "OCC {OCC}\nOCL {OCL}\n\n"
-        + "Dirección: Cacique Colín 11950, Lampa\n"
-        + "Mapa: https://maps.app.goo.gl/HwHhbufKS8cBGboG9\n"
-        + "Horario: 08:30 a 17:30";
+        "RETIRO CHILE HDPE\n"
+        + "Retirar con: OC JCV {OCC}\n"
+        + "Decir: \"Retiro JCV\"\n\n"
+        + "Cacique Colín 11950, Lampa\n"
+        + "https://maps.app.goo.gl/HwHhbufKS8cBGboG9\n"
+        + "Lunes a viernes, 08:30 a 17:30\n\n"
+        + "Ref.: OC cliente {OCL}";
 
     public const string GuiaHoffens =
         "Buenos días:\n\n"
@@ -73,6 +77,7 @@ public static class PlantillasMensajero
                     "{OCL} = número de la OCL",
                     "{DIA} = día del retiro",
                     "{BLOQUE} = horario del retiro",
+                    "{NVV_HOFFENS} = nota de venta de Hoffens para retirar",
                 ]
             ),
             new(
@@ -127,6 +132,7 @@ public static class PlantillasMensajero
                 ["OCL"] = "4500012345",
                 ["DIA"] = "martes 15",
                 ["BLOQUE"] = "09:00 a 12:00",
+                ["NVV_HOFFENS"] = "1066086",
             },
             ClaveGuiaHoffens => new() { ["FECHA_GUIA"] = "hoy", ["OBRA"] = "Obra Ejemplo, Maipú" },
             ClaveCuerpoFactura => new()
@@ -152,7 +158,8 @@ public static class PlantillasMensajero
         string occ,
         string ocl,
         string? dia = null,
-        string? bloque = null
+        string? bloque = null,
+        string? nvvHoffens = null
     )
     {
         (string clave, string predeterminada) = proveedor switch
@@ -179,6 +186,9 @@ public static class PlantillasMensajero
                     string.IsNullOrWhiteSpace(bloque) || bloque == "Manual"
                         ? "_______________"
                         : bloque,
+                ["NVV_HOFFENS"] = string.IsNullOrWhiteSpace(nvvHoffens)
+                    ? "_______________"
+                    : nvvHoffens,
             }
         );
     }
