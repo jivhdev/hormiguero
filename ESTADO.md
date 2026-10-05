@@ -28,6 +28,7 @@ tipo: estado
   - Importar `clientes.txt` de Ofisuiza (revisar con Javier las 2 líneas solo de `dist`) y `clickfactura.db` (traerla del PC del trabajo).
   - Posible mejora a consultar: Facturas abre en julio (fijo en el original); abrir en el mes actual.
   - Barra de título blanca en modo oscuro en Windows 10 (las 3 apps).
+- **Deuda técnica**: `RepositorioLineas` (Buscadero) todavía ejecuta SQL directo contra tablas comunes; pasarlo a repositorios del Núcleo (B-6e/B-6f2).
 
 ## Traspasos anteriores
 

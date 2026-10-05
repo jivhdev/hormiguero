@@ -12,6 +12,7 @@ public sealed class RepositorioLineas : IDisposable
     private readonly RepositorioReglasYEnlaces _enlaces;
     private readonly string _rutaBaseComun;
     private Task? _revisionMotor;
+    public event Action<string>? ErrorRevisionMotor;
 
     public RepositorioLineas(string rutaBaseComun)
     {
@@ -210,7 +211,7 @@ public sealed class RepositorioLineas : IDisposable
         cmd.Parameters.AddWithValue("$madre", (object?)cadenaMadreId ?? DBNull.Value);
         cmd.Parameters.AddWithValue("$padre", (object?)instanciaVagonPadreId ?? DBNull.Value);
         long id = Convert.ToInt64(cmd.ExecuteScalar());
-        EjecutarMotorEnSegundoPlano();
+        EjecutarMotorEnSegundoPlano(id);
         return ObtenerInstancia(id)!;
     }
 
@@ -293,10 +294,10 @@ public sealed class RepositorioLineas : IDisposable
         if (enlaceActivo is not null)
             _enlaces.DeshacerEnlace(enlaceActivo.Id);
         _enlaces.CrearEnlace(id, version.Id, "manual");
-        EjecutarMotorEnSegundoPlano();
+        EjecutarMotorEnSegundoPlano(vagon.InstanciaId);
     }
 
-    private void EjecutarMotorEnSegundoPlano()
+    private void EjecutarMotorEnSegundoPlano(long cadenaId)
     {
         string ruta = _rutaBaseComun;
         _revisionMotor = Task.Run(() =>
@@ -314,6 +315,9 @@ public sealed class RepositorioLineas : IDisposable
                     motor.RegistrarError(error);
                 }
                 catch { }
+                ErrorRevisionMotor?.Invoke(
+                    $"No se pudieron revisar los enlaces autom\u00e1ticos de la cadena {cadenaId}: {error.Message}"
+                );
             }
         });
     }

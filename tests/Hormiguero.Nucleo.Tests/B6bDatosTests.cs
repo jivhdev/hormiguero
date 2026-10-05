@@ -336,6 +336,68 @@ public sealed class B6bDatosTests : IDisposable
         Assert.DoesNotContain(enlaces.ListarDudosos(), e => e.Id == propuesta.Id);
     }
 
+    [Theory]
+    [InlineData("ocupado", "El vag\u00f3n ya tiene")]
+    [InlineData("corto", "demasiado corto")]
+    [InlineData("version", "La versi\u00f3n del documento cambi\u00f3")]
+    [InlineData("faltante", "Falta el dato necesario")]
+    [InlineData("confianza", "la lectura no es segura")]
+    public void Motor_deja_como_dudoso_casos_inseguros(string caso, string motivoEsperado)
+    {
+        var datos = PrepararMotor();
+        var enlaces = new RepositorioReglasYEnlaces(conexion);
+        long version = AgregarVersionConValor(
+            datos.CampoOrigen,
+            caso == "corto" ? "123" : "OC12345",
+            caso == "confianza" ? 0.4 : null
+        );
+
+        if (caso == "corto")
+        {
+            using var acortar = conexion.CreateCommand();
+            acortar.CommandText =
+                "UPDATE valores_documento SET valor_clave='123' WHERE campo_id=$c AND version_id=$v;";
+            acortar.Parameters.AddWithValue("$c", datos.CampoComparacion);
+            acortar.Parameters.AddWithValue("$v", datos.VersionReferencia);
+            acortar.ExecuteNonQuery();
+        }
+        else if (caso == "faltante")
+        {
+            using var borrar = conexion.CreateCommand();
+            borrar.CommandText =
+                "UPDATE valores_documento SET estado='anulado' WHERE campo_id=$c AND version_id=$v;";
+            borrar.Parameters.AddWithValue("$c", datos.CampoComparacion);
+            borrar.Parameters.AddWithValue("$v", datos.VersionReferencia);
+            borrar.ExecuteNonQuery();
+        }
+        else if (caso == "version")
+        {
+            using var cambiar = conexion.CreateCommand();
+            cambiar.CommandText =
+                "UPDATE versiones_documento SET estado='anulada' WHERE id=$v; UPDATE valores_documento SET estado='anulado' WHERE version_id=$v;";
+            cambiar.Parameters.AddWithValue("$v", version);
+            cambiar.ExecuteNonQuery();
+        }
+        else if (caso == "ocupado")
+        {
+            long ocupante = AgregarVersionConValor(datos.CampoOrigen, "OTRO123");
+            enlaces.CrearEnlace(datos.VagonDestino, ocupante, "manual");
+        }
+
+        new MotorEnlaceAutomatico(conexion).Ejecutar(version);
+
+        var dudoso = Assert.Single(
+            enlaces.HistorialEnlaces(datos.VagonDestino),
+            e => e.VersionId == version
+        );
+        Assert.Equal("dudoso", dudoso.Estado);
+        Assert.Contains(motivoEsperado, dudoso.Motivo, StringComparison.OrdinalIgnoreCase);
+        Assert.DoesNotContain(
+            enlaces.HistorialEnlaces(datos.VagonDestino),
+            e => e.VersionId == version && e.Estado == "activo"
+        );
+    }
+
     [Fact]
     public void Motor_normaliza_solo_las_opciones_guardadas_y_persiste_confianza_minima()
     {
@@ -395,6 +457,76 @@ public sealed class B6bDatosTests : IDisposable
         {
             Directory.Delete(carpeta, true);
         }
+    }
+
+    private (
+        long CampoOrigen,
+        long CampoComparacion,
+        long VagonDestino,
+        long VersionReferencia
+    ) PrepararMotor()
+    {
+        long identificacion = new Identificaciones(conexion).Guardar(new(0, "OC", "Emisor", "{}"));
+        var datos = new RepositorioDocumentosDatos(conexion);
+        long campoOrigen = datos.GuardarCampo(
+            new(0, identificacion, "OC", "oc", "texto", true, "marca")
+        );
+        long campoComparacion = datos.GuardarCampo(
+            new(0, identificacion, "OC ref", "oc_ref", "texto", true, "marca")
+        );
+        long modelo = new RepositorioCadenas(conexion).CrearModelo("M", DateTime.UtcNow);
+        long comparador = new RepositorioCadenas(conexion).AgregarVagonModelo(
+            modelo,
+            null,
+            "Factura"
+        );
+        long destino = new RepositorioCadenas(conexion).AgregarVagonModelo(
+            modelo,
+            null,
+            "Gu\u00eda"
+        );
+        long cadena = new RepositorioCadenas(conexion).CrearCadena(modelo, "C", DateTime.UtcNow);
+        var vagones = new RepositorioCadenas(conexion)
+            .ObtenerArbolCadena(cadena)
+            .ToDictionary(n => n.Vagon.VagonModeloId!.Value, n => n.Vagon.Id);
+        long refVersion = datos.RegistrarVersion(AgregarDocumento("ref"), "ref", "ref.pdf").Id;
+        datos.GuardarValor(refVersion, campoComparacion, "OC12345", "OC12345", "manual");
+        new RepositorioReglasYEnlaces(conexion).CrearEnlace(
+            vagones[comparador],
+            refVersion,
+            "manual"
+        );
+        new RepositorioReglasYEnlaces(conexion).GuardarRegla(
+            new(
+                0,
+                destino,
+                identificacion,
+                campoOrigen,
+                comparador,
+                campoComparacion,
+                "igual",
+                true,
+                false,
+                false,
+                6,
+                "activa"
+            )
+        );
+        return (campoOrigen, campoComparacion, vagones[destino], refVersion);
+    }
+
+    private long AgregarVersionConValor(long campo, string valor, double? confianza = null)
+    {
+        var datos = new RepositorioDocumentosDatos(conexion);
+        long version = datos
+            .RegistrarVersion(
+                AgregarDocumento(Guid.NewGuid().ToString("N")),
+                Guid.NewGuid().ToString("N"),
+                "candidato.pdf"
+            )
+            .Id;
+        datos.GuardarValor(version, campo, valor, valor, "marca", confianza);
+        return version;
     }
 
     private long AgregarDocumento(string huella)

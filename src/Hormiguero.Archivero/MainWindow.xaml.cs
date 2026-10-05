@@ -47,6 +47,16 @@ public partial class MainWindow : Window
     public MainWindow(string carpetaObservada, VigilanciaCarpetaService vigilancia)
     {
         InitializeComponent();
+        PublicadorDatosDocumentoService.RevisionEnlacesFallida += (_, mensaje) =>
+            Dispatcher.Invoke(() =>
+                System.Windows.MessageBox.Show(
+                    this,
+                    mensaje,
+                    "Archivero",
+                    MessageBoxButton.OK,
+                    MessageBoxImage.Warning
+                )
+            );
         _servicioCarpeta = new CarpetaObservadaService(_configuracion);
         _carpetaObservada = carpetaObservada;
         TxtCarpetaObservada.Text = $"Carpeta observada: {carpetaObservada}";
