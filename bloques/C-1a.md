@@ -2,7 +2,7 @@
 bloque: C-1a
 app: Núcleo y Buscadero (Seguimiento)
 fase: C
-estado: pendiente
+estado: hecho
 agente: Codex
 modelo: codex
 archivos_permitidos: [definicion/DISENO-C1-ALERTAS-Y-VENCIMIENTOS.md]
@@ -26,3 +26,8 @@ Lee `AGENTS.md` y en `definicion/`: `DECISIONES.md` (D-41 ficheri, D-48, D-50, D
 Español neutro, claro, breve. Reporte al final de esta nota.
 
 ## Reporte del agente
+
+Completé el diseño C-1 en `definicion/DISENO-C1-ALERTAS-Y-VENCIMIENTOS.md`, respetando el alcance documental. Incluye cálculo de fechas, feriados configurables, alertas e historial, pantallas y evaluación al abrir, propuesta de migración v7, bloques siguientes y tres preguntas con recomendación. Revisé decisiones, semillas, diseño B-6, pendientes y antecedentes de la bitácora antigua; estos últimos quedaron como contexto, sin convertir detalles heredados en requisitos aprobados.
+
+- `dotnet build`: correcto, 0 advertencias y 0 errores.
+- `dotnet test`: correcto, 617 pruebas superadas en 5 proyectos; 0 fallos y 0 omitidas.
