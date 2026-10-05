@@ -132,6 +132,14 @@
                   Margin="0,0,6,0"
                 />
                 <Button
+                  x:Name="BotonPdfEncontrado"
+                  Content="PDF"
+                  ToolTip="Copia el archivo encontrado, para pegarlo como adjunto"
+                  Click="PdfEncontrado_Click"
+                  IsEnabled="False"
+                  Margin="6,0,0,0"
+                />
+                <Button
                   x:Name="BotonCuerpoEncontrado"
                   Content="Cuerpo"
                   Click="CuerpoEncontrado_Click"
@@ -147,12 +155,6 @@
                   DockPanel.Dock="Right"
                   Content="✏️ Editar"
                   Click="EditarClientes_Click"
-                  Margin="6,0,0,0"
-                />
-                <Button
-                  DockPanel.Dock="Right"
-                  Content="Importar de Ofisuiza…"
-                  Click="ImportarClientesNvv_Click"
                   Margin="6,0,0,0"
                 />
                 <TextBox
