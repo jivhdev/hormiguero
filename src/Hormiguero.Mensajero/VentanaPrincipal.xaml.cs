@@ -560,7 +560,8 @@ public partial class VentanaPrincipal : Window
                 datos.Occ,
                 datos.Ocl,
                 dia,
-                bloque
+                bloque,
+                CampoNvvHoffens.Text
             );
             MostrarToast($"✅ Vista previa generada - {proveedor}", "success");
         }

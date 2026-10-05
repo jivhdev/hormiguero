@@ -30,27 +30,57 @@ public sealed class PlantillasMensajeroTests : IDisposable
     public void Plantillas_predeterminadas_de_retiro_generan_el_texto_aprobado()
     {
         Assert.Equal(
-            "Retiro en BODEGA FRAY CAMILO 889\nIdentificarse como: \"Retiro JCV\"\n\nOCC 104523\nOCL 4500012345\n\nDirección: Fray Camilo Henríquez 889, Santiago\nHorario: lunes a viernes, 09:00 a 17:00 hrs",
+            "RETIRO COBELCAR\nRetirar con: OC JCV 104523\nDecir: \"Retiro JCV\"\n\nFray Camilo Henríquez 889, Santiago\nLunes a viernes, 09:00 a 17:00\n\nRef.: OC cliente 4500012345",
             PlantillasMensajero.GenerarRetiro(almacen, "COBELCAR", "104523", "4500012345")
         );
         Assert.Equal(
-            "Retiro en HOFFENS\nIdentificarse como: \"Retiro JCV\"\n\nOCC 104523\nOCL 4500012345\nNVV _______________\n\nDía: _______________\nBloque: _______________\nDirección: Camino Lonquen 10707, Maipú\nMapa: https://maps.app.goo.gl/smWJQSwCrq2vfCcx7\n\nSi no se retira ese día, queda armado 3 días hábiles más, en el mismo horario.",
+            "RETIRO HOFFENS\nRetirar con: NVV Hoffens _______________ · OC JCV 104523\nDecir: \"Retiro JCV\"\n\nDía: _______________ · Bloque: _______________\nCamino Lonquen 10707, Maipú\nhttps://maps.app.goo.gl/smWJQSwCrq2vfCcx7\n\nRef.: OC cliente 4500012345\nSi no se retira ese día, queda 3 días hábiles más, mismo horario.",
             PlantillasMensajero.GenerarRetiro(
                 almacen,
                 "HOFFENS",
                 "104523",
                 "4500012345",
                 "",
-                "Manual"
+                "Manual",
+                ""
             )
         );
         Assert.Equal(
-            "Retiro en SENSUS (Bodega E1 INVAC)\nIdentificarse como: \"Retiro JCV\"\n\nOCC 104523\nOCL 4500012345\n\nDirección: Camino del Cerro 290, Quilicura\nMapa: https://maps.app.goo.gl/Eg8LzVUWXCSym7Yp7\nHorario: lunes a jueves 08:00-13:00 y 14:00-16:00 / viernes 08:00-13:00\n\nAntes de ir, enviar nombre y teléfono de quien retira y el día (se genera un QR para entrar).",
+            "RETIRO SENSUS (Bodega E1 INVAC)\nRetirar con: OC JCV 104523\nDecir: \"Retiro JCV\"\n\nAntes de ir, envíenos nombre, teléfono y patente de quien retira, y el día (Sensus genera un QR para entrar).\n\nCamino del Cerro 290, Quilicura\nhttps://maps.app.goo.gl/Eg8LzVUWXCSym7Yp7\nLun a jue 08:00-13:00 y 14:00-16:00 · Vie 08:00-13:00\n\nRef.: OC cliente 4500012345",
             PlantillasMensajero.GenerarRetiro(almacen, "SENSUS", "104523", "4500012345")
         );
         Assert.Equal(
-            "Retiro en CHILE HDPE\nIdentificarse como: \"Retiro JCV\"\n\nOCC 104523\nOCL 4500012345\n\nDirección: Cacique Colín 11950, Lampa\nMapa: https://maps.app.goo.gl/HwHhbufKS8cBGboG9\nHorario: 08:30 a 17:30",
+            "RETIRO CHILE HDPE\nRetirar con: OC JCV 104523\nDecir: \"Retiro JCV\"\n\nCacique Colín 11950, Lampa\nhttps://maps.app.goo.gl/HwHhbufKS8cBGboG9\nLunes a viernes, 08:30 a 17:30\n\nRef.: OC cliente 4500012345",
             PlantillasMensajero.GenerarRetiro(almacen, "CHILE HDPE", "104523", "4500012345")
+        );
+    }
+
+    [Fact]
+    public void Retiro_hoffens_incluye_nvv_cuando_se_ingresa()
+    {
+        Assert.Contains(
+            "Retirar con: NVV Hoffens 1066086 · OC JCV 104523",
+            PlantillasMensajero.GenerarRetiro(
+                almacen,
+                "HOFFENS",
+                "104523",
+                "4500012345",
+                "martes 15",
+                "09:00 a 12:00",
+                "1066086"
+            )
+        );
+        Assert.Contains(
+            "Día: martes 15 · Bloque: 09:00 a 12:00",
+            PlantillasMensajero.GenerarRetiro(
+                almacen,
+                "HOFFENS",
+                "104523",
+                "4500012345",
+                "martes 15",
+                "09:00 a 12:00",
+                "1066086"
+            )
         );
     }
 
