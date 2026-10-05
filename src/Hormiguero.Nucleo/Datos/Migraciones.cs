@@ -134,6 +134,23 @@ public static class Migraciones
             "ALTER TABLE enlaces_cadena ADD COLUMN motivo TEXT NULL; "
                 + "CREATE TABLE IF NOT EXISTS reglas_vagon_anuladas(id INTEGER PRIMARY KEY, vagon_modelo_id INTEGER NOT NULL, identificacion_id INTEGER NOT NULL, campo_origen_id INTEGER NOT NULL, vagon_comparacion_id INTEGER NOT NULL, campo_comparacion_id INTEGER NOT NULL, operacion TEXT NOT NULL, normalizar_espacios INTEGER NOT NULL, ignorar_guiones INTEGER NOT NULL, ignorar_ceros_iniciales INTEGER NOT NULL, largo_minimo INTEGER NOT NULL, anulada_en TEXT NOT NULL);"
         ),
+        (
+            7,
+            "CREATE TABLE IF NOT EXISTS calendarios_feriados("
+                + "id INTEGER PRIMARY KEY, nombre TEXT NOT NULL, pais_codigo TEXT NOT NULL, "
+                + "region TEXT NULL, activo INTEGER NOT NULL DEFAULT 1, predeterminado INTEGER NOT NULL DEFAULT 0, "
+                + "origen TEXT NOT NULL DEFAULT 'usuario', creada_en TEXT NOT NULL, actualizada_en TEXT NOT NULL, "
+                + "CHECK(activo IN (0,1)), CHECK(predeterminado IN (0,1))); "
+                + "CREATE UNIQUE INDEX IF NOT EXISTS idx_calendarios_feriados_un_predeterminado "
+                + "ON calendarios_feriados(predeterminado) WHERE predeterminado=1; "
+                + "CREATE TABLE IF NOT EXISTS feriados("
+                + "id INTEGER PRIMARY KEY, calendario_id INTEGER NOT NULL REFERENCES calendarios_feriados(id), "
+                + "fecha TEXT NOT NULL, nombre TEXT NOT NULL, activo INTEGER NOT NULL DEFAULT 1, "
+                + "fecha_anulacion TEXT NULL, creada_en TEXT NOT NULL, actualizada_en TEXT NOT NULL, "
+                + "CHECK(activo IN (0,1)), UNIQUE(calendario_id, fecha)); "
+                + "CREATE INDEX IF NOT EXISTS idx_feriados_calendario_fecha_activo "
+                + "ON feriados(calendario_id, fecha, activo);"
+        ),
     ];
 
     public static void Aplicar(
