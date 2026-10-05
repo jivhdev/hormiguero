@@ -57,7 +57,7 @@ public partial class VentanaFacturas : Window
         string documentosGuardados = almacen.LeerValor("factura.carpeta_documentos");
         baseDocumentos = string.IsNullOrWhiteSpace(documentosGuardados)
             ? BuscadorPdfFactura.RutaBasePredeterminada
-            : documentosGuardados;
+            : BuscadorPdfFactura.NormalizarBaseDocumentos(documentosGuardados);
         almacen.GuardarValor("factura.carpeta_documentos", baseDocumentos);
         ActualizarCarpetas();
         FiltroEnvios.ItemsSource = new[] { "Todos", "Solo pendientes", "Solo enviados" };
@@ -144,13 +144,15 @@ public partial class VentanaFacturas : Window
                 .ToDictionary(cliente => cliente.Rut, StringComparer.Ordinal);
             foreach (
                 string rut in documentos
-                    .Select(documento => RutFactura.Limpiar(documento.Entidad))
+                    .Select(documento => RutFactura.NormalizarSeguro(documento.Entidad))
+                    .Where(rut => rut.Length > 0)
                     .Distinct(StringComparer.Ordinal)
             )
             {
                 if (
-                    !clientesPorRut.ContainsKey(rut)
-                    && almacen.BuscarClienteFactura(rut) is { } cliente
+                    !clientesPorRut.Values.Any(cliente =>
+                        RutFactura.NormalizarSeguro(cliente.Rut) == rut
+                    ) && almacen.BuscarClienteFactura(rut) is { } cliente
                 )
                     clientesPorRut[rut] = cliente;
             }
@@ -200,8 +202,28 @@ public partial class VentanaFacturas : Window
             clientesEnviados.UnionWith(almacen.LeerRutsEnviadosFactura(descripcionSemana));
             indiceCliente = 0;
             RefrescarTablaAnalisis();
-            EstadoAnalisis.Text = "✅ Análisis completado";
+            int erroresDocumento = clientes
+                .SelectMany(cliente => cliente.Documentos)
+                .Count(documento => documento.Error is not null);
+            EstadoAnalisis.Text =
+                erroresDocumento == 0
+                    ? "✅ Análisis completado"
+                    : $"✅ Análisis completado con {erroresDocumento} documento(s) con error; revisa el detalle en la tabla y mensajero.log.";
             BotonIrEnvios.IsEnabled = true;
+            if (resultado.TotalEncontrados == 0 && documentos.Count > 0)
+            {
+                string rutaEjemplo = BuscadorPdfFactura.RutaDocumentos(
+                    baseDocumentos,
+                    documentos[0].Tipo,
+                    (int)AnioUno.SelectedItem!,
+                    MesUno.SelectedIndex + 1
+                );
+                MostrarAviso(
+                    "No se encontraron PDF",
+                    $"No se encontró ningún PDF en el análisis. Se buscó, por ejemplo, en: {rutaEjemplo}",
+                    "warning"
+                );
+            }
         }
         catch (Exception excepcion)
         {
@@ -406,7 +428,9 @@ public partial class VentanaFacturas : Window
             .Documentos.Select(documento => new FilaDocumento(
                 documento.Tipo,
                 documento.Numero,
-                documento.RutaPdf is null ? "❌ No encontrado" : Path.GetFileName(documento.RutaPdf)
+                documento.Error is not null ? $"❌ Error: {documento.Error}"
+                    : documento.RutaPdf is null ? "❌ No encontrado"
+                    : Path.GetFileName(documento.RutaPdf)
             ))
             .ToArray();
         CampoAsunto.Text = cliente.Mensaje.Asunto;
@@ -582,9 +606,15 @@ public partial class VentanaFacturas : Window
         string? carpeta = ElegirCarpeta("Seleccionar carpeta de facturas (PDF)", baseDocumentos);
         if (carpeta is null)
             return;
-        baseDocumentos = carpeta;
+        baseDocumentos = BuscadorPdfFactura.NormalizarBaseDocumentos(carpeta);
         almacen.GuardarValor("factura.carpeta_documentos", baseDocumentos);
         ActualizarCarpetas();
+        if (!BuscadorPdfFactura.TieneCarpetasTipos(baseDocumentos))
+            MostrarAviso(
+                "Carpeta incompleta",
+                "No encuentro las carpetas FCV y NCV dentro de esta carpeta",
+                "warning"
+            );
     }
 
     private void CambiarCarpetaTemporal_Click(object sender, RoutedEventArgs e)
@@ -613,9 +643,12 @@ public partial class VentanaFacturas : Window
     {
         TextoCarpetaDocumentos.Text = baseDocumentos;
         TextoCarpetaTemporal.Text = baseTemporal;
-        TextoEstadoDocumentos.Visibility = Directory.Exists(baseDocumentos)
-            ? Visibility.Collapsed
-            : Visibility.Visible;
+        bool carpetaExiste = Directory.Exists(baseDocumentos);
+        bool tiposExisten = carpetaExiste && BuscadorPdfFactura.TieneCarpetasTipos(baseDocumentos);
+        TextoEstadoDocumentos.Text = carpetaExiste
+            ? "No encuentro las carpetas FCV y NCV dentro de esta carpeta"
+            : "No se encuentra esta carpeta";
+        TextoEstadoDocumentos.Visibility = tiposExisten ? Visibility.Collapsed : Visibility.Visible;
     }
 
     private void AbrirCarpetaTemporal_Click(object sender, RoutedEventArgs e)
