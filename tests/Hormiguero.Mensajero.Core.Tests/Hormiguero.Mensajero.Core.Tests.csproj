@@ -17,7 +17,6 @@
   </ItemGroup>
 
   <ItemGroup>
-    <ProjectReference Include="..\..\src\Hormiguero.Mensajero\Hormiguero.Mensajero.csproj" />
     <ProjectReference Include="..\..\src\Hormiguero.Mensajero.Core\Hormiguero.Mensajero.Core.csproj" />
   </ItemGroup>
 

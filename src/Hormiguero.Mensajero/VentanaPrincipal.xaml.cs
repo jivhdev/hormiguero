@@ -150,6 +150,9 @@ public partial class VentanaPrincipal : Window
     private void CuerpoEncontrado_Click(object sender, RoutedEventArgs e) =>
         CopiarCuerpo(rutaEncontradaExtractor);
 
+    private void PdfEncontrado_Click(object sender, RoutedEventArgs e) =>
+        CopiarPdfArchivo(rutaEncontradaExtractor);
+
     private void CopiarPdf_Click(object sender, RoutedEventArgs e) => CopiarUltimoPdf();
 
     // Copia el archivo (no el texto): se pega como adjunto en el correo o en el Explorador.
@@ -166,6 +169,13 @@ public partial class VentanaPrincipal : Window
             MostrarToast("❌ No hay PDFs en la carpeta", "error");
             return;
         }
+        CopiarPdfArchivo(ruta);
+    }
+
+    private void CopiarPdfArchivo(string? ruta)
+    {
+        if (string.IsNullOrWhiteSpace(ruta))
+            return;
         for (int intento = 0; intento < 3; intento++)
         {
             try
@@ -294,14 +304,20 @@ public partial class VentanaPrincipal : Window
         {
             MostrarToast($"❌ No encontrado: {numero}", "error");
             TextoArchivoEncontrado.Text = "";
-            BotonAsuntoEncontrado.IsEnabled = BotonCuerpoEncontrado.IsEnabled = false;
+            BotonAsuntoEncontrado.IsEnabled =
+                BotonCuerpoEncontrado.IsEnabled =
+                BotonPdfEncontrado.IsEnabled =
+                    false;
         }
         else if (resultados.Count == 1)
         {
             rutaEncontradaExtractor = resultados[0];
             string nombre = Path.GetFileName(rutaEncontradaExtractor);
             TextoArchivoEncontrado.Text = $"✅ {nombre}";
-            BotonAsuntoEncontrado.IsEnabled = BotonCuerpoEncontrado.IsEnabled = true;
+            BotonAsuntoEncontrado.IsEnabled =
+                BotonCuerpoEncontrado.IsEnabled =
+                BotonPdfEncontrado.IsEnabled =
+                    true;
             MostrarToast($"✅ PDF encontrado: {nombre}", "success");
             PrecargarPdf(rutaEncontradaExtractor);
         }
@@ -407,69 +423,6 @@ public partial class VentanaPrincipal : Window
         editorAbierto = false;
         RefrescarClientes(CampoBuscarCliente.Text);
     }
-
-    private void ImportarClientesNvv_Click(object sender, RoutedEventArgs e)
-    {
-        EstadoImportacionClientesNvv estado = PoliticaImportacionClientesNvv.Evaluar(clientes);
-        if (estado == EstadoImportacionClientesNvv.ListaExistente)
-        {
-            MostrarAvisoImportacion(PoliticaImportacionClientesNvv.MensajeListaExistente);
-            return;
-        }
-
-        var dialogo = new OpenFileDialog
-        {
-            Title = "Seleccionar clientes.txt de Ofisuiza",
-            Filter =
-                "Clientes de Ofisuiza (clientes.txt)|clientes.txt|Archivos de texto (*.txt)|*.txt",
-            FileName = "clientes.txt",
-        };
-        if (dialogo.ShowDialog(this) != true)
-            return;
-
-        if (
-            estado == EstadoImportacionClientesNvv.ClientesDeEjemplo
-            && MessageBox.Show(
-                this,
-                PoliticaImportacionClientesNvv.MensajeReemplazoEjemplos,
-                "Importar de Ofisuiza",
-                MessageBoxButton.YesNo,
-                MessageBoxImage.Question
-            ) != MessageBoxResult.Yes
-        )
-            return;
-
-        try
-        {
-            if (estado == EstadoImportacionClientesNvv.ClientesDeEjemplo)
-            {
-                almacen.GuardarClientesNvv([]);
-                clientes = [];
-            }
-
-            int cantidad = almacen.ImportarClientesNvv(dialogo.FileName);
-            clientes = almacen.LeerClientesNvv();
-            RefrescarClientes(CampoBuscarCliente.Text);
-            MostrarAvisoImportacion($"Se importaron {cantidad} clientes.");
-        }
-        catch (Exception excepcion)
-        {
-            MensajeroLog.RegistrarError("Importar clientes de Ofisuiza", excepcion);
-            MostrarAvisoImportacion(
-                $"No se pudieron importar los clientes: {excepcion.Message}",
-                true
-            );
-        }
-    }
-
-    private void MostrarAvisoImportacion(string mensaje, bool error = false) =>
-        MessageBox.Show(
-            this,
-            mensaje,
-            "Importar de Ofisuiza",
-            MessageBoxButton.OK,
-            error ? MessageBoxImage.Error : MessageBoxImage.Information
-        );
 
     private void GuardarClientes(IReadOnlyList<string> nuevos)
     {
