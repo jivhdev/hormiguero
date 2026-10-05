@@ -9,6 +9,7 @@ namespace Archivero.Servicios;
 public static class PublicadorDatosDocumentoService
 {
     public static bool PublicacionAutomaticaActiva { get; set; }
+    public static Task? UltimaRevisionEnlaces { get; private set; }
 
     public static void PublicarGuardado(
         string ruta,
@@ -41,7 +42,7 @@ public static class PublicadorDatosDocumentoService
         long tamano = infoAntes.Length;
         DateTime modificado = infoAntes.LastWriteTimeUtc;
         using var conexion = BaseComun.Abrir(DocumentosGuardados.RutaBaseComun);
-        new RepositorioDocumentosDatos(conexion).PublicarDocumento(
+        var publicado = new RepositorioDocumentosDatos(conexion).PublicarDocumento(
             ruta,
             tamano,
             modificado,
@@ -59,6 +60,29 @@ public static class PublicadorDatosDocumentoService
             || modificado != infoAntes.LastWriteTimeUtc
         )
             throw new IOException("El documento cambió mientras se publicaba.");
+        UltimaRevisionEnlaces = Task.Run(() => RevisarEnlaces(publicado.Version.Id));
+    }
+
+    public static Task RevisarEnlacesPendientesAsync() => Task.Run(() => RevisarEnlaces(null));
+
+    private static void RevisarEnlaces(long? versionId)
+    {
+        using var conexion = BaseComun.Abrir(DocumentosGuardados.RutaBaseComun);
+        var motor = new MotorEnlaceAutomatico(conexion);
+        try
+        {
+            motor.Ejecutar(versionId);
+        }
+        catch (Exception error)
+        {
+            try
+            {
+                motor.RegistrarError(error, versionId);
+            }
+            catch
+            { /* Un fallo de auditoría no invalida el documento publicado. */
+            }
+        }
     }
 
     private static IReadOnlyList<ValorDocumentoLeido> CrearValores(

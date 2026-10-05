@@ -10,9 +10,12 @@ public sealed class RepositorioLineas : IDisposable
     private readonly RepositorioCadenas _cadenas;
     private readonly RepositorioDocumentosDatos _documentos;
     private readonly RepositorioReglasYEnlaces _enlaces;
+    private readonly string _rutaBaseComun;
+    private Task? _revisionMotor;
 
     public RepositorioLineas(string rutaBaseComun)
     {
+        _rutaBaseComun = rutaBaseComun;
         _conexion = BaseComun.Abrir(rutaBaseComun);
         _cadenas = new RepositorioCadenas(_conexion);
         _documentos = new RepositorioDocumentosDatos(_conexion);
@@ -82,6 +85,7 @@ public sealed class RepositorioLineas : IDisposable
 
     public void BorrarPlantilla(long id)
     {
+        _enlaces.AnularReglasDeVagones(ObtenerVagonesPlantilla(id).Select(v => v.Id));
         using var tx = _conexion.BeginTransaction();
         Ejecutar(tx, "UPDATE cadenas SET modelo_id=NULL WHERE modelo_id=$id", ("$id", id));
         Ejecutar(
@@ -148,6 +152,7 @@ public sealed class RepositorioLineas : IDisposable
     {
         var todos = ObtenerVagonesPlantillaPorId(id);
         var borrar = Descendientes(id, todos);
+        _enlaces.AnularReglasDeVagones(borrar);
         using var tx = _conexion.BeginTransaction();
         foreach (var vagon in borrar.Reverse())
         {
@@ -205,6 +210,7 @@ public sealed class RepositorioLineas : IDisposable
         cmd.Parameters.AddWithValue("$madre", (object?)cadenaMadreId ?? DBNull.Value);
         cmd.Parameters.AddWithValue("$padre", (object?)instanciaVagonPadreId ?? DBNull.Value);
         long id = Convert.ToInt64(cmd.ExecuteScalar());
+        EjecutarMotorEnSegundoPlano();
         return ObtenerInstancia(id)!;
     }
 
@@ -287,6 +293,29 @@ public sealed class RepositorioLineas : IDisposable
         if (enlaceActivo is not null)
             _enlaces.DeshacerEnlace(enlaceActivo.Id);
         _enlaces.CrearEnlace(id, version.Id, "manual");
+        EjecutarMotorEnSegundoPlano();
+    }
+
+    private void EjecutarMotorEnSegundoPlano()
+    {
+        string ruta = _rutaBaseComun;
+        _revisionMotor = Task.Run(() =>
+        {
+            using var conexion = BaseComun.Abrir(ruta);
+            var motor = new MotorEnlaceAutomatico(conexion);
+            try
+            {
+                motor.Ejecutar();
+            }
+            catch (Exception error)
+            {
+                try
+                {
+                    motor.RegistrarError(error);
+                }
+                catch { }
+            }
+        });
     }
 
     public void BorrarVagonInstancia(long id)
@@ -522,5 +551,13 @@ public sealed class RepositorioLineas : IDisposable
         cmd.ExecuteNonQuery();
     }
 
-    public void Dispose() => _conexion.Dispose();
+    public void Dispose()
+    {
+        try
+        {
+            _revisionMotor?.GetAwaiter().GetResult();
+        }
+        catch { }
+        _conexion.Dispose();
+    }
 }

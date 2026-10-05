@@ -2,7 +2,7 @@
 bloque: B-6f
 app: Núcleo y Buscadero
 fase: B-6
-estado: pendiente
+estado: parcial (sigue en B-6f2)
 agente: Codex
 modelo: codex
 archivos_permitidos: [src/Hormiguero.Nucleo/Datos/**, src/Hormiguero.Buscadero.Core/**, src/Hormiguero.Archivero/Servicios/PublicadorDatosDocumentoService.cs, tests/Hormiguero.Nucleo.Tests/**, tests/Hormiguero.Buscadero.Core.Tests/**, tests/Hormiguero.Archivero.App.Tests/**]
@@ -30,3 +30,13 @@ Pruebas: coincidencia única → enlace; empate → dudoso; valor corto → dudo
 Confianza de lectura: un valor **sin confianza informada** (texto extraído del PDF, que hoy es exacto) o **corregido a mano** es confiable. Un valor **con confianza informada** (OCR futuro) es confiable solo si es **≥ 0,90**; si no, el caso va a dudosos con el motivo "la lectura no es segura". El 0,90 es un valor configurable (guardado como configuración, con 0,90 por defecto), no fijo en el código. Sigue con el bloque completo.
 
 ## Reporte del agente
+
+- Implementé reglas de igualdad, validación de relación entre modelos, normalizaciones configurables, longitud mínima y umbral persistido de confianza (0,90 por defecto). El motor enlaza la coincidencia única disponible y conserva propuestas dudosas individualizadas, con motivo, historial y auditoría. Incluí las operaciones de listar, consultar datos, aceptar y rechazar; un rechazo no se vuelve a proponer para el mismo par.
+- Archivero programa la revisión tras publicar; Buscadero la programa al crear cadenas y completar enlaces. Los errores del motor se registran en auditoría sin deshacer la publicación. Las reglas retiradas al borrar vagones se archivan y auditan para preservar las referencias históricas.
+- No cambié la migración v5. Agregué migración v6 porque v5 no ofrece dónde guardar el motivo del dudoso ni cómo conservar reglas anuladas sin romper sus claves foráneas.
+- Pendiente para completar B-6f: no trasladé todavía a repositorios del Núcleo todas las lecturas y actualizaciones SQL directas de `RepositorioLineas` que venían pendientes de B-6e. También faltan pruebas específicas para vagón ocupado, valor corto, versión cambiada, dato faltante y lectura con confianza baja; el conjunto agregado cubre coincidencia única, empate, normalizaciones, confianza configurable, rechazo y archivo auditado al borrar modelo. Por esto el bloque queda parcialmente implementado.
+- Verificación: `dotnet build Hormiguero.slnx --no-restore` correcto, 0 advertencias; `dotnet test Hormiguero.slnx --no-build --no-restore` correcto (600 pruebas); `dotnet csharpier check .` correcto (228 archivos).
+### Revisión de Claude (2026-10-04)
+
+- Aceptado parcial (600 pruebas). Migración v6 aceptada: `motivo` en enlaces y archivo de reglas anuladas.
+- Falta (pasa a B-6f2): pruebas de vagón ocupado, valor corto, versión cambiada, dato faltante y confianza baja; mover el SQL directo de `RepositorioLineas` al Núcleo; los errores del motor hoy solo van a auditoría: deben ser visibles para el usuario (D-64: nada silencioso).
