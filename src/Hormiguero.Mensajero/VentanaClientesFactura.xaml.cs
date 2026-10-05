@@ -1,8 +1,10 @@
+using System.IO;
 using System.Windows;
 using System.Windows.Controls;
 using System.Windows.Input;
 using System.Windows.Media;
 using Hormiguero.Mensajero.Core;
+using Microsoft.Win32;
 
 namespace Hormiguero.Mensajero.App;
 
@@ -48,6 +50,50 @@ public partial class VentanaClientesFactura : Window
         catch (Exception excepcion)
         {
             MostrarAviso("Error", $"No se pudo guardar: {excepcion.Message}", false);
+        }
+    }
+
+    private void ImportarClientesFactura_Click(object sender, RoutedEventArgs e)
+    {
+        if (almacen.LeerClientesFactura().Count > 0)
+        {
+            MostrarAviso("Importar de ClickFactura", "Solo se importa en una lista vacía.", false);
+            return;
+        }
+
+        string carpetaInicial = Path.Combine(
+            Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData),
+            "ClickFactura",
+            "data"
+        );
+        var dialogo = new OpenFileDialog
+        {
+            Title = "Seleccionar base de datos de ClickFactura",
+            Filter = "Base de datos de ClickFactura (clickfactura.db)|clickfactura.db",
+            FileName = "clickfactura.db",
+        };
+        if (Directory.Exists(carpetaInicial))
+            dialogo.InitialDirectory = carpetaInicial;
+        if (dialogo.ShowDialog(this) != true)
+            return;
+
+        try
+        {
+            int cantidad = almacen.ImportarClientesFactura(dialogo.FileName);
+            CargarClientes();
+            MostrarAviso(
+                "Importar de ClickFactura",
+                $"Se importaron {cantidad} clientes de ClickFactura.",
+                true
+            );
+        }
+        catch (Exception excepcion)
+        {
+            MostrarAviso(
+                "Error",
+                $"No se pudieron importar los clientes: {excepcion.Message}",
+                false
+            );
         }
     }
 
