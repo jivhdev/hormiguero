@@ -44,6 +44,7 @@ public static class BaseComun
             }
 
             Migraciones.Aplicar(conexion, Migraciones.Todas);
+            _ = new RepositorioCalendariosFeriados(conexion);
         }
         catch
         {

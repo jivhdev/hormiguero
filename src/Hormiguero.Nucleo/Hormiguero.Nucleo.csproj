@@ -9,4 +9,8 @@
     <PackageReference Include="PDFtoImage" />
     <PackageReference Include="System.Drawing.Common" />
   </ItemGroup>
+
+  <ItemGroup>
+    <EmbeddedResource Include="Recursos\feriados-chile.csv" />
+  </ItemGroup>
 </Project>
