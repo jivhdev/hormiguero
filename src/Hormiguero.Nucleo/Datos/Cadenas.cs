@@ -54,6 +54,191 @@ public sealed record NodoVagonCadena(VagonCadena Vagon, IReadOnlyList<NodoVagonC
 
 public sealed class RepositorioCadenas(SqliteConnection conexion)
 {
+    public long CrearCadenaSimple(string nombre, DateTime fechaCreacion)
+    {
+        ArgumentException.ThrowIfNullOrWhiteSpace(nombre);
+        long id = CrearCadena(null, nombre.Trim(), fechaCreacion);
+        using var tx = conexion.BeginTransaction();
+        AuditoriaDatos.Registrar(
+            conexion,
+            tx,
+            "crear_cadena_simple",
+            $"cadena:{id}",
+            nombre.Trim(),
+            app: "Buscadero"
+        );
+        tx.Commit();
+        return id;
+    }
+
+    public IReadOnlyList<Cadena> ListarCadenasSimples()
+    {
+        using var comando = conexion.CreateCommand();
+        comando.CommandText =
+            "SELECT id,modelo_id,nombre_modelo_origen,nombre,fecha_creacion,estructura_json,cadena_madre_id,vagon_padre_id,estado FROM cadenas WHERE modelo_id IS NULL AND estado='activa' ORDER BY id;";
+        using var lector = comando.ExecuteReader();
+        var resultado = new List<Cadena>();
+        while (lector.Read())
+            resultado.Add(LeerCadena(lector));
+        return resultado;
+    }
+
+    public void RenombrarCadena(long cadenaId, string nombre)
+    {
+        ArgumentException.ThrowIfNullOrWhiteSpace(nombre);
+        using var tx = conexion.BeginTransaction();
+        using var cmd = conexion.CreateCommand();
+        cmd.Transaction = tx;
+        cmd.CommandText =
+            "UPDATE cadenas SET nombre=$n WHERE id=$id AND modelo_id IS NULL AND estado='activa';";
+        cmd.Parameters.AddWithValue("$n", nombre.Trim());
+        cmd.Parameters.AddWithValue("$id", cadenaId);
+        if (cmd.ExecuteNonQuery() == 0)
+            throw new InvalidOperationException("No existe la cadena simple.");
+        AuditoriaDatos.Registrar(
+            conexion,
+            tx,
+            "renombrar_cadena",
+            $"cadena:{cadenaId}",
+            nombre.Trim(),
+            app: "Buscadero"
+        );
+        tx.Commit();
+    }
+
+    public IReadOnlyList<VagonCadena> ListarDocumentosCadena(long cadenaId) =>
+        LeerVagonesCadena(cadenaId);
+
+    public long AgregarDocumentoCadena(long cadenaId, long versionId, string nombre)
+    {
+        ArgumentException.ThrowIfNullOrWhiteSpace(nombre);
+        using var tx = conexion.BeginTransaction();
+        using (var validar = conexion.CreateCommand())
+        {
+            validar.Transaction = tx;
+            validar.CommandText =
+                "SELECT 1 FROM cadenas WHERE id=$c AND modelo_id IS NULL AND estado='activa';";
+            validar.Parameters.AddWithValue("$c", cadenaId);
+            if (validar.ExecuteScalar() is null)
+                throw new InvalidOperationException("No existe la cadena simple.");
+            validar.CommandText =
+                "SELECT 1 FROM versiones_documento WHERE id=$v AND estado='vigente';";
+            validar.Parameters.Clear();
+            validar.Parameters.AddWithValue("$v", versionId);
+            if (validar.ExecuteScalar() is null)
+                throw new InvalidOperationException("La versión del documento no está vigente.");
+            validar.CommandText =
+                "SELECT 1 FROM enlaces_cadena e JOIN vagones_cadena v ON v.id=e.vagon_cadena_id WHERE v.cadena_id=$c AND e.version_id=$v AND e.estado='activo';";
+            validar.Parameters.Clear();
+            validar.Parameters.AddWithValue("$c", cadenaId);
+            validar.Parameters.AddWithValue("$v", versionId);
+            if (validar.ExecuteScalar() is not null)
+                throw new InvalidOperationException("El documento ya está en la cadena.");
+        }
+        int orden;
+        using (var q = conexion.CreateCommand())
+        {
+            q.Transaction = tx;
+            q.CommandText =
+                "SELECT COALESCE(MAX(orden),-1)+1 FROM vagones_cadena WHERE cadena_id=$c AND padre_id IS NULL AND estado='activo';";
+            q.Parameters.AddWithValue("$c", cadenaId);
+            orden = Convert.ToInt32(q.ExecuteScalar());
+        }
+        using var cmd = conexion.CreateCommand();
+        cmd.Transaction = tx;
+        cmd.CommandText =
+            "INSERT INTO vagones_cadena(cadena_id,orden,nombre) VALUES($c,$o,$n) RETURNING id;";
+        cmd.Parameters.AddWithValue("$c", cadenaId);
+        cmd.Parameters.AddWithValue("$o", orden);
+        cmd.Parameters.AddWithValue("$n", nombre.Trim());
+        long id = Convert.ToInt64(cmd.ExecuteScalar());
+        AuditoriaDatos.Registrar(
+            conexion,
+            tx,
+            "agregar_documento_cadena",
+            $"cadena:{cadenaId}",
+            $"vagon:{id}",
+            app: "Buscadero"
+        );
+        tx.Commit();
+        return id;
+    }
+
+    public void QuitarDocumentoCadena(long vagonId)
+    {
+        using var tx = conexion.BeginTransaction();
+        using var cmd = conexion.CreateCommand();
+        cmd.Transaction = tx;
+        cmd.CommandText =
+            "UPDATE vagones_cadena SET estado='anulado',fecha_anulacion=$f WHERE id=$id AND estado='activo' AND vagon_modelo_id IS NULL;";
+        cmd.Parameters.AddWithValue("$f", DateTime.Now.ToString("o"));
+        cmd.Parameters.AddWithValue("$id", vagonId);
+        if (cmd.ExecuteNonQuery() == 0)
+            throw new InvalidOperationException("No existe el documento activo de la cadena.");
+        using (var enlaces = conexion.CreateCommand())
+        {
+            enlaces.Transaction = tx;
+            enlaces.CommandText =
+                "UPDATE enlaces_cadena SET estado='anulado',cambiada_en=$f WHERE vagon_cadena_id=$id AND estado IN ('activo','dudoso');";
+            enlaces.Parameters.AddWithValue("$f", DateTime.Now.ToString("o"));
+            enlaces.Parameters.AddWithValue("$id", vagonId);
+            enlaces.ExecuteNonQuery();
+        }
+        CompactarOrden(tx, vagonId);
+        AuditoriaDatos.Registrar(
+            conexion,
+            tx,
+            "quitar_documento_cadena",
+            $"vagon:{vagonId}",
+            app: "Buscadero"
+        );
+        tx.Commit();
+    }
+
+    public void ReordenarDocumentoCadena(long vagonId, int desplazamiento)
+    {
+        if (desplazamiento is not (-1 or 1))
+            throw new ArgumentOutOfRangeException(nameof(desplazamiento));
+        using var tx = conexion.BeginTransaction();
+        var ids = new List<long>();
+        using (var cmd = conexion.CreateCommand())
+        {
+            cmd.Transaction = tx;
+            cmd.CommandText =
+                "SELECT id FROM vagones_cadena WHERE cadena_id=(SELECT cadena_id FROM vagones_cadena WHERE id=$id) AND estado='activo' AND vagon_modelo_id IS NULL AND padre_id IS NULL ORDER BY orden,id;";
+            cmd.Parameters.AddWithValue("$id", vagonId);
+            using var r = cmd.ExecuteReader();
+            while (r.Read())
+                ids.Add(r.GetInt64(0));
+        }
+        int indice = ids.IndexOf(vagonId);
+        if (indice < 0)
+            throw new InvalidOperationException("No existe el documento activo de la cadena.");
+        int destino = indice + desplazamiento;
+        if (destino >= 0 && destino < ids.Count)
+        {
+            (ids[indice], ids[destino]) = (ids[destino], ids[indice]);
+            for (int i = 0; i < ids.Count; i++)
+            {
+                using var mover = conexion.CreateCommand();
+                mover.Transaction = tx;
+                mover.CommandText = "UPDATE vagones_cadena SET orden=$o WHERE id=$id;";
+                mover.Parameters.AddWithValue("$o", i);
+                mover.Parameters.AddWithValue("$id", ids[i]);
+                mover.ExecuteNonQuery();
+            }
+        }
+        AuditoriaDatos.Registrar(
+            conexion,
+            tx,
+            "reordenar_documento_cadena",
+            $"vagon:{vagonId}",
+            destino.ToString(),
+            app: "Buscadero"
+        );
+        tx.Commit();
+    }
+
     public long CrearModelo(string nombre, DateTime fechaCreacion, bool esModeloHijo = false)
     {
         ArgumentException.ThrowIfNullOrWhiteSpace(nombre);
@@ -187,19 +372,44 @@ public sealed class RepositorioCadenas(SqliteConnection conexion)
             "SELECT id,modelo_id,nombre_modelo_origen,nombre,fecha_creacion,estructura_json,cadena_madre_id,vagon_padre_id,estado FROM cadenas WHERE id=$id AND estado='activa';";
         comando.Parameters.AddWithValue("$id", id);
         using var lector = comando.ExecuteReader();
-        return lector.Read()
-            ? new(
-                lector.GetInt64(0),
-                NuloLong(lector, 1),
-                NuloTexto(lector, 2),
-                lector.GetString(3),
-                DateTime.Parse(lector.GetString(4)),
-                lector.GetString(5),
-                NuloLong(lector, 6),
-                NuloLong(lector, 7),
-                lector.GetString(8)
-            )
-            : null;
+        return lector.Read() ? LeerCadena(lector) : null;
+    }
+
+    private static Cadena LeerCadena(SqliteDataReader lector) =>
+        new(
+            lector.GetInt64(0),
+            NuloLong(lector, 1),
+            NuloTexto(lector, 2),
+            lector.GetString(3),
+            DateTime.Parse(lector.GetString(4)),
+            lector.GetString(5),
+            NuloLong(lector, 6),
+            NuloLong(lector, 7),
+            lector.GetString(8)
+        );
+
+    private void CompactarOrden(SqliteTransaction tx, long vagonId)
+    {
+        var ids = new List<long>();
+        using (var cmd = conexion.CreateCommand())
+        {
+            cmd.Transaction = tx;
+            cmd.CommandText =
+                "SELECT id FROM vagones_cadena WHERE cadena_id=(SELECT cadena_id FROM vagones_cadena WHERE id=$id) AND estado='activo' AND padre_id IS NULL ORDER BY orden,id;";
+            cmd.Parameters.AddWithValue("$id", vagonId);
+            using var r = cmd.ExecuteReader();
+            while (r.Read())
+                ids.Add(r.GetInt64(0));
+        }
+        for (int i = 0; i < ids.Count; i++)
+        {
+            using var cmd = conexion.CreateCommand();
+            cmd.Transaction = tx;
+            cmd.CommandText = "UPDATE vagones_cadena SET orden=$o WHERE id=$id;";
+            cmd.Parameters.AddWithValue("$o", i);
+            cmd.Parameters.AddWithValue("$id", ids[i]);
+            cmd.ExecuteNonQuery();
+        }
     }
 
     private List<VagonModelo> LeerVagones(string sql, long id, SqliteTransaction? tx = null)

@@ -27,8 +27,29 @@ public sealed record DatoTipoDocumento(
 
 public sealed record DocumentoConDato(long DocumentoId, long VersionId, string Ruta, string Valor);
 
+public sealed record CoincidenciasPorDato(
+    DatoEnlazante Dato,
+    string Valor,
+    IReadOnlyList<DocumentoConDato> Documentos
+);
+
 public static class DiccionarioDatosEnlazantes
 {
+    // Clave para comparar un dato del diccionario entre documentos: el mismo número se imprime
+    // distinto según el documento ("NVV-12345", "0000020508", "1066 086"). Si hay dígitos,
+    // cuentan solo los dígitos, sin ceros a la izquierda; si no, letras y dígitos en mayúscula.
+    // ponytail: ignora letras cuando hay dígitos; si un tipo usa folios con letras significativas
+    // ("A-123" vs "B-123"), agregar una regla por dato.
+    public static string ClaveDeEnlace(string? valor)
+    {
+        if (string.IsNullOrWhiteSpace(valor))
+            return "";
+        string digitos = string.Concat(valor.Where(char.IsAsciiDigit));
+        if (digitos.Length > 0)
+            return digitos.TrimStart('0') is { Length: > 0 } sinCeros ? sinCeros : "0";
+        return string.Concat(valor.Where(char.IsLetterOrDigit)).ToUpperInvariant();
+    }
+
     public static IReadOnlyList<DatoEnlazante> Todos { get; } =
         new ReadOnlyCollection<DatoEnlazante>([
             new("cotizacion_propia", "N° Cotización propia", "Ventas propias", 1, "COV"),
@@ -77,6 +98,40 @@ public static class DiccionarioDatosEnlazantes
 
 public sealed class RepositorioDatosEnlazantes(SqliteConnection conexion)
 {
+    public IReadOnlyList<CoincidenciasPorDato> SugerirPorDato(string datoId, string valor)
+    {
+        ArgumentException.ThrowIfNullOrWhiteSpace(datoId);
+        ArgumentException.ThrowIfNullOrWhiteSpace(valor);
+        var dato =
+            DiccionarioDatosEnlazantes.Todos.SingleOrDefault(d => d.Id == datoId)
+            ?? throw new ArgumentException("El dato no pertenece al diccionario.", nameof(datoId));
+        return [new(dato, valor, BuscarDocumentos(datoId, valor))];
+    }
+
+    public IReadOnlyList<CoincidenciasPorDato> SugerirParaDocumento(long versionId)
+    {
+        using var cmd = conexion.CreateCommand();
+        cmd.CommandText =
+            "SELECT DISTINCT dato_diccionario_id,valor_clave FROM valores_documento WHERE version_id=$v AND estado='vigente' AND dato_diccionario_id IS NOT NULL AND valor_clave<>'' ORDER BY dato_diccionario_id;";
+        cmd.Parameters.AddWithValue("$v", versionId);
+        var datos = new List<(string Id, string Valor)>();
+        using (var r = cmd.ExecuteReader())
+            while (r.Read())
+                datos.Add((r.GetString(0), r.GetString(1)));
+        var resultado = new List<CoincidenciasPorDato>();
+        foreach (var (id, valor) in datos)
+        {
+            var coincidencias = BuscarDocumentos(id, valor)
+                .Where(d => d.VersionId != versionId)
+                .ToArray();
+            if (coincidencias.Length == 0)
+                continue;
+            var dato = DiccionarioDatosEnlazantes.Todos.Single(d => d.Id == id);
+            resultado.Add(new(dato, valor, coincidencias));
+        }
+        return resultado;
+    }
+
     public IReadOnlyList<DatoEnlazante> LeerDiccionario()
     {
         using var comando = conexion.CreateCommand();
