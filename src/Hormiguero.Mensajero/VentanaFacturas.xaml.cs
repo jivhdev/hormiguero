@@ -6,6 +6,7 @@ using System.Windows;
 using System.Windows.Controls;
 using System.Windows.Input;
 using System.Windows.Media;
+using System.Windows.Threading;
 using Hormiguero.Mensajero.Core;
 using Hormiguero.Mensajero.Core.ClickFactura;
 using Microsoft.Win32;
@@ -38,6 +39,7 @@ public partial class VentanaFacturas : Window
     private readonly HashSet<string> clientesEnviados = new(StringComparer.Ordinal);
     private int indiceCliente;
     private string? rutaXls;
+    private readonly DispatcherTimer temporizadorToast;
     private string descripcionSemana = "";
     private string? carpetaTemporalActual;
 
@@ -45,6 +47,13 @@ public partial class VentanaFacturas : Window
     {
         InitializeComponent();
         almacen = AlmacenMensajero.AbrirComun();
+        temporizadorToast = new DispatcherTimer { Interval = TimeSpan.FromSeconds(3) };
+        temporizadorToast.Tick += (_, _) =>
+        {
+            temporizadorToast.Stop();
+            TextoToast.Text = "● Listo";
+            TextoToast.SetResourceReference(TextBlock.ForegroundProperty, "Hormiguero.Texto");
+        };
         string temporalGuardada = almacen.LeerValor("factura.carpeta_temporal");
         baseTemporal = string.IsNullOrWhiteSpace(temporalGuardada)
             ? Path.Combine(
@@ -309,7 +318,7 @@ public partial class VentanaFacturas : Window
             Margin = new Thickness(8, 0, 0, 0),
             Padding = new Thickness(8, 4, 8, 4),
         };
-        botonCopiarRut.Click += (_, _) => CopiarTexto(rutCorto);
+        botonCopiarRut.Click += (_, _) => CopiarTexto(rutCorto, "✅ RUT copiado");
         DockPanel.SetDock(botonCopiarRut, Dock.Right);
         filaRut.Children.Add(botonCopiarRut);
         contenido.Children.Add(filaRut);
@@ -574,9 +583,8 @@ public partial class VentanaFacturas : Window
         clientesEnviados.Add(cliente.Rut);
         RefrescarTablaAnalisis();
         LimpiarTemporalActual();
-        MostrarAviso(
-            "Enviado",
-            $"✅ {cliente.RazonSocial} marcado como enviado.\n({clientesEnviados.Count} de {clientes.Count} clientes completados)",
+        MostrarToast(
+            $"✅ {cliente.RazonSocial} marcado como enviado ({clientesEnviados.Count} de {clientes.Count})",
             "success"
         );
         indiceCliente++;
@@ -670,13 +678,33 @@ public partial class VentanaFacturas : Window
     }
 
     private void CopiarCorreo_Click(object sender, RoutedEventArgs e) =>
-        CopiarTexto(string.Join("; ", CorreoFactura.Separar(TextoCorreo.Text)));
+        CopiarTexto(string.Join("; ", CorreoFactura.Separar(TextoCorreo.Text)), "✅ Correo copiado");
 
     private void CopiarAsunto_Click(object sender, RoutedEventArgs e) =>
-        CopiarTexto(CampoAsunto.Text);
+        CopiarTexto(CampoAsunto.Text, "✅ Asunto copiado");
 
     private void CopiarCuerpo_Click(object sender, RoutedEventArgs e) =>
-        CopiarTexto(PrepararCuerpoCorreo(CampoCuerpo.Text));
+        CopiarTexto(PrepararCuerpoCorreo(CampoCuerpo.Text), "✅ Cuerpo copiado correctamente");
+
+    private void MostrarToast(string mensaje, string tipo)
+    {
+        if (tipo is "error" or "warning")
+            MensajeroLog.Registrar(
+                "AVISO_" + tipo.ToUpperInvariant(),
+                "Aviso mostrado en Mensajero"
+            );
+        TextoToast.Text = mensaje;
+        string clave = tipo switch
+        {
+            "error" => "Hormiguero.Error",
+            "warning" => "Hormiguero.Aviso",
+            "success" => "Hormiguero.Exito",
+            _ => "Hormiguero.Texto",
+        };
+        TextoToast.SetResourceReference(TextBlock.ForegroundProperty, clave);
+        temporizadorToast.Stop();
+        temporizadorToast.Start();
+    }
 
     private void Ventana_PreviewKeyDown(object sender, KeyEventArgs e)
     {
@@ -711,7 +739,7 @@ public partial class VentanaFacturas : Window
     private static string PrepararCuerpoCorreo(string texto) =>
         string.IsNullOrEmpty(texto) ? string.Empty : texto.TrimEnd() + "\r\n\r\n";
 
-    private void CopiarTexto(string texto)
+    private void CopiarTexto(string texto, string mensajeExito)
     {
         if (string.IsNullOrEmpty(texto))
             return;
@@ -720,6 +748,7 @@ public partial class VentanaFacturas : Window
             try
             {
                 Clipboard.SetText(texto);
+                MostrarToast(mensajeExito, "success");
                 return;
             }
             catch (ExternalException) when (intento < 2)

@@ -13,6 +13,10 @@
   PreviewKeyDown="Ventana_PreviewKeyDown"
 >
   <Grid Margin="16">
+    <Grid.RowDefinitions>
+      <RowDefinition Height="*" />
+      <RowDefinition Height="Auto" />
+    </Grid.RowDefinitions>
     <Grid x:Name="PaginaPeriodo">
       <Grid.RowDefinitions>
         <RowDefinition Height="Auto" />
@@ -355,5 +359,21 @@
         <Button Content="← Volver al análisis" Click="VolverAnalisis_Click" Padding="12,6" />
       </DockPanel>
     </Grid>
+    <Border
+      Grid.Row="1"
+      Background="{DynamicResource Hormiguero.Superficie}"
+      BorderBrush="{DynamicResource Hormiguero.Borde}"
+      BorderThickness="0,1,0,0"
+      Padding="8,3"
+      Margin="-16,4,-16,-16"
+    >
+      <TextBlock
+        x:Name="TextoToast"
+        Text="● Listo"
+        HorizontalAlignment="Center"
+        FontWeight="Bold"
+        Foreground="{DynamicResource Hormiguero.Texto}"
+      />
+    </Border>
   </Grid>
 </Window>
