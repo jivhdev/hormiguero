@@ -7,6 +7,7 @@ namespace Buscadero.App;
 public sealed class ItemListaModelo
 {
     public required string Texto { get; init; }
+    public required PlantillaVagon Vagon { get; init; }
 }
 
 public partial class DialogoModeloGuiado : Window
@@ -23,6 +24,7 @@ public partial class DialogoModeloGuiado : Window
         public string? DocumentoRamificadoNombre { get; init; }
         public string? SubtituloPersonalizado { get; set; }
         public (string Nombre, long ModeloHijoId)? Pendiente { get; set; }
+        public int IndiceModelosCreados { get; init; }
     }
 
     private readonly ServicioLineas _lineas;
@@ -117,16 +119,22 @@ public partial class DialogoModeloGuiado : Window
                     Texto =
                         nodo.Vagon.Nombre
                         + (nodo.Vagon.EsMultiple ? "  (ramificado)" : string.Empty),
+                    Vagon = nodo.Vagon,
                 }
             );
             foreach (var anexo in nodo.Hijos)
             {
                 _documentos.Add(
-                    new ItemListaModelo { Texto = "    ↳ " + anexo.Vagon.Nombre + "  (anexo)" }
+                    new ItemListaModelo
+                    {
+                        Texto = "    ↳ " + anexo.Vagon.Nombre + "  (anexo)",
+                        Vagon = anexo.Vagon,
+                    }
                 );
             }
         }
 
+        BotonAtras.Visibility = Actual.Padre is null ? Visibility.Collapsed : Visibility.Visible;
         BotonFinalizar.Content = Actual.Padre is null
             ? "Completado"
             : "Completar modelo hija y volver";
@@ -231,6 +239,7 @@ public partial class DialogoModeloGuiado : Window
                                 $"Definiendo qué documentos siguen después de '{nombre}' cuando se ramifica.",
                             Padre = padre,
                             DocumentoRamificadoNombre = nombre,
+                            IndiceModelosCreados = _modelosCreados.Count - 1,
                         }
                     );
 
@@ -263,6 +272,7 @@ public partial class DialogoModeloGuiado : Window
         }
         catch (Exception excepcion)
         {
+            _lineas.RegistrarErrorOperacion("Agregar documento al modelo guiado", excepcion);
             MessageBox.Show(
                 this,
                 excepcion.Message,
@@ -271,6 +281,104 @@ public partial class DialogoModeloGuiado : Window
                 MessageBoxImage.Warning
             );
         }
+    }
+
+    private void BotonQuitarDocumento_Click(object sender, RoutedEventArgs e)
+    {
+        if (Lista.SelectedItem is not ItemListaModelo seleccionado)
+            return;
+        try
+        {
+            _lineas.BorrarVagon(seleccionado.Vagon.Id);
+            ActualizarContexto();
+        }
+        catch (Exception excepcion)
+        {
+            MostrarError("Quitar documento del modelo", excepcion);
+        }
+    }
+
+    private void BotonRenombrarDocumento_Click(object sender, RoutedEventArgs e)
+    {
+        if (Lista.SelectedItem is not ItemListaModelo seleccionado)
+            return;
+        var nombre = DialogoTexto.Pedir(this, "Renombrar documento", "Nombre del documento:");
+        if (nombre is null)
+            return;
+        try
+        {
+            var vagon = seleccionado.Vagon;
+            _lineas.ActualizarVagon(
+                vagon.Id,
+                nombre,
+                vagon.EsMultiple,
+                vagon.EsAnexo,
+                vagon.ModeloCadenaHijaId
+            );
+            ActualizarContexto();
+        }
+        catch (Exception excepcion)
+        {
+            MostrarError("Renombrar documento del modelo", excepcion);
+        }
+    }
+
+    private void BotonMoverArriba_Click(object sender, RoutedEventArgs e) =>
+        MoverDocumentoSeleccionado(-1);
+
+    private void BotonMoverAbajo_Click(object sender, RoutedEventArgs e) =>
+        MoverDocumentoSeleccionado(1);
+
+    private void MoverDocumentoSeleccionado(int desplazamiento)
+    {
+        if (Lista.SelectedItem is not ItemListaModelo seleccionado)
+            return;
+        try
+        {
+            _lineas.MoverVagon(seleccionado.Vagon.Id, desplazamiento);
+            ActualizarContexto();
+        }
+        catch (Exception excepcion)
+        {
+            MostrarError("Mover documento del modelo", excepcion);
+        }
+    }
+
+    private void BotonAtras_Click(object sender, RoutedEventArgs e)
+    {
+        if (Actual.Padre is not Contexto padre)
+            return;
+        try
+        {
+            for (
+                var indice = _modelosCreados.Count - 1;
+                indice >= Actual.IndiceModelosCreados;
+                indice--
+            )
+            {
+                _lineas.BorrarPlantilla(_modelosCreados[indice]);
+                _modelosCreados.RemoveAt(indice);
+            }
+            _pila.RemoveAt(_pila.Count - 1);
+            padre.Pendiente = null;
+            ActualizarContexto();
+        }
+        catch (Exception excepcion)
+        {
+            MostrarError("Volver al modelo anterior", excepcion);
+        }
+    }
+
+    private void MostrarError(string operacion, Exception excepcion)
+    {
+        _lineas.RegistrarErrorOperacion(operacion, excepcion);
+        MessageBox.Show(
+            this,
+            $"No se pudo completar la acción: {excepcion.Message}",
+            "Buscadero",
+            MessageBoxButton.OK,
+            MessageBoxImage.Warning
+        );
     }
 
     private void BotonFinalizar_Click(object sender, RoutedEventArgs e)
