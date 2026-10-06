@@ -13,6 +13,7 @@
 
   <ItemGroup>
     <ProjectReference Include="..\..\src\Hormiguero.Nucleo\Hormiguero.Nucleo.csproj" />
+    <ProjectReference Include="..\..\src\Hormiguero.Buscadero.Core\Hormiguero.Buscadero.Core.csproj" />
   </ItemGroup>
 
   <ItemGroup>

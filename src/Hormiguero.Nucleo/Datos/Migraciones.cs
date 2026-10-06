@@ -216,6 +216,18 @@ public static class Migraciones
                 + "CREATE INDEX idx_tipos_documento_datos_activos ON tipos_documento_datos(identificacion_id,activo,diseno); "
                 + "CREATE INDEX idx_valores_dato_clave_estado ON valores_documento(dato_diccionario_id,valor_clave,estado);"
         ),
+        (
+            10,
+            "CREATE TABLE IF NOT EXISTS reglas_alerta_cadena_simple("
+                + "id INTEGER PRIMARY KEY, nombre TEXT NOT NULL, dato_origen_id TEXT NULL REFERENCES diccionario_datos(id), identificacion_origen_id INTEGER NULL REFERENCES identificaciones(id), "
+                + "dato_destino_id TEXT NULL REFERENCES diccionario_datos(id), identificacion_destino_id INTEGER NULL REFERENCES identificaciones(id), dias INTEGER NOT NULL CHECK(dias BETWEEN 0 AND 3650), "
+                + "modo_dias TEXT NOT NULL CHECK(modo_dias IN ('corridos','habiles')), calendario_id INTEGER NULL REFERENCES calendarios_feriados(id), texto_aviso TEXT NOT NULL, "
+                + "estado TEXT NOT NULL DEFAULT 'activa' CHECK(estado IN ('activa','anulada')), creada_en TEXT NOT NULL, actualizada_en TEXT NOT NULL, fecha_anulacion TEXT NULL, "
+                + "CHECK((dato_origen_id IS NOT NULL) <> (identificacion_origen_id IS NOT NULL) AND (dato_destino_id IS NOT NULL) <> (identificacion_destino_id IS NOT NULL))); "
+                + "CREATE INDEX IF NOT EXISTS idx_reglas_alerta_simple_estado ON reglas_alerta_cadena_simple(estado); "
+                + "ALTER TABLE alertas ADD COLUMN regla_simple_id INTEGER NULL REFERENCES reglas_alerta_cadena_simple(id); "
+                + "CREATE UNIQUE INDEX IF NOT EXISTS idx_alertas_idempotencia_regla_simple ON alertas(regla_simple_id,cadena_id) WHERE regla_simple_id IS NOT NULL;"
+        ),
     ];
 
     public static void Aplicar(

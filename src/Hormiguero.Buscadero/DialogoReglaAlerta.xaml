@@ -12,13 +12,13 @@
 >
   <ScrollViewer VerticalScrollBarVisibility="Auto">
     <StackPanel Margin="20">
-      <TextBlock Text="Cuando llegue…" Margin="0,0,0,5" />
+      <TextBlock Text="Si la cadena tiene un documento de…" Margin="0,0,0,5" />
       <ComboBox
         x:Name="Origen"
         DisplayMemberPath="Nombre"
         SelectionChanged="ActualizarFrase_Click"
       />
-      <TextBlock Text="…y falte…" Margin="0,12,0,5" />
+      <TextBlock Text="…y en el plazo elegido no tiene uno de…" Margin="0,12,0,5" />
       <ComboBox
         x:Name="Destino"
         DisplayMemberPath="Nombre"

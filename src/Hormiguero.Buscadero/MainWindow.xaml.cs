@@ -1057,6 +1057,40 @@ public partial class MainWindow : Window
 
     // ----- Cadenas documentales -----
 
+    private void BotonCadenasSimples_Click(object sender, RoutedEventArgs e)
+    {
+        string ruta = Hormiguero.Nucleo.Datos.DocumentosGuardados.RutaBaseComun;
+        try
+        {
+            using (var conexion = Hormiguero.Nucleo.Datos.BaseComun.Abrir(ruta))
+            using (var consulta = conexion.CreateCommand())
+            {
+                consulta.CommandText =
+                    "SELECT valor FROM configuracion WHERE clave='buscadero_transicion_cadenas_simples';";
+                if (consulta.ExecuteScalar() is null)
+                {
+                    MessageBox.Show(
+                        this,
+                        "Las cadenas ahora se crean de otra forma. Los modelos anteriores dejan de usarse; los documentos no se tocan.",
+                        "Cadenas documentales",
+                        MessageBoxButton.OK,
+                        MessageBoxImage.Information
+                    );
+                    using var guardar = conexion.CreateCommand();
+                    guardar.CommandText =
+                        "INSERT INTO configuracion(clave,valor) VALUES('buscadero_transicion_cadenas_simples','aceptada') ON CONFLICT(clave) DO UPDATE SET valor='aceptada';";
+                    guardar.ExecuteNonQuery();
+                }
+            }
+            new DialogoCadenasSimples { Owner = this }.ShowDialog();
+            ActualizarContadorAlertas();
+        }
+        catch (Exception error)
+        {
+            MostrarMensaje($"No se pudieron abrir las cadenas: {error.Message}");
+        }
+    }
+
     private void RefrescarLineas()
     {
         RefrescarPlantillas();
@@ -1176,23 +1210,9 @@ public partial class MainWindow : Window
 
     private void BotonReglaAlerta_Click(object sender, RoutedEventArgs e)
     {
-        if (ListaPlantillas.SelectedItem is not PlantillaLinea modelo)
-        {
-            MostrarMensaje("Elija un modelo de cadena para configurar el aviso.");
-            return;
-        }
-        var vagones = _lineas
-            .ObtenerArbolPlantilla(modelo.Id)
-            .SelectMany(nodo => new[] { nodo.Vagon }.Concat(nodo.Hijos.Select(hijo => hijo.Vagon)))
-            .ToList();
-        if (vagones.Count < 2)
-        {
-            MostrarMensaje("El modelo necesita al menos dos documentos para configurar el aviso.");
-            return;
-        }
-        var dialogo = new DialogoReglaAlerta(modelo.Id, vagones) { Owner = this };
+        var dialogo = new DialogoReglaAlerta { Owner = this };
         if (dialogo.ShowDialog() == true)
-            MostrarMensaje("El aviso quedó configurado para este modelo.");
+            MostrarMensaje("La regla quedó configurada para las cadenas simples.");
     }
 
     private void ArbolPlantilla_SelectedItemChanged(

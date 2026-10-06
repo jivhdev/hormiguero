@@ -524,11 +524,23 @@
         <StackPanel x:Name="PanelEntrada" VerticalAlignment="Top">
           <TextBlock Text="Cadenas documentales" FontSize="16" FontWeight="Bold" Margin="0,0,0,8" />
           <TextBlock
+            Text="Cree cadenas con documentos guardados y consulte las coincidencias sugeridas."
+            TextWrapping="Wrap"
+            MaxWidth="600"
+            Margin="0,0,0,8"
+          />
+          <Button
+            Content="Administrar cadenas simples"
+            Padding="14,10"
+            HorizontalAlignment="Left"
+            Click="BotonCadenasSimples_Click"
+          />
+          <TextBlock
             x:Name="TextoEntrada"
             TextWrapping="Wrap"
             MaxWidth="560"
             Margin="0,0,0,12"
-            Text="Abra un documento y vínclelo a una cadena documental."
+            Text="Las cadenas simples reúnen documentos relacionados y mantienen un historial de sus cambios."
           />
           <Button
             x:Name="BotonVincularCadena"
@@ -536,6 +548,7 @@
             Padding="14,10"
             Margin="0,0,0,10"
             HorizontalAlignment="Left"
+            Visibility="Collapsed"
             Click="BotonVincularCadena_Click"
           />
           <Button
@@ -543,6 +556,7 @@
             Content="Crear o editar modelos de cadena documental"
             Padding="14,10"
             HorizontalAlignment="Left"
+            Visibility="Collapsed"
             Click="BotonAbrirModelos_Click"
           />
           <Button

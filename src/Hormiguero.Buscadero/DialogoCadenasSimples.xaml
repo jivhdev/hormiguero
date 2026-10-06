@@ -1,0 +1,160 @@
+<Window
+  x:Class="Buscadero.App.DialogoCadenasSimples"
+  xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+  xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+  Title="Cadenas documentales"
+  Width="1050"
+  Height="700"
+  MinWidth="760"
+  MinHeight="560"
+  Background="{DynamicResource Hormiguero.Fondo}"
+  Foreground="{DynamicResource Hormiguero.Texto}"
+>
+  <Grid Margin="16">
+    <Grid.ColumnDefinitions>
+      <ColumnDefinition Width="2*" />
+      <ColumnDefinition Width="3*" />
+    </Grid.ColumnDefinitions>
+    <Grid.RowDefinitions>
+      <RowDefinition Height="Auto" />
+      <RowDefinition Height="*" />
+      <RowDefinition Height="Auto" />
+    </Grid.RowDefinitions>
+    <StackPanel Grid.ColumnSpan="2" Margin="0,0,0,12">
+      <TextBlock Text="Cadenas simples" FontSize="20" FontWeight="Bold" />
+      <TextBlock
+        Text="Busque documentos por número o por un dato reconocido. Las coincidencias son sugerencias; usted decide qué documentos agregar."
+        TextWrapping="Wrap"
+        Margin="0,4,0,0"
+      />
+    </StackPanel>
+    <DockPanel Grid.Row="1" Margin="0,0,10,0">
+      <StackPanel DockPanel.Dock="Top">
+        <TextBlock Text="Cadenas" FontWeight="Bold" Margin="0,0,0,5" />
+        <TextBox
+          x:Name="BuscarCadena"
+          Padding="7"
+          Margin="0,0,0,6"
+          TextChanged="BuscarCadena_TextChanged"
+        />
+      </StackPanel>
+      <ListBox
+        x:Name="ListaCadenas"
+        DisplayMemberPath="Texto"
+        SelectionChanged="CadenaSeleccionada"
+      />
+    </DockPanel>
+    <Grid Grid.Column="1" Grid.Row="1">
+      <Grid.RowDefinitions>
+        <RowDefinition Height="Auto" />
+        <RowDefinition Height="*" />
+        <RowDefinition Height="Auto" />
+        <RowDefinition Height="*" />
+      </Grid.RowDefinitions>
+      <StackPanel>
+        <TextBlock Text="Buscar documentos" FontWeight="Bold" Margin="0,0,0,5" />
+        <DockPanel Margin="0,0,0,6">
+          <Button Content="Buscar" Padding="10,5" DockPanel.Dock="Right" Click="Buscar_Click" />
+          <TextBox x:Name="Consulta" Padding="7" KeyDown="Consulta_KeyDown" />
+        </DockPanel>
+      </StackPanel>
+      <ListBox
+        x:Name="ListaDisponibles"
+        Grid.Row="1"
+        SelectionMode="Extended"
+        DisplayMemberPath="Texto"
+      />
+      <StackPanel Grid.Row="2" Margin="0,8">
+        <TextBlock
+          x:Name="TextoSugerencia"
+          TextWrapping="Wrap"
+          Foreground="{DynamicResource Hormiguero.TextoSecundario}"
+        />
+        <WrapPanel Margin="0,5,0,0">
+          <Button
+            Content="Agregar todos"
+            Padding="8,4"
+            Margin="0,0,6,0"
+            Click="AgregarSugeridos_Click"
+          />
+          <Button Content="Revisar" Padding="8,4" Margin="0,0,6,0" Click="Revisar_Click" />
+          <Button Content="No agregar" Padding="8,4" Click="NoAgregar_Click" />
+        </WrapPanel>
+      </StackPanel>
+      <DockPanel Grid.Row="3">
+        <StackPanel DockPanel.Dock="Top">
+          <TextBlock
+            x:Name="TextoTituloDocumentos"
+            Text="Documentos"
+            FontWeight="Bold"
+            Margin="0,0,0,5"
+          />
+          <TextBox
+            x:Name="NombreCadena"
+            Padding="7"
+            Margin="0,0,0,6"
+            ToolTip="Nombre de la cadena"
+          />
+          <WrapPanel Margin="0,0,0,6">
+            <Button
+              Content="Avisarme si falta un documento"
+              Padding="8,4"
+              Margin="0,0,6,0"
+              Click="ReglaAlerta_Click"
+            />
+            <Button
+              Content="Recordarme..."
+              Padding="8,4"
+              Margin="0,0,6,0"
+              Click="Recordarme_Click"
+            />
+            <Button
+              Content="Crear cadena"
+              Padding="8,4"
+              Margin="0,0,6,0"
+              Click="CrearCadena_Click"
+            />
+            <Button
+              Content="Añadir seleccionados"
+              Padding="8,4"
+              Margin="0,0,6,0"
+              Click="AgregarSeleccionados_Click"
+            />
+            <Button Content="Renombrar" Padding="8,4" Margin="0,0,6,0" Click="Renombrar_Click" />
+            <Button Content="Abrir PDF" Padding="8,4" Click="Abrir_Click" />
+            <Button
+              Content="↑"
+              Padding="8,4"
+              Margin="6,0,0,0"
+              Click="Subir_Click"
+              ToolTip="Mover arriba"
+            />
+            <Button
+              Content="↓"
+              Padding="8,4"
+              Margin="4,0,0,0"
+              Click="Bajar_Click"
+              ToolTip="Mover abajo"
+            />
+            <Button
+              Content="Quitar de la cadena"
+              Padding="8,4"
+              Margin="4,0,0,0"
+              Click="Quitar_Click"
+            />
+          </WrapPanel>
+        </StackPanel>
+        <ListBox x:Name="ListaDocumentos" DisplayMemberPath="Texto" />
+      </DockPanel>
+    </Grid>
+    <DockPanel Grid.Row="2" Grid.ColumnSpan="2" Margin="0,10,0,0">
+      <TextBlock
+        x:Name="Estado"
+        TextWrapping="Wrap"
+        Foreground="{DynamicResource Hormiguero.Error}"
+        VerticalAlignment="Center"
+      />
+      <Button Content="Cerrar" Padding="12,6" DockPanel.Dock="Right" IsCancel="True" />
+    </DockPanel>
+  </Grid>
+</Window>

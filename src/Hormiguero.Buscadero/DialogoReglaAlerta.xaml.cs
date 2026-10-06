@@ -1,7 +1,6 @@
 using System.Windows;
 using System.Windows.Controls;
 using Buscadero.Core.Alertas;
-using Buscadero.Core.Lineas;
 using Hormiguero.Nucleo.Datos;
 using Hormiguero.Nucleo.Utilidades;
 
@@ -9,20 +8,33 @@ namespace Buscadero.App;
 
 public partial class DialogoReglaAlerta : Window
 {
-    private readonly long _modeloId;
+    private readonly List<CriterioAlerta> _criterios = [];
 
-    public DialogoReglaAlerta(long modeloId, IReadOnlyList<PlantillaVagon> vagones)
+    public DialogoReglaAlerta()
     {
         InitializeComponent();
-        _modeloId = modeloId;
-        Origen.ItemsSource = vagones;
-        Destino.ItemsSource = vagones;
-        Origen.SelectedIndex = 0;
-        Destino.SelectedIndex = vagones.Count > 1 ? 1 : 0;
-        Aviso.Text = "Documento esperando documento";
         try
         {
             using var conexion = BaseComun.Abrir(DocumentosGuardados.RutaBaseComun);
+            using (var tipos = conexion.CreateCommand())
+            {
+                tipos.CommandText =
+                    "SELECT id,COALESCE(NULLIF(nombre_estandar,''),tipo || ' · ' || emisor) FROM identificaciones ORDER BY tipo,emisor;";
+                using var r = tipos.ExecuteReader();
+                while (r.Read())
+                    _criterios.Add(
+                        new($"Tipo de documento: {r.GetString(1)}", null, r.GetInt64(0))
+                    );
+            }
+            _criterios.AddRange(
+                new RepositorioDatosEnlazantes(conexion)
+                    .LeerDiccionario()
+                    .Select(d => new CriterioAlerta($"Dato: {d.Nombre}", d.Id, null))
+            );
+            Origen.ItemsSource = _criterios;
+            Destino.ItemsSource = _criterios;
+            Origen.SelectedIndex = 0;
+            Destino.SelectedIndex = _criterios.Count > 1 ? 1 : 0;
             var calendarios = new RepositorioCalendariosFeriados(conexion).ListarCalendarios();
             Calendario.ItemsSource = calendarios;
             Calendario.SelectedItem = calendarios.FirstOrDefault(c => c.Predeterminado);
@@ -37,6 +49,7 @@ public partial class DialogoReglaAlerta : Window
                 MessageBoxImage.Warning
             );
         }
+        Aviso.Text = "Avisar si falta el documento esperado";
         ActualizarFrase();
     }
 
@@ -49,8 +62,8 @@ public partial class DialogoReglaAlerta : Window
     private void ActualizarFrase()
     {
         if (
-            Origen.SelectedItem is not PlantillaVagon origen
-            || Destino.SelectedItem is not PlantillaVagon destino
+            Origen.SelectedItem is not CriterioAlerta origen
+            || Destino.SelectedItem is not CriterioAlerta destino
             || !int.TryParse(Dias.Text, out int dias)
             || Modo.SelectedIndex < 0
         )
@@ -58,12 +71,13 @@ public partial class DialogoReglaAlerta : Window
             Frase.Text = "Complete los datos del aviso.";
             return;
         }
-        var tipo = Modo.SelectedIndex == 0 ? TipoDias.Habiles : TipoDias.Corridos;
+        string fuente = origen.Nombre.Replace("Tipo de documento: ", "").Replace("Dato: ", "");
+        string esperado = destino.Nombre.Replace("Tipo de documento: ", "").Replace("Dato: ", "");
         Frase.Text = PresentacionAlertas.CrearFraseRegla(
-            origen.Nombre,
+            fuente,
             dias,
-            tipo,
-            destino.Nombre,
+            Modo.SelectedIndex == 0 ? TipoDias.Habiles : TipoDias.Corridos,
+            esperado,
             Aviso.Text.Trim()
         );
     }
@@ -71,9 +85,12 @@ public partial class DialogoReglaAlerta : Window
     private void Guardar_Click(object sender, RoutedEventArgs e)
     {
         if (
-            Origen.SelectedItem is not PlantillaVagon origen
-            || Destino.SelectedItem is not PlantillaVagon destino
-            || origen.Id == destino.Id
+            Origen.SelectedItem is not CriterioAlerta origen
+            || Destino.SelectedItem is not CriterioAlerta destino
+            || (
+                origen.DatoId == destino.DatoId
+                && origen.IdentificacionId == destino.IdentificacionId
+            )
             || !int.TryParse(Dias.Text, out int dias)
             || dias is < 0 or > CalculoFechas.CantidadMaxima
             || string.IsNullOrWhiteSpace(Aviso.Text)
@@ -81,7 +98,7 @@ public partial class DialogoReglaAlerta : Window
         {
             MessageBox.Show(
                 this,
-                "Elija dos documentos distintos, una espera válida y escriba el aviso.",
+                "Elija dos documentos o datos distintos, una espera válida y escriba el aviso.",
                 "Buscadero",
                 MessageBoxButton.OK,
                 MessageBoxImage.Information
@@ -91,12 +108,12 @@ public partial class DialogoReglaAlerta : Window
         try
         {
             using var conexion = BaseComun.Abrir(DocumentosGuardados.RutaBaseComun);
-            new RepositorioAlertas(conexion).CrearRegla(
+            new RepositorioAlertas(conexion).CrearReglaCadenaSimple(
                 Aviso.Text.Trim(),
-                _modeloId,
-                origen.Id,
-                destino.Id,
-                "vagon_completado",
+                origen.DatoId,
+                origen.IdentificacionId,
+                destino.DatoId,
+                destino.IdentificacionId,
                 dias,
                 Modo.SelectedIndex == 0 ? TipoDias.Habiles : TipoDias.Corridos,
                 Aviso.Text.Trim(),
@@ -117,4 +134,6 @@ public partial class DialogoReglaAlerta : Window
     }
 
     private void Cancelar_Click(object sender, RoutedEventArgs e) => Close();
+
+    private sealed record CriterioAlerta(string Nombre, string? DatoId, long? IdentificacionId);
 }

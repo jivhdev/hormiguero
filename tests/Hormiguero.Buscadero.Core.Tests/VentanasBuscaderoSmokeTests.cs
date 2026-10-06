@@ -44,29 +44,9 @@ public sealed class VentanasBuscaderoSmokeTests
                         new DialogoRecordatorio(1),
                         new DialogoCalculadoraFechas(),
                         new DialogoFeriados(),
-                        new DialogoReglaAlerta(
-                            1,
-                            [
-                                new PlantillaVagon
-                                {
-                                    Id = 1,
-                                    PlantillaId = 1,
-                                    Orden = 0,
-                                    Nombre = "Guía",
-                                    EsMultiple = false,
-                                    EsAnexo = false,
-                                },
-                                new PlantillaVagon
-                                {
-                                    Id = 2,
-                                    PlantillaId = 1,
-                                    Orden = 1,
-                                    Nombre = "Factura",
-                                    EsMultiple = false,
-                                    EsAnexo = false,
-                                },
-                            ]
-                        ),
+                        new DialogoReglaAlerta(),
+                        new DialogoCadenasSimples(),
+                        new DialogoDudosos(lineas),
                     ];
                     foreach (var ventana in ventanas)
                     {
