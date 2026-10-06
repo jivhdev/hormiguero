@@ -166,7 +166,10 @@ public sealed class RepositorioDatosEnlazantes(SqliteConnection conexion)
         comando.Transaction = transaccion;
         comando.CommandText =
             dato.Id == 0
-                ? "INSERT INTO tipos_documento_datos(identificacion_id,dato_diccionario_id,diseno,campo_id,pagina,x,y,ancho,alto,creada_en,actualizada_en) VALUES($i,$d,$s,$c,$p,$x,$y,$a,$l,$f,$f) RETURNING id;"
+                // Volver a marcar un dato que se había quitado en el mismo diseño lo reactiva con la
+                // zona nueva (D-73: todo se puede rehacer); la fila y su historial se conservan.
+                ? "INSERT INTO tipos_documento_datos(identificacion_id,dato_diccionario_id,diseno,campo_id,pagina,x,y,ancho,alto,creada_en,actualizada_en) VALUES($i,$d,$s,$c,$p,$x,$y,$a,$l,$f,$f) "
+                    + "ON CONFLICT(identificacion_id,dato_diccionario_id,diseno) DO UPDATE SET campo_id=excluded.campo_id,pagina=excluded.pagina,x=excluded.x,y=excluded.y,ancho=excluded.ancho,alto=excluded.alto,activo=1,actualizada_en=excluded.actualizada_en RETURNING id;"
                 : "UPDATE tipos_documento_datos SET dato_diccionario_id=$d,diseno=$s,campo_id=$c,pagina=$p,x=$x,y=$y,ancho=$a,alto=$l,actualizada_en=$f WHERE id=$id AND identificacion_id=$i AND activo=1 RETURNING id;";
         comando.Parameters.AddWithValue("$i", dato.IdentificacionId);
         comando.Parameters.AddWithValue("$d", dato.DatoId);
