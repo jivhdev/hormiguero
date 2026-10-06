@@ -26,6 +26,7 @@ public partial class VisorPdfConMarcado : UserControl
     private int _altoPaginaActual;
     private Point? _inicioArrastre;
     private Rectangle? _rectanguloArrastre;
+    private bool _ocultarMarcasPersistentes;
     private List<(
         string Etiqueta,
         Color Color,
@@ -92,6 +93,18 @@ public partial class VisorPdfConMarcado : UserControl
         RedibujarMarcasPersistentes();
     }
 
+    public void IniciarMarcado()
+    {
+        _ocultarMarcasPersistentes = true;
+        RedibujarMarcasPersistentes();
+    }
+
+    public void TerminarMarcado()
+    {
+        _ocultarMarcasPersistentes = false;
+        RedibujarMarcasPersistentes();
+    }
+
     private void MostrarPaginaActual()
     {
         var pagina = LectorPdf.RenderizarPagina(_rutaPdf, _paginaActual);
@@ -125,6 +138,11 @@ public partial class VisorPdfConMarcado : UserControl
     {
         CapaMarcas.Children.Clear();
 
+        if (_ocultarMarcasPersistentes)
+        {
+            return;
+        }
+
         foreach (var (etiqueta, color, pagina, rect) in _marcasGuardadas.Concat(_marcasPropias))
         {
             if (pagina != _paginaActual)
@@ -150,6 +168,7 @@ public partial class VisorPdfConMarcado : UserControl
             Stroke = new SolidColorBrush(color),
             StrokeThickness = 3,
             Fill = new SolidColorBrush(Color.FromArgb(40, color.R, color.G, color.B)),
+            IsHitTestVisible = false,
         };
         Canvas.SetLeft(rectangulo, x);
         Canvas.SetTop(rectangulo, y);
@@ -162,6 +181,7 @@ public partial class VisorPdfConMarcado : UserControl
             Foreground = Brushes.White,
             Padding = new Thickness(3, 1, 3, 1),
             FontSize = 12,
+            IsHitTestVisible = false,
         };
         Canvas.SetLeft(elementoEtiqueta, x);
         Canvas.SetTop(elementoEtiqueta, Math.Max(0, y - 18));

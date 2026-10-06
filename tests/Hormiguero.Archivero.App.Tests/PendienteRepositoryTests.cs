@@ -1,3 +1,4 @@
+using Archivero;
 using Archivero.Datos;
 
 namespace Archivero.Tests;
@@ -51,6 +52,22 @@ public class PendienteRepositoryTests : IDisposable
         Assert.False(esNuevo);
         var pendiente = Assert.Single(repo.ObtenerTodos());
         Assert.Equal(MotivoPendiente.Duplicado, pendiente.Motivo);
+    }
+
+    [Fact]
+    public void PendienteReconocerFila_ConDuplicado_MuestraQueDebeRevisarse()
+    {
+        var pendiente = new ArchivoPendiente(
+            1,
+            @"C:\obs\archivo.pdf",
+            DateTime.Now,
+            MotivoPendiente.Duplicado
+        );
+
+        Assert.Equal(
+            "archivo.pdf — Duplicado: revisar",
+            new PendienteReconocerFila(pendiente).Texto
+        );
     }
 
     [Fact]
