@@ -2,6 +2,8 @@ using Hormiguero.Mensajero.Core;
 
 namespace Hormiguero.Mensajero.Core.Tests;
 
+// Comparte la variable HORMIGUERO_DATOS (registro de Mensajero) con CausasX1Tests: no en paralelo.
+[Collection("RegistroMensajero")]
 public sealed class MensajeroLogTests : IDisposable
 {
     private readonly string raiz = Path.Combine(
