@@ -43,10 +43,23 @@
       Name="ListaClasificaciones"
       MouseDoubleClick="ListaClasificaciones_MouseDoubleClick"
     >
+      <ListView.GroupStyle>
+        <GroupStyle>
+          <GroupStyle.HeaderTemplate>
+            <DataTemplate>
+              <TextBlock Text="{Binding Name}" FontWeight="Bold" Margin="4,8,0,3" />
+            </DataTemplate>
+          </GroupStyle.HeaderTemplate>
+        </GroupStyle>
+      </ListView.GroupStyle>
       <ListView.View>
         <GridView>
-          <GridViewColumn Header="Emisor" Width="180" DisplayMemberBinding="{Binding Emisor}" />
-          <GridViewColumn Header="Tipo" Width="180" DisplayMemberBinding="{Binding Tipo}" />
+          <GridViewColumn Header="Emisor" Width="150" DisplayMemberBinding="{Binding Emisor}" />
+          <GridViewColumn
+            Header="Nombre estándar"
+            Width="220"
+            DisplayMemberBinding="{Binding NombreEstandar}"
+          />
           <GridViewColumn
             Header="Carpeta destino"
             Width="260"

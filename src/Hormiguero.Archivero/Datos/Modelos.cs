@@ -132,6 +132,20 @@ public record CampoPropio(
     double Alto
 );
 
+public record DatoEnlazanteConfigurado(
+    string Id,
+    string Nombre,
+    string Grupo,
+    bool Incluido,
+    bool Marcado,
+    int Pagina,
+    double X,
+    double Y,
+    double Ancho,
+    double Alto,
+    string TextoLeido
+);
+
 public record ConfiguracionDocumento
 {
     public int Id { get; init; }
@@ -153,6 +167,9 @@ public record ConfiguracionDocumento
     /// confirme. Excluyente con <see cref="Renombrar"/> (que queda en false).
     /// </summary>
     public bool PreguntarNombre { get; init; }
+
+    public string GrupoDocumento { get; init; } = "Emitido";
+    public string NombreEstandar { get; init; } = "";
 }
 
 /// <summary>

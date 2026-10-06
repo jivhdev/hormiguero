@@ -42,7 +42,48 @@ public static class PublicadorDatosDocumentoService
         var huellaAntes = Huella.Calcular(ruta);
         long tamano = infoAntes.Length;
         DateTime modificado = infoAntes.LastWriteTimeUtc;
+        var patronConfigurado = configuracion.Patrones.FirstOrDefault();
+        var datosConfigurados = patronConfigurado is null
+            ? []
+            : DatosEnlazantesConfiguracionService
+                .Leer(configuracion.Emisor, configuracion.Tipo, patronConfigurado.Id)
+                .Where(d => d.Incluido && d.Marcado)
+                .ToList();
         using var conexion = BaseComun.Abrir(DocumentosGuardados.RutaBaseComun);
+        var identificaciones = new Identificaciones(conexion);
+        var identificacion = identificaciones
+            .Listar()
+            .FirstOrDefault(i => i.Emisor == configuracion.Emisor && i.Tipo == configuracion.Tipo);
+        long identificacionId = identificaciones.Guardar(
+            new Identificacion(
+                identificacion?.Id ?? 0,
+                configuracion.Tipo,
+                configuracion.Emisor,
+                identificacion?.Datos ?? "{}",
+                configuracion.GrupoDocumento,
+                string.IsNullOrWhiteSpace(configuracion.NombreEstandar)
+                    ? $"{configuracion.Tipo} · {configuracion.Emisor}"
+                    : configuracion.NombreEstandar
+            )
+        );
+        var repositorioDocumentos = new RepositorioDocumentosDatos(conexion);
+        var camposExistentes = repositorioDocumentos.ListarCampos(identificacionId);
+        foreach (var dato in datosConfigurados)
+        {
+            var campoExistente = camposExistentes.FirstOrDefault(c => c.NombreEstable == dato.Id);
+            repositorioDocumentos.GuardarCampo(
+                new CampoDocumento(
+                    campoExistente?.Id ?? 0,
+                    identificacionId,
+                    dato.Nombre,
+                    dato.Id,
+                    "texto",
+                    true,
+                    "marca",
+                    dato.Id
+                )
+            );
+        }
         var publicado = new RepositorioDocumentosDatos(conexion).PublicarDocumento(
             ruta,
             tamano,
@@ -159,15 +200,20 @@ public static class PublicadorDatosDocumentoService
                         "marca"
                     )
                 );
-        foreach (var campo in configuracion.CamposPropios)
-        {
-            string original = LectorPdf.ExtraerTexto(
-                ruta,
-                campo.Pagina,
-                new(campo.X, campo.Y, campo.Ancho, campo.Alto)
-            );
-            valores.Add(new(campo.Nombre, campo.NombreEstable, original, Clave(original), "marca"));
-        }
+        if (patron is not null)
+            foreach (
+                var dato in DatosEnlazantesConfiguracionService
+                    .Leer(configuracion.Emisor, configuracion.Tipo, patron.Id)
+                    .Where(d => d.Incluido && d.Marcado)
+            )
+            {
+                var original = LectorPdf.ExtraerTexto(
+                    ruta,
+                    dato.Pagina,
+                    new(dato.X, dato.Y, dato.Ancho, dato.Alto)
+                );
+                valores.Add(new(dato.Nombre, dato.Id, original, Clave(original), "marca"));
+            }
         return valores;
     }
 

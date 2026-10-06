@@ -46,6 +46,8 @@ public static class BaseDeDatos
                 PatronCarpeta TEXT NULL,
                 Renombrar INTEGER NOT NULL DEFAULT 0,
                 AbrirDespuesDeGuardar INTEGER NOT NULL DEFAULT 0,
+                GrupoDocumento TEXT NOT NULL DEFAULT 'Emitido',
+                NombreEstandar TEXT NOT NULL DEFAULT '',
                 UNIQUE (EmisorId, TipoId)
             );
 
@@ -167,6 +169,18 @@ public static class BaseDeDatos
             "Configuraciones",
             "PreguntarNombre",
             "INTEGER NOT NULL DEFAULT 0"
+        );
+        AgregarColumnaSiFalta(
+            conexion,
+            "Configuraciones",
+            "GrupoDocumento",
+            "TEXT NOT NULL DEFAULT 'Emitido'"
+        );
+        AgregarColumnaSiFalta(
+            conexion,
+            "Configuraciones",
+            "NombreEstandar",
+            "TEXT NOT NULL DEFAULT ''"
         );
     }
 

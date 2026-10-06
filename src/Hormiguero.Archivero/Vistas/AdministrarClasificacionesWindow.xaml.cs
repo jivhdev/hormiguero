@@ -2,6 +2,7 @@ using System.IO;
 using System.Text.Json;
 using System.Windows;
 using System.Windows.Controls;
+using System.Windows.Data;
 using System.Windows.Forms;
 using Archivero.Datos;
 
@@ -12,6 +13,12 @@ public class FilaClasificacion(ConfiguracionDocumento configuracion, bool dispon
     public ConfiguracionDocumento Configuracion { get; } = configuracion;
     public string Emisor => Configuracion.Emisor;
     public string Tipo => Configuracion.Tipo;
+    public string GrupoDocumento =>
+        Configuracion.GrupoDocumento == "Emitido" ? "Emitidos" : "Recibidos";
+    public string NombreEstandar =>
+        string.IsNullOrWhiteSpace(Configuracion.NombreEstandar)
+            ? $"{Tipo} · {Emisor}"
+            : Configuracion.NombreEstandar;
     public string CarpetaDestino => Configuracion.CarpetaDestino;
     public string DisponibleTexto => disponible ? "✅ Disponible" : "❌ No disponible";
 }
@@ -36,6 +43,8 @@ public partial class AdministrarClasificacionesWindow : Window
         _todas = _configuraciones
             .ObtenerTodas()
             .Select(c => new FilaClasificacion(c, Directory.Exists(c.CarpetaDestino)))
+            .OrderBy(f => f.GrupoDocumento, StringComparer.CurrentCulture)
+            .ThenBy(f => f.NombreEstandar, StringComparer.CurrentCulture)
             .ToList();
 
         AplicarFiltro();
@@ -45,14 +54,21 @@ public partial class AdministrarClasificacionesWindow : Window
     {
         var filtro = CmbBusqueda.Text.Trim();
 
-        ListaClasificaciones.ItemsSource = string.IsNullOrWhiteSpace(filtro)
+        var filas = string.IsNullOrWhiteSpace(filtro)
             ? _todas
             : _todas
                 .Where(f =>
                     f.Emisor.Contains(filtro, StringComparison.OrdinalIgnoreCase)
                     || f.Tipo.Contains(filtro, StringComparison.OrdinalIgnoreCase)
+                    || f.NombreEstandar.Contains(filtro, StringComparison.OrdinalIgnoreCase)
                 )
                 .ToList();
+        var vista = CollectionViewSource.GetDefaultView(filas);
+        vista.GroupDescriptions.Clear();
+        vista.GroupDescriptions.Add(
+            new PropertyGroupDescription(nameof(FilaClasificacion.GrupoDocumento))
+        );
+        ListaClasificaciones.ItemsSource = vista;
     }
 
     private void CmbBusqueda_TextChanged(object sender, TextChangedEventArgs e)
