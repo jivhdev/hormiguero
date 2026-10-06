@@ -23,11 +23,27 @@ public partial class VentanaPrincipal : Window
     private bool editorAbierto;
     private VentanaFacturas? ventanaFacturas;
     private VentanaPlantillas? ventanaPlantillas;
+    private int lineasAjustador;
+    private int anchoAjustador;
+    private ResultadoAjusteTexto? resultadoAjustador;
 
     public VentanaPrincipal()
     {
         InitializeComponent();
         almacen = AlmacenMensajero.AbrirComun();
+        lineasAjustador = LeerConfiguracionPositiva(
+            "ajustador.lineas",
+            AjustadorTexto.LineasPredeterminadas
+        );
+        anchoAjustador = LeerConfiguracionPositiva(
+            "ajustador.ancho",
+            AjustadorTexto.AnchoPredeterminado
+        );
+        SeccionAjustador.Header = $"Ajustar texto ({lineasAjustador} × {anchoAjustador})";
+        EtiquetaVistaAjustador.Text = $"Vista previa ({anchoAjustador} caracteres por línea):";
+        TextoReglaAjustador.Text = string.Concat(
+            Enumerable.Range(1, anchoAjustador).Select(numero => (numero % 10).ToString())
+        );
         carpetaOcc = almacen.LeerCarpetaOcc();
         clientes = almacen.LeerClientesNvv();
         if (clientes.Count == 0)
@@ -681,6 +697,90 @@ public partial class VentanaPrincipal : Window
         Copiar(
             CampoMayusculas.Text.ToUpper(System.Globalization.CultureInfo.GetCultureInfo("es-CL")),
             "✅ Copiado en MAYÚSCULAS"
+        );
+    }
+
+    private int LeerConfiguracionPositiva(string clave, int valorPredeterminado)
+    {
+        string guardado = almacen.LeerValor(clave);
+        if (int.TryParse(guardado, out int valor) && valor > 0)
+            return valor;
+        if (guardado.Length == 0)
+            almacen.GuardarValor(clave, valorPredeterminado.ToString());
+        return valorPredeterminado;
+    }
+
+    private void Ajustador_TextChanged(object sender, TextChangedEventArgs e)
+    {
+        resultadoAjustador = AjustadorTexto.Ajustar(
+            CampoAjustador.Text,
+            lineasAjustador,
+            anchoAjustador
+        );
+        var vista = new System.Text.StringBuilder();
+        for (int indice = 0; indice < lineasAjustador; indice++)
+        {
+            string linea =
+                indice < resultadoAjustador.Lineas.Count
+                    ? resultadoAjustador.Lineas[indice]
+                    : string.Empty;
+            vista
+                .Append(linea)
+                .Append("  (")
+                .Append(linea.Length)
+                .Append('/')
+                .Append(anchoAjustador)
+                .Append(')');
+            if (indice < lineasAjustador - 1)
+                vista.AppendLine();
+        }
+        VistaAjustador.Text = vista.ToString();
+        if (resultadoAjustador.Cabe)
+        {
+            EstadoAjustador.Text = $"✅ Cabe en {lineasAjustador} líneas";
+            EstadoAjustador.SetResourceReference(TextBlock.ForegroundProperty, "Hormiguero.Exito");
+        }
+        else
+        {
+            string detalle = resultadoAjustador.TienePalabraLarga
+                ? $"La palabra supera {anchoAjustador} caracteres: {resultadoAjustador.TextoFuera}"
+                : resultadoAjustador.TextoFuera;
+            EstadoAjustador.Text =
+                $"❌ Sobran {resultadoAjustador.CaracteresSobran} caracteres: {detalle}";
+            EstadoAjustador.SetResourceReference(TextBlock.ForegroundProperty, "Hormiguero.Error");
+        }
+    }
+
+    private void CopiarAjusteConSaltos_Click(object sender, RoutedEventArgs e)
+    {
+        if (resultadoAjustador is null || string.IsNullOrWhiteSpace(CampoAjustador.Text))
+        {
+            MostrarToast("❌ Pega un texto primero", "error");
+            return;
+        }
+        if (!resultadoAjustador.Cabe)
+        {
+            MostrarToast("❌ El texto no cabe; no se copió", "error");
+            return;
+        }
+        Copiar(resultadoAjustador.ConSaltosDeLinea, "✅ Texto ajustado copiado al portapapeles");
+    }
+
+    private void CopiarAjusteRelleno_Click(object sender, RoutedEventArgs e)
+    {
+        if (resultadoAjustador is null || string.IsNullOrWhiteSpace(CampoAjustador.Text))
+        {
+            MostrarToast("❌ Pega un texto primero", "error");
+            return;
+        }
+        if (!resultadoAjustador.Cabe)
+        {
+            MostrarToast("❌ El texto no cabe; no se copió", "error");
+            return;
+        }
+        Copiar(
+            resultadoAjustador.Relleno(anchoAjustador, lineasAjustador),
+            "✅ Texto con relleno copiado al portapapeles"
         );
     }
 
