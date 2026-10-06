@@ -136,7 +136,20 @@ public static class Tema
         }
         int oscuro = temaActualOscuro ? 1 : 0;
         _ = DwmSetWindowAttribute(ventanaWin32, UsarModoOscuro, ref oscuro, sizeof(int));
+        // Windows 10 no repinta la barra de una ventana ya visible (quedaba texto claro sobre
+        // barra blanca): desactivarla y reactivarla en el marco la obliga a redibujarse.
+        if (ventana.IsVisible)
+        {
+            bool activa = ventana.IsActive;
+            _ = SendMessage(ventanaWin32, MarcoActivo, activa ? 0 : 1, 0);
+            _ = SendMessage(ventanaWin32, MarcoActivo, activa ? 1 : 0, 0);
+        }
     }
+
+    private const int MarcoActivo = 0x0086; // WM_NCACTIVATE
+
+    [System.Runtime.InteropServices.DllImport("user32.dll")]
+    private static extern IntPtr SendMessage(IntPtr ventana, int mensaje, nint w, nint l);
 
     private const int UsarModoOscuro = 20;
 
