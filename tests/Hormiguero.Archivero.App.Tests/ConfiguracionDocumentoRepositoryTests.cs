@@ -93,11 +93,22 @@ public class ConfiguracionDocumentoRepositoryTests : IDisposable
             false,
             marcas
         );
+        repo.GuardarCamposPropios(
+            id,
+            [new CampoPropio("Número de cuenta", "NumeroCuenta", 0, 0.1, 0.2, 0.3, 0.05)]
+        );
 
         repo.EliminarConfiguracion(id);
 
         Assert.Null(repo.BuscarPorEmisorYTipo("Banco Galicia", "Resumen de cuenta"));
         Assert.Empty(repo.ObtenerTodasConPatrones());
+
+        using var conexion = BaseDeDatos.CrearConexion();
+        using var consultarCampos = conexion.CreateCommand();
+        consultarCampos.CommandText =
+            "SELECT COUNT(*) FROM CamposPropios WHERE ConfiguracionId = $id;";
+        consultarCampos.Parameters.AddWithValue("$id", id);
+        Assert.Equal(0L, Convert.ToInt64(consultarCampos.ExecuteScalar()));
     }
 
     [Fact]

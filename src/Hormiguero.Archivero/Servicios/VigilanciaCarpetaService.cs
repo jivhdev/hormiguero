@@ -268,13 +268,9 @@ public class VigilanciaCarpetaService : IDisposable
                 break;
 
             case ResultadoGuardadoAutomatico.Duplicado:
-                if (AgregarAPendientes(rutaArchivo, MotivoPendiente.Duplicado))
-                {
-                    ArchivoRequiereAtencion?.Invoke(
-                        rutaArchivo,
-                        resultado.Detalle ?? resultado.Resultado.ToString()
-                    );
-                }
+                // El duplicado queda en la lista para abrir la comparación cuando el usuario
+                // esté listo; avisar con una ventana al llegar interrumpe el trabajo.
+                AgregarAPendientes(rutaArchivo, MotivoPendiente.Duplicado);
                 break;
 
             case ResultadoGuardadoAutomatico.CarpetaNoDisponible:

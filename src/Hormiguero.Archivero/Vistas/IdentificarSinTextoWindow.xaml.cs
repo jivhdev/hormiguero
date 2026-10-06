@@ -110,6 +110,45 @@ public partial class IdentificarSinTextoWindow : Window
         ListaAtajos.ItemsSource = atajos.Select(a => new FilaAtajo(a)).ToList();
     }
 
+    private void Window_PreviewKeyDown(object sender, System.Windows.Input.KeyEventArgs e)
+    {
+        var tecla = e.Key == System.Windows.Input.Key.System ? e.SystemKey : e.Key;
+        if (
+            System.Windows.Input.Keyboard.Modifiers == System.Windows.Input.ModifierKeys.Alt
+            && tecla == System.Windows.Input.Key.A
+        )
+        {
+            e.Handled = true;
+            if (PanelNombreArchivo.Visibility == Visibility.Visible)
+            {
+                BtnGuardar_Click(BtnGuardar, new RoutedEventArgs());
+                return;
+            }
+
+            if (PanelElegir.Visibility == Visibility.Visible && ListaAtajos.Items.Count > 0)
+            {
+                if (ListaAtajos.Items[0] is FilaAtajo primerAtajo)
+                {
+                    BtnAtajo_Click(
+                        new System.Windows.Controls.Button { Tag = primerAtajo.Atajo },
+                        new RoutedEventArgs()
+                    );
+                }
+            }
+
+            return;
+        }
+
+        if (
+            e.Key == System.Windows.Input.Key.Enter
+            && PanelNombreArchivo.Visibility == Visibility.Visible
+        )
+        {
+            e.Handled = true;
+            BtnGuardar_Click(BtnGuardar, new RoutedEventArgs());
+        }
+    }
+
     private void BtnAdministrarAtajos_Click(object sender, RoutedEventArgs e)
     {
         var ventana = new AdministrarAtajosWindow { Owner = this };
@@ -139,8 +178,12 @@ public partial class IdentificarSinTextoWindow : Window
 
     // ----- 3a: Crear ubicación nueva -----
 
-    private void BtnCrearUbicacionNueva_Click(object sender, RoutedEventArgs e) =>
-        MostrarPanel(PanelCarpetaMadre);
+    private void BtnCrearUbicacionNueva_Click(object sender, RoutedEventArgs e)
+    {
+        ControlOrganizacion.Iniciar(null, null, bloqueado: false);
+        ActualizarVisibilidadMarcarFecha();
+        MostrarPanel(PanelOrganizacion);
+    }
 
     private void BtnElegirCarpetaMadre_Click(object sender, RoutedEventArgs e)
     {
@@ -180,9 +223,13 @@ public partial class IdentificarSinTextoWindow : Window
             }
         }
 
-        ControlOrganizacion.Iniciar(null, null, bloqueado: false);
-        ActualizarVisibilidadMarcarFecha();
-        MostrarPanel(PanelOrganizacion);
+        var fecha = LeerFechaReferencia().Fecha;
+        var subcarpeta = FormatoCarpetaService.ConstruirSubcarpeta(_formato, _patron, fecha);
+        _carpetaDestinoFinal = string.IsNullOrEmpty(subcarpeta)
+            ? _carpetaMadre
+            : Path.Combine(_carpetaMadre, subcarpeta);
+        _ubicaciones.ObtenerOCrear(_carpetaMadre, _formato, _patron);
+        IrANombreArchivo(OrigenDestino.CrearNueva);
     }
 
     private void ControlOrganizacion_SeleccionCambiada() => ActualizarVisibilidadMarcarFecha();
@@ -235,16 +282,9 @@ public partial class IdentificarSinTextoWindow : Window
         }
 
         var (fecha, _) = LeerFechaReferencia();
-        var subcarpeta = FormatoCarpetaService.ConstruirSubcarpeta(formato, patron, fecha);
-        _carpetaDestinoFinal = string.IsNullOrEmpty(subcarpeta)
-            ? _carpetaMadre
-            : Path.Combine(_carpetaMadre, subcarpeta);
-
-        _ubicaciones.ObtenerOCrear(_carpetaMadre, formato, patron);
-
         _formato = formato;
         _patron = patron;
-        IrANombreArchivo(OrigenDestino.CrearNueva);
+        MostrarPanel(PanelCarpetaMadre);
     }
 
     // ----- 3b: Ver ubicaciones disponibles -----
@@ -550,21 +590,13 @@ public partial class IdentificarSinTextoWindow : Window
                     nombre
                 );
             }
-            catch (ArchivoDuplicadoException ex)
+            catch (ArchivoDuplicadoException)
             {
-                var resolver = new ResolverDuplicadoWindow(_rutaArchivo, ex.RutaDestino)
-                {
-                    Owner = this,
-                };
-                if (resolver.ShowDialog() != true)
-                {
-                    MostrarError(
-                        "Documento dejado pendiente por nombre duplicado. Se puede intentar de nuevo o cerrar."
-                    );
-                    return;
-                }
-
-                rutaFinal = ex.RutaDestino;
+                _pendientes.Agregar(_rutaArchivo, MotivoPendiente.Duplicado);
+                MostrarError(
+                    "Duplicado: revisar. El documento quedó en pendientes para compararlo."
+                );
+                return;
             }
 
             _pendientes.Quitar(_rutaArchivo);

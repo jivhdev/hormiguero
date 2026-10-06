@@ -34,9 +34,18 @@ public sealed class VentanasArchiveroSmokeTests
                     Tema.Aplicar(aplicacion, modo);
 
                     var identificar = new IdentificarDocumentoWindow(rutaPdf);
+                    identificar.Width = 1366;
+                    identificar.Height = 768;
                     identificar.Show();
                     identificar.UpdateLayout();
                     identificar.Close();
+
+                    var sinTexto = new IdentificarSinTextoWindow(rutaPdf);
+                    sinTexto.Width = 1366;
+                    sinTexto.Height = 768;
+                    sinTexto.Show();
+                    sinTexto.UpdateLayout();
+                    sinTexto.Close();
 
                     var configuracion = new AdministrarClasificacionesWindow();
                     configuracion.Show();

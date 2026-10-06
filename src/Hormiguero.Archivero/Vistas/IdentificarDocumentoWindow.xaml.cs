@@ -410,13 +410,13 @@ public partial class IdentificarDocumentoWindow : Window
                 "Marcar sobre el PDF dónde aparecen el Emisor y el Tipo de documento, y escribirlos (o elegir uno ya conocido)."
             ),
             Paso.Carpeta => (
-                "Paso 2 de 5 — Carpeta madre",
+                "Paso 3 de 5 — Carpeta madre",
                 vinculando
                     ? "Esta carpeta ya está definida por la configuración existente a la que se va a vincular este documento."
                     : "Elegir la carpeta raíz donde va a vivir todo lo de este tipo de documento, y cómo se va a guardar dentro de ella."
             ),
             Paso.Organizacion => (
-                "Paso 3 de 5 — Organización de las subcarpetas",
+                "Paso 2 de 5 — Fecha y organización de las subcarpetas",
                 vinculando
                     ? "El tipo de organización ya está definido por la configuración existente. Si corresponde, marcar la fecha en este documento."
                     : "Elegir el tipo de organización y cuál de los ejemplos se parece más a las carpetas que ya usas."
@@ -463,6 +463,7 @@ public partial class IdentificarDocumentoWindow : Window
 
     private void ArmarMarca(CampoMarca campo)
     {
+        Visor.IniciarMarcado();
         _campoPropioActivoParaMarcar = null;
         _campoActivoParaMarcar = campo;
         TxtInstruccionPaso.Text =
@@ -518,6 +519,7 @@ public partial class IdentificarDocumentoWindow : Window
 
     private void Visor_MarcaRealizada(int pagina, RectanguloFraccion fraccion)
     {
+        Visor.TerminarMarcado();
         if (_datoEnlazanteActivoParaMarcar is { } datoEnlazante)
         {
             string texto = LectorPdf.ExtraerTexto(_rutaArchivo, pagina, fraccion);
@@ -680,6 +682,7 @@ public partial class IdentificarDocumentoWindow : Window
         _campoActivoParaMarcar = null;
         _campoPropioActivoParaMarcar = null;
         _datoEnlazanteActivoParaMarcar = dato;
+        Visor.IniciarMarcado();
         dato.Incluido = true;
         TxtInstruccionPaso.Text = $"Dibuja un rectángulo donde aparece: {dato.Nombre}.";
     }
@@ -769,6 +772,7 @@ public partial class IdentificarDocumentoWindow : Window
         _campoActivoParaMarcar = null;
         ResaltarBotonActivo(null);
         _campoPropioActivoParaMarcar = campo;
+        Visor.IniciarMarcado();
         TxtInstruccionPaso.Text =
             $"Dibujar un rectángulo sobre el PDF donde aparece: {campo.Nombre.Trim()}.";
     }
@@ -1258,7 +1262,7 @@ public partial class IdentificarDocumentoWindow : Window
                     }
                 }
 
-                IrA(Paso.Carpeta);
+                IrA(Paso.Organizacion);
                 break;
 
             case Paso.Carpeta:
@@ -1294,7 +1298,14 @@ public partial class IdentificarDocumentoWindow : Window
                     return;
                 }
 
-                IrA(Paso.Organizacion);
+                if (_configuracionExistente is not null && _formato != FormatoCarpeta.Directo)
+                {
+                    IrA(Paso.Organizacion);
+                }
+                else
+                {
+                    IrA(Paso.NombreArchivo);
+                }
                 break;
 
             case Paso.Organizacion:
@@ -1325,7 +1336,7 @@ public partial class IdentificarDocumentoWindow : Window
                     return;
                 }
 
-                IrA(Paso.NombreArchivo);
+                IrA(_configuracionExistente is null ? Paso.Carpeta : Paso.NombreArchivo);
                 break;
 
             case Paso.NombreArchivo:

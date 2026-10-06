@@ -7,6 +7,7 @@
   Height="720"
   Width="1080"
   WindowStartupLocation="CenterScreen"
+  PreviewKeyDown="Window_PreviewKeyDown"
 >
   <Grid Margin="16">
     <Grid.RowDefinitions>
@@ -270,9 +271,10 @@
         </StackPanel>
         <Button
           Name="BtnGuardar"
-          Content="Guardar"
+          Content="Guardar (Alt+A)"
           Padding="8,6"
           HorizontalAlignment="Left"
+          IsDefault="True"
           Click="BtnGuardar_Click"
         />
       </StackPanel>

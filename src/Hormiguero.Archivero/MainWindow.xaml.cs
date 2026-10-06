@@ -27,9 +27,13 @@ public record PendienteDistribucionFila(ArchivoPendiente Pendiente)
 public record PendienteReconocerFila(ArchivoPendiente Pendiente)
 {
     public string Texto =>
-        Pendiente.Motivo == MotivoPendiente.NombrePorConfirmar
-            ? $"{Pendiente.NombreArchivo} — falta confirmar el nombre"
-            : Pendiente.NombreArchivo;
+        Pendiente.Motivo switch
+        {
+            MotivoPendiente.NombrePorConfirmar =>
+                $"{Pendiente.NombreArchivo} — falta confirmar el nombre",
+            MotivoPendiente.Duplicado => $"{Pendiente.NombreArchivo} — Duplicado: revisar",
+            _ => Pendiente.NombreArchivo,
+        };
 }
 
 public partial class MainWindow : Window

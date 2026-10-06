@@ -282,6 +282,15 @@ public class ConfiguracionDocumentoRepository
             borrarPatrones.ExecuteNonQuery();
         }
 
+        using (var desactivarCamposPropios = conexion.CreateCommand())
+        {
+            desactivarCamposPropios.Transaction = transaccion;
+            desactivarCamposPropios.CommandText =
+                "DELETE FROM CamposPropios WHERE ConfiguracionId = $configuracionId;";
+            desactivarCamposPropios.Parameters.AddWithValue("$configuracionId", configuracionId);
+            desactivarCamposPropios.ExecuteNonQuery();
+        }
+
         using (var borrarConfiguracion = conexion.CreateCommand())
         {
             borrarConfiguracion.Transaction = transaccion;
