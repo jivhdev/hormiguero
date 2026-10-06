@@ -2,7 +2,7 @@
 bloque: AR-1
 app: Archivero
 fase: C (D-73, D-76)
-estado: pendiente
+estado: hecho
 agente: Codex
 modelo: codex
 archivos_permitidos: [src/Hormiguero.Archivero/**, tests/Hormiguero.Archivero.App.Tests/**]
@@ -23,3 +23,8 @@ Javier (uso real): "Al guardar guías firmadas, necesito que los accesos rápido
 Pruebas: crear/editar/eliminar/reordenar; año en curso cambia con la fecha (inyecta "hoy"); mes en curso; año fijo; preguntar cada vez; guardar con acceso rápido sin pedir fecha; prueba STA de la ventana nueva. `dotnet build` sin advertencias; `dotnet test` todo pasa; `dotnet csharpier check .` sin errores. Si algo no está definido, decide lo más simple, anótalo y sigue. Reporte al final.
 
 ## Reporte del agente
+- Se agregó administración de accesos rápidos del flujo de documentos sin texto: edición de nombre, carpeta madre, formato y patrón; eliminación con confirmación; y reordenamiento persistente.
+- Al crear o editar se puede elegir año en curso, mes en curso, año fijo o preguntar fecha cada vez. Los atajos existentes conservan el comportamiento de preguntar. La fecha se resuelve al usar el atajo; si el patrón requiere día, se muestra la fecha usada junto a la ruta para confirmarla. El nombre sugerido agrega el período elegido.
+- Supuesto de alcance: los atajos existentes en `GuardarAtajoWindow` pertenecen al flujo sin texto y no guardan proveedor ni tipo de documento. La administración expone los campos que ese modelo sí tiene; no se agregaron datos de proveedor/tipo a ese flujo.
+- Verificación: `dotnet build Hormiguero.slnx` correcto, 0 advertencias y 0 errores. `dotnet csharpier check .` correcto (267 archivos). `dotnet test tests/Hormiguero.Archivero.App.Tests/Hormiguero.Archivero.App.Tests.csproj --no-restore` correcto, 294/294, incluida la prueba STA de administración y creación.
+- `dotnet test` de la solución: Archivero 294/294, Diseño 9/9, Núcleo 122/122 y Buscadero 134/134. Mensajero tuvo 126/127; falló `AnalisisNormalizaRutYContinuaCuandoFallaUnDocumento` porque no encontró `mensajero.log` en su directorio temporal.

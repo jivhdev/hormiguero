@@ -188,5 +188,16 @@ public record AtajoGuardadoRapido(
     string CarpetaMadre,
     FormatoCarpeta Formato,
     string? Patron,
-    IReadOnlyList<OperacionNombre> ReglaNombre
+    IReadOnlyList<OperacionNombre> ReglaNombre,
+    PeriodoAtajo Periodo = PeriodoAtajo.PreguntarFechaCadaVez,
+    int? AnioFijo = null,
+    int Orden = 0
 );
+
+public enum PeriodoAtajo
+{
+    PreguntarFechaCadaVez,
+    AnioEnCurso,
+    MesEnCurso,
+    AnioFijo,
+}

@@ -1,0 +1,76 @@
+<Window
+  x:Class="Archivero.Vistas.AdministrarAtajosWindow"
+  xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+  xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+  Title="Archivero — Administrar accesos rápidos"
+  Width="760"
+  Height="560"
+  MinWidth="600"
+  MinHeight="420"
+  WindowStartupLocation="CenterOwner"
+>
+  <Grid Margin="16">
+    <Grid.ColumnDefinitions>
+      <ColumnDefinition Width="2*" />
+      <ColumnDefinition Width="3*" />
+    </Grid.ColumnDefinitions>
+    <Grid.RowDefinitions>
+      <RowDefinition Height="*" />
+      <RowDefinition Height="Auto" />
+    </Grid.RowDefinitions>
+    <DockPanel Grid.Column="0" Margin="0,0,12,0">
+      <StackPanel DockPanel.Dock="Bottom" Orientation="Horizontal" Margin="0,8,0,0">
+        <Button Content="Subir" Padding="8,4" Margin="0,0,6,0" Click="BtnSubir_Click" />
+        <Button Content="Bajar" Padding="8,4" Click="BtnBajar_Click" />
+      </StackPanel>
+      <ListBox Name="Lista" DisplayMemberPath="Nombre" SelectionChanged="Lista_SelectionChanged" />
+    </DockPanel>
+    <ScrollViewer Grid.Column="1" VerticalScrollBarVisibility="Auto">
+      <StackPanel>
+        <TextBlock Text="Nombre" FontWeight="Bold" />
+        <TextBox Name="TxtNombre" Margin="0,3,0,8" />
+        <TextBlock Text="Carpeta" FontWeight="Bold" />
+        <TextBox Name="TxtCarpeta" Margin="0,3,0,8" />
+        <TextBlock Text="Organización de carpetas" FontWeight="Bold" />
+        <ComboBox Name="CmbFormato" Margin="0,3,0,8" />
+        <TextBlock Text="Patrón de carpeta" FontWeight="Bold" />
+        <TextBox Name="TxtPatron" Margin="0,3,0,8" />
+        <TextBlock Text="Período" FontWeight="Bold" />
+        <ComboBox
+          Name="CmbPeriodo"
+          Margin="0,3,0,8"
+          SelectionChanged="CmbPeriodo_SelectionChanged"
+        />
+        <StackPanel Name="PanelAnio" Visibility="Collapsed">
+          <TextBlock Text="Año fijo" FontWeight="Bold" />
+          <TextBox Name="TxtAnio" Margin="0,3,0,8" />
+        </StackPanel>
+        <TextBlock
+          Name="TxtError"
+          Foreground="{DynamicResource Hormiguero.Error}"
+          TextWrapping="Wrap"
+          Visibility="Collapsed"
+          Margin="0,4"
+        />
+        <WrapPanel Margin="0,8,0,0">
+          <Button
+            Content="Guardar cambios"
+            Padding="8,5"
+            Margin="0,0,6,6"
+            Click="BtnGuardar_Click"
+          />
+          <Button Content="Eliminar" Padding="8,5" Margin="0,0,6,6" Click="BtnEliminar_Click" />
+          <Button Content="Cerrar" Padding="8,5" Margin="0,0,0,6" IsCancel="True" />
+        </WrapPanel>
+      </StackPanel>
+    </ScrollViewer>
+    <TextBlock
+      Grid.Row="1"
+      Grid.ColumnSpan="2"
+      Foreground="{DynamicResource Hormiguero.TextoSecundario}"
+      Text="Los cambios afectan los próximos guardados; los documentos existentes no se mueven."
+      TextWrapping="Wrap"
+      Margin="0,10,0,0"
+    />
+  </Grid>
+</Window>

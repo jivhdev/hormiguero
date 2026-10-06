@@ -74,13 +74,52 @@ public class AtajoGuardadoRapidoRepositoryTests : IDisposable
     }
 
     [Fact]
-    public void ObtenerTodos_LosDevuelveOrdenadosPorNombre()
+    public void ObtenerTodos_LosDevuelveEnOrdenGuardado()
     {
         var repo = new AtajoGuardadoRapidoRepository();
         repo.Guardar("Zeta", @"C:\Z", FormatoCarpeta.Directo, null, []);
         repo.Guardar("Alfa", @"C:\A", FormatoCarpeta.Directo, null, []);
 
-        Assert.Equal(["Alfa", "Zeta"], repo.ObtenerTodos().Select(a => a.Nombre));
+        Assert.Equal(["Zeta", "Alfa"], repo.ObtenerTodos().Select(a => a.Nombre));
+    }
+
+    [Fact]
+    public void Actualizar_EliminarYReordenar_ConservaLosCambios()
+    {
+        var repo = new AtajoGuardadoRapidoRepository();
+        repo.Guardar("Primero", @"C:\A", FormatoCarpeta.Anio, "yyyy", []);
+        repo.Guardar("Segundo", @"C:\B", FormatoCarpeta.AnioMes, "yyyy\\MM", []);
+        var atajos = repo.ObtenerTodos();
+
+        repo.Actualizar(
+            atajos[0] with
+            {
+                Nombre = "Editado",
+                CarpetaMadre = @"C:\Editado",
+                Periodo = PeriodoAtajo.AnioFijo,
+                AnioFijo = 2024,
+            }
+        );
+        repo.Mover(atajos[0].Id, 1);
+        repo.Eliminar(atajos[1].Id);
+
+        var restante = Assert.Single(repo.ObtenerTodos());
+        Assert.Equal("Editado", restante.Nombre);
+        Assert.Equal(@"C:\Editado", restante.CarpetaMadre);
+        Assert.Equal(PeriodoAtajo.AnioFijo, restante.Periodo);
+        Assert.Equal(2024, restante.AnioFijo);
+    }
+
+    [Fact]
+    public void AtajosExistentes_UsanPreguntarFechaCadaVez()
+    {
+        var repo = new AtajoGuardadoRapidoRepository();
+        repo.Guardar("Anterior", @"C:\A", FormatoCarpeta.Anio, "yyyy", []);
+
+        Assert.Equal(
+            PeriodoAtajo.PreguntarFechaCadaVez,
+            Assert.Single(repo.ObtenerTodos()).Periodo
+        );
     }
 
     public void Dispose()
