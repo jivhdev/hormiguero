@@ -152,25 +152,79 @@ public sealed class RepositorioLineas : IDisposable
 
     public void BorrarVagon(long id)
     {
-        var todos = ObtenerVagonesPlantillaPorId(id);
-        var borrar = Descendientes(id, todos);
-        _enlaces.AnularReglasDeVagones(borrar);
-        using var tx = _conexion.BeginTransaction();
-        foreach (var vagon in borrar.Reverse())
+        try
         {
-            Ejecutar(
-                tx,
-                "UPDATE vagones_cadena SET vagon_modelo_id=NULL WHERE vagon_modelo_id=$id",
-                ("$id", vagon)
-            );
-            Ejecutar(
-                tx,
-                "UPDATE modelos_cadena SET vagon_nombre_id=NULL WHERE vagon_nombre_id=$id",
-                ("$id", vagon)
-            );
-            Ejecutar(tx, "DELETE FROM vagones_modelo WHERE id=$id", ("$id", vagon));
+            var todos = ObtenerVagonesPlantillaPorId(id);
+            var borrar = Descendientes(id, todos);
+            _enlaces.AnularReglasDeVagones(borrar);
+            using var tx = _conexion.BeginTransaction();
+            foreach (var vagon in borrar.Reverse())
+            {
+                Ejecutar(
+                    tx,
+                    "UPDATE vagones_cadena SET vagon_modelo_id=NULL WHERE vagon_modelo_id=$id",
+                    ("$id", vagon)
+                );
+                Ejecutar(
+                    tx,
+                    "UPDATE modelos_cadena SET vagon_nombre_id=NULL WHERE vagon_nombre_id=$id",
+                    ("$id", vagon)
+                );
+                Ejecutar(tx, "DELETE FROM vagones_modelo WHERE id=$id", ("$id", vagon));
+            }
+            tx.Commit();
         }
+        catch (Exception error)
+        {
+            RegistrarErrorOperacion("Borrar documento de un modelo", error);
+            throw;
+        }
+    }
+
+    public void MoverVagon(long id, int desplazamiento)
+    {
+        if (desplazamiento is not (-1 or 1))
+            throw new ArgumentOutOfRangeException(nameof(desplazamiento));
+
+        var seleccionado =
+            ObtenerVagon(id) ?? throw new InvalidOperationException("El documento no existe.");
+        var hermanos = ObtenerVagonesPlantilla(seleccionado.PlantillaId)
+            .Where(v => v.PadreId == seleccionado.PadreId)
+            .OrderBy(v => v.Orden)
+            .ToList();
+        var indice = hermanos.FindIndex(v => v.Id == id);
+        var destino = indice + desplazamiento;
+        if (destino < 0 || destino >= hermanos.Count)
+            return;
+
+        (hermanos[indice], hermanos[destino]) = (hermanos[destino], hermanos[indice]);
+        using var tx = _conexion.BeginTransaction();
+        for (var orden = 0; orden < hermanos.Count; orden++)
+            Ejecutar(
+                tx,
+                "UPDATE vagones_modelo SET orden=$orden WHERE id=$id",
+                ("$orden", orden),
+                ("$id", hermanos[orden].Id)
+            );
         tx.Commit();
+    }
+
+    public void RegistrarErrorOperacion(string operacion, Exception error)
+    {
+        try
+        {
+            using var cmd = _conexion.CreateCommand();
+            cmd.CommandText =
+                "INSERT INTO auditoria(fecha,app,accion,origen,destino,resultado) VALUES($f,'Buscadero','error_operacion',$o,$d,'No se pudo completar la operación.');";
+            cmd.Parameters.AddWithValue("$f", DateTime.Now.ToString("o"));
+            cmd.Parameters.AddWithValue("$o", operacion);
+            cmd.Parameters.AddWithValue("$d", error.ToString());
+            cmd.ExecuteNonQuery();
+        }
+        catch
+        {
+            // No se reemplaza el error original si la auditoría tampoco está disponible.
+        }
     }
 
     public IReadOnlyList<PlantillaVagon> ObtenerVagonesPlantilla(long plantillaId) =>
@@ -355,27 +409,35 @@ public sealed class RepositorioLineas : IDisposable
 
     public void BorrarVagonInstancia(long id)
     {
-        var todos = ObtenerVagonesInstanciaPorVagon(id);
-        var borrar = DescendientesVagon(id, todos);
-        using var tx = _conexion.BeginTransaction();
-        foreach (long vagon in borrar)
+        try
         {
-            foreach (long hija in ObtenerCadenasHijasEnTransaccion(tx, vagon))
-                AnularCadenaRecursiva(tx, hija);
-            Ejecutar(
-                tx,
-                "UPDATE enlaces_cadena SET estado='anulado',cambiada_en=$f WHERE vagon_cadena_id=$id AND estado='activo'",
-                ("$f", DateTime.Now.ToString("o")),
-                ("$id", vagon)
-            );
-            Ejecutar(
-                tx,
-                "UPDATE vagones_cadena SET estado='anulado',fecha_anulacion=$f WHERE id=$id",
-                ("$f", DateTime.Now.ToString("o")),
-                ("$id", vagon)
-            );
+            var todos = ObtenerVagonesInstanciaPorVagon(id);
+            var borrar = DescendientesVagon(id, todos);
+            using var tx = _conexion.BeginTransaction();
+            foreach (long vagon in borrar)
+            {
+                foreach (long hija in ObtenerCadenasHijasEnTransaccion(tx, vagon))
+                    AnularCadenaRecursiva(tx, hija);
+                Ejecutar(
+                    tx,
+                    "UPDATE enlaces_cadena SET estado='anulado',cambiada_en=$f WHERE vagon_cadena_id=$id AND estado='activo'",
+                    ("$f", DateTime.Now.ToString("o")),
+                    ("$id", vagon)
+                );
+                Ejecutar(
+                    tx,
+                    "UPDATE vagones_cadena SET estado='anulado',fecha_anulacion=$f WHERE id=$id",
+                    ("$f", DateTime.Now.ToString("o")),
+                    ("$id", vagon)
+                );
+            }
+            tx.Commit();
         }
-        tx.Commit();
+        catch (Exception error)
+        {
+            RegistrarErrorOperacion("Quitar documento de una cadena", error);
+            throw;
+        }
     }
 
     public IReadOnlyList<EnlaceCadena> HistorialEnlaces(long vagonCadenaId) =>
@@ -670,11 +732,14 @@ public sealed class RepositorioLineas : IDisposable
         var q = new Queue<long>();
         q.Enqueue(raiz);
         while (q.Count > 0)
-            foreach (var h in items.Where(v => v.PadreId == q.Dequeue()))
+        {
+            var padre = q.Dequeue();
+            foreach (var h in items.Where(v => v.PadreId == padre))
             {
                 l.Add(h.Id);
                 q.Enqueue(h.Id);
             }
+        }
         return l;
     }
 

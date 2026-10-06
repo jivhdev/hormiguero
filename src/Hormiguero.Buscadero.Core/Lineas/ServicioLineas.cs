@@ -253,6 +253,12 @@ public sealed class ServicioLineas : IDisposable
 
     public void BorrarVagon(long id) => _repositorio.BorrarVagon(id);
 
+    public void MoverVagon(long id, int desplazamiento) =>
+        _repositorio.MoverVagon(id, desplazamiento);
+
+    public void RegistrarErrorOperacion(string operacion, Exception error) =>
+        _repositorio.RegistrarErrorOperacion(operacion, error);
+
     public IReadOnlyList<NodoPlantilla> ObtenerArbolPlantilla(long plantillaId)
     {
         var vagones = _repositorio.ObtenerVagonesPlantilla(plantillaId);

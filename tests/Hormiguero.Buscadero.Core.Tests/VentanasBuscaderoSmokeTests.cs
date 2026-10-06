@@ -28,11 +28,15 @@ public sealed class VentanasBuscaderoSmokeTests
                 principal.Show();
                 principal.UpdateLayout();
                 principal.Close();
+                using var lineas = new ServicioLineas(
+                    new RepositorioLineas(Hormiguero.Nucleo.Datos.DocumentosGuardados.RutaBaseComun)
+                );
                 foreach (var tema in new[] { ModoTema.Claro, ModoTema.Oscuro })
                 {
                     Tema.Aplicar(aplicacion, tema);
                     Window[] ventanas =
                     [
+                        new DialogoModeloGuiado(lineas),
                         new DialogoAlertas(
                             Hormiguero.Nucleo.Datos.DocumentosGuardados.RutaBaseComun,
                             _ => { }

@@ -1913,7 +1913,15 @@ public partial class MainWindow : Window
         }
         catch (Exception excepcion)
         {
+            _lineas.RegistrarErrorOperacion("Administrar documentos de una cadena", excepcion);
             TextoEstadoCadena.Text = excepcion.Message;
+            MessageBox.Show(
+                this,
+                $"No se pudo completar la acción: {excepcion.Message}",
+                "Buscadero",
+                MessageBoxButton.OK,
+                MessageBoxImage.Warning
+            );
         }
     }
 
@@ -1944,6 +1952,7 @@ public partial class MainWindow : Window
         }
         catch (Exception excepcion)
         {
+            _lineas.RegistrarErrorOperacion("Editar documento de un modelo", excepcion);
             TextoEstadoPlantilla.Text = excepcion.Message;
         }
     }
@@ -2149,8 +2158,56 @@ public partial class MainWindow : Window
             return;
         }
 
-        _lineas.BorrarVagon(vm.Vagon.Id);
-        RefrescarArbolPlantilla();
+        try
+        {
+            _lineas.BorrarVagon(vm.Vagon.Id);
+            RefrescarArbolPlantilla();
+        }
+        catch (Exception excepcion)
+        {
+            _lineas.RegistrarErrorOperacion("Borrar documento de un modelo", excepcion);
+            TextoEstadoPlantilla.Text = excepcion.Message;
+            MessageBox.Show(
+                this,
+                $"No se pudo borrar el documento: {excepcion.Message}",
+                "Buscadero",
+                MessageBoxButton.OK,
+                MessageBoxImage.Warning
+            );
+        }
+    }
+
+    private void BotonMoverVagonArriba_Click(object sender, RoutedEventArgs e) =>
+        MoverVagonSeleccionado(-1);
+
+    private void BotonMoverVagonAbajo_Click(object sender, RoutedEventArgs e) =>
+        MoverVagonSeleccionado(1);
+
+    private void MoverVagonSeleccionado(int desplazamiento)
+    {
+        if (ArbolPlantilla.SelectedItem is not VagonPlantillaVm vm)
+        {
+            TextoEstadoPlantilla.Text = "Seleccione un documento en el árbol.";
+            return;
+        }
+
+        try
+        {
+            _lineas.MoverVagon(vm.Vagon.Id, desplazamiento);
+            RefrescarArbolPlantilla();
+        }
+        catch (Exception excepcion)
+        {
+            _lineas.RegistrarErrorOperacion("Mover documento de un modelo", excepcion);
+            TextoEstadoPlantilla.Text = excepcion.Message;
+            MessageBox.Show(
+                this,
+                $"No se pudo mover el documento: {excepcion.Message}",
+                "Buscadero",
+                MessageBoxButton.OK,
+                MessageBoxImage.Warning
+            );
+        }
     }
 }
 

@@ -484,6 +484,18 @@
               Click="BotonBorrarVagon_Click"
             />
             <Button
+              Content="Mover arriba"
+              Padding="8,4"
+              Margin="0,0,6,6"
+              Click="BotonMoverVagonArriba_Click"
+            />
+            <Button
+              Content="Mover abajo"
+              Padding="8,4"
+              Margin="0,0,6,6"
+              Click="BotonMoverVagonAbajo_Click"
+            />
+            <Button
               Content="Avisarme si falta un documento"
               Padding="8,4"
               Margin="0,0,6,6"
