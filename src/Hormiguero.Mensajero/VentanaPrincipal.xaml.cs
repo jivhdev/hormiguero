@@ -671,6 +671,19 @@ public partial class VentanaPrincipal : Window
         });
     }
 
+    private void CopiarMayusculas_Click(object sender, RoutedEventArgs e)
+    {
+        if (string.IsNullOrWhiteSpace(CampoMayusculas.Text))
+        {
+            MostrarToast("❌ Pega un texto primero", "error");
+            return;
+        }
+        Copiar(
+            CampoMayusculas.Text.ToUpper(System.Globalization.CultureInfo.GetCultureInfo("es-CL")),
+            "✅ Copiado en MAYÚSCULAS"
+        );
+    }
+
     private void Copiar(string texto, string mensaje)
     {
         for (int intento = 0; intento < 3; intento++)
