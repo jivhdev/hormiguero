@@ -4,6 +4,8 @@ using Hormiguero.Mensajero.Core.ClickFactura;
 
 namespace Hormiguero.Mensajero.Core.Tests.ClickFactura;
 
+// Comparte la variable HORMIGUERO_DATOS (registro de Mensajero) con MensajeroLogTests: no en paralelo.
+[Collection("RegistroMensajero")]
 public sealed class CausasX1Tests
 {
     [Theory]
