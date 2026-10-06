@@ -11,6 +11,10 @@ foreach ($app in 'Archivero', 'Buscadero', 'Mensajero') {
         -p:PublishReadyToRun=false -o (Join-Path $Destino $app) --nologo -v quiet
     if ($LASTEXITCODE -ne 0) { throw "Falló la publicación de $app" }
 }
+Write-Host "Publicando Reiniciar Hormiguero..."
+dotnet publish (Join-Path $repo "src\Hormiguero.Reinicio") -c Release -r win-x64 --self-contained true `
+    -p:PublishReadyToRun=false -o (Join-Path $Destino 'Reiniciar Hormiguero') --nologo -v quiet
+if ($LASTEXITCODE -ne 0) { throw "Falló la publicación de Reiniciar Hormiguero" }
 Copy-Item (Join-Path $PSScriptRoot 'crear-accesos.ps1') $Destino
 Copy-Item (Join-Path $PSScriptRoot 'LEEME-portable.txt') (Join-Path $Destino 'LEEME.txt')
 $version = (git -C $repo log -1 --format='%h %cd' --date=format:'%Y-%m-%d %H:%M')

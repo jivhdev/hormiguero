@@ -7,6 +7,7 @@
     <Project Path="src/Hormiguero.Mensajero.Core/Hormiguero.Mensajero.Core.csproj" />
     <Project Path="src/Hormiguero.Mensajero/Hormiguero.Mensajero.csproj" />
     <Project Path="src/Hormiguero.Nucleo/Hormiguero.Nucleo.csproj" />
+    <Project Path="src/Hormiguero.Reinicio/Hormiguero.Reinicio.csproj" />
   </Folder>
   <Folder Name="/tests/">
     <Project Path="tests/Hormiguero.Archivero.App.Tests/Hormiguero.Archivero.App.Tests.csproj" />
@@ -14,5 +15,6 @@
     <Project Path="tests/Hormiguero.Diseno.Tests/Hormiguero.Diseno.Tests.csproj" />
     <Project Path="tests/Hormiguero.Mensajero.Core.Tests/Hormiguero.Mensajero.Core.Tests.csproj" />
     <Project Path="tests/Hormiguero.Nucleo.Tests/Hormiguero.Nucleo.Tests.csproj" />
+    <Project Path="tests/Hormiguero.Reinicio.Tests/Hormiguero.Reinicio.Tests.csproj" />
   </Folder>
 </Solution>

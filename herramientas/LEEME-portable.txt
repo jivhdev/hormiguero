@@ -28,3 +28,8 @@ Para actualizar a una versión nueva
 Si algo falla
 - Las apps viejas siguen disponibles: úsalas mientras se corrige.
 - Anota qué hiciste y qué mensaje apareció.
+
+Reiniciar Hormiguero
+- Ejecuta "ReiniciarHormiguero.exe" dentro de "Reiniciar Hormiguero" para dejar las tres apps
+  como recién instaladas. Conserva todos los clientes de ClickFactura, incluidos inactivos,
+  con sus datos completos. La carpeta anterior queda junto a la carpeta de datos como respaldo.

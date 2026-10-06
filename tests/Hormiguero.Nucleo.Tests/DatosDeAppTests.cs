@@ -105,4 +105,17 @@ public sealed class DatosDeAppTests : IDisposable
         );
         Assert.Equal(@"C:\Entrada", Leer(respaldo));
     }
+
+    [Fact]
+    public void La_marca_de_reinicio_impide_copiar_datos_anteriores()
+    {
+        string anterior = BaseAnterior(@"C:\Entrada");
+        DatosDeApp.MarcarReinicio(Comun, Ahora);
+
+        string destino = DatosDeApp.Preparar(Comun, "archivero", anterior, Ahora);
+
+        Assert.False(File.Exists(destino));
+        Assert.True(File.Exists(Path.Combine(Comun, "reiniciado.txt")));
+        Assert.True(File.Exists(anterior));
+    }
 }
