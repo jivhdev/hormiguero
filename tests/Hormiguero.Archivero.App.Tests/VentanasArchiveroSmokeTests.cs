@@ -47,6 +47,19 @@ public sealed class VentanasArchiveroSmokeTests
                     duplicado.Show();
                     duplicado.UpdateLayout();
                     duplicado.Close();
+
+                    var administrarAtajos = new AdministrarAtajosWindow();
+                    administrarAtajos.Show();
+                    administrarAtajos.UpdateLayout();
+                    administrarAtajos.Close();
+
+                    var guardarAtajo = new GuardarAtajoWindow(
+                        "Acceso de prueba",
+                        new AtajoGuardadoRapidoRepository()
+                    );
+                    guardarAtajo.Show();
+                    guardarAtajo.UpdateLayout();
+                    guardarAtajo.Close();
                 }
 
                 aplicacion.Shutdown();

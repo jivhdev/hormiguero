@@ -24,6 +24,12 @@
     />
     <TextBlock Text="Nombre del acceso rápido" FontWeight="Bold" Margin="0,0,0,4" />
     <TextBox Name="TxtNombreAtajo" Margin="0,0,0,8" />
+    <TextBlock Text="Período" FontWeight="Bold" Margin="0,4,0,4" />
+    <ComboBox Name="CmbPeriodo" Margin="0,0,0,8" SelectionChanged="CmbPeriodo_SelectionChanged" />
+    <StackPanel Name="PanelAnio" Visibility="Collapsed" Margin="0,0,0,8">
+      <TextBlock Text="Año fijo" FontWeight="Bold" Margin="0,0,0,4" />
+      <TextBox Name="TxtAnio" TextChanged="TxtAnio_TextChanged" />
+    </StackPanel>
     <TextBlock
       Name="TxtError"
       Foreground="{DynamicResource Hormiguero.Error}"

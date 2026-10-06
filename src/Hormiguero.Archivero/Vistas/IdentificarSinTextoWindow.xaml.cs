@@ -59,9 +59,12 @@ public partial class IdentificarSinTextoWindow : Window
 
     private OrigenDestino _origen;
     private string? _atajoUsado;
+    private AtajoGuardadoRapido? _atajoActual;
     private readonly List<OperacionNombre> _reglaNombre = [];
     private bool _preguntaAtajoHecha;
     private string? _nombreAtajoAGuardar;
+    private PeriodoAtajo _periodoAtajoAGuardar = PeriodoAtajo.PreguntarFechaCadaVez;
+    private int? _anioFijoAtajoAGuardar;
 
     private int _nivelesTotales;
     private int _nivelActual;
@@ -105,6 +108,13 @@ public partial class IdentificarSinTextoWindow : Window
         var atajos = _atajos.ObtenerTodos();
         TxtSinAtajos.Visibility = atajos.Count == 0 ? Visibility.Visible : Visibility.Collapsed;
         ListaAtajos.ItemsSource = atajos.Select(a => new FilaAtajo(a)).ToList();
+    }
+
+    private void BtnAdministrarAtajos_Click(object sender, RoutedEventArgs e)
+    {
+        var ventana = new AdministrarAtajosWindow { Owner = this };
+        ventana.ShowDialog();
+        CargarAtajos();
     }
 
     private void MostrarPanel(FrameworkElement panel)
@@ -349,6 +359,7 @@ public partial class IdentificarSinTextoWindow : Window
         _patron = atajo.Patron;
         _carpetaDestinoFinal = atajo.Formato == FormatoCarpeta.Directo ? atajo.CarpetaMadre : null;
         _atajoUsado = atajo.Nombre;
+        _atajoActual = atajo;
 
         IrANombreArchivo(OrigenDestino.Atajo);
         TxtNombreArchivo.Text = LimpiezaNombreService.AplicarRegla(
@@ -373,22 +384,15 @@ public partial class IdentificarSinTextoWindow : Window
         destino = string.Empty;
         error = null;
 
-        DateTime fecha;
-        if (string.IsNullOrWhiteSpace(TxtFechaAtajo.Text))
-        {
-            if (!OrganizacionCarpetaService.FechaEsOpcional(_formato))
-            {
-                error = "Escribir la fecha del documento.";
-                return false;
-            }
-
-            fecha = DateTime.Now;
-        }
-        else if (!FechaExtraidaService.TryParsear(TxtFechaAtajo.Text, out fecha))
-        {
-            error = "No se reconoce la fecha escrita (ej. 15/03/2026).";
+        var fechaResuelta = PeriodoAtajoService.ResolverFecha(
+            _atajoActual!,
+            TxtFechaAtajo.Text,
+            DateTime.Today,
+            out error
+        );
+        if (fechaResuelta is null)
             return false;
-        }
+        var fecha = fechaResuelta.Value;
 
         var subcarpeta = FormatoCarpetaService.ConstruirSubcarpeta(_formato, _patron, fecha);
         destino = string.IsNullOrEmpty(subcarpeta)
@@ -405,18 +409,25 @@ public partial class IdentificarSinTextoWindow : Window
         if (origen != OrigenDestino.Atajo)
         {
             _atajoUsado = null;
+            _atajoActual = null;
         }
 
         _reglaNombre.Clear();
         TxtNombreArchivo.Text = Path.GetFileNameWithoutExtension(_rutaArchivo);
 
-        PanelFechaAtajo.Visibility = AtajoNecesitaFecha ? Visibility.Visible : Visibility.Collapsed;
+        var pedirFecha =
+            AtajoNecesitaFecha && _atajoActual?.Periodo == PeriodoAtajo.PreguntarFechaCadaVez;
+        PanelFechaAtajo.Visibility = pedirFecha ? Visibility.Visible : Visibility.Collapsed;
         if (AtajoNecesitaFecha)
         {
-            TxtAyudaFechaAtajo.Text = OrganizacionCarpetaService.FechaEsOpcional(_formato)
-                ? "Opcional para este tipo de organización: si se deja vacía, se usa la fecha de hoy."
+            TxtAyudaFechaAtajo.Text =
+                !pedirFecha
+                    ? "El período se calcula automáticamente. Confirma la carpeta calculada antes de guardar."
+                : OrganizacionCarpetaService.FechaEsOpcional(_formato)
+                    ? "Opcional para este tipo de organización: si se deja vacía, se usa la fecha de hoy."
                 : "Escribir la fecha a mano (ej. 15/03/2026): define la subcarpeta donde se guarda.";
-            TxtFechaAtajo.Clear();
+            if (pedirFecha)
+                TxtFechaAtajo.Clear();
         }
 
         ActualizarTextoDestino();
@@ -431,9 +442,26 @@ public partial class IdentificarSinTextoWindow : Window
             return;
         }
 
-        TxtCarpetaDestinoFinal.Text = TryCalcularDestinoAtajo(out var destino, out _)
-            ? $"Se va a guardar en: {destino}"
-            : $"Se va a guardar en: {_carpetaMadre}, en la subcarpeta que corresponda a la fecha.";
+        if (TryCalcularDestinoAtajo(out var destino, out _))
+        {
+            var requiereDia =
+                _formato == FormatoCarpeta.AnioMesDia
+                || (
+                    _formato == FormatoCarpeta.Personalizado
+                    && _patron?.Contains("dd", StringComparison.Ordinal) == true
+                );
+            var fechaAutomatica = _atajoActual?.Periodo != PeriodoAtajo.PreguntarFechaCadaVez;
+            var confirmacionFecha =
+                requiereDia && fechaAutomatica
+                    ? $" (fecha usada: {PeriodoAtajoService.ResolverFecha(_atajoActual!, null, DateTime.Today, out _):dd/MM/yyyy})"
+                    : string.Empty;
+            TxtCarpetaDestinoFinal.Text = $"Se va a guardar en: {destino}{confirmacionFecha}";
+        }
+        else
+        {
+            TxtCarpetaDestinoFinal.Text =
+                $"Se va a guardar en: {_carpetaMadre}, en la subcarpeta que corresponda a la fecha.";
+        }
     }
 
     // Cada botón queda anotado en orden: esa secuencia es la "regla de nombre" de un acceso rápido.
@@ -488,6 +516,11 @@ public partial class IdentificarSinTextoWindow : Window
                 Owner = this,
             };
             _nombreAtajoAGuardar = dialogo.ShowDialog() == true ? dialogo.NombreElegido : null;
+            if (_nombreAtajoAGuardar is not null)
+            {
+                _periodoAtajoAGuardar = dialogo.PeriodoElegido;
+                _anioFijoAtajoAGuardar = dialogo.AnioFijoElegido;
+            }
             _preguntaAtajoHecha = true;
         }
 
@@ -573,7 +606,15 @@ public partial class IdentificarSinTextoWindow : Window
     {
         try
         {
-            _atajos.Guardar(nombreAtajo, _carpetaMadre, _formato, _patron, _reglaNombre);
+            _atajos.Guardar(
+                nombreAtajo,
+                _carpetaMadre,
+                _formato,
+                _patron,
+                _reglaNombre,
+                _periodoAtajoAGuardar,
+                _anioFijoAtajoAGuardar
+            );
             AuditoriaService.Registrar(
                 "ACCESO_RAPIDO_GUARDADO",
                 $"Nombre={nombreAtajo}; Carpeta={_carpetaMadre}; Formato={_formato}; Regla={string.Join(",", _reglaNombre)}"

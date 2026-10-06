@@ -131,6 +131,32 @@ public static class BaseDeDatos
             "INTEGER NOT NULL DEFAULT 0"
         );
         AgregarColumnaSiFalta(conexion, "CamposPropios", "Activo", "INTEGER NOT NULL DEFAULT 1");
+        AgregarColumnaSiFalta(
+            conexion,
+            "AtajosGuardadoRapido",
+            "Periodo",
+            "TEXT NOT NULL DEFAULT 'PreguntarFechaCadaVez'"
+        );
+        AgregarColumnaSiFalta(conexion, "AtajosGuardadoRapido", "AnioFijo", "INTEGER NULL");
+        AgregarColumnaSiFalta(
+            conexion,
+            "AtajosGuardadoRapido",
+            "Orden",
+            "INTEGER NOT NULL DEFAULT -1"
+        );
+        using (var ordenarAtajos = conexion.CreateCommand())
+        {
+            ordenarAtajos.CommandText = """
+                UPDATE AtajosGuardadoRapido
+                SET Orden = (
+                    SELECT COUNT(*) - 1 FROM AtajosGuardadoRapido previo
+                    WHERE previo.Nombre COLLATE NOCASE < AtajosGuardadoRapido.Nombre COLLATE NOCASE
+                       OR (previo.Nombre COLLATE NOCASE = AtajosGuardadoRapido.Nombre COLLATE NOCASE AND previo.Id <= AtajosGuardadoRapido.Id)
+                )
+                WHERE Orden = -1;
+                """;
+            ordenarAtajos.ExecuteNonQuery();
+        }
 
         MigrarCheckFormatoCarpeta(conexion);
 
