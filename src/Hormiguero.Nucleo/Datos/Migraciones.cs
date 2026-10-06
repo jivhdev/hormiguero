@@ -183,6 +183,39 @@ public static class Migraciones
                 + "CREATE TRIGGER IF NOT EXISTS trg_historial_alertas_no_editar BEFORE UPDATE ON historial_alertas BEGIN SELECT RAISE(ABORT,'El historial de alertas es inmutable.'); END; "
                 + "CREATE TRIGGER IF NOT EXISTS trg_historial_alertas_no_borrar BEFORE DELETE ON historial_alertas BEGIN SELECT RAISE(ABORT,'El historial de alertas es inmutable.'); END;"
         ),
+        (
+            9,
+            "ALTER TABLE identificaciones ADD COLUMN grupo_documento TEXT NOT NULL DEFAULT 'Recibido' CHECK(grupo_documento IN ('Emitido','Recibido')); "
+                + "ALTER TABLE identificaciones ADD COLUMN nombre_estandar TEXT NOT NULL DEFAULT ''; "
+                + "UPDATE identificaciones SET nombre_estandar=tipo || ' · ' || emisor WHERE nombre_estandar=''; "
+                + "ALTER TABLE campos_documento ADD COLUMN dato_diccionario_id TEXT NULL REFERENCES diccionario_datos(id); "
+                + "ALTER TABLE valores_documento ADD COLUMN dato_diccionario_id TEXT NULL REFERENCES diccionario_datos(id); "
+                + "CREATE TABLE diccionario_datos(id TEXT PRIMARY KEY, nombre TEXT NOT NULL, grupo TEXT NOT NULL, orden INTEGER NOT NULL UNIQUE, codigo_referencia TEXT NULL, CHECK(grupo IN ('Ventas propias','Del cliente','Compras propias','Del proveedor','Otros'))); "
+                + "INSERT INTO diccionario_datos(id,nombre,grupo,orden,codigo_referencia) VALUES"
+                + "('cotizacion_propia','N° Cotización propia','Ventas propias',1,'COV'),"
+                + "('nota_venta_propia','N° Nota de venta propia','Ventas propias',2,'NVV'),"
+                + "('guia_despacho_propia','N° Guía de despacho propia','Ventas propias',3,'GDV'),"
+                + "('factura_propia','N° Factura propia','Ventas propias',4,'FCV'),"
+                + "('nota_credito_propia','N° Nota de crédito propia','Ventas propias',5,'NCV'),"
+                + "('nota_debito_propia','N° Nota de débito propia','Ventas propias',6,NULL),"
+                + "('oc_cliente','N° OC del cliente','Del cliente',7,'OCL'),"
+                + "('recepcion_cliente','N° Recepción del cliente','Del cliente',8,'HES/HEM/recepción'),"
+                + "('oc_propia','N° OC propia','Compras propias',9,'OCC'),"
+                + "('cotizacion_proveedor','N° Cotización del proveedor','Del proveedor',10,NULL),"
+                + "('nota_venta_proveedor','N° Nota de venta del proveedor','Del proveedor',11,'NVV'),"
+                + "('guia_proveedor','N° Guía del proveedor','Del proveedor',12,'GRC'),"
+                + "('factura_proveedor','N° Factura del proveedor','Del proveedor',13,'FCC'),"
+                + "('nota_credito_proveedor','N° Nota de crédito del proveedor','Del proveedor',14,'NCC'),"
+                + "('nota_debito_proveedor','N° Nota de débito del proveedor','Del proveedor',15,NULL),"
+                + "('codigo_obra','Código de obra o proyecto','Otros',16,NULL),"
+                + "('comprobante_pago','N° Comprobante de pago','Otros',17,NULL); "
+                + "CREATE TRIGGER trg_diccionario_datos_no_insertar BEFORE INSERT ON diccionario_datos BEGIN SELECT RAISE(ABORT,'El diccionario de datos es fijo.'); END; "
+                + "CREATE TRIGGER trg_diccionario_datos_no_editar BEFORE UPDATE ON diccionario_datos BEGIN SELECT RAISE(ABORT,'El diccionario de datos es fijo.'); END; "
+                + "CREATE TRIGGER trg_diccionario_datos_no_borrar BEFORE DELETE ON diccionario_datos BEGIN SELECT RAISE(ABORT,'El diccionario de datos es fijo.'); END; "
+                + "CREATE TABLE tipos_documento_datos(id INTEGER PRIMARY KEY, identificacion_id INTEGER NOT NULL REFERENCES identificaciones(id), dato_diccionario_id TEXT NOT NULL REFERENCES diccionario_datos(id), diseno TEXT NOT NULL, campo_id INTEGER NULL REFERENCES campos_documento(id), pagina INTEGER NOT NULL, x REAL NOT NULL, y REAL NOT NULL, ancho REAL NOT NULL, alto REAL NOT NULL, activo INTEGER NOT NULL DEFAULT 1 CHECK(activo IN (0,1)), creada_en TEXT NOT NULL, actualizada_en TEXT NOT NULL, UNIQUE(identificacion_id,dato_diccionario_id,diseno)); "
+                + "CREATE INDEX idx_tipos_documento_datos_activos ON tipos_documento_datos(identificacion_id,activo,diseno); "
+                + "CREATE INDEX idx_valores_dato_clave_estado ON valores_documento(dato_diccionario_id,valor_clave,estado);"
+        ),
     ];
 
     public static void Aplicar(
