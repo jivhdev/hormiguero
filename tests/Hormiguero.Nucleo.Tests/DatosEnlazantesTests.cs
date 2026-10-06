@@ -104,6 +104,14 @@ public sealed class DatosEnlazantesTests : IDisposable
             repo.ListarDatosTipo(tipo, incluirAnulados: true).Single(d => !d.Activo).Id
         );
         Assert.True(repo.AnularDatoTipo(b));
+
+        // D-73: volver a marcar un dato quitado en el mismo diseño lo reactiva con la zona nueva.
+        long otraVez = repo.GuardarDatoTipo(
+            new(0, tipo, "oc_cliente", "pdf-a", null, 1, 0.7, 0.8, 0.1, 0.02, true)
+        );
+        Assert.Equal(a, otraVez);
+        var reactivado = Assert.Single(repo.ListarDatosTipo(tipo));
+        Assert.Equal((0.7, 0.8), (reactivado.X, reactivado.Y));
     }
 
     [Fact]
