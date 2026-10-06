@@ -2,28 +2,42 @@ using System.Diagnostics;
 using System.IO;
 using System.Windows;
 using Buscadero.Core.Lineas;
+using Hormiguero.Nucleo.Datos;
+using Microsoft.Data.Sqlite;
 
 namespace Buscadero.App;
 
 public partial class DialogoDudosos : Window
 {
     private readonly ServicioLineas _lineas;
+    private readonly SqliteConnection _conexion;
+    private readonly ServicioCadenasSimples _simples;
 
     public DialogoDudosos(ServicioLineas lineas)
     {
         InitializeComponent();
         _lineas = lineas;
+        _conexion = BaseComun.Abrir(DocumentosGuardados.RutaBaseComun);
+        _simples = new ServicioCadenasSimples(_conexion);
+        ListaCadenas.ItemsSource = _simples.ListarCadenas();
         Recargar();
     }
 
-    private DudosoVagon? Seleccionado => ListaDudosos.SelectedItem as DudosoVagon;
+    private DudosoFila? Seleccionado => ListaDudosos.SelectedItem as DudosoFila;
 
     private void Recargar()
     {
-        var dudosos = _lineas.ListarDudosos();
-        ListaDudosos.ItemsSource = dudosos;
-        TextoContador.Text = $"{dudosos.Count} dudosos";
-        if (dudosos.Count == 0)
+        var simples = _simples.DudososCadenasSimples();
+        var idsSimples = simples.Select(d => d.EnlaceId).ToHashSet();
+        var filas = _lineas
+            .ListarDudosos()
+            .Where(d => !idsSimples.Contains(d.Id))
+            .Select(d => new DudosoFila(d, null))
+            .Concat(simples.Select(d => new DudosoFila(null, d)))
+            .ToArray();
+        ListaDudosos.ItemsSource = filas;
+        TextoContador.Text = $"{filas.Length} dudosos";
+        if (filas.Length == 0)
         {
             TextoDocumentos.Text = "No hay documentos por revisar.";
             TextoDatos.Text = string.Empty;
@@ -38,14 +52,25 @@ public partial class DialogoDudosos : Window
         System.Windows.Controls.SelectionChangedEventArgs e
     )
     {
-        if (Seleccionado is not { } dudoso)
+        if (Seleccionado is not { } fila)
             return;
-        TextoDocumentos.Text = dudoso.NombreDocumentoComparado is null
-            ? $"{dudoso.NombreDocumento} ↔ {dudoso.NombreVagon}"
-            : $"{dudoso.NombreDocumento} ↔ {dudoso.NombreDocumentoComparado}";
-        TextoDatos.Text =
-            $"{dudoso.ValorPropuesto ?? "Dato no disponible"} ↔ {dudoso.ValorComparado ?? "Dato no disponible"}";
-        TextoMotivo.Text = dudoso.Motivo;
+        if (fila.Simple is { } simple)
+        {
+            TextoDocumentos.Text = simple.Nombre;
+            TextoDatos.Text = string.Empty;
+            TextoMotivo.Text = simple.Motivo;
+            ListaCadenas.Visibility = Visibility.Visible;
+        }
+        else if (fila.Legado is { } viejo)
+        {
+            TextoDocumentos.Text = viejo.NombreDocumentoComparado is null
+                ? $"{viejo.NombreDocumento} ↔ {viejo.NombreVagon}"
+                : $"{viejo.NombreDocumento} ↔ {viejo.NombreDocumentoComparado}";
+            TextoDatos.Text =
+                $"{viejo.ValorPropuesto ?? "Dato no disponible"} ↔ {viejo.ValorComparado ?? "Dato no disponible"}";
+            TextoMotivo.Text = viejo.Motivo;
+            ListaCadenas.Visibility = Visibility.Collapsed;
+        }
     }
 
     private void Enlazar_Click(object sender, RoutedEventArgs e) => Resolver(aceptar: true);
@@ -54,15 +79,32 @@ public partial class DialogoDudosos : Window
 
     private void Resolver(bool aceptar)
     {
-        if (Seleccionado is not { } dudoso)
+        if (Seleccionado is not { } fila)
             return;
         try
         {
-            bool cambio = aceptar
-                ? _lineas.AceptarDudoso(dudoso.Id)
-                : _lineas.RechazarDudoso(dudoso.Id);
-            if (cambio)
-                Recargar();
+            if (fila.Simple is { } simple)
+            {
+                if (aceptar)
+                {
+                    if (ListaCadenas.SelectedItem is not Cadena cadena)
+                        throw new InvalidOperationException(
+                            "Elija la cadena para enlazar el documento."
+                        );
+                    _simples.VincularDudosoA(simple.EnlaceId, cadena.Id);
+                }
+                else
+                    _simples.NoCorrespondeDudoso(simple.EnlaceId);
+            }
+            else if (fila.Legado is { } viejo)
+            {
+                bool cambio = aceptar
+                    ? _lineas.AceptarDudoso(viejo.Id)
+                    : _lineas.RechazarDudoso(viejo.Id);
+                if (!cambio)
+                    return;
+            }
+            Recargar();
         }
         catch (Exception error)
         {
@@ -104,5 +146,18 @@ public partial class DialogoDudosos : Window
                 MessageBoxImage.Information
             );
         }
+    }
+
+    protected override void OnClosed(EventArgs e)
+    {
+        _conexion.Dispose();
+        base.OnClosed(e);
+    }
+
+    private sealed record DudosoFila(DudosoVagon? Legado, DudosoCadenaSimple? Simple)
+    {
+        public string NombreDocumento => Simple?.Nombre ?? Legado?.NombreDocumento ?? "Documento";
+        public string NombreVagon => Simple?.Motivo ?? Legado?.NombreVagon ?? string.Empty;
+        public string? RutaDocumento => Simple?.Ruta ?? Legado?.RutaDocumento;
     }
 }

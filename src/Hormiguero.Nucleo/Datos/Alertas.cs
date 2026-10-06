@@ -20,6 +20,20 @@ public sealed record ReglaAlerta(
     string Estado
 );
 
+public sealed record ReglaAlertaCadenaSimple(
+    long Id,
+    string Nombre,
+    string? DatoOrigenId,
+    long? IdentificacionOrigenId,
+    string? DatoDestinoId,
+    long? IdentificacionDestinoId,
+    int Dias,
+    TipoDias ModoDias,
+    long? CalendarioId,
+    string TextoAviso,
+    string Estado
+);
+
 public sealed record Alerta(
     long Id,
     long? ReglaId,
@@ -51,6 +65,134 @@ public sealed record ResultadoAlertas(IReadOnlyList<Alerta> Alertas, int Total);
 public sealed class RepositorioAlertas(SqliteConnection conexion)
 {
     private const string AppAuditoria = "Nucleo";
+
+    public long CrearReglaCadenaSimple(
+        string nombre,
+        string? datoOrigenId,
+        long? identificacionOrigenId,
+        string? datoDestinoId,
+        long? identificacionDestinoId,
+        int dias,
+        TipoDias modoDias,
+        string textoAviso,
+        long? calendarioId = null
+    )
+    {
+        ArgumentException.ThrowIfNullOrWhiteSpace(nombre);
+        ArgumentException.ThrowIfNullOrWhiteSpace(textoAviso);
+        if (
+            (datoOrigenId is null) == (identificacionOrigenId is null)
+            || (datoDestinoId is null) == (identificacionDestinoId is null)
+        )
+            throw new ArgumentException(
+                "Indique un tipo de documento o dato del diccionario para cada lado de la regla."
+            );
+        if (dias is < 0 or > CalculoFechas.CantidadMaxima)
+            throw new ArgumentOutOfRangeException(nameof(dias));
+        using var tx = conexion.BeginTransaction();
+        if (calendarioId is long calendario)
+            ValidarCalendario(tx, calendario);
+        using var cmd = conexion.CreateCommand();
+        cmd.Transaction = tx;
+        cmd.CommandText =
+            "INSERT INTO reglas_alerta_cadena_simple(nombre,dato_origen_id,identificacion_origen_id,dato_destino_id,identificacion_destino_id,dias,modo_dias,calendario_id,texto_aviso,creada_en,actualizada_en) VALUES($n,$do,$io,$dd,$id,$dias,$modo,$cal,$texto,$ahora,$ahora) RETURNING id;";
+        cmd.Parameters.AddWithValue("$n", nombre.Trim());
+        cmd.Parameters.AddWithValue("$do", (object?)datoOrigenId ?? DBNull.Value);
+        cmd.Parameters.AddWithValue("$io", (object?)identificacionOrigenId ?? DBNull.Value);
+        cmd.Parameters.AddWithValue("$dd", (object?)datoDestinoId ?? DBNull.Value);
+        cmd.Parameters.AddWithValue("$id", (object?)identificacionDestinoId ?? DBNull.Value);
+        cmd.Parameters.AddWithValue("$dias", dias);
+        cmd.Parameters.AddWithValue("$modo", ATexto(modoDias));
+        cmd.Parameters.AddWithValue("$cal", (object?)calendarioId ?? DBNull.Value);
+        cmd.Parameters.AddWithValue("$texto", textoAviso.Trim());
+        cmd.Parameters.AddWithValue("$ahora", Ahora());
+        long id = Convert.ToInt64(cmd.ExecuteScalar());
+        AuditoriaDatos.Registrar(conexion, tx, "crear_regla_alerta_cadena_simple", $"regla:{id}");
+        tx.Commit();
+        return id;
+    }
+
+    public IReadOnlyList<ReglaAlertaCadenaSimple> ListarReglasCadenaSimple()
+    {
+        using var cmd = conexion.CreateCommand();
+        cmd.CommandText =
+            "SELECT id,nombre,dato_origen_id,identificacion_origen_id,dato_destino_id,identificacion_destino_id,dias,modo_dias,calendario_id,texto_aviso,estado FROM reglas_alerta_cadena_simple ORDER BY id;";
+        using var r = cmd.ExecuteReader();
+        var resultado = new List<ReglaAlertaCadenaSimple>();
+        while (r.Read())
+            resultado.Add(
+                new(
+                    r.GetInt64(0),
+                    r.GetString(1),
+                    r.IsDBNull(2) ? null : r.GetString(2),
+                    r.IsDBNull(3) ? null : r.GetInt64(3),
+                    r.IsDBNull(4) ? null : r.GetString(4),
+                    r.IsDBNull(5) ? null : r.GetInt64(5),
+                    r.GetInt32(6),
+                    DesdeTexto(r.GetString(7)),
+                    r.IsDBNull(8) ? null : r.GetInt64(8),
+                    r.GetString(9),
+                    r.GetString(10)
+                )
+            );
+        return resultado;
+    }
+
+    public long CrearAlertaDeReglaCadenaSimple(long reglaId, long cadenaId, DateOnly fechaBase)
+    {
+        ReglaAlertaCadenaSimple regla = ListarReglasCadenaSimple()
+            .Single(r => r.Id == reglaId && r.Estado == "activa");
+        DateOnly objetivo = CalculoFechas.Sumar(
+            fechaBase,
+            regla.Dias,
+            regla.ModoDias,
+            regla.CalendarioId is long cal
+                ? new RepositorioCalendariosFeriados(conexion).ObtenerFeriadosActivos(cal, 1, 9999)
+                : null
+        );
+        using var tx = conexion.BeginTransaction();
+        using var cmd = conexion.CreateCommand();
+        cmd.Transaction = tx;
+        cmd.CommandText =
+            "INSERT INTO alertas(regla_id,regla_simple_id,cadena_id,texto,estado,fecha_base,cantidad_dias,modo_dias,calendario_id,fecha_objetivo,creada_en,actualizada_en) VALUES(NULL,$r,$c,$texto,'pendiente',$base,$dias,$modo,$cal,$objetivo,$ahora,$ahora) ON CONFLICT(regla_simple_id,cadena_id) WHERE regla_simple_id IS NOT NULL DO NOTHING RETURNING id;";
+        cmd.Parameters.AddWithValue("$r", reglaId);
+        cmd.Parameters.AddWithValue("$c", cadenaId);
+        cmd.Parameters.AddWithValue("$texto", regla.TextoAviso);
+        cmd.Parameters.AddWithValue("$base", Fecha(fechaBase));
+        cmd.Parameters.AddWithValue("$dias", regla.Dias);
+        cmd.Parameters.AddWithValue("$modo", ATexto(regla.ModoDias));
+        cmd.Parameters.AddWithValue("$cal", (object?)regla.CalendarioId ?? DBNull.Value);
+        cmd.Parameters.AddWithValue("$objetivo", Fecha(objetivo));
+        cmd.Parameters.AddWithValue("$ahora", Ahora());
+        object? inserted = cmd.ExecuteScalar();
+        if (inserted is null)
+        {
+            using var existing = conexion.CreateCommand();
+            existing.Transaction = tx;
+            existing.CommandText =
+                "SELECT id FROM alertas WHERE regla_simple_id=$r AND cadena_id=$c;";
+            existing.Parameters.AddWithValue("$r", reglaId);
+            existing.Parameters.AddWithValue("$c", cadenaId);
+            long oldId = Convert.ToInt64(existing.ExecuteScalar());
+            tx.Commit();
+            return oldId;
+        }
+        long id = Convert.ToInt64(inserted);
+        RegistrarHistoria(tx, id, "creada_por_regla", null, "pendiente", null, null, null);
+        AuditoriaDatos.Registrar(conexion, tx, "crear_alerta_regla_cadena_simple", $"alerta:{id}");
+        tx.Commit();
+        return id;
+    }
+
+    public long? AlertaDeReglaCadenaSimple(long reglaId, long cadenaId)
+    {
+        using var cmd = conexion.CreateCommand();
+        cmd.CommandText = "SELECT id FROM alertas WHERE regla_simple_id=$r AND cadena_id=$c;";
+        cmd.Parameters.AddWithValue("$r", reglaId);
+        cmd.Parameters.AddWithValue("$c", cadenaId);
+        object? id = cmd.ExecuteScalar();
+        return id is null ? null : Convert.ToInt64(id);
+    }
 
     public long CrearRegla(
         string nombre,

@@ -342,6 +342,93 @@ public sealed class AlertasTests : IDisposable
     }
 
     [Fact]
+    public void Regla_de_cadena_simple_crea_y_resuelve_alerta_por_dato_del_diccionario()
+    {
+        long origen = CrearVersionConDato("Guia", "oc_cliente");
+        long cadena = new RepositorioCadenas(conexion).CrearCadenaSimple(
+            "Cadena simple",
+            DateTime.Now
+        );
+        long vagon = new RepositorioCadenas(conexion).AgregarDocumentoCadena(
+            cadena,
+            origen,
+            "Guía"
+        );
+        new RepositorioReglasYEnlaces(conexion).CrearEnlace(vagon, origen, "manual");
+        var alertas = new RepositorioAlertas(conexion);
+        long regla = alertas.CrearReglaCadenaSimple(
+            "Esperar factura",
+            "oc_cliente",
+            null,
+            "factura_propia",
+            null,
+            5,
+            TipoDias.Corridos,
+            "Falta la factura"
+        );
+        var evaluador = new EvaluadorAlertas(conexion);
+
+        evaluador.Evaluar();
+        Alerta alerta = Assert.Single(alertas.Listar(cadenaId: cadena).Alertas);
+        Assert.Equal("pendiente", alerta.Estado);
+        Assert.Equal(regla, alertas.ListarReglasCadenaSimple().Single().Id);
+
+        long destino = CrearVersionConDato("Factura", "factura_propia");
+        long vagonDestino = new RepositorioCadenas(conexion).AgregarDocumentoCadena(
+            cadena,
+            destino,
+            "Factura"
+        );
+        new RepositorioReglasYEnlaces(conexion).CrearEnlace(vagonDestino, destino, "manual");
+        evaluador.Evaluar();
+
+        Assert.Equal("resuelta", Assert.Single(alertas.Listar(cadenaId: cadena).Alertas).Estado);
+        Assert.Equal(
+            "resuelta automáticamente: llegó el documento esperado",
+            alertas.ObtenerHistorial(alerta.Id).Last().Motivo
+        );
+    }
+
+    private long CrearVersionConDato(string nombre, string dato)
+    {
+        string ruta = Path.Combine(
+            Path.GetTempPath(),
+            $"alerta-simple-{nombre}-{Guid.NewGuid():N}.pdf"
+        );
+        File.WriteAllText(ruta, $"contenido sintético {nombre}");
+        try
+        {
+            long version = new RepositorioDocumentosDatos(conexion)
+                .AsegurarDocumentoYVersionVigente(ruta)
+                .Version.Id;
+            using var id = conexion.CreateCommand();
+            id.CommandText =
+                "INSERT INTO identificaciones(tipo,emisor,datos,actualizada) VALUES($t,'Prueba','{}','ahora') RETURNING id;";
+            id.Parameters.AddWithValue("$t", nombre);
+            long identificacion = Convert.ToInt64(id.ExecuteScalar());
+            using var campo = conexion.CreateCommand();
+            campo.CommandText =
+                "INSERT INTO campos_documento(identificacion_id,nombre,nombre_estable,tipo_dato,origen_lectura,dato_diccionario_id) VALUES($i,$n,$d,'texto','prueba',$d) RETURNING id;";
+            campo.Parameters.AddWithValue("$i", identificacion);
+            campo.Parameters.AddWithValue("$n", dato);
+            campo.Parameters.AddWithValue("$d", dato);
+            long campoId = Convert.ToInt64(campo.ExecuteScalar());
+            using var valor = conexion.CreateCommand();
+            valor.CommandText =
+                "INSERT INTO valores_documento(version_id,campo_id,valor_original,valor_clave,origen,fecha_creacion,dato_diccionario_id) VALUES($v,$c,'4500012345','4500012345','prueba','ahora',$d);";
+            valor.Parameters.AddWithValue("$v", version);
+            valor.Parameters.AddWithValue("$c", campoId);
+            valor.Parameters.AddWithValue("$d", dato);
+            valor.ExecuteNonQuery();
+            return version;
+        }
+        finally
+        {
+            File.Delete(ruta);
+        }
+    }
+
+    [Fact]
     public void Evaluador_expone_y_audita_error_de_evaluacion()
     {
         var datos = CrearCadenaAlerta();

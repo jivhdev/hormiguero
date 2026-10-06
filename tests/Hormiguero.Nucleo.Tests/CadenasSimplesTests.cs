@@ -97,6 +97,55 @@ public sealed class CadenasSimplesTests : IDisposable
         );
     }
 
+    [Fact]
+    public void Dudoso_asistido_se_enlaza_a_la_cadena_elegida()
+    {
+        long base1 = CrearVersion("uno.pdf", "uno", "789");
+        long base2 = CrearVersion("dos.pdf", "dos", "789");
+        long nueva = CrearVersion("nueva.pdf", "nueva", "789");
+        var repo = new RepositorioCadenas(_conexion);
+        long primera = CrearCadenaConDocumento(base1);
+        CrearCadenaConDocumento(base2);
+        new MotorCadenasSimples(_conexion).Procesar(nueva);
+        var servicio = new Buscadero.Core.Lineas.ServicioCadenasSimples(_conexion);
+        var dudoso = Assert.Single(servicio.DudososCadenasSimples());
+
+        servicio.VincularDudosoA(dudoso.EnlaceId, primera);
+
+        var vagonEnlazado = Assert.Single(
+            repo.ListarDocumentosCadena(primera),
+            v => v.VersionId == nueva
+        );
+        Assert.DoesNotContain(servicio.Dudosos(), e => e.Id == dudoso.EnlaceId);
+        Assert.Contains(
+            new RepositorioReglasYEnlaces(_conexion).HistorialEnlaces(vagonEnlazado.Id),
+            e => e.Estado == "activo"
+        );
+    }
+
+    [Fact]
+    public void Servicio_crea_con_sugerencia_busca_por_numero_quita_y_reordena()
+    {
+        long uno = CrearVersion("primero.pdf", "primero", "4500012345");
+        long dos = CrearVersion("segundo.pdf", "segundo", "4500012345");
+        var servicio = new Buscadero.Core.Lineas.ServicioCadenasSimples(_conexion);
+        var disponibles = servicio.BuscarDocumentos("4500012345");
+        Assert.Equal(2, disponibles.Count);
+        Assert.Contains(
+            servicio.Sugerir(uno),
+            c => c.Dato.Id == "oc_cliente" && c.Documentos.Any(d => d.VersionId == dos)
+        );
+        long cadena = servicio.CrearCadena("primero.pdf");
+        long v1 = servicio.AgregarDocumento(cadena, uno, "Primero");
+        long v2 = servicio.AgregarDocumento(cadena, dos, "Segundo");
+
+        servicio.MoverDocumento(v2, -1);
+        Assert.Equal(["Segundo", "Primero"], servicio.Documentos(cadena).Select(v => v.Nombre));
+        servicio.QuitarDocumento(v1);
+        Assert.Single(servicio.Documentos(cadena));
+        Assert.Single(servicio.BuscarCadenas("4500012345"));
+    }
+
     private long CrearCadenaConDocumento(long versionId)
     {
         var cadenas = new RepositorioCadenas(_conexion);
@@ -116,11 +165,18 @@ public sealed class CadenasSimplesTests : IDisposable
         long documento = Convert.ToInt64(cmd.ExecuteScalar());
         using var version = _conexion.CreateCommand();
         version.CommandText =
-            "INSERT INTO versiones_documento(documento_id,huella,ruta_observada,registrada_en) VALUES($d,$h,$r,'ahora') RETURNING id;";
+            "INSERT INTO versiones_documento(documento_id,huella,ruta_observada,registrada_en) VALUES($d,$h,$r,$fecha) RETURNING id;";
         version.Parameters.AddWithValue("$d", documento);
         version.Parameters.AddWithValue("$h", campoNombre);
         version.Parameters.AddWithValue("$r", "/" + nombre);
+        version.Parameters.AddWithValue("$fecha", DateTime.Now.ToString("o"));
         long versionId = Convert.ToInt64(version.ExecuteScalar());
+        using var numero = _conexion.CreateCommand();
+        numero.CommandText =
+            "INSERT INTO numeros_documento(documento_id,numero,prefijo,sufijo,origen) VALUES($d,$n,'','','prueba');";
+        numero.Parameters.AddWithValue("$d", documento);
+        numero.Parameters.AddWithValue("$n", valor);
+        numero.ExecuteNonQuery();
         using var campo = _conexion.CreateCommand();
         campo.CommandText =
             "INSERT INTO identificaciones(tipo,emisor,datos,actualizada) VALUES('Factura','Emisor','{}','ahora') ON CONFLICT(tipo,emisor) DO UPDATE SET actualizada='ahora' RETURNING id;";

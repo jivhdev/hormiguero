@@ -2,7 +2,7 @@
 bloque: C-2e
 app: Buscadero (y Núcleo para alertas)
 fase: C-2 (D-73, D-75, D-77, D-78)
-estado: pendiente
+estado: hecho
 agente: Codex
 modelo: codex
 archivos_permitidos: [src/Hormiguero.Buscadero/**, src/Hormiguero.Buscadero.Core/**, src/Hormiguero.Nucleo/Datos/Alertas.cs, src/Hormiguero.Nucleo/Datos/EvaluadorAlertas.cs, src/Hormiguero.Nucleo/Datos/Migraciones.cs, tests/Hormiguero.Buscadero.Core.Tests/**, tests/Hormiguero.Nucleo.Tests/**]
@@ -24,3 +24,11 @@ rama: buscadero/c2e-pantallas-cadenas
 Pruebas de la lógica nueva (crear con sugerencia, quitar, reordenar, buscar por número, dudoso a elegir cadena, regla de alerta nueva crea/resuelve). `dotnet build` sin advertencias; `dotnet test` todo pasa; `dotnet csharpier check .` sin errores. Si algo no está definido, decide lo más simple y seguro, anótalo y sigue. Reporte al final.
 
 ## Reporte del agente
+
+- **Resultado:** implementadas las pantallas de cadenas simples asistidas, búsqueda por número o dato extraído, sugerencias con revisión, orden y retiro con historial, consulta/renombrado y apertura de PDF. La pestaña informa una sola vez que los modelos anteriores dejan de usarse y mantiene accesibles alertas y dudosos.
+- **Dudosos:** el diálogo existente combina las propuestas heredadas y las de cadenas simples; las nuevas permiten elegir la cadena, marcar «No corresponde» y abrir el archivo.
+- **Alertas:** añadida la migración v10 con reglas para cadenas simples por tipo de documento o dato del diccionario; la evaluación crea alertas al faltar el documento esperado y las resuelve cuando llega. Los recordatorios manuales siguen disponibles en una cadena simple. Las reglas antiguas y migraciones anteriores se conservaron.
+- **Decisiones:** las reglas nuevas se guardan en una tabla separada para no alterar las reglas existentes; la columna nueva en `alertas` mantiene la idempotencia por cadena. La búsqueda considera números indexados, nombre de archivo y valores extraídos vigentes. Todo usa `DocumentosGuardados.RutaBaseComun`.
+- **Pruebas añadidas:** flujo de sugerencia/búsqueda/orden/retiro, elección de cadena para un dudoso, creación y resolución de alerta; ventanas tocadas verificadas en STA con temas claro y oscuro.
+- **Archivos modificados:** únicamente los permitidos por el bloque, más esta sección del reporte.
+- **Verificación:** `dotnet build Hormiguero.slnx` correcto, 0 errores y 0 advertencias; `dotnet test Hormiguero.slnx` correcto, 709 pruebas superadas y 0 omitidas; `dotnet csharpier check .` correcto (275 archivos).

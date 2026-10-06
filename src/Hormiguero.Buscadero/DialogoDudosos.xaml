@@ -38,12 +38,7 @@
         Margin="0,0,8,0"
         Click="Enlazar_Click"
       />
-      <Button
-        Content="No son el mismo documento"
-        Padding="10,5"
-        Margin="0,0,8,0"
-        Click="Rechazar_Click"
-      />
+      <Button Content="No corresponde" Padding="10,5" Margin="0,0,8,0" Click="Rechazar_Click" />
       <Button Content="Cerrar" IsCancel="True" Padding="10,5" />
     </StackPanel>
     <Grid>
@@ -72,6 +67,13 @@
         Padding="12"
       >
         <StackPanel>
+          <TextBlock Text="Cadena para enlazar" FontWeight="Bold" />
+          <ComboBox
+            x:Name="ListaCadenas"
+            DisplayMemberPath="Nombre"
+            Margin="0,4,0,12"
+            Visibility="Collapsed"
+          />
           <TextBlock Text="Documentos" FontWeight="Bold" />
           <TextBlock x:Name="TextoDocumentos" TextWrapping="Wrap" Margin="0,4,0,12" />
           <TextBlock Text="Datos comparados" FontWeight="Bold" />
