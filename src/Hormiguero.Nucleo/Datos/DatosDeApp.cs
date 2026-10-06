@@ -10,6 +10,8 @@ namespace Hormiguero.Nucleo.Datos;
 /// </summary>
 public static class DatosDeApp
 {
+    private const string ArchivoMarcaReinicio = "reiniciado.txt";
+
     /// <summary>
     /// Carpeta común de datos. HORMIGUERO_DATOS la cambia para probar con datos
     /// sintéticos sin tocar los reales.
@@ -35,7 +37,12 @@ public static class DatosDeApp
         Directory.CreateDirectory(carpeta);
         string destino = Path.Combine(carpeta, $"{nombreApp}.db");
 
-        if (!File.Exists(destino) && rutaAnterior is not null && File.Exists(rutaAnterior))
+        if (
+            !File.Exists(destino)
+            && !File.Exists(Path.Combine(carpeta, ArchivoMarcaReinicio))
+            && rutaAnterior is not null
+            && File.Exists(rutaAnterior)
+        )
         {
             Copiar(rutaAnterior, destino);
         }
@@ -59,6 +66,16 @@ public static class DatosDeApp
         }
 
         return destino;
+    }
+
+    public static void MarcarReinicio(string carpeta, DateTime fecha)
+    {
+        ArgumentException.ThrowIfNullOrWhiteSpace(carpeta);
+        Directory.CreateDirectory(carpeta);
+        File.WriteAllText(
+            Path.Combine(carpeta, ArchivoMarcaReinicio),
+            fecha.ToString("yyyy-MM-dd HH:mm:ss", System.Globalization.CultureInfo.InvariantCulture)
+        );
     }
 
     // Copia con la API de respaldo de SQLite: si la base anterior estaba en modo WAL,
