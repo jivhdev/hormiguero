@@ -241,7 +241,7 @@ public sealed class RepositorioReglasYEnlaces(SqliteConnection conexion)
         return id;
     }
 
-    public long CrearDudoso(long vagonCadenaId, long versionId, long reglaId, string motivo)
+    public long CrearDudoso(long vagonCadenaId, long versionId, long? reglaId, string motivo)
     {
         using var tx = conexion.BeginTransaction();
         using var cmd = conexion.CreateCommand();
@@ -250,7 +250,7 @@ public sealed class RepositorioReglasYEnlaces(SqliteConnection conexion)
             "INSERT INTO enlaces_cadena(vagon_cadena_id,version_id,origen,regla_id,estado,creada_en,motivo) VALUES($v,$d,'automatico',$r,'dudoso',$f,$m) RETURNING id;";
         cmd.Parameters.AddWithValue("$v", vagonCadenaId);
         cmd.Parameters.AddWithValue("$d", versionId);
-        cmd.Parameters.AddWithValue("$r", reglaId);
+        cmd.Parameters.AddWithValue("$r", (object?)reglaId ?? DBNull.Value);
         cmd.Parameters.AddWithValue("$f", DateTime.Now.ToString("o"));
         cmd.Parameters.AddWithValue("$m", motivo);
         long id = Convert.ToInt64(cmd.ExecuteScalar());

@@ -69,10 +69,10 @@ public static class PublicadorDatosDocumentoService
     private static void RevisarEnlaces(long? versionId)
     {
         using var conexion = BaseComun.Abrir(DocumentosGuardados.RutaBaseComun);
-        var motor = new MotorEnlaceAutomatico(conexion);
+        var motor = new MotorCadenasSimples(conexion);
         try
         {
-            motor.Ejecutar(versionId);
+            motor.Procesar(versionId);
         }
         catch (Exception error)
         {

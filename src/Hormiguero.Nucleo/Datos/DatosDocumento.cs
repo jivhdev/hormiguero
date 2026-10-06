@@ -44,7 +44,8 @@ public sealed record ValorDocumentoLeido(
     string Origen,
     string TipoDato = "texto",
     string OrigenLectura = "marca",
-    double? Confianza = null
+    double? Confianza = null,
+    string? DatoDiccionarioId = null
 );
 
 public sealed record MarcaVersion(
@@ -171,7 +172,8 @@ public sealed class RepositorioDocumentosDatos(SqliteConnection conexion)
                 valor.ValorOriginal,
                 valor.ValorClave,
                 valor.Origen,
-                valor.Confianza
+                valor.Confianza,
+                valor.DatoDiccionarioId
             );
         }
         AuditoriaDatos.Registrar(
@@ -321,12 +323,13 @@ public sealed class RepositorioDocumentosDatos(SqliteConnection conexion)
         using var cmd = conexion.CreateCommand();
         cmd.Transaction = tx;
         cmd.CommandText =
-            "INSERT INTO campos_documento(identificacion_id,nombre,nombre_estable,tipo_dato,activo,origen_lectura) VALUES($i,$n,$e,$t,1,$o) ON CONFLICT(identificacion_id,nombre_estable) DO UPDATE SET nombre=excluded.nombre,activo=1 RETURNING id;";
+            "INSERT INTO campos_documento(identificacion_id,nombre,nombre_estable,tipo_dato,activo,origen_lectura,dato_diccionario_id) VALUES($i,$n,$e,$t,1,$o,COALESCE($dato,(SELECT td.dato_diccionario_id FROM tipos_documento_datos td JOIN campos_documento c ON c.id=td.campo_id WHERE td.identificacion_id=$i AND c.nombre_estable=$e AND td.activo=1 LIMIT 1))) ON CONFLICT(identificacion_id,nombre_estable) DO UPDATE SET nombre=excluded.nombre,activo=1,dato_diccionario_id=COALESCE(excluded.dato_diccionario_id,campos_documento.dato_diccionario_id) RETURNING id;";
         cmd.Parameters.AddWithValue("$i", identificacionId);
         cmd.Parameters.AddWithValue("$n", valor.Nombre);
         cmd.Parameters.AddWithValue("$e", valor.NombreEstable);
         cmd.Parameters.AddWithValue("$t", valor.TipoDato);
         cmd.Parameters.AddWithValue("$o", valor.OrigenLectura);
+        cmd.Parameters.AddWithValue("$dato", (object?)valor.DatoDiccionarioId ?? DBNull.Value);
         return Convert.ToInt64(cmd.ExecuteScalar());
     }
 
@@ -425,20 +428,23 @@ public sealed class RepositorioDocumentosDatos(SqliteConnection conexion)
         string original,
         string clave,
         string origen,
-        double? confianza
+        double? confianza,
+        string? datoDiccionarioId = null
     )
     {
         using var cmd = conexion.CreateCommand();
         cmd.Transaction = tx;
         cmd.CommandText =
-            "INSERT INTO valores_documento(version_id,campo_id,valor_original,valor_clave,origen,confianza,fecha_creacion,dato_diccionario_id) VALUES($v,$c,$o,$k,$g,$f,$d,(SELECT dato_diccionario_id FROM campos_documento WHERE id=$c)) RETURNING id;";
+            "INSERT INTO valores_documento(version_id,campo_id,valor_original,valor_clave,origen,confianza,fecha_creacion,dato_diccionario_id) VALUES($v,$c,$o,CASE WHEN COALESCE($dato,(SELECT dato_diccionario_id FROM campos_documento WHERE id=$c)) IS NULL THEN $k ELSE $ke END,$g,$f,$d,COALESCE($dato,(SELECT dato_diccionario_id FROM campos_documento WHERE id=$c))) RETURNING id;";
         cmd.Parameters.AddWithValue("$v", versionId);
         cmd.Parameters.AddWithValue("$c", campoId);
         cmd.Parameters.AddWithValue("$o", original);
         cmd.Parameters.AddWithValue("$k", clave);
+        cmd.Parameters.AddWithValue("$ke", DiccionarioDatosEnlazantes.ClaveDeEnlace(original));
         cmd.Parameters.AddWithValue("$g", origen);
         cmd.Parameters.AddWithValue("$f", (object?)confianza ?? DBNull.Value);
         cmd.Parameters.AddWithValue("$d", DateTime.Now.ToString("o"));
+        cmd.Parameters.AddWithValue("$dato", (object?)datoDiccionarioId ?? DBNull.Value);
         return Convert.ToInt64(cmd.ExecuteScalar());
     }
 
@@ -657,11 +663,12 @@ public sealed class RepositorioDocumentosDatos(SqliteConnection conexion)
         using var cmd = conexion.CreateCommand();
         cmd.Transaction = tx;
         cmd.CommandText =
-            "INSERT INTO valores_documento(version_id,campo_id,valor_original,valor_clave,origen,confianza,fecha_creacion,dato_diccionario_id) VALUES($v,$c,$o,$k,$g,$f,$d,COALESCE($dato,(SELECT dato_diccionario_id FROM campos_documento WHERE id=$c))) RETURNING id;";
+            "INSERT INTO valores_documento(version_id,campo_id,valor_original,valor_clave,origen,confianza,fecha_creacion,dato_diccionario_id) VALUES($v,$c,$o,CASE WHEN COALESCE($dato,(SELECT dato_diccionario_id FROM campos_documento WHERE id=$c)) IS NULL THEN $k ELSE $ke END,$g,$f,$d,COALESCE($dato,(SELECT dato_diccionario_id FROM campos_documento WHERE id=$c))) RETURNING id;";
         cmd.Parameters.AddWithValue("$v", versionId);
         cmd.Parameters.AddWithValue("$c", campoId);
         cmd.Parameters.AddWithValue("$o", original);
         cmd.Parameters.AddWithValue("$k", clave);
+        cmd.Parameters.AddWithValue("$ke", DiccionarioDatosEnlazantes.ClaveDeEnlace(original));
         cmd.Parameters.AddWithValue("$g", origen);
         cmd.Parameters.AddWithValue("$f", (object?)confianza ?? DBNull.Value);
         cmd.Parameters.AddWithValue("$d", DateTime.Now.ToString("o"));
