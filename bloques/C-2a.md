@@ -2,7 +2,7 @@
 bloque: C-2a
 app: Archivero y Buscadero (cadenas)
 fase: C (D-73, D-75)
-estado: pendiente
+estado: hecho (propuesta, espera a Javier)
 agente: Codex
 modelo: codex
 archivos_permitidos: [definicion/DISENO-C2-CADENAS-ASISTIDAS.md]
