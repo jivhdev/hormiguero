@@ -24,7 +24,17 @@ public sealed class IdentificacionesYAuditoriaTests : IDisposable
         long id = identificaciones.Guardar(new Identificacion(0, "Factura", "Proveedor A", "{}"));
 
         var guardada = Assert.Single(identificaciones.Listar());
-        Assert.Equal(new Identificacion(id, "Factura", "Proveedor A", "{}"), guardada);
+        Assert.Equal(
+            new Identificacion(
+                id,
+                "Factura",
+                "Proveedor A",
+                "{}",
+                "Recibido",
+                "Factura · Proveedor A"
+            ),
+            guardada
+        );
     }
 
     [Fact]

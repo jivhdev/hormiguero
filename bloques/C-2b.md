@@ -2,7 +2,7 @@
 bloque: C-2b
 app: Núcleo
 fase: C-2 (D-75, D-77, D-78)
-estado: pendiente
+estado: hecho
 agente: Codex
 modelo: codex
 archivos_permitidos: [src/Hormiguero.Nucleo/**, tests/Hormiguero.Nucleo.Tests/**]
@@ -24,3 +24,9 @@ Primer bloque de implementación del rediseño de cadenas. Lee `definicion/DISEN
 Pruebas: diccionario completo e inmutable (17 entradas, identificadores únicos, orden, grupos); migración nueva/repetida/sobre v8 con datos; Emitido/Recibido y nombre estándar; datos por tipo con dos diseños distintos; buscar por dato y valor; anular sin borrar. `dotnet build` sin advertencias; `dotnet test` todo pasa; `dotnet csharpier check .` sin errores. Si algo no está definido, decide lo más simple y seguro, anótalo y sigue. Reporte al final.
 
 ## Reporte del agente
+
+- **Resultado:** implementado C-2b en Núcleo. Diccionario fijo de 17 entradas en código y tabla v9 protegida contra inserción, edición y borrado; identificaciones con grupo Emitido/Recibido y nombre estándar sugerido `Tipo · Emisor`; configuración de datos por diseño y zona, campos enlazables y valores indexados por dato; repositorios para lectura, edición, baja lógica y búsqueda.
+- **Migración:** v9 crea las tablas, columnas e índices nuevos, conserva campos/valores previos y completa el nombre estándar de identificaciones existentes. La migración se verificó repetida y aplicada sobre v8 con identificación, campo y valor existentes.
+- **Decisiones:** se conservaron campos y valores históricos sin asignarles un dato fijo cuando su nombre libre no permite inferirlo sin ambigüedad. Desde ahora el campo se puede vincular explícitamente al diccionario; los valores guardados heredan ese identificador. La baja de una relación tipo/dato solo la desactiva.
+- **Archivos modificados:** `src/Hormiguero.Nucleo/Datos/DatosDocumento.cs`, `Identificaciones.cs`, `Migraciones.cs`, nuevo `DatosEnlazantes.cs`; pruebas de Núcleo en `IdentificacionesYAuditoriaTests.cs` y nuevo `DatosEnlazantesTests.cs`.
+- **Verificación:** `dotnet build --no-restore -m:1` correcto, 0 errores y 0 advertencias. `dotnet test --no-build -m:1` correcto, 694 pruebas superadas. `dotnet csharpier check .` revisó 270 archivos y solo reportó finales de línea distintos en `tests/Hormiguero.Mensajero.Core.Tests/MensajeroLogTests.cs` y `tests/Hormiguero.Mensajero.Core.Tests/ClickFactura/CausasX1Tests.cs`, ambos fuera de los archivos permitidos; `dotnet csharpier check` sobre los seis archivos C# modificados pasó.

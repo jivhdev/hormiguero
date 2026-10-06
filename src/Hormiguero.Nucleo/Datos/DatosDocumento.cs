@@ -19,7 +19,8 @@ public sealed record CampoDocumento(
     string NombreEstable,
     string TipoDato,
     bool Activo,
-    string OrigenLectura
+    string OrigenLectura,
+    string? DatoDiccionarioId = null
 );
 
 public sealed record ValorDocumento(
@@ -31,7 +32,8 @@ public sealed record ValorDocumento(
     string Origen,
     double? Confianza,
     string Estado,
-    DateTime FechaCreacion
+    DateTime FechaCreacion,
+    string? DatoDiccionarioId = null
 );
 
 public sealed record ValorDocumentoLeido(
@@ -429,7 +431,7 @@ public sealed class RepositorioDocumentosDatos(SqliteConnection conexion)
         using var cmd = conexion.CreateCommand();
         cmd.Transaction = tx;
         cmd.CommandText =
-            "INSERT INTO valores_documento(version_id,campo_id,valor_original,valor_clave,origen,confianza,fecha_creacion) VALUES($v,$c,$o,$k,$g,$f,$d) RETURNING id;";
+            "INSERT INTO valores_documento(version_id,campo_id,valor_original,valor_clave,origen,confianza,fecha_creacion,dato_diccionario_id) VALUES($v,$c,$o,$k,$g,$f,$d,(SELECT dato_diccionario_id FROM campos_documento WHERE id=$c)) RETURNING id;";
         cmd.Parameters.AddWithValue("$v", versionId);
         cmd.Parameters.AddWithValue("$c", campoId);
         cmd.Parameters.AddWithValue("$o", original);
@@ -471,14 +473,15 @@ public sealed class RepositorioDocumentosDatos(SqliteConnection conexion)
         cmd.Transaction = tx;
         cmd.CommandText =
             campo.Id == 0
-                ? "INSERT INTO campos_documento(identificacion_id,nombre,nombre_estable,tipo_dato,activo,origen_lectura) VALUES($i,$n,$e,$t,$a,$o) RETURNING id;"
-                : "UPDATE campos_documento SET identificacion_id=$i,nombre=$n,nombre_estable=$e,tipo_dato=$t,activo=$a,origen_lectura=$o WHERE id=$id RETURNING id;";
+                ? "INSERT INTO campos_documento(identificacion_id,nombre,nombre_estable,tipo_dato,activo,origen_lectura,dato_diccionario_id) VALUES($i,$n,$e,$t,$a,$o,$d) RETURNING id;"
+                : "UPDATE campos_documento SET identificacion_id=$i,nombre=$n,nombre_estable=$e,tipo_dato=$t,activo=$a,origen_lectura=$o,dato_diccionario_id=$d WHERE id=$id RETURNING id;";
         cmd.Parameters.AddWithValue("$i", campo.IdentificacionId);
         cmd.Parameters.AddWithValue("$n", campo.Nombre.Trim());
         cmd.Parameters.AddWithValue("$e", campo.NombreEstable.Trim());
         cmd.Parameters.AddWithValue("$t", campo.TipoDato);
         cmd.Parameters.AddWithValue("$a", campo.Activo ? 1 : 0);
         cmd.Parameters.AddWithValue("$o", campo.OrigenLectura);
+        cmd.Parameters.AddWithValue("$d", (object?)campo.DatoDiccionarioId ?? DBNull.Value);
         cmd.Parameters.AddWithValue("$id", campo.Id);
         long id = Convert.ToInt64(
             cmd.ExecuteScalar()
@@ -496,7 +499,7 @@ public sealed class RepositorioDocumentosDatos(SqliteConnection conexion)
     {
         using var cmd = conexion.CreateCommand();
         cmd.CommandText =
-            "SELECT id,identificacion_id,nombre,nombre_estable,tipo_dato,activo,origen_lectura FROM campos_documento WHERE identificacion_id=$id"
+            "SELECT id,identificacion_id,nombre,nombre_estable,tipo_dato,activo,origen_lectura,dato_diccionario_id FROM campos_documento WHERE identificacion_id=$id"
             + (incluirInactivos ? "" : " AND activo=1")
             + " ORDER BY nombre;";
         cmd.Parameters.AddWithValue("$id", identificacionId);
@@ -511,7 +514,8 @@ public sealed class RepositorioDocumentosDatos(SqliteConnection conexion)
                     r.GetString(3),
                     r.GetString(4),
                     r.GetInt32(5) != 0,
-                    r.GetString(6)
+                    r.GetString(6),
+                    r.IsDBNull(7) ? null : r.GetString(7)
                 )
             );
         return l;
@@ -645,14 +649,15 @@ public sealed class RepositorioDocumentosDatos(SqliteConnection conexion)
         string original,
         string clave,
         string origen,
-        double? confianza = null
+        double? confianza = null,
+        string? datoDiccionarioId = null
     )
     {
         using var tx = conexion.BeginTransaction();
         using var cmd = conexion.CreateCommand();
         cmd.Transaction = tx;
         cmd.CommandText =
-            "INSERT INTO valores_documento(version_id,campo_id,valor_original,valor_clave,origen,confianza,fecha_creacion) VALUES($v,$c,$o,$k,$g,$f,$d) RETURNING id;";
+            "INSERT INTO valores_documento(version_id,campo_id,valor_original,valor_clave,origen,confianza,fecha_creacion,dato_diccionario_id) VALUES($v,$c,$o,$k,$g,$f,$d,COALESCE($dato,(SELECT dato_diccionario_id FROM campos_documento WHERE id=$c))) RETURNING id;";
         cmd.Parameters.AddWithValue("$v", versionId);
         cmd.Parameters.AddWithValue("$c", campoId);
         cmd.Parameters.AddWithValue("$o", original);
@@ -660,6 +665,7 @@ public sealed class RepositorioDocumentosDatos(SqliteConnection conexion)
         cmd.Parameters.AddWithValue("$g", origen);
         cmd.Parameters.AddWithValue("$f", (object?)confianza ?? DBNull.Value);
         cmd.Parameters.AddWithValue("$d", DateTime.Now.ToString("o"));
+        cmd.Parameters.AddWithValue("$dato", (object?)datoDiccionarioId ?? DBNull.Value);
         long id = Convert.ToInt64(cmd.ExecuteScalar());
         AuditoriaDatos.Registrar(conexion, tx, "crear_valor", $"valor:{id}", null);
         tx.Commit();
@@ -686,7 +692,7 @@ public sealed class RepositorioDocumentosDatos(SqliteConnection conexion)
     {
         using var cmd = conexion.CreateCommand();
         cmd.CommandText =
-            "SELECT id,version_id,campo_id,valor_original,valor_clave,origen,confianza,estado,fecha_creacion FROM valores_documento WHERE campo_id=$c AND valor_clave=$v AND estado='vigente' ORDER BY id;";
+            "SELECT id,version_id,campo_id,valor_original,valor_clave,origen,confianza,estado,fecha_creacion,dato_diccionario_id FROM valores_documento WHERE campo_id=$c AND valor_clave=$v AND estado='vigente' ORDER BY id;";
         cmd.Parameters.AddWithValue("$c", campoId);
         cmd.Parameters.AddWithValue("$v", valorClave);
         using var r = cmd.ExecuteReader();
@@ -702,7 +708,8 @@ public sealed class RepositorioDocumentosDatos(SqliteConnection conexion)
                     r.GetString(5),
                     r.IsDBNull(6) ? null : r.GetDouble(6),
                     r.GetString(7),
-                    DateTime.Parse(r.GetString(8))
+                    DateTime.Parse(r.GetString(8)),
+                    r.IsDBNull(9) ? null : r.GetString(9)
                 )
             );
         return l;
