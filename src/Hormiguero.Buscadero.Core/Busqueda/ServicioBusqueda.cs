@@ -147,6 +147,21 @@ public sealed class ServicioBusqueda
     public IReadOnlyList<string> ObtenerCarpetasMadre() =>
         _servicioCarpetas.ObtenerTodas().Select(c => c.Ruta).ToList();
 
+    /// <summary>
+    /// Todas las carpetas ya indexadas: primero las madre configuradas, después las
+    /// subcarpetas (ya vienen alfabeticas por ruta de la base, sin recorrer el disco).
+    /// Caso-15 (Javier, 2026-10-06): "Carpeta específica" ahora ofrece también las
+    /// subcarpetas, no solo las madres.
+    /// </summary>
+    public IReadOnlyList<string> ObtenerCarpetasIndexadas()
+    {
+        var madres = ObtenerCarpetasMadre();
+        var resultado = new List<string>(madres);
+        var vistas = new HashSet<string>(madres, StringComparer.OrdinalIgnoreCase);
+        resultado.AddRange(_repositorio.ObtenerTodasLasCarpetas().Where(vistas.Add));
+        return resultado;
+    }
+
     public IReadOnlyList<string> ObtenerSugerenciasCarpeta(int maximo = 4)
     {
         var recientes = _repositorio.ObtenerCarpetasSugeridas(maximo);

@@ -310,12 +310,17 @@ public partial class MainWindow : Window
 
         if (esCarpetaEspecifica)
         {
-            // Caso-15: al elegir este alcance, mostrar de entrada solo las carpetas madre
-            // (nada de subcarpetas ni "recientes" — eso queda para el autocompletado general).
+            // Caso-15 (Javier, 2026-10-06): al elegir este alcance, mostrar las carpetas
+            // madre y todas sus subcarpetas ya indexadas (madres primero, luego las
+            // subcarpetas alfabeticas por ruta) — nada de "recientes".
             ComboFiltroCarpeta.Text = string.Empty;
-            ComboFiltroCarpeta.ItemsSource = _servicioBusqueda.ObtenerCarpetasMadre();
+            _carpetasAlcance = _servicioBusqueda.ObtenerCarpetasIndexadas();
+            ComboFiltroCarpeta.ItemsSource = _carpetasAlcance;
         }
     }
+
+    // Lista de "Carpeta específica" cargada una vez al elegir el alcance; se filtra en memoria.
+    private IReadOnlyList<string> _carpetasAlcance = [];
 
     private void ComboFiltroCarpeta_TextChanged(object sender, TextChangedEventArgs e)
     {
@@ -330,19 +335,19 @@ public partial class MainWindow : Window
 
         if (ObtenerAlcanceSeleccionado() == AlcanceBusqueda.CarpetaEspecifica)
         {
-            // Caso-15: filtrado instantáneo en memoria, solo entre las carpetas madre ya
-            // cargadas — sin consultar la base de datos en cada letra.
-            var coincidenciasMadre = _servicioBusqueda
-                .ObtenerCarpetasMadre()
+            // Caso-15 (Javier, 2026-10-06): filtrado instantáneo en memoria, en cualquier
+            // parte de la ruta y sin mínimo de letras, sobre la lista completa (madres +
+            // subcarpetas ya indexadas, en ese orden) — sin consultar la base en cada letra.
+            var coincidenciasCarpeta = _carpetasAlcance
                 .Where(ruta =>
                     string.IsNullOrEmpty(texto)
                     || ruta.Contains(texto, StringComparison.OrdinalIgnoreCase)
                 )
                 .ToList();
 
-            ComboFiltroCarpeta.ItemsSource = coincidenciasMadre;
+            ComboFiltroCarpeta.ItemsSource = coincidenciasCarpeta;
             ComboFiltroCarpeta.Text = texto;
-            ComboFiltroCarpeta.IsDropDownOpen = coincidenciasMadre.Count > 0;
+            ComboFiltroCarpeta.IsDropDownOpen = coincidenciasCarpeta.Count > 0;
             return;
         }
 

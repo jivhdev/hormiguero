@@ -126,4 +126,36 @@ public sealed class BusquedaRapidaTests
 
         Assert.True(reloj.Elapsed < TimeSpan.FromSeconds(5));
     }
+
+    // Caso-15 (Javier, 2026-10-06): "Carpeta específica" muestra también las subcarpetas.
+    [Fact]
+    public void Carpetas_indexadas_madres_primero_y_subcarpetas_alfabeticas()
+    {
+        using var entorno = new EntornoDePrueba();
+        var ventas = entorno.CrearCarpeta("Ventas");
+        var anio2026 = entorno.CrearCarpeta("Ventas", "2026");
+        var anio2025 = entorno.CrearCarpeta("Ventas", "2025");
+        var facturas = entorno.CrearCarpeta("Ventas", "2026", "Facturas");
+        entorno.CrearArchivo(ventas, "OCC104523.pdf");
+        entorno.CrearArchivo(anio2025, "OCC104524.pdf");
+        entorno.CrearArchivo(facturas, "OCC104525.pdf");
+        var compras = entorno.CrearCarpeta("Compras");
+        entorno.CrearArchivo(compras, "OCC104526.pdf");
+        entorno.ServicioCarpetas.Agregar(ventas);
+        var (servicio, _, _) = Armar(entorno);
+        servicio.Buscar("104523");
+        entorno.ServicioCarpetas.Agregar(compras);
+
+        var carpetas = servicio.ObtenerCarpetasIndexadas();
+
+        var esperadas = new List<string>
+        {
+            ventas,
+            compras,
+            Path.Combine(ventas, "2025"),
+            Path.Combine(ventas, "2026"),
+            facturas,
+        };
+        Assert.Equal(esperadas, carpetas);
+    }
 }
