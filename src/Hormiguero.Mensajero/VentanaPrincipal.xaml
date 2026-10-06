@@ -286,7 +286,34 @@
                 Text="🏢 Proveedor: —"
                 Margin="0,2,0,5"
               />
-              <StackPanel x:Name="PanelHoffens" Grid.Row="2" Visibility="Collapsed">
+              <StackPanel Grid.Row="2" Margin="0,0,0,5">
+                <DockPanel Margin="0,0,0,4">
+                  <TextBlock
+                    Text="OCC de este retiro"
+                    FontWeight="Bold"
+                    VerticalAlignment="Center"
+                  />
+                  <Button DockPanel.Dock="Right" Content="Limpiar" Click="LimpiarRetiro_Click" />
+                </DockPanel>
+                <ScrollViewer MaxHeight="90" VerticalScrollBarVisibility="Auto">
+                  <ItemsControl x:Name="ListaOccRetiro">
+                    <ItemsControl.ItemTemplate>
+                      <DataTemplate>
+                        <DockPanel Margin="0,1">
+                          <Button
+                            DockPanel.Dock="Right"
+                            Content="Quitar"
+                            Click="QuitarOccRetiro_Click"
+                            Tag="{Binding}"
+                          />
+                          <TextBlock Text="{Binding Etiqueta}" VerticalAlignment="Center" />
+                        </DockPanel>
+                      </DataTemplate>
+                    </ItemsControl.ItemTemplate>
+                  </ItemsControl>
+                </ScrollViewer>
+              </StackPanel>
+              <StackPanel x:Name="PanelHoffens" Grid.Row="3" Visibility="Collapsed">
                 <DockPanel Margin="0,0,0,5">
                   <TextBlock
                     DockPanel.Dock="Left"
@@ -319,11 +346,10 @@
                   />
                 </DockPanel>
               </StackPanel>
-              <TextBlock Grid.Row="3" Text="Vista previa:" FontWeight="Bold" Margin="0,4,0,4" />
+              <TextBlock Grid.Row="4" Text="Vista previa:" FontWeight="Bold" Margin="0,4,0,4" />
               <TextBox
                 x:Name="VistaRetiro"
-                Grid.Row="4"
-                Grid.RowSpan="2"
+                Grid.Row="5"
                 IsReadOnly="True"
                 TextWrapping="Wrap"
                 VerticalScrollBarVisibility="Auto"

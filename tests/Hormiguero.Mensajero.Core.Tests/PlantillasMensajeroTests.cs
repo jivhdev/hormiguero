@@ -84,6 +84,49 @@ public sealed class PlantillasMensajeroTests : IDisposable
         );
     }
 
+    [Theory]
+    [InlineData(1, "104523", "4500012345")]
+    [InlineData(2, "104523 · 104524", "4500012345 · 4500012346")]
+    [InlineData(3, "104523 · 104524 · 104525", "4500012345 · 4500012346 · 4500012347")]
+    public void Retiro_junta_occ_y_ocl_en_el_orden_agregado(int cantidad, string occ, string ocl)
+    {
+        (string Occ, string Ocl)[] ordenes = Enumerable
+            .Range(0, cantidad)
+            .Select(indice => ($"10452{3 + indice}", $"450001234{5 + indice}"))
+            .ToArray();
+
+        string mensaje = PlantillasMensajero.GenerarRetiro(almacen, "COBELCAR", ordenes);
+
+        Assert.Contains($"OC JCV {occ}", mensaje);
+        Assert.Contains($"OC cliente {ocl}", mensaje);
+    }
+
+    [Fact]
+    public void Retiro_hoffens_normaliza_nvv_separadas_por_espacio_y_coma()
+    {
+        string mensaje = PlantillasMensajero.GenerarRetiro(
+            almacen,
+            "HOFFENS",
+            [("104523", "4500012345")],
+            nvvHoffens: "1066086, 1066087 1066088"
+        );
+
+        Assert.Contains("NVV Hoffens 1066086 · 1066087 · 1066088", mensaje);
+    }
+
+    [Fact]
+    public void No_permite_agregar_occ_repetida_ni_de_otro_proveedor()
+    {
+        (string Occ, string Ocl, string Proveedor)[] ordenes =
+        [
+            ("104523", "4500012345", "HOFFENS"),
+        ];
+
+        Assert.False(PlantillasMensajero.PuedeAgregarOCC(ordenes, "104523", "HOFFENS"));
+        Assert.False(PlantillasMensajero.PuedeAgregarOCC(ordenes, "104524", "COBELCAR"));
+        Assert.True(PlantillasMensajero.PuedeAgregarOCC(ordenes, "104524", "HOFFENS"));
+    }
+
     [Fact]
     public void Plantilla_predeterminada_de_guia_genera_el_texto_aprobado()
     {

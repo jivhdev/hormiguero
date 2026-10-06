@@ -5,6 +5,14 @@ namespace Hormiguero.Mensajero.Core;
 /// <summary>Plantillas configurables de Mensajero. Los marcadores desconocidos se conservan.</summary>
 public static class PlantillasMensajero
 {
+    public static bool PuedeAgregarOCC(
+        IReadOnlyList<(string Occ, string Ocl, string Proveedor)> ordenes,
+        string occ,
+        string proveedor
+    ) =>
+        !ordenes.Any(orden => orden.Occ == occ)
+        && (ordenes.Count == 0 || ordenes[0].Proveedor == proveedor);
+
     public const string ClaveCobelcar = "plantilla.retiro.cobelcar";
     public const string ClaveHoffens = "plantilla.retiro.hoffens";
     public const string ClaveSensus = "plantilla.retiro.sensus";
@@ -160,8 +168,26 @@ public static class PlantillasMensajero
         string? dia = null,
         string? bloque = null,
         string? nvvHoffens = null
+    ) => GenerarRetiro(almacen, proveedor, [(occ, ocl)], dia, bloque, nvvHoffens);
+
+    public static string GenerarRetiro(
+        AlmacenMensajero almacen,
+        string proveedor,
+        IReadOnlyList<(string Occ, string Ocl)> ordenes,
+        string? dia = null,
+        string? bloque = null,
+        string? nvvHoffens = null
     )
     {
+        string occ = string.Join(" · ", ordenes.Select(orden => orden.Occ));
+        string ocl = string.Join(" · ", ordenes.Select(orden => orden.Ocl));
+        string nvv = string.Join(
+            " · ",
+            (nvvHoffens ?? string.Empty).Split(
+                [',', ' ', '\t', '\r', '\n'],
+                StringSplitOptions.RemoveEmptyEntries
+            )
+        );
         (string clave, string predeterminada) = proveedor switch
         {
             "COBELCAR" => (ClaveCobelcar, RetiroCobelcar),
@@ -186,9 +212,7 @@ public static class PlantillasMensajero
                     string.IsNullOrWhiteSpace(bloque) || bloque == "Manual"
                         ? "_______________"
                         : bloque,
-                ["NVV_HOFFENS"] = string.IsNullOrWhiteSpace(nvvHoffens)
-                    ? "_______________"
-                    : nvvHoffens,
+                ["NVV_HOFFENS"] = nvv.Length == 0 ? "_______________" : nvv,
             }
         );
     }

@@ -1,3 +1,4 @@
+using System.Collections.ObjectModel;
 using System.IO;
 using System.Runtime.InteropServices;
 using System.Windows;
@@ -20,8 +21,8 @@ public partial class VentanaPrincipal : Window
     private string carpetaOcc;
     private string? rutaUltimoPdf;
     private string? rutaEncontradaExtractor;
-    private string? rutaPdfRetiro;
     private string? rutaPdfGuia;
+    private readonly ObservableCollection<OrdenRetiro> ordenesRetiro = [];
     private bool editorAbierto;
     private VentanaFacturas? ventanaFacturas;
     private VentanaPlantillas? ventanaPlantillas;
@@ -33,6 +34,7 @@ public partial class VentanaPrincipal : Window
     public VentanaPrincipal()
     {
         InitializeComponent();
+        ListaOccRetiro.ItemsSource = ordenesRetiro;
         ComboTema.SelectedIndex = IndiceTema(DatosDeApp.LeerPreferencia("tema.mensajero"));
         _inicializandoTema = false;
         almacen = AlmacenMensajero.AbrirComun();
@@ -482,9 +484,7 @@ public partial class VentanaPrincipal : Window
             MostrarToast("❌ No hay PDFs", "error");
             return;
         }
-        rutaPdfRetiro = ruta;
-        MostrarToast($"✅ Cargado: {Path.GetFileName(ruta)}", "success");
-        ActualizarRetiro();
+        AgregarPdfRetiro(ruta);
     }
 
     private void BuscarRetiro_Click(object sender, RoutedEventArgs e) => BuscarRetiro();
@@ -507,9 +507,7 @@ public partial class VentanaPrincipal : Window
             MostrarToast("❌ No encontrado", "error");
         else if (resultados.Count == 1)
         {
-            rutaPdfRetiro = resultados[0];
-            MostrarToast($"✅ Cargado: {Path.GetFileName(rutaPdfRetiro)}", "success");
-            ActualizarRetiro();
+            AgregarPdfRetiro(resultados[0]);
         }
         else
             MostrarToast("⚠️ Múltiples archivos", "warning");
@@ -517,17 +515,70 @@ public partial class VentanaPrincipal : Window
 
     private void ActualizarRetiro_Click(object sender, RoutedEventArgs e) => ActualizarRetiro();
 
+    private void AgregarPdfRetiro(string ruta)
+    {
+        try
+        {
+            var datos = ExtractorOcc.ExtraerOccNvvOcl(ruta);
+            string proveedor = ExtractorOcc.ExtraerProveedor(ruta);
+            if (ordenesRetiro.Count > 0 && ordenesRetiro[0].Proveedor != proveedor)
+            {
+                MostrarToast(
+                    $"Esta OCC es de {proveedor} y el retiro es de {ordenesRetiro[0].Proveedor}",
+                    "error"
+                );
+                return;
+            }
+            if (
+                !PlantillasMensajero.PuedeAgregarOCC(
+                    ordenesRetiro
+                        .Select(orden => (orden.Occ, orden.Ocl, orden.Proveedor))
+                        .ToArray(),
+                    datos.Occ,
+                    proveedor
+                )
+            )
+            {
+                MostrarToast($"La OCC {datos.Occ} ya está en la lista", "warning");
+                return;
+            }
+            ordenesRetiro.Add(new(datos.Occ, datos.Ocl, proveedor));
+            MostrarToast($"✅ Agregada OCC {datos.Occ}", "success");
+            ActualizarRetiro();
+        }
+        catch (Exception excepcion)
+        {
+            MensajeroLog.RegistrarError("Agregar OCC al retiro", excepcion);
+            MostrarToast($"❌ Error: {excepcion.Message}", "error");
+        }
+    }
+
+    private void QuitarOccRetiro_Click(object sender, RoutedEventArgs e)
+    {
+        if (sender is Button { Tag: OrdenRetiro orden })
+            ordenesRetiro.Remove(orden);
+        ActualizarRetiro();
+    }
+
+    private void LimpiarRetiro_Click(object sender, RoutedEventArgs e)
+    {
+        ordenesRetiro.Clear();
+        VistaRetiro.Clear();
+        TextoProveedor.Text = "🏢 Proveedor: —";
+        PanelHoffens.Visibility = Visibility.Collapsed;
+    }
+
     private void ActualizarRetiro()
     {
-        if (string.IsNullOrWhiteSpace(rutaPdfRetiro))
+        if (ordenesRetiro.Count == 0)
         {
-            MostrarToast("❌ Carga un PDF primero", "error");
+            VistaRetiro.Clear();
+            MostrarToast("❌ Agrega al menos una OCC", "error");
             return;
         }
         try
         {
-            var datos = ExtractorOcc.ExtraerOccNvvOcl(rutaPdfRetiro);
-            string proveedor = ExtractorOcc.ExtraerProveedor(rutaPdfRetiro);
+            string proveedor = ordenesRetiro[0].Proveedor;
             TextoProveedor.Text = $"🏢 Proveedor: {proveedor}";
             PanelHoffens.Visibility =
                 proveedor == "HOFFENS" ? Visibility.Visible : Visibility.Collapsed;
@@ -546,8 +597,7 @@ public partial class VentanaPrincipal : Window
             VistaRetiro.Text = PlantillasMensajero.GenerarRetiro(
                 almacen,
                 proveedor,
-                datos.Occ,
-                datos.Ocl,
+                ordenesRetiro.Select(orden => (orden.Occ, orden.Ocl)).ToArray(),
                 dia,
                 bloque,
                 CampoNvvHoffens.Text
@@ -563,6 +613,11 @@ public partial class VentanaPrincipal : Window
 
     private void CopiarRetiro_Click(object sender, RoutedEventArgs e)
     {
+        if (ordenesRetiro.Count == 0)
+        {
+            MostrarToast("❌ Agrega al menos una OCC", "error");
+            return;
+        }
         if (string.IsNullOrWhiteSpace(VistaRetiro.Text))
         {
             MostrarToast("❌ Genera la vista previa primero", "error");
@@ -572,6 +627,11 @@ public partial class VentanaPrincipal : Window
             PrepararCuerpoCorreo(VistaRetiro.Text),
             "✅ Mensaje de retiro copiado al portapapeles"
         );
+    }
+
+    private sealed record OrdenRetiro(string Occ, string Ocl, string Proveedor)
+    {
+        public string Etiqueta => $"OCC {Occ} · OCL {Ocl}";
     }
 
     private void BuscarGuia_Click(object sender, RoutedEventArgs e) => BuscarGuia();
