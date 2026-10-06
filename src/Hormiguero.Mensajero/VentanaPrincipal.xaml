@@ -185,6 +185,45 @@
               <Button Content="🔠 Copiar en MAYÚSCULAS" Click="CopiarMayusculas_Click" />
             </StackPanel>
           </GroupBox>
+          <GroupBox
+            x:Name="SeccionAjustador"
+            Header="Ajustar texto (4 × 57)"
+            Padding="10"
+            Margin="0,10,0,0"
+          >
+            <StackPanel>
+              <TextBox
+                x:Name="CampoAjustador"
+                Height="78"
+                AcceptsReturn="True"
+                TextWrapping="Wrap"
+                VerticalScrollBarVisibility="Auto"
+                TextChanged="Ajustador_TextChanged"
+                Margin="0,0,0,6"
+              />
+              <TextBlock
+                x:Name="EtiquetaVistaAjustador"
+                Text="Vista previa (57 caracteres por línea):"
+                FontWeight="Bold"
+              />
+              <TextBlock x:Name="TextoReglaAjustador" FontFamily="Consolas" TextWrapping="NoWrap" />
+              <TextBlock x:Name="VistaAjustador" FontFamily="Consolas" TextWrapping="NoWrap" />
+              <TextBlock
+                x:Name="EstadoAjustador"
+                Margin="0,5,0,6"
+                FontWeight="Bold"
+                TextWrapping="Wrap"
+              />
+              <WrapPanel>
+                <Button
+                  Content="Copiar con saltos de línea"
+                  Click="CopiarAjusteConSaltos_Click"
+                  Margin="0,0,6,0"
+                />
+                <Button Content="Copiar relleno a 57" Click="CopiarAjusteRelleno_Click" />
+              </WrapPanel>
+            </StackPanel>
+          </GroupBox>
         </StackPanel>
         <StackPanel Grid.Column="1" Margin="7,0,0,0">
           <GroupBox Header="🚚 Generar mensaje de retiro" Padding="10" Margin="0,0,0,10">
