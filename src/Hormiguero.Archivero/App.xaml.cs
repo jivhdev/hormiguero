@@ -20,7 +20,15 @@ public partial class App : System.Windows.Application
         base.OnStartup(e);
 
         // Fase B-1 (D-66): diseño común de Hormiguero, claro u oscuro según Windows.
-        Tema.Aplicar(this, ModoTema.Sistema);
+        Tema.Aplicar(
+            this,
+            Enum.TryParse<ModoTema>(
+                Hormiguero.Nucleo.Datos.DatosDeApp.LeerPreferencia("tema.archivero"),
+                out var modoTema
+            )
+                ? modoTema
+                : ModoTema.Sistema
+        );
 
         // Hormiguero (D-65): ARCHIVERO_DATOS abre la app con datos de prueba en otra carpeta,
         // sin tocar los reales ni chocar con la instancia que el usuario tenga abierta.

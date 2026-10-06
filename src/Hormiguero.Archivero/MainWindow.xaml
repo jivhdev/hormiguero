@@ -3,6 +3,7 @@
   xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
   xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
   Title="Archivero"
+  Icon="pack://application:,,,/Archivero;component/Recursos/icono.ico"
   Height="700"
   Width="640"
   WindowStartupLocation="CenterScreen"
@@ -18,6 +19,18 @@
     </Grid.RowDefinitions>
 
     <DockPanel Grid.Row="0" Margin="0,0,0,4">
+      <ComboBox
+        Name="ComboTema"
+        DockPanel.Dock="Right"
+        Width="105"
+        SelectionChanged="ComboTema_SelectionChanged"
+        VerticalContentAlignment="Center"
+      >
+        <ComboBoxItem Content="Sistema" />
+        <ComboBoxItem Content="Claro" />
+        <ComboBoxItem Content="Oscuro" />
+      </ComboBox>
+      <TextBlock DockPanel.Dock="Right" Text="Tema:" VerticalAlignment="Center" Margin="0,0,6,0" />
       <Button
         DockPanel.Dock="Right"
         Content="Administrar clasificaciones"

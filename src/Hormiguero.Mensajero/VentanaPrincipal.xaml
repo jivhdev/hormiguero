@@ -4,6 +4,7 @@
   xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
   xmlns:core="clr-namespace:Hormiguero.Mensajero.Core;assembly=Hormiguero.Mensajero.Core"
   Title="Mensajero"
+  Icon="pack://application:,,,/Mensajero;component/Recursos/icono.ico"
   Width="1050"
   Height="780"
   WindowStartupLocation="CenterScreen"
@@ -17,6 +18,29 @@
     </Grid.RowDefinitions>
     <Border Grid.Row="0" Background="{DynamicResource Hormiguero.Principal}" Padding="18,8">
       <DockPanel LastChildFill="True">
+        <StackPanel
+          DockPanel.Dock="Right"
+          Orientation="Horizontal"
+          VerticalAlignment="Center"
+          Margin="8,0,0,0"
+        >
+          <TextBlock
+            Text="Tema:"
+            VerticalAlignment="Center"
+            Margin="0,0,6,0"
+            Foreground="{DynamicResource Hormiguero.PrincipalTexto}"
+          />
+          <ComboBox
+            x:Name="ComboTema"
+            Width="105"
+            SelectionChanged="ComboTema_SelectionChanged"
+            VerticalContentAlignment="Center"
+          >
+            <ComboBoxItem Content="Sistema" />
+            <ComboBoxItem Content="Claro" />
+            <ComboBoxItem Content="Oscuro" />
+          </ComboBox>
+        </StackPanel>
         <TextBlock
           DockPanel.Dock="Left"
           Text="◈  Mensajero"

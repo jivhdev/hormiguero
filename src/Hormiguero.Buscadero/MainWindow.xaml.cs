@@ -13,6 +13,8 @@ using Buscadero.Core.Carpetas;
 using Buscadero.Core.Indexado;
 using Buscadero.Core.Lineas;
 using Buscadero.Core.Marcas;
+using Hormiguero.Diseno;
+using Hormiguero.Nucleo.Datos;
 using Microsoft.Win32;
 
 namespace Buscadero.App;
@@ -69,10 +71,13 @@ public partial class MainWindow : Window
     private Point _inicioArrastre;
     private Point _finArrastre;
     private bool _arrastrando;
+    private bool _inicializandoTema = true;
 
     public MainWindow()
     {
         InitializeComponent();
+        ComboTema.SelectedIndex = IndiceTema(DatosDeApp.LeerPreferencia("tema.buscadero"));
+        _inicializandoTema = false;
 
         // Fase B-3 (D-66): los datos viven en la carpeta común de Hormiguero, no junto al
         // programa (cada copia o actualización del programa empezaba vacía). La primera vez
@@ -126,6 +131,21 @@ public partial class MainWindow : Window
         RefrescarLineas();
         _indexadoEnSegundoPlano.Pedir();
         ActualizarContadorAlertas();
+    }
+
+    private static int IndiceTema(string? preferencia) =>
+        Enum.TryParse<ModoTema>(preferencia, out var modo) ? (int)modo : (int)ModoTema.Sistema;
+
+    private void ComboTema_SelectionChanged(object sender, SelectionChangedEventArgs e)
+    {
+        if (_inicializandoTema || ComboTema.SelectedIndex < 0)
+        {
+            return;
+        }
+
+        var modo = (ModoTema)ComboTema.SelectedIndex;
+        DatosDeApp.GuardarPreferencia("tema.buscadero", modo.ToString());
+        Tema.Aplicar(Application.Current, modo);
     }
 
     private async Task EvaluarAlertasAlAbrirAsync()

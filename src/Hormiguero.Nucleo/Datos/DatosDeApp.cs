@@ -1,3 +1,4 @@
+using System.Text.Json;
 using Microsoft.Data.Sqlite;
 
 namespace Hormiguero.Nucleo.Datos;
@@ -11,6 +12,7 @@ namespace Hormiguero.Nucleo.Datos;
 public static class DatosDeApp
 {
     private const string ArchivoMarcaReinicio = "reiniciado.txt";
+    private const string ArchivoPreferencias = "preferencias.json";
 
     /// <summary>
     /// Carpeta común de datos. HORMIGUERO_DATOS la cambia para probar con datos
@@ -20,6 +22,55 @@ public static class DatosDeApp
         Environment.GetEnvironmentVariable("HORMIGUERO_DATOS") is { Length: > 0 } prueba
             ? prueba
             : Path.GetDirectoryName(BaseComun.RutaPorDefecto)!;
+
+    public static string? LeerPreferencia(string clave, string? carpeta = null)
+    {
+        ArgumentException.ThrowIfNullOrWhiteSpace(clave);
+        try
+        {
+            string ruta = Path.Combine(carpeta ?? Carpeta, ArchivoPreferencias);
+            if (!File.Exists(ruta))
+            {
+                return null;
+            }
+
+            return JsonSerializer
+                .Deserialize<Dictionary<string, string>>(File.ReadAllText(ruta))
+                ?.GetValueOrDefault(clave);
+        }
+        catch (Exception error)
+            when (error is IOException or UnauthorizedAccessException or JsonException)
+        {
+            return null;
+        }
+    }
+
+    public static void GuardarPreferencia(string clave, string valor, string? carpeta = null)
+    {
+        ArgumentException.ThrowIfNullOrWhiteSpace(clave);
+        ArgumentNullException.ThrowIfNull(valor);
+        string directorio = carpeta ?? Carpeta;
+        Directory.CreateDirectory(directorio);
+        string ruta = Path.Combine(directorio, ArchivoPreferencias);
+        Dictionary<string, string> preferencias = new(StringComparer.Ordinal);
+        try
+        {
+            if (File.Exists(ruta))
+            {
+                preferencias =
+                    JsonSerializer.Deserialize<Dictionary<string, string>>(File.ReadAllText(ruta))
+                    ?? preferencias;
+            }
+        }
+        catch (Exception error)
+            when (error is IOException or UnauthorizedAccessException or JsonException)
+        {
+            // Un archivo dañado no debe impedir guardar una preferencia nueva.
+        }
+
+        preferencias[clave] = valor;
+        File.WriteAllText(ruta, JsonSerializer.Serialize(preferencias));
+    }
 
     public static string Preparar(string nombreApp, string? rutaAnterior) =>
         Preparar(Carpeta, nombreApp, rutaAnterior, DateTime.Now);

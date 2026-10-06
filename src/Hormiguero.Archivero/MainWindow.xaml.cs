@@ -5,6 +5,8 @@ using System.Windows.Input;
 using Archivero.Datos;
 using Archivero.Servicios;
 using Archivero.Vistas;
+using Hormiguero.Diseno;
+using Hormiguero.Nucleo.Datos;
 
 namespace Archivero;
 
@@ -47,10 +49,13 @@ public partial class MainWindow : Window
     private string _carpetaObservada;
     private readonly TrayIconService _bandeja = new();
     private bool _permitirCierre;
+    private bool _inicializandoTema = true;
 
     public MainWindow(string carpetaObservada, VigilanciaCarpetaService vigilancia)
     {
         InitializeComponent();
+        ComboTema.SelectedIndex = IndiceTema(DatosDeApp.LeerPreferencia("tema.archivero"));
+        _inicializandoTema = false;
         PublicadorDatosDocumentoService.RevisionEnlacesFallida += (_, mensaje) =>
             Dispatcher.Invoke(() =>
                 System.Windows.MessageBox.Show(
@@ -74,6 +79,24 @@ public partial class MainWindow : Window
         CargarPendientes();
         CargarGuardadosRecientes();
         CargarTiempoAhorrado();
+    }
+
+    private static int IndiceTema(string? preferencia) =>
+        Enum.TryParse<ModoTema>(preferencia, out var modo) ? (int)modo : (int)ModoTema.Sistema;
+
+    private void ComboTema_SelectionChanged(
+        object sender,
+        System.Windows.Controls.SelectionChangedEventArgs e
+    )
+    {
+        if (_inicializandoTema || ComboTema.SelectedIndex < 0)
+        {
+            return;
+        }
+
+        var modo = (ModoTema)ComboTema.SelectedIndex;
+        DatosDeApp.GuardarPreferencia("tema.archivero", modo.ToString());
+        Tema.Aplicar(System.Windows.Application.Current, modo);
     }
 
     private void SuscribirEventosVigilancia()

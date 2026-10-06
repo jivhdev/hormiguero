@@ -118,4 +118,31 @@ public sealed class DatosDeAppTests : IDisposable
         Assert.True(File.Exists(Path.Combine(Comun, "reiniciado.txt")));
         Assert.True(File.Exists(anterior));
     }
+
+    [Fact]
+    public void Guarda_preferencias_separadas_por_app_y_las_lee()
+    {
+        DatosDeApp.GuardarPreferencia("tema.archivero", "Claro", Comun);
+        DatosDeApp.GuardarPreferencia("tema.buscadero", "Oscuro", Comun);
+
+        Assert.Equal("Claro", DatosDeApp.LeerPreferencia("tema.archivero", Comun));
+        Assert.Equal("Oscuro", DatosDeApp.LeerPreferencia("tema.buscadero", Comun));
+        Assert.Equal(
+            "{\"tema.archivero\":\"Claro\",\"tema.buscadero\":\"Oscuro\"}",
+            File.ReadAllText(Path.Combine(Comun, "preferencias.json"))
+        );
+    }
+
+    [Fact]
+    public void Preferencias_ausentes_o_danadas_se_ignoran()
+    {
+        Directory.CreateDirectory(Comun);
+        Assert.Null(DatosDeApp.LeerPreferencia("tema.archivero", Comun));
+        File.WriteAllText(Path.Combine(Comun, "preferencias.json"), "{");
+
+        Assert.Null(DatosDeApp.LeerPreferencia("tema.archivero", Comun));
+
+        DatosDeApp.GuardarPreferencia("tema.archivero", "Sistema", Comun);
+        Assert.Equal("Sistema", DatosDeApp.LeerPreferencia("tema.archivero", Comun));
+    }
 }
