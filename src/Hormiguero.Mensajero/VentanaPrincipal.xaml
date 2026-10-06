@@ -172,6 +172,19 @@
               />
             </StackPanel>
           </GroupBox>
+          <GroupBox Header="🔠 MAYÚSCULAS" Padding="10" Margin="0,10,0,0">
+            <StackPanel>
+              <TextBox
+                x:Name="CampoMayusculas"
+                Height="60"
+                AcceptsReturn="True"
+                TextWrapping="Wrap"
+                VerticalScrollBarVisibility="Auto"
+                Margin="0,0,0,5"
+              />
+              <Button Content="🔠 Copiar en MAYÚSCULAS" Click="CopiarMayusculas_Click" />
+            </StackPanel>
+          </GroupBox>
         </StackPanel>
         <StackPanel Grid.Column="1" Margin="7,0,0,0">
           <GroupBox Header="🚚 Generar mensaje de retiro" Padding="10" Margin="0,0,0,10">
