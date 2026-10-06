@@ -38,6 +38,13 @@
 
         <!-- Paso 1: Emisor y Tipo -->
         <StackPanel Name="PanelEmisorTipo">
+          <TextBlock Text="Grupo" FontWeight="Bold" Margin="0,0,0,3" />
+          <StackPanel Orientation="Horizontal" Margin="0,0,0,8">
+            <RadioButton Name="RbEmitido" Content="Emitido" IsChecked="True" Margin="0,0,12,0" />
+            <RadioButton Name="RbRecibido" Content="Recibido" />
+          </StackPanel>
+          <TextBlock Text="Nombre estándar" FontWeight="Bold" />
+          <TextBox Name="TxtNombreEstandar" Margin="0,3,0,12" />
           <TextBlock Text="Emisor" FontWeight="Bold" />
           <Button
             Name="BtnMarcarEmisor"
@@ -80,18 +87,27 @@
           />
 
           <Expander
-            Header="Datos propios de este tipo de documento"
+            Header="Datos que aparecen en este documento"
             Margin="0,12,0,0"
             IsExpanded="True"
           >
             <StackPanel Margin="0,6,0,0">
               <TextBlock
-                Text="Agrega datos que aparecen en este documento, como un número de orden."
+                Text="Selecciona los datos del diccionario y marca su zona en el PDF."
                 Foreground="{DynamicResource Hormiguero.TextoSecundario}"
                 TextWrapping="Wrap"
                 Margin="0,0,0,6"
               />
-              <ItemsControl Name="ListaCamposPropios">
+              <ItemsControl Name="ListaDatosEnlazantes">
+                <ItemsControl.GroupStyle>
+                  <GroupStyle>
+                    <GroupStyle.HeaderTemplate>
+                      <DataTemplate>
+                        <TextBlock Text="{Binding Name}" FontWeight="Bold" Margin="0,8,0,4" />
+                      </DataTemplate>
+                    </GroupStyle.HeaderTemplate>
+                  </GroupStyle>
+                </ItemsControl.GroupStyle>
                 <ItemsControl.ItemTemplate>
                   <DataTemplate>
                     <Border
@@ -101,9 +117,11 @@
                       Margin="0,0,0,6"
                     >
                       <StackPanel>
-                        <TextBox
-                          Text="{Binding Nombre, UpdateSourceTrigger=LostFocus}"
-                          ToolTip="Nombre del dato"
+                        <CheckBox
+                          Content="{Binding Nombre}"
+                          IsChecked="{Binding Incluido, UpdateSourceTrigger=PropertyChanged}"
+                          Checked="DatoIncluido_Changed"
+                          Unchecked="DatoIncluido_Changed"
                         />
                         <TextBlock
                           Text="{Binding Estado}"
@@ -113,15 +131,15 @@
                         />
                         <StackPanel Orientation="Horizontal">
                           <Button
-                            Content="Marcar zona en el PDF"
+                            Content="Marcar zona"
                             Padding="5,3"
-                            Click="BtnMarcarCampoPropio_Click"
+                            Click="BtnMarcarDatoEnlazante_Click"
                           />
                           <Button
-                            Content="Quitar"
+                            Content="Probar otra vez"
                             Padding="5,3"
                             Margin="6,0,0,0"
-                            Click="BtnQuitarCampoPropio_Click"
+                            Click="BtnMarcarDatoEnlazante_Click"
                           />
                         </StackPanel>
                       </StackPanel>
@@ -129,13 +147,36 @@
                   </DataTemplate>
                 </ItemsControl.ItemTemplate>
               </ItemsControl>
-              <Button
-                Name="BtnAgregarCampoPropio"
-                Content="Agregar dato"
-                Padding="6,4"
-                HorizontalAlignment="Left"
-                Click="BtnAgregarCampoPropio_Click"
-              />
+              <Expander
+                Name="PanelDatosAnteriores"
+                Header="Datos propios guardados anteriormente"
+                Visibility="Collapsed"
+                Margin="0,10,0,0"
+              >
+                <StackPanel Margin="0,6,0,0">
+                  <TextBlock
+                    Text="Vincula cada dato a una entrada del diccionario o déjalo sin seleccionar para dejarlo de lado. El historial se conserva."
+                    TextWrapping="Wrap"
+                    Foreground="{DynamicResource Hormiguero.TextoSecundario}"
+                    Margin="0,0,0,6"
+                  />
+                  <ItemsControl Name="ListaCamposPropios">
+                    <ItemsControl.ItemTemplate>
+                      <DataTemplate>
+                        <StackPanel Margin="0,0,0,6">
+                          <TextBlock Text="{Binding Nombre}" />
+                          <ComboBox
+                            ItemsSource="{Binding OpcionesDatos}"
+                            DisplayMemberPath="Value"
+                            SelectedValuePath="Key"
+                            SelectedValue="{Binding DatoIdSeleccionado, UpdateSourceTrigger=PropertyChanged}"
+                          />
+                        </StackPanel>
+                      </DataTemplate>
+                    </ItemsControl.ItemTemplate>
+                  </ItemsControl>
+                </StackPanel>
+              </Expander>
             </StackPanel>
           </Expander>
         </StackPanel>

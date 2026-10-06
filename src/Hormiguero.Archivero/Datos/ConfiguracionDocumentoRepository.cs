@@ -14,7 +14,7 @@ public class ConfiguracionDocumentoRepository
         using var conexion = BaseDeDatos.CrearConexion();
         using var comando = conexion.CreateCommand();
         comando.CommandText = """
-            SELECT c.Id, ce.Nombre, ct.Nombre, c.CarpetaDestino, c.FormatoCarpeta, c.PatronCarpeta, c.Renombrar, c.AbrirDespuesDeGuardar, c.PreguntarNombre
+            SELECT c.Id, ce.Nombre, ct.Nombre, c.CarpetaDestino, c.FormatoCarpeta, c.PatronCarpeta, c.Renombrar, c.AbrirDespuesDeGuardar, c.PreguntarNombre, c.GrupoDocumento, c.NombreEstandar
             FROM Configuraciones c
             JOIN EntidadesConocidas ce ON ce.Id = c.EmisorId
             JOIN EntidadesConocidas ct ON ct.Id = c.TipoId
@@ -45,7 +45,7 @@ public class ConfiguracionDocumentoRepository
         using var conexion = BaseDeDatos.CrearConexion();
         using var comando = conexion.CreateCommand();
         comando.CommandText = """
-            SELECT c.Id, ce.Nombre, ct.Nombre, c.CarpetaDestino, c.FormatoCarpeta, c.PatronCarpeta, c.Renombrar, c.AbrirDespuesDeGuardar, c.PreguntarNombre
+            SELECT c.Id, ce.Nombre, ct.Nombre, c.CarpetaDestino, c.FormatoCarpeta, c.PatronCarpeta, c.Renombrar, c.AbrirDespuesDeGuardar, c.PreguntarNombre, c.GrupoDocumento, c.NombreEstandar
             FROM Configuraciones c
             JOIN EntidadesConocidas ce ON ce.Id = c.EmisorId
             JOIN EntidadesConocidas ct ON ct.Id = c.TipoId
@@ -90,12 +90,30 @@ public class ConfiguracionDocumentoRepository
         comando.ExecuteNonQuery();
     }
 
+    public void ActualizarTipoDocumento(int configuracionId, string grupo, string nombreEstandar)
+    {
+        if (grupo is not ("Emitido" or "Recibido"))
+            throw new ArgumentException("El grupo debe ser Emitido o Recibido.", nameof(grupo));
+        ArgumentException.ThrowIfNullOrWhiteSpace(nombreEstandar);
+        using var conexion = BaseDeDatos.CrearConexion();
+        using var comando = conexion.CreateCommand();
+        comando.CommandText =
+            "UPDATE Configuraciones SET GrupoDocumento=$g,NombreEstandar=$n WHERE Id=$id;";
+        comando.Parameters.AddWithValue("$g", grupo);
+        comando.Parameters.AddWithValue("$n", nombreEstandar.Trim());
+        comando.Parameters.AddWithValue("$id", configuracionId);
+        if (comando.ExecuteNonQuery() == 0)
+            throw new InvalidOperationException(
+                "No existe la configuración del tipo de documento."
+            );
+    }
+
     public List<ConfiguracionDocumento> ObtenerTodasConPatrones()
     {
         using var conexion = BaseDeDatos.CrearConexion();
         using var comando = conexion.CreateCommand();
         comando.CommandText = """
-            SELECT c.Id, ce.Nombre, ct.Nombre, c.CarpetaDestino, c.FormatoCarpeta, c.PatronCarpeta, c.Renombrar, c.AbrirDespuesDeGuardar, c.PreguntarNombre
+            SELECT c.Id, ce.Nombre, ct.Nombre, c.CarpetaDestino, c.FormatoCarpeta, c.PatronCarpeta, c.Renombrar, c.AbrirDespuesDeGuardar, c.PreguntarNombre, c.GrupoDocumento, c.NombreEstandar
             FROM Configuraciones c
             JOIN EntidadesConocidas ce ON ce.Id = c.EmisorId
             JOIN EntidadesConocidas ct ON ct.Id = c.TipoId;
@@ -394,6 +412,8 @@ public class ConfiguracionDocumentoRepository
             Renombrar = lector.GetInt32(6) != 0,
             AbrirDespuesDeGuardar = lector.GetInt32(7) != 0,
             PreguntarNombre = lector.GetInt32(8) != 0,
+            GrupoDocumento = lector.GetString(9),
+            NombreEstandar = lector.GetString(10),
             Patrones = [],
         };
 
