@@ -8,6 +8,7 @@
     <AssemblyName>Buscadero</AssemblyName>
     <RootNamespace>Buscadero.App</RootNamespace>
     <ApplicationTitle>Buscadero</ApplicationTitle>
+    <ApplicationIcon>Recursos\icono.ico</ApplicationIcon>
     <IncludeNativeLibrariesForSelfExtract>true</IncludeNativeLibrariesForSelfExtract>
   </PropertyGroup>
 
@@ -24,6 +25,10 @@
 
   <ItemGroup>
     <PackageReference Include="PDFtoImage" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <Resource Include="Recursos\icono.ico" />
   </ItemGroup>
 
   <Target Name="QuitarSimbolosDelPublish" AfterTargets="Publish">

@@ -4,7 +4,9 @@ using System.Windows;
 using System.Windows.Controls;
 using System.Windows.Input;
 using System.Windows.Threading;
+using Hormiguero.Diseno;
 using Hormiguero.Mensajero.Core;
+using Hormiguero.Nucleo.Datos;
 using Microsoft.Win32;
 
 namespace Hormiguero.Mensajero.App;
@@ -26,10 +28,13 @@ public partial class VentanaPrincipal : Window
     private int lineasAjustador;
     private int anchoAjustador;
     private ResultadoAjusteTexto? resultadoAjustador;
+    private bool _inicializandoTema = true;
 
     public VentanaPrincipal()
     {
         InitializeComponent();
+        ComboTema.SelectedIndex = IndiceTema(DatosDeApp.LeerPreferencia("tema.mensajero"));
+        _inicializandoTema = false;
         almacen = AlmacenMensajero.AbrirComun();
         lineasAjustador = LeerConfiguracionPositiva(
             "ajustador.lineas",
@@ -92,6 +97,21 @@ public partial class VentanaPrincipal : Window
                 MostrarToast("✅ PDF precargado y listo", "success");
             }
         }
+    }
+
+    private static int IndiceTema(string? preferencia) =>
+        Enum.TryParse<ModoTema>(preferencia, out var modo) ? (int)modo : (int)ModoTema.Sistema;
+
+    private void ComboTema_SelectionChanged(object sender, SelectionChangedEventArgs e)
+    {
+        if (_inicializandoTema || ComboTema.SelectedIndex < 0)
+        {
+            return;
+        }
+
+        var modo = (ModoTema)ComboTema.SelectedIndex;
+        DatosDeApp.GuardarPreferencia("tema.mensajero", modo.ToString());
+        Tema.Aplicar(Application.Current, modo);
     }
 
     private static string NombreCarpeta(string ruta) =>

@@ -11,4 +11,12 @@
     <ProjectReference Include="..\Hormiguero.Diseno\Hormiguero.Diseno.csproj" />
     <ProjectReference Include="..\Hormiguero.Mensajero.Core\Hormiguero.Mensajero.Core.csproj" />
   </ItemGroup>
+
+  <PropertyGroup>
+    <ApplicationIcon>Recursos\icono.ico</ApplicationIcon>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <Resource Include="Recursos\icono.ico" />
+  </ItemGroup>
 </Project>

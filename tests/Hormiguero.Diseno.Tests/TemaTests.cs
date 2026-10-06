@@ -76,6 +76,52 @@ public class TemaTests
         });
     }
 
+    [Fact]
+    public void Cambia_el_tema_en_caliente_y_actualiza_ventanas_abiertas()
+    {
+        EnSta(app =>
+        {
+            var ventana = new Window();
+            ventana.Show();
+            Tema.Aplicar(app, ModoTema.Claro);
+            Assert.Contains(
+                app.Resources.MergedDictionaries,
+                diccionario => diccionario.Source == Tema.DiccionarioPara(ModoTema.Claro, false)
+            );
+
+            Tema.Aplicar(app, ModoTema.Oscuro);
+
+            Assert.Contains(
+                app.Resources.MergedDictionaries,
+                diccionario => diccionario.Source == Tema.DiccionarioPara(ModoTema.Oscuro, false)
+            );
+            Assert.NotNull(ventana.Background);
+            ventana.Close();
+        });
+    }
+
+    [Fact]
+    public void La_variable_de_entorno_prevalece_sobre_el_modo_solicitado()
+    {
+        string? original = Environment.GetEnvironmentVariable("HORMIGUERO_TEMA");
+        try
+        {
+            Environment.SetEnvironmentVariable("HORMIGUERO_TEMA", "claro");
+            EnSta(app =>
+            {
+                Tema.Aplicar(app, ModoTema.Oscuro);
+                Assert.Contains(
+                    app.Resources.MergedDictionaries,
+                    diccionario => diccionario.Source == Tema.DiccionarioPara(ModoTema.Claro, false)
+                );
+            });
+        }
+        finally
+        {
+            Environment.SetEnvironmentVariable("HORMIGUERO_TEMA", original);
+        }
+    }
+
     private static List<string> ClavesDe(Uri uri) =>
         new ResourceDictionary { Source = uri }
             .Keys.Cast<object>()
