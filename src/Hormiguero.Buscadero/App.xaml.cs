@@ -1,6 +1,5 @@
 using System.Windows;
 using System.Windows.Threading;
-using Buscadero.Core.Lineas;
 using Hormiguero.Diseno;
 
 namespace Buscadero.App;
@@ -34,10 +33,15 @@ public partial class App : Application
     {
         try
         {
-            using var lineas = new RepositorioLineas(
+            using var conexion = Hormiguero.Nucleo.Datos.BaseComun.Abrir(
                 Hormiguero.Nucleo.Datos.DocumentosGuardados.RutaBaseComun
             );
-            lineas.RegistrarErrorOperacion("Error no controlado de la interfaz", e.Exception);
+            using var comando = conexion.CreateCommand();
+            comando.CommandText =
+                "INSERT INTO auditoria(fecha,app,accion,origen,destino,resultado) VALUES($f,'Buscadero','error_interfaz','interfaz',$d,'Se produjo un error no controlado.');";
+            comando.Parameters.AddWithValue("$f", DateTime.Now.ToString("o"));
+            comando.Parameters.AddWithValue("$d", e.Exception.Message);
+            comando.ExecuteNonQuery();
         }
         catch
         {

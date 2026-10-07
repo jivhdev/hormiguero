@@ -34,7 +34,17 @@ public partial class DialogoAlertas : Window
         try
         {
             using var conexion = BaseComun.Abrir(_ruta);
-            var alertas = new RepositorioAlertas(conexion).Listar(limite: 10000).Alertas;
+            var cadenasSimples = new RepositorioCadenas(conexion)
+                .ListarCadenasSimples()
+                .Select(c => c.Id)
+                .ToHashSet();
+            var alertas = new RepositorioAlertas(conexion)
+                .Listar(limite: 10000)
+                .Alertas.Where(a =>
+                    a.ReglaId is null
+                    && (a.CadenaId is null || cadenasSimples.Contains(a.CadenaId.Value))
+                )
+                .ToArray();
             var filtro = ((Filtro.SelectedItem as ComboBoxItem)?.Content as string) ?? "Pendientes";
             Lista.ItemsSource = PresentacionAlertas
                 .Filtrar(alertas, filtro)

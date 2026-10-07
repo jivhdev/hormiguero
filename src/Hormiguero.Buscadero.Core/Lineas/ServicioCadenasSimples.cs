@@ -98,8 +98,6 @@ public sealed class ServicioCadenasSimples(SqliteConnection conexion)
     public IReadOnlyList<CoincidenciasPorDato> Sugerir(string datoId, string valor) =>
         _datos.SugerirPorDato(datoId, valor);
 
-    public IReadOnlyList<EnlaceCadena> Dudosos() => _enlaces.ListarDudosos();
-
     public IReadOnlyList<DudosoCadenaSimple> DudososCadenasSimples()
     {
         return _enlaces

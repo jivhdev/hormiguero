@@ -10,14 +10,14 @@
   ShowInTaskbar="False"
 >
   <StackPanel Margin="12">
-    <TextBlock Text="Segundo documento (de la misma cadena):" Margin="0,0,0,4" />
-    <ComboBox x:Name="ComboDocumentos" DisplayMemberPath="Etiqueta" Margin="0,0,0,10" />
+    <TextBlock Text="Segundo documento:" Margin="0,0,0,4" />
+    <ComboBox x:Name="ComboDocumentos" IsEnabled="False" Visibility="Collapsed" />
     <TextBlock
       x:Name="TextoAyuda"
       TextWrapping="Wrap"
       Foreground="{DynamicResource Hormiguero.TextoSecundario}"
       Margin="0,0,0,10"
-      Text="También puede buscar un documento cualquiera."
+      Text="Busque el documento que quiere comparar."
     />
     <Button
       x:Name="BotonBuscar"
@@ -29,7 +29,7 @@
     />
     <StackPanel Orientation="Horizontal" HorizontalAlignment="Right">
       <Button
-        Content="Comparar"
+        Content="Buscar documento..."
         IsDefault="True"
         Width="110"
         Margin="0,0,8,0"

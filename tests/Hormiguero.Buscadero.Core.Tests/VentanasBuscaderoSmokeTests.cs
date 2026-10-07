@@ -2,7 +2,6 @@ using System.Threading;
 using System.Windows;
 using System.Windows.Controls;
 using Buscadero.App;
-using Buscadero.Core.Lineas;
 using Hormiguero.Diseno;
 
 namespace Hormiguero.Buscadero.Core.Tests;
@@ -45,25 +44,20 @@ public sealed class VentanasBuscaderoSmokeTests
                 );
                 Assert.Equal(Visibility.Visible, panelSecundario.Visibility);
                 principal.Close();
-                using var lineas = new ServicioLineas(
-                    new RepositorioLineas(Hormiguero.Nucleo.Datos.DocumentosGuardados.RutaBaseComun)
-                );
                 foreach (var tema in new[] { ModoTema.Claro, ModoTema.Oscuro })
                 {
                     Tema.Aplicar(aplicacion, tema);
                     Window[] ventanas =
                     [
-                        new DialogoModeloGuiado(lineas),
                         new DialogoAlertas(
                             Hormiguero.Nucleo.Datos.DocumentosGuardados.RutaBaseComun,
                             _ => { }
                         ),
-                        new DialogoRecordatorio(1),
                         new DialogoCalculadoraFechas(),
                         new DialogoFeriados(),
                         new DialogoReglaAlerta(),
                         new DialogoCadenasSimples(),
-                        new DialogoDudosos(lineas),
+                        new DialogoDudosos(),
                     ];
                     foreach (var ventana in ventanas)
                     {
