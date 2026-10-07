@@ -120,7 +120,14 @@ public sealed class Indexador
             _repositorio.ReemplazarArchivos(clave, archivos);
             estado.ArchivosIndexados += archivos.Count;
 
-            _repositorio.GuardarCarpeta(carpeta, clave, padreClave, fechaModificacion);
+            // Una fecha de hace menos de 2 s no es confiable: Windows puede actualizar la fecha
+            // de la carpeta con retraso y un PDF recién creado quedaría sin indexar. Se guarda 0
+            // para que la próxima pasada la revise de nuevo.
+            long fechaGuardada =
+                DateTime.UtcNow.Ticks - fechaModificacion < TimeSpan.FromSeconds(2).Ticks
+                    ? 0
+                    : fechaModificacion;
+            _repositorio.GuardarCarpeta(carpeta, clave, padreClave, fechaGuardada);
 
             progreso?.Report(
                 new ProgresoIndexado

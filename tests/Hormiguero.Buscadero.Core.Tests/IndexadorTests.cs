@@ -30,6 +30,10 @@ public sealed class IndexadorTests
         var raiz = entorno.CrearCarpeta("Documentos");
         entorno.CrearCarpeta("Documentos", "2026");
         entorno.CrearArchivo(raiz, "12345.pdf");
+        // Carpetas sin cambios recientes (lo recién modificado se vuelve a revisar a propósito).
+        var hace = DateTime.UtcNow.AddMinutes(-5);
+        Directory.SetLastWriteTimeUtc(Path.Combine(raiz, "2026"), hace);
+        Directory.SetLastWriteTimeUtc(raiz, hace);
 
         var primera = entorno.Indexador.Indexar(new[] { raiz });
         var segunda = entorno.Indexador.Indexar(new[] { raiz });
