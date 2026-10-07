@@ -1,6 +1,8 @@
 using System.Runtime.InteropServices;
 using System.Threading;
+using System.Threading.Tasks;
 using System.Windows;
+using System.Windows.Threading;
 using Archivero.Datos;
 using Archivero.Servicios;
 using Archivero.Vistas;
@@ -17,6 +19,8 @@ public partial class App : System.Windows.Application
 
     protected override void OnStartup(StartupEventArgs e)
     {
+        DispatcherUnhandledException += App_DispatcherUnhandledException;
+        TaskScheduler.UnobservedTaskException += TaskScheduler_UnobservedTaskException;
         base.OnStartup(e);
 
         // Fase B-1 (D-66): diseño común de Hormiguero, claro u oscuro según Windows.
@@ -103,6 +107,50 @@ public partial class App : System.Windows.Application
         vigilancia.Iniciar();
 
         ventanaPrincipal.Show();
+    }
+
+    private void App_DispatcherUnhandledException(
+        object sender,
+        DispatcherUnhandledExceptionEventArgs e
+    )
+    {
+        RegistrarErrorInesperado("ERROR_INTERFAZ_NO_CONTROLADO", e.Exception);
+        System.Windows.MessageBox.Show(
+            $"Ocurrió un error inesperado: {e.Exception.Message}\nArchivero sigue abierto.",
+            "Archivero",
+            MessageBoxButton.OK,
+            MessageBoxImage.Error
+        );
+        e.Handled = true;
+    }
+
+    private void TaskScheduler_UnobservedTaskException(
+        object? sender,
+        UnobservedTaskExceptionEventArgs e
+    )
+    {
+        RegistrarErrorInesperado("TAREA_NO_CONTROLADA", e.Exception);
+        e.SetObserved();
+        Dispatcher.BeginInvoke(() =>
+            System.Windows.MessageBox.Show(
+                $"Ocurrió un error inesperado: {e.Exception.GetBaseException().Message}\nArchivero sigue abierto.",
+                "Archivero",
+                MessageBoxButton.OK,
+                MessageBoxImage.Error
+            )
+        );
+    }
+
+    private static void RegistrarErrorInesperado(string evento, Exception error)
+    {
+        try
+        {
+            AuditoriaService.Registrar(evento, error.ToString());
+        }
+        catch
+        {
+            // El registro no debe impedir que la aplicación muestre el error y continúe.
+        }
     }
 
     protected override void OnExit(ExitEventArgs e)

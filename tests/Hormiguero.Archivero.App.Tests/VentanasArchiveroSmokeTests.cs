@@ -41,6 +41,8 @@ public sealed class VentanasArchiveroSmokeTests
             "Factura del proveedor · Cobelcar",
             AsistenteClasificacionService.NombreEstandar(id, "Cobelcar")
         );
+        Assert.Equal("Factura del proveedor", AsistenteClasificacionService.NombreDocumento(id));
+        Assert.Equal(string.Empty, AsistenteClasificacionService.NombreEstandar(id, " "));
         Assert.NotNull(AsistenteClasificacionService.ValidarDocumento(" "));
         Assert.Null(AsistenteClasificacionService.ValidarDocumento("Factura del proveedor"));
         Assert.NotNull(AsistenteClasificacionService.ValidarEmisor("Cobelcar", false));
@@ -58,8 +60,8 @@ public sealed class VentanasArchiveroSmokeTests
         Directory.CreateDirectory(raiz);
         var rutaAnterior = BaseDeDatos.RutaArchivo;
         var rutaPdf = CreadorPdfDePrueba.Crear(raiz, "EMISOR", "TIPO");
+        var rutaPdfOscuro = CreadorPdfDePrueba.Crear(raiz, "EMISOR", "TIPO OSCURO");
         Exception? error = null;
-
         BaseDeDatos.RutaArchivo = Path.Combine(raiz, "archivero.db");
         BaseDeDatos.AsegurarEsquema();
 
@@ -71,81 +73,157 @@ public sealed class VentanasArchiveroSmokeTests
                 aplicacion.InitializeComponent();
                 aplicacion.ShutdownMode = ShutdownMode.OnExplicitShutdown;
 
-                foreach (var modo in new[] { ModoTema.Claro, ModoTema.Oscuro })
-                {
-                    Tema.Aplicar(aplicacion, modo);
+                Tema.Aplicar(aplicacion, ModoTema.Claro);
 
-                    var identificar = new IdentificarDocumentoWindow(rutaPdf);
-                    identificar.Width = 1366;
-                    identificar.Height = 768;
-                    identificar.Show();
-                    identificar.UpdateLayout();
-                    var tipoPaso = typeof(IdentificarDocumentoWindow).GetNestedType(
-                        "Paso",
-                        System.Reflection.BindingFlags.NonPublic
-                    )!;
-                    var mostrarPaso = typeof(IdentificarDocumentoWindow).GetMethod(
-                        "MostrarPaso",
+                var identificar = new IdentificarDocumentoWindow(rutaPdf);
+                identificar.Width = 1366;
+                identificar.Height = 768;
+                identificar.Show();
+                identificar.UpdateLayout();
+                var tipoPaso = typeof(IdentificarDocumentoWindow).GetNestedType(
+                    "Paso",
+                    System.Reflection.BindingFlags.NonPublic
+                )!;
+                var mostrarPaso = typeof(IdentificarDocumentoWindow).GetMethod(
+                    "MostrarPaso",
+                    System.Reflection.BindingFlags.Instance
+                        | System.Reflection.BindingFlags.NonPublic
+                )!;
+                var titulo = (System.Windows.Controls.TextBlock)
+                    identificar.FindName("TxtTituloPaso")!;
+                var listaDocumentos = (System.Windows.Controls.ListBox)
+                    identificar.FindName("ListaDocumentos")!;
+                var categoria = (System.Windows.Controls.ComboBox)
+                    identificar.FindName("CmbCategoriaDocumento")!;
+                categoria.SelectedItem = "Ventas propias";
+                listaDocumentos.SelectedItem = AsistenteClasificacionService
+                    .DocumentosDeCategoria("Ventas propias")
+                    .Single(d => d.Id == "factura_propia");
+                identificar.UpdateLayout();
+                var siguiente = (System.Windows.Controls.Button)
+                    identificar.FindName("BtnSiguiente")!;
+                siguiente.RaiseEvent(
+                    new System.Windows.RoutedEventArgs(
+                        System.Windows.Controls.Primitives.ButtonBase.ClickEvent
+                    )
+                );
+                identificar.UpdateLayout();
+                if (!titulo.Text.StartsWith("Paso 2 de 6", StringComparison.Ordinal))
+                    throw new InvalidOperationException(
+                        "Elegir un documento y avanzar no llegó al paso del emisor."
+                    );
+
+                var emisor = (System.Windows.Controls.ComboBox)identificar.FindName("CmbEmisor")!;
+                var emisorDePrueba = $"Emisor de prueba {Guid.NewGuid():N}";
+                var eventoTexto = (System.Windows.Controls.TextChangedEventHandler)
+                    Delegate.CreateDelegate(
+                        typeof(System.Windows.Controls.TextChangedEventHandler),
+                        identificar,
+                        typeof(IdentificarDocumentoWindow).GetMethod(
+                            "CmbEmisor_TextChanged",
+                            System.Reflection.BindingFlags.Instance
+                                | System.Reflection.BindingFlags.NonPublic
+                        )!
+                    );
+                emisor.RemoveHandler(
+                    System.Windows.Controls.Primitives.TextBoxBase.TextChangedEvent,
+                    eventoTexto
+                );
+                emisor.Text = emisorDePrueba;
+                typeof(IdentificarDocumentoWindow)
+                    .GetField(
+                        "_emisor",
                         System.Reflection.BindingFlags.Instance
                             | System.Reflection.BindingFlags.NonPublic
-                    )!;
-                    var titulo = (System.Windows.Controls.TextBlock)
-                        identificar.FindName("TxtTituloPaso")!;
-                    var pasos = new[]
-                    {
-                        "QueDocumento",
-                        "Emisor",
-                        "Numero",
-                        "OtrosDatos",
-                        "Guardar",
-                        "Resumen",
-                    };
-                    for (var indice = 0; indice < pasos.Length; indice++)
-                    {
-                        mostrarPaso.Invoke(identificar, [Enum.Parse(tipoPaso, pasos[indice])]);
-                        identificar.UpdateLayout();
-                        if (
-                            !titulo.Text.StartsWith(
-                                $"Paso {indice + 1} de 6",
-                                StringComparison.Ordinal
-                            )
-                        )
-                            throw new InvalidOperationException(
-                                $"No se mostró correctamente el paso {indice + 1}."
-                            );
-                    }
-                    identificar.Close();
-
-                    var sinTexto = new IdentificarSinTextoWindow(rutaPdf);
-                    sinTexto.Width = 1366;
-                    sinTexto.Height = 768;
-                    sinTexto.Show();
-                    sinTexto.UpdateLayout();
-                    sinTexto.Close();
-
-                    var configuracion = new AdministrarClasificacionesWindow();
-                    configuracion.Show();
-                    configuracion.UpdateLayout();
-                    configuracion.Close();
-
-                    var duplicado = new ResolverDuplicadoWindow(rutaPdf, rutaPdf);
-                    duplicado.Show();
-                    duplicado.UpdateLayout();
-                    duplicado.Close();
-
-                    var administrarAtajos = new AdministrarAtajosWindow();
-                    administrarAtajos.Show();
-                    administrarAtajos.UpdateLayout();
-                    administrarAtajos.Close();
-
-                    var guardarAtajo = new GuardarAtajoWindow(
-                        "Acceso de prueba",
-                        new AtajoGuardadoRapidoRepository()
-                    );
-                    guardarAtajo.Show();
-                    guardarAtajo.UpdateLayout();
-                    guardarAtajo.Close();
+                    )!
+                    .SetValue(identificar, emisorDePrueba);
+                var marcas =
+                    (Dictionary<CampoMarca, Marca>)
+                        typeof(IdentificarDocumentoWindow)
+                            .GetField(
+                                "_marcas",
+                                System.Reflection.BindingFlags.Instance
+                                    | System.Reflection.BindingFlags.NonPublic
+                            )!
+                            .GetValue(identificar)!;
+                marcas[CampoMarca.Emisor] = new(CampoMarca.Emisor, 0, 0.1, 0.1, 0.1, 0.05);
+                var datos =
+                    (System.Collections.ObjectModel.ObservableCollection<DatoEnlazanteEdicion>)
+                        typeof(IdentificarDocumentoWindow)
+                            .GetField(
+                                "_datosEnlazantes",
+                                System.Reflection.BindingFlags.Instance
+                                    | System.Reflection.BindingFlags.NonPublic
+                            )!
+                            .GetValue(identificar)!;
+                var datoNumero = datos.Single(d => d.DefineTipo);
+                datoNumero.Incluido = true;
+                datoNumero.Marcado = true;
+                datoNumero.ValorLeido = "123";
+                datoNumero.Pagina = 0;
+                datoNumero.X = 0.1;
+                datoNumero.Y = 0.1;
+                datoNumero.Ancho = 0.1;
+                datoNumero.Alto = 0.05;
+                ((System.Windows.Controls.TextBox)identificar.FindName("TxtCarpetaDestino")!).Text =
+                    raiz;
+                (
+                    (System.Windows.Controls.RadioButton)identificar.FindName("RbGuardarDirecto")!
+                ).IsChecked = true;
+                (
+                    (System.Windows.Controls.RadioButton)identificar.FindName("RbMantenerNombre")!
+                ).IsChecked = true;
+                var pasos = new[] { "Numero", "OtrosDatos", "Guardar", "Resumen" };
+                for (var indice = 0; indice < pasos.Length; indice++)
+                {
+                    mostrarPaso.Invoke(identificar, [Enum.Parse(tipoPaso, pasos[indice])]);
+                    identificar.UpdateLayout();
+                    if (
+                        !titulo.Text.StartsWith($"Paso {indice + 3} de 6", StringComparison.Ordinal)
+                    )
+                        throw new InvalidOperationException(
+                            $"No se mostró correctamente el paso {indice + 1}."
+                        );
                 }
+                identificar.Close();
+
+                var sinTexto = new IdentificarSinTextoWindow(rutaPdf);
+                sinTexto.Width = 1366;
+                sinTexto.Height = 768;
+                sinTexto.Show();
+                sinTexto.UpdateLayout();
+                sinTexto.Close();
+
+                var configuracion = new AdministrarClasificacionesWindow();
+                configuracion.Show();
+                configuracion.UpdateLayout();
+                configuracion.Close();
+
+                var duplicado = new ResolverDuplicadoWindow(rutaPdf, rutaPdf);
+                duplicado.Show();
+                duplicado.UpdateLayout();
+                duplicado.Close();
+
+                var administrarAtajos = new AdministrarAtajosWindow();
+                administrarAtajos.Show();
+                administrarAtajos.UpdateLayout();
+                administrarAtajos.Close();
+
+                var guardarAtajo = new GuardarAtajoWindow(
+                    "Acceso de prueba",
+                    new AtajoGuardadoRapidoRepository()
+                );
+                guardarAtajo.Show();
+                guardarAtajo.UpdateLayout();
+                guardarAtajo.Close();
+
+                Tema.Aplicar(aplicacion, ModoTema.Oscuro);
+                var identificarOscuro = new IdentificarDocumentoWindow(rutaPdfOscuro);
+                identificarOscuro.Width = 1366;
+                identificarOscuro.Height = 768;
+                identificarOscuro.Show();
+                identificarOscuro.UpdateLayout();
+                identificarOscuro.Close();
 
                 aplicacion.Shutdown();
             }

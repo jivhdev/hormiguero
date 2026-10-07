@@ -13,8 +13,13 @@ public static class AsistenteClasificacionService
     public static IReadOnlyList<DatoEnlazante> DocumentosDeCategoria(string categoria) =>
         DiccionarioDatosEnlazantes.Todos.Where(d => d.Grupo == categoria).ToList();
 
-    public static string NombreEstandar(string datoId, string emisor) =>
-        DiccionarioDatosEnlazantes.NombreEstandar(datoId, emisor);
+    public static string NombreDocumento(string datoId) =>
+        DiccionarioDatosEnlazantes.Todos.Single(d => d.Id == datoId).EtiquetaTipo;
+
+    public static string NombreEstandar(string datoId, string? emisor) =>
+        string.IsNullOrWhiteSpace(emisor)
+            ? string.Empty
+            : DiccionarioDatosEnlazantes.NombreEstandar(datoId, emisor);
 
     public static string? ValidarDocumento(string? tipo) =>
         string.IsNullOrWhiteSpace(tipo) ? "Elige el documento." : null;

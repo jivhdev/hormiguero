@@ -1,6 +1,7 @@
 using System.ComponentModel;
 using System.Runtime.CompilerServices;
 using Archivero.Datos;
+using Archivero.Servicios;
 using Archivero.Servicios.Pdf;
 
 namespace Archivero.Vistas;
@@ -35,6 +36,7 @@ public sealed class DatoEnlazanteEdicion : INotifyPropertyChanged
     public event PropertyChangedEventHandler? PropertyChanged;
     public string Id { get; }
     public string Nombre { get; }
+    public string NombreDocumento => AsistenteClasificacionService.NombreDocumento(Id);
     public string Grupo { get; }
     public string Etiqueta => $"{Grupo}: {Nombre}";
     public bool Incluido

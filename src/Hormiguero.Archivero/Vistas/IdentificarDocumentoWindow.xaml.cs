@@ -148,6 +148,7 @@ public partial class IdentificarDocumentoWindow : Window
         ConfigurarListaDatosEnlazantes();
         ConfigurarListaDatosInformativos();
         CmbCategoriaDocumento.ItemsSource = AsistenteClasificacionService.Categorias;
+        CmbCategoriaOtrosDatos.ItemsSource = AsistenteClasificacionService.Categorias;
         _rutaArchivo = rutaArchivo;
         CargarDatosEnlazantes(string.Empty, string.Empty, 0);
         ControlOrganizacion.ConfigurarProveedorDeFecha(LeerFechaPreview);
@@ -207,6 +208,7 @@ public partial class IdentificarDocumentoWindow : Window
         ConfigurarListaDatosEnlazantes();
         ConfigurarListaDatosInformativos();
         CmbCategoriaDocumento.ItemsSource = AsistenteClasificacionService.Categorias;
+        CmbCategoriaOtrosDatos.ItemsSource = AsistenteClasificacionService.Categorias;
         _rutaArchivo = rutaArchivo;
         _edicion = (configuracion, patron.Id);
         CargarCamposPropios(configuracion.CamposPropios);
@@ -392,13 +394,11 @@ public partial class IdentificarDocumentoWindow : Window
             nuevoPaso == Paso.QueDocumento ? Visibility.Visible : Visibility.Collapsed;
         PanelEmisor.Visibility =
             nuevoPaso == Paso.Emisor ? Visibility.Visible : Visibility.Collapsed;
-        PanelDatosDiccionario.Visibility = nuevoPaso
-            is Paso.QueDocumento
-                or Paso.Numero
-                or Paso.OtrosDatos
-            ? Visibility.Visible
-            : Visibility.Collapsed;
-        PanelDatosDiccionario.IsExpanded = nuevoPaso is Paso.QueDocumento or Paso.Numero;
+        PanelDatosDiccionario.Visibility =
+            nuevoPaso == Paso.OtrosDatos ? Visibility.Visible : Visibility.Collapsed;
+        PanelNumeroDato.Visibility =
+            nuevoPaso == Paso.Numero ? Visibility.Visible : Visibility.Collapsed;
+        PanelDatosDiccionario.IsExpanded = nuevoPaso == Paso.OtrosDatos;
         PanelInformativos.Visibility =
             nuevoPaso == Paso.OtrosDatos ? Visibility.Visible : Visibility.Collapsed;
         PanelDatosAnteriores.Visibility =
@@ -407,6 +407,10 @@ public partial class IdentificarDocumentoWindow : Window
                 : Visibility.Collapsed;
         ChkSinNumero.Visibility =
             nuevoPaso == Paso.Numero ? Visibility.Visible : Visibility.Collapsed;
+        if (nuevoPaso == Paso.Numero)
+            ActualizarVistaNumero();
+        if (nuevoPaso == Paso.OtrosDatos)
+            CollectionViewSource.GetDefaultView(_datosEnlazantes)?.Refresh();
         PanelCarpeta.Visibility =
             nuevoPaso == Paso.Guardar ? Visibility.Visible : Visibility.Collapsed;
         PanelOrganizacion.Visibility =
@@ -584,6 +588,13 @@ public partial class IdentificarDocumentoWindow : Window
                 : string.IsNullOrWhiteSpace(texto)
                     ? $"Zona marcada en la página {pagina + 1}; no se pudo leer texto."
                     : $"Texto leído: {texto} (página {pagina + 1}).";
+            if (datoEnlazante.DefineTipo)
+            {
+                TxtEstadoNumero.Text = datoEnlazante.Estado;
+                BtnProbarNumeroOtraVez.Visibility = string.IsNullOrWhiteSpace(texto)
+                    ? Visibility.Visible
+                    : Visibility.Collapsed;
+            }
             ActualizarSugerencia(datoEnlazante);
             _datoEnlazanteActivoParaMarcar = null;
             ActualizarMarcasEnVisor();
@@ -704,11 +715,12 @@ public partial class IdentificarDocumentoWindow : Window
             _datosEnlazantes.Add(edicion);
         }
         _tipo = TipoDerivado();
-        TxtTipoDerivado.Text = string.IsNullOrEmpty(_tipo)
-            ? "Se define con el dato marcado abajo."
-            : _tipo;
         if (_datosEnlazantes.FirstOrDefault(d => d.DefineTipo) is { } definido)
+        {
             CmbCategoriaDocumento.SelectedItem = definido.Grupo;
+            CmbCategoriaOtrosDatos.SelectedItem = definido.Grupo;
+            TxtDocumentoElegido.Text = $"Elegiste: {definido.NombreDocumento}";
+        }
         else if (CmbCategoriaDocumento.SelectedIndex < 0 && CmbCategoriaDocumento.Items.Count > 0)
             CmbCategoriaDocumento.SelectedIndex = 0;
         CargarDatosInformativos(emisor, tipo, patronId);
@@ -719,20 +731,16 @@ public partial class IdentificarDocumentoWindow : Window
     {
         var vista = CollectionViewSource.GetDefaultView(_datosEnlazantes);
         vista.GroupDescriptions.Clear();
-        vista.GroupDescriptions.Add(
-            new PropertyGroupDescription(nameof(DatoEnlazanteEdicion.Grupo))
-        );
         vista.Filter = elemento =>
         {
             if (elemento is not DatoEnlazanteEdicion dato)
                 return false;
-            if (CmbCategoriaDocumento.SelectedItem is string categoria && dato.Grupo != categoria)
-                return false;
             return _paso switch
             {
                 Paso.Numero => dato.DefineTipo,
-                Paso.OtrosDatos => !dato.DefineTipo,
-                _ => true,
+                Paso.OtrosDatos => !dato.DefineTipo
+                    && dato.Grupo == CmbCategoriaOtrosDatos.SelectedItem as string,
+                _ => false,
             };
         };
         ListaDatosEnlazantes.ItemsSource = vista;
@@ -749,7 +757,68 @@ public partial class IdentificarDocumentoWindow : Window
         RbRecibido.Visibility = grupo.Length == 0 ? Visibility.Visible : Visibility.Collapsed;
         var vista = CollectionViewSource.GetDefaultView(_datosEnlazantes);
         vista?.Refresh();
+        ListaDocumentos.ItemsSource = AsistenteClasificacionService.DocumentosDeCategoria(
+            categoria
+        );
+        if (
+            _datosEnlazantes.FirstOrDefault(d => d.DefineTipo) is { } elegido
+            && elegido.Grupo == categoria
+        )
+            ListaDocumentos.SelectedValue = elegido.Id;
+        else
+            ListaDocumentos.SelectedIndex = -1;
     }
+
+    private void ListaDocumentos_SelectionChanged(object sender, SelectionChangedEventArgs e)
+    {
+        if (ListaDocumentos.SelectedItem is not Hormiguero.Nucleo.Datos.DatoEnlazante documento)
+            return;
+        var elegido = _datosEnlazantes.Single(d => d.Id == documento.Id);
+        foreach (var dato in _datosEnlazantes)
+        {
+            dato.DefineTipo = dato == elegido;
+            if (dato == elegido)
+                dato.Incluido = true;
+        }
+        TxtDocumentoElegido.Text = $"Elegiste: {documento.EtiquetaTipo}";
+        _tipo = TipoDerivado();
+        ActualizarVistaNumero();
+        ActualizarNombreEstandarSugerido();
+        CollectionViewSource.GetDefaultView(_datosEnlazantes)?.Refresh();
+    }
+
+    private DatoEnlazanteEdicion? DatoNumero => _datosEnlazantes.FirstOrDefault(d => d.DefineTipo);
+
+    private void ActualizarVistaNumero()
+    {
+        if (DatoNumero is not { } dato)
+            return;
+        TxtNombreDatoNumero.Text = dato.NombreDocumento;
+        TxtEstadoNumero.Text = dato.Estado;
+        ChkNumeroEnlazable.IsChecked = dato.Enlazable;
+    }
+
+    private void BtnMarcarNumero_Click(object sender, RoutedEventArgs e)
+    {
+        if (DatoNumero is not { } dato)
+            return;
+        _campoActivoParaMarcar = null;
+        _campoPropioActivoParaMarcar = null;
+        _datoEnlazanteActivoParaMarcar = dato;
+        Visor.IniciarMarcado();
+        TxtInstruccionPaso.Text = "Dibuja un rectángulo sobre el número en el PDF.";
+    }
+
+    private void ChkNumeroEnlazable_Changed(object sender, RoutedEventArgs e)
+    {
+        if (DatoNumero is { } dato)
+            dato.Enlazable = ChkNumeroEnlazable.IsChecked == true;
+    }
+
+    private void CmbCategoriaOtrosDatos_SelectionChanged(
+        object sender,
+        SelectionChangedEventArgs e
+    ) => CollectionViewSource.GetDefaultView(_datosEnlazantes)?.Refresh();
 
     private void ActualizarOpcionesMigracion()
     {
@@ -823,9 +892,6 @@ public partial class IdentificarDocumentoWindow : Window
             dato.Estado = "No aparece en este diseño.";
             dato.DefineTipo = false;
             _tipo = TipoDerivado();
-            TxtTipoDerivado.Text = string.IsNullOrEmpty(_tipo)
-                ? "Se define con el dato marcado abajo."
-                : _tipo;
             ActualizarNombreEstandarSugerido();
         }
         ActualizarMarcasEnVisor();
@@ -984,15 +1050,16 @@ public partial class IdentificarDocumentoWindow : Window
         if (_nombreEstandarEditado || TxtNombreEstandar is null)
             return;
         _actualizandoNombreEstandar = true;
-        string tipo = TipoDerivado();
-        TxtNombreEstandar.Text =
-            tipo.Length > 0
-                ? Hormiguero.Nucleo.Datos.DiccionarioDatosEnlazantes.NombreEstandar(
-                    _datosEnlazantes.Single(d => d.DefineTipo).Id,
-                    CmbEmisor.Text
-                )
+        try
+        {
+            TxtNombreEstandar.Text = DatoNumero is { } dato
+                ? AsistenteClasificacionService.NombreEstandar(dato.Id, CmbEmisor.Text)
                 : string.Empty;
-        _actualizandoNombreEstandar = false;
+        }
+        finally
+        {
+            _actualizandoNombreEstandar = false;
+        }
     }
 
     private void ConfigurarListaDatosInformativos()
@@ -1110,31 +1177,6 @@ public partial class IdentificarDocumentoWindow : Window
             : Hormiguero
                 .Nucleo.Datos.DiccionarioDatosEnlazantes.Todos.Single(d => d.Id == id)
                 .EtiquetaTipo;
-    }
-
-    private void DatoDefineTipo_Changed(object sender, RoutedEventArgs e)
-    {
-        if (
-            sender
-            is not System.Windows.Controls.RadioButton
-            {
-                DataContext: DatoEnlazanteEdicion elegido,
-                IsChecked: true
-            }
-        )
-            return;
-        if (!elegido.Incluido)
-        {
-            elegido.DefineTipo = false;
-            elegido.Incluido = true;
-            elegido.DefineTipo = true;
-        }
-        foreach (var dato in _datosEnlazantes)
-            dato.DefineTipo = dato == elegido;
-        _tipo = TipoDerivado();
-        TxtTipoDerivado.Text = _tipo;
-        ActualizarNombreEstandarSugerido();
-        CollectionViewSource.GetDefaultView(_datosEnlazantes)?.Refresh();
     }
 
     private void BtnElegirCarpeta_Click(object sender, RoutedEventArgs e)
@@ -1564,9 +1606,7 @@ public partial class IdentificarDocumentoWindow : Window
                 _tipo = TipoDerivado();
                 if (AsistenteClasificacionService.ValidarDocumento(_tipo) is not null)
                 {
-                    MostrarError(
-                        "Elige el documento y marca «Este dato define qué es el documento»."
-                    );
+                    MostrarError("Elige un documento de la lista.");
                     return;
                 }
                 ActualizarNombreEstandarSugerido();

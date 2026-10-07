@@ -46,6 +46,15 @@
               SelectionChanged="CmbCategoriaDocumento_SelectionChanged"
             />
             <TextBlock Text="Documento" FontWeight="Bold" Margin="0,0,0,3" />
+            <ListBox
+              Name="ListaDocumentos"
+              SelectedValuePath="Id"
+              DisplayMemberPath="EtiquetaTipo"
+              SelectionChanged="ListaDocumentos_SelectionChanged"
+              MinHeight="150"
+              Margin="0,0,0,8"
+            />
+            <TextBlock Name="TxtDocumentoElegido" TextWrapping="Wrap" FontWeight="SemiBold" />
           </StackPanel>
           <StackPanel Name="PanelEmisor">
             <TextBlock Text="Grupo" FontWeight="Bold" Margin="0,0,0,3" />
@@ -75,25 +84,55 @@
             />
           </StackPanel>
 
-          <TextBlock Text="Tipo de documento" FontWeight="Bold" />
-          <TextBlock
-            Name="TxtTipoDerivado"
-            Margin="0,3,0,8"
-            Text="Se define con el dato marcado abajo."
-          />
-          <CheckBox
-            Name="ChkSinNumero"
-            Content="Este documento no trae número (marca dónde aparecería)"
-            Margin="0,0,0,8"
-          />
+          <CheckBox Name="ChkSinNumero" Content="Este documento no trae número" Margin="0,0,0,8" />
+
+          <StackPanel Name="PanelNumeroDato" Visibility="Collapsed">
+            <TextBlock
+              Name="TxtNombreDatoNumero"
+              FontSize="18"
+              FontWeight="Bold"
+              Margin="0,0,0,8"
+            />
+            <CheckBox
+              Name="ChkNumeroEnlazable"
+              Content="Se puede enlazar"
+              IsChecked="True"
+              FontSize="12"
+              Margin="0,0,0,8"
+              Checked="ChkNumeroEnlazable_Changed"
+              Unchecked="ChkNumeroEnlazable_Changed"
+            />
+            <Button
+              Name="BtnMarcarNumero"
+              Content="Marcar el número en el PDF"
+              Padding="10,8"
+              FontSize="16"
+              Margin="0,0,0,8"
+              Click="BtnMarcarNumero_Click"
+            />
+            <TextBlock Name="TxtEstadoNumero" TextWrapping="Wrap" Margin="0,0,0,8" />
+            <Button
+              Name="BtnProbarNumeroOtraVez"
+              Content="Probar otra vez"
+              Padding="8,6"
+              Visibility="Collapsed"
+              Click="BtnMarcarNumero_Click"
+            />
+          </StackPanel>
 
           <Expander
             Name="PanelDatosDiccionario"
-            Header="Datos que aparecen en este documento"
+            Header="Otros datos que aparecen en este documento"
             Margin="0,12,0,0"
             IsExpanded="False"
           >
             <StackPanel Margin="0,6,0,0">
+              <TextBlock Text="Filtrar por categoría" FontWeight="Bold" Margin="0,0,0,3" />
+              <ComboBox
+                Name="CmbCategoriaOtrosDatos"
+                Margin="0,0,0,8"
+                SelectionChanged="CmbCategoriaOtrosDatos_SelectionChanged"
+              />
               <TextBlock
                 Text="Selecciona los datos del diccionario y marca su zona en el PDF."
                 Foreground="{DynamicResource Hormiguero.TextoSecundario}"
@@ -124,12 +163,6 @@
                           IsChecked="{Binding Incluido, UpdateSourceTrigger=PropertyChanged}"
                           Checked="DatoIncluido_Changed"
                           Unchecked="DatoIncluido_Changed"
-                        />
-                        <RadioButton
-                          Content="Este dato define qué es el documento"
-                          IsChecked="{Binding DefineTipo, UpdateSourceTrigger=PropertyChanged}"
-                          Checked="DatoDefineTipo_Changed"
-                          Margin="18,2,0,2"
                         />
                         <CheckBox
                           Content="Se puede enlazar"
