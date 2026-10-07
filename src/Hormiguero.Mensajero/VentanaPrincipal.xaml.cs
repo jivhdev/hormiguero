@@ -29,7 +29,9 @@ public partial class VentanaPrincipal : Window
     private VentanaCodigosExcel? ventanaCodigosExcel;
     private int lineasAjustador;
     private int anchoAjustador;
+    private int indiceLineaAjustador;
     private ResultadoAjusteTexto? resultadoAjustador;
+    private decimal? resultadoCalculadora;
     private bool _inicializandoTema = true;
 
     public VentanaPrincipal()
@@ -47,6 +49,11 @@ public partial class VentanaPrincipal : Window
             "ajustador.ancho",
             AjustadorTexto.AnchoPredeterminado
         );
+        if (anchoAjustador == 57)
+        {
+            anchoAjustador = AjustadorTexto.AnchoPredeterminado;
+            almacen.GuardarValor("ajustador.ancho", anchoAjustador.ToString());
+        }
         SeccionAjustador.Header = $"Ajustar texto ({lineasAjustador} × {anchoAjustador})";
         EtiquetaVistaAjustador.Text = $"Vista previa ({anchoAjustador} caracteres por línea):";
         TextoReglaAjustador.Text = string.Concat(
@@ -755,6 +762,10 @@ public partial class VentanaPrincipal : Window
                     CopiarUltimoPdf();
                     e.Handled = true;
                     break;
+                case Key.L:
+                    CopiarLineaSiguiente_Click(this, new RoutedEventArgs());
+                    e.Handled = true;
+                    break;
             }
         }
     }
@@ -808,6 +819,7 @@ public partial class VentanaPrincipal : Window
 
     private void Ajustador_TextChanged(object sender, TextChangedEventArgs e)
     {
+        indiceLineaAjustador = 0;
         resultadoAjustador = AjustadorTexto.Ajustar(
             CampoAjustador.Text,
             lineasAjustador,
@@ -878,6 +890,96 @@ public partial class VentanaPrincipal : Window
             resultadoAjustador.Relleno(anchoAjustador, lineasAjustador),
             "✅ Texto con relleno copiado al portapapeles"
         );
+    }
+
+    private void CopiarLineaSiguiente_Click(object sender, RoutedEventArgs e)
+    {
+        if (resultadoAjustador is null || string.IsNullOrWhiteSpace(CampoAjustador.Text))
+        {
+            MostrarToast("❌ Pega un texto primero", "error");
+            return;
+        }
+        if (!resultadoAjustador.Cabe)
+        {
+            MostrarToast("❌ El texto no cabe; no se copió", "error");
+            return;
+        }
+
+        int cantidadLineas = resultadoAjustador.Lineas.Count;
+        if (cantidadLineas == 0)
+        {
+            MostrarToast("❌ El texto no contiene líneas para copiar", "error");
+            return;
+        }
+
+        int lineaCopiada = indiceLineaAjustador % cantidadLineas;
+        Copiar(
+            resultadoAjustador.Lineas[lineaCopiada],
+            $"Línea {lineaCopiada + 1} de {cantidadLineas} copiada"
+        );
+        indiceLineaAjustador = (lineaCopiada + 1) % cantidadLineas;
+    }
+
+    private void Calculadora_TextChanged(object sender, TextChangedEventArgs e)
+    {
+        if (string.IsNullOrWhiteSpace(CampoCalculadora.Text))
+        {
+            resultadoCalculadora = null;
+            ResultadoCalculadora.Text = "Resultado: —";
+            ResultadoCalculadora.SetResourceReference(
+                TextBlock.ForegroundProperty,
+                "Hormiguero.Texto"
+            );
+            return;
+        }
+
+        try
+        {
+            resultadoCalculadora = CalculadoraMini.Evaluar(CampoCalculadora.Text);
+            ResultadoCalculadora.Text =
+                $"Resultado: {CalculadoraMini.FormatearResultado(resultadoCalculadora.Value)}";
+            ResultadoCalculadora.SetResourceReference(
+                TextBlock.ForegroundProperty,
+                "Hormiguero.Exito"
+            );
+        }
+        catch (DivideByZeroException excepcion)
+        {
+            resultadoCalculadora = null;
+            ResultadoCalculadora.Text = excepcion.Message;
+            ResultadoCalculadora.SetResourceReference(
+                TextBlock.ForegroundProperty,
+                "Hormiguero.Error"
+            );
+        }
+        catch (FormatException excepcion)
+        {
+            resultadoCalculadora = null;
+            ResultadoCalculadora.Text = excepcion.Message;
+            ResultadoCalculadora.SetResourceReference(
+                TextBlock.ForegroundProperty,
+                "Hormiguero.Error"
+            );
+        }
+        catch (OverflowException)
+        {
+            resultadoCalculadora = null;
+            ResultadoCalculadora.Text = "El resultado supera el valor máximo permitido.";
+            ResultadoCalculadora.SetResourceReference(
+                TextBlock.ForegroundProperty,
+                "Hormiguero.Error"
+            );
+        }
+    }
+
+    private void CopiarResultadoCalculadora_Click(object sender, RoutedEventArgs e)
+    {
+        if (resultadoCalculadora is not decimal resultado)
+        {
+            MostrarToast("❌ Escribe una operación válida primero", "error");
+            return;
+        }
+        Copiar(CalculadoraMini.FormatearParaCopiar(resultado), "✅ Resultado copiado");
     }
 
     private void Copiar(string texto, string mensaje)
