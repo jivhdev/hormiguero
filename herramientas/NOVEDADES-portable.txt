@@ -23,6 +23,13 @@ NUEVO EN ARCHIVERO
 - IMPRESIÓN AUTOMÁTICA por tipo de documento (en su configuración, sección "Impresión"):
   No / Primera página / Todo el documento / Preguntar cada vez (abre el visor). Impresora
   predeterminada o la que elijas. Si la impresión falla, el documento igual queda guardado.
+- MODO OBSERVADOR ("Carpetas observadas", arriba): agregas carpetas ajenas (p. ej. donde otra
+  persona deja las facturas). Archivero SOLO LEE: no mueve, no renombra, no borra nada ahí.
+  Si un PDF calza con un tipo configurado, publica sus datos y lo enlaza a su cadena; si no calza,
+  lo ignora. "Observados recientemente" muestra qué pasó. Un CEDIBLE sin su original queda como
+  "Buscar original" (doble clic abre la carpeta); se soluciona solo cuando aparece el original.
+  Imprime según el tipo, pero SOLO lo que llega después de agregar la carpeta (no lo antiguo).
+  "Revisar ahora" vuelve a mirar todo (útil después de configurar un tipo nuevo).
 
 NUEVO EN MENSAJERO
 - "Ajustar texto (4 × 57)": pega el texto de la orden; lo acomoda en 4 líneas de 57 sin cortar
