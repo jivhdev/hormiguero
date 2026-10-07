@@ -3,6 +3,66 @@ using System.Text.Json;
 
 namespace Archivero.Datos;
 
+public static class PeriodosCarpetaObservada
+{
+    public static (string RutaBase, string Formato)? Detectar(string ruta)
+    {
+        string[] partes = Path.GetFullPath(ruta)
+            .TrimEnd(Path.DirectorySeparatorChar, Path.AltDirectorySeparatorChar)
+            .Split(
+                [Path.DirectorySeparatorChar, Path.AltDirectorySeparatorChar],
+                StringSplitOptions.RemoveEmptyEntries
+            );
+        if (partes.Length >= 2 && partes[^2].Length == 4 && partes[^2].All(char.IsAsciiDigit))
+        {
+            if (
+                partes[^1].Length == 6
+                && partes[^1].StartsWith(partes[^2], StringComparison.Ordinal)
+            )
+                return (QuitarSegmentos(ruta, 2), "AAAA_AAAAMM");
+            if (partes[^1].Length == 2 && partes[^1].All(char.IsAsciiDigit))
+                return (QuitarSegmentos(ruta, 2), "AAAA_MM");
+        }
+        if (partes[^1].Length == 6 && partes[^1].All(char.IsAsciiDigit))
+            return (QuitarSegmentos(ruta, 1), "AAAAMM");
+        if (partes[^1].Length == 4 && partes[^1].All(char.IsAsciiDigit))
+            return (QuitarSegmentos(ruta, 1), "AAAA");
+        return null;
+    }
+
+    public static IReadOnlyList<string> Rutas(CarpetaObservadaExterna carpeta, DateTime ahora)
+    {
+        if (!carpeta.SeguirPeriodo)
+            return [carpeta.Ruta];
+        DateTime actual = new(ahora.Year, ahora.Month, 1);
+        DateTime anterior =
+            carpeta.FormatoPeriodo == "AAAA"
+                ? new DateTime(ahora.Year - 1, 1, 1)
+                : actual.AddMonths(-1);
+        return new[] { actual, anterior }
+            .Select(mes => Path.Combine(carpeta.Ruta, Formatear(mes, carpeta.FormatoPeriodo)))
+            .Where(Directory.Exists)
+            .ToArray();
+    }
+
+    private static string Formatear(DateTime fecha, string formato) =>
+        formato switch
+        {
+            "AAAA_MM" => Path.Combine(fecha.ToString("yyyy"), fecha.ToString("MM")),
+            "AAAAMM" => fecha.ToString("yyyyMM"),
+            "AAAA" => fecha.ToString("yyyy"),
+            _ => Path.Combine(fecha.ToString("yyyy"), fecha.ToString("yyyyMM")),
+        };
+
+    private static string QuitarSegmentos(string ruta, int quitar)
+    {
+        ruta = Path.GetFullPath(ruta);
+        for (int i = 0; i < quitar; i++)
+            ruta = Path.GetDirectoryName(ruta)!;
+        return ruta;
+    }
+}
+
 public sealed record CarpetaObservadaExterna(
     Guid Id,
     string Nombre,
@@ -11,8 +71,54 @@ public sealed record CarpetaObservadaExterna(
     bool Activa,
     // Solo se imprimen automáticamente los PDF que llegan después de agregar la carpeta,
     // para no imprimir de golpe todo lo que ya estaba ahí.
-    DateTime? Agregada = null
-);
+    DateTime? Agregada = null,
+    string ModoReconocimiento = "Configuraciones",
+    string? DatoIdentificador = null,
+    string Emisor = "",
+    bool SeguirPeriodo = false,
+    string FormatoPeriodo = "AAAA_AAAAMM",
+    string AccionAlLlegar = "Configuracion"
+)
+{
+    public string Resumen
+    {
+        get
+        {
+            string tipo =
+                Hormiguero
+                    .Nucleo.Datos.DiccionarioDatosEnlazantes.Todos.FirstOrDefault(d =>
+                        d.Id == DatoIdentificador
+                    )
+                    ?.EtiquetaTipo
+                ?? "configuración";
+            string accion = AccionAlLlegar switch
+            {
+                "ImprimirPrimeraPagina" => "imprime 1.ª página",
+                "ImprimirTodo" => "imprime todo",
+                "Avisar" => "avisa",
+                "AvisarImprimirPrimeraPagina" => "avisa e imprime 1.ª página",
+                "SoloRegistrar" => "solo registra",
+                _ => "según el tipo",
+            };
+            return ModoReconocimiento == "TipoPorCarpeta"
+                ? $"{Nombre} · {tipo} · {accion}{(SeguirPeriodo ? " · sigue el mes" : "")}"
+                : Nombre;
+        }
+    }
+}
+
+public sealed record DocumentoPorAtender(
+    Guid Id,
+    DateTime Llegada,
+    string Ruta,
+    string Tipo,
+    string Numero,
+    DateTime? Listo = null
+)
+{
+    public string Resumen =>
+        $"{Llegada:dd-MM HH:mm} · {Tipo} N° {Hormiguero.Nucleo.Datos.DiccionarioDatosEnlazantes.ClaveDeEnlace(Numero)} · {Path.GetFileName(Ruta)}";
+}
 
 public sealed record DocumentoObservadoReciente(
     DateTime Fecha,
@@ -35,6 +141,7 @@ public sealed class CarpetasObservadasRepository(ConfiguracionRepository? config
     private const string ClaveCarpetas = "carpetas.observadas";
     private const string ClaveActividad = "carpetas.observadas.actividad";
     private const string ClaveHuellas = "carpetas.observadas.huellas";
+    private const string ClavePorAtender = "carpetas.observadas.atender";
 
     public IReadOnlyList<CarpetaObservadaExterna> Leer()
     {
@@ -109,5 +216,51 @@ public sealed class CarpetasObservadasRepository(ConfiguracionRepository? config
         }
         huellas[Path.GetFullPath(ruta)] = huella;
         _configuracion.Guardar(ClaveHuellas, JsonSerializer.Serialize(huellas));
+    }
+
+    public IReadOnlyList<DocumentoPorAtender> LeerPorAtender()
+    {
+        try
+        {
+            return (
+                JsonSerializer.Deserialize<List<DocumentoPorAtender>>(
+                    _configuracion.Obtener(ClavePorAtender) ?? "[]"
+                ) ?? []
+            )
+                .Where(d => d.Listo is null)
+                .ToList();
+        }
+        catch (JsonException)
+        {
+            return [];
+        }
+    }
+
+    public void AgregarPorAtender(DocumentoPorAtender documento)
+    {
+        var documentos = LeerPorAtender().Prepend(documento).ToList();
+        _configuracion.Guardar(ClavePorAtender, JsonSerializer.Serialize(documentos));
+    }
+
+    public void MarcarListo(Guid id)
+    {
+        List<DocumentoPorAtender> documentos;
+        try
+        {
+            documentos =
+                JsonSerializer.Deserialize<List<DocumentoPorAtender>>(
+                    _configuracion.Obtener(ClavePorAtender) ?? "[]"
+                ) ?? [];
+        }
+        catch (JsonException)
+        {
+            documentos = [];
+        }
+        _configuracion.Guardar(
+            ClavePorAtender,
+            JsonSerializer.Serialize(
+                documentos.Select(d => d.Id == id ? d with { Listo = DateTime.Now } : d)
+            )
+        );
     }
 }

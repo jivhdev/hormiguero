@@ -61,6 +61,12 @@ public partial class MainWindow : Window
             new ImpresionAlArchivarService(new AccionImpresionWindows())
         );
         _observador.DocumentoActualizado += documento => Dispatcher.Invoke(CargarObservados);
+        _observador.DocumentoRequiereAtencion += documento =>
+            Dispatcher.Invoke(() =>
+            {
+                CargarPorAtender();
+                _bandeja.NotificarLlegada(documento.Tipo, documento.Numero);
+            });
         _observador.ErrorVisible += mensaje =>
             Dispatcher.BeginInvoke(() =>
                 System.Windows.MessageBox.Show(
@@ -91,11 +97,18 @@ public partial class MainWindow : Window
         SuscribirEventosVigilancia();
 
         _bandeja.MostrarVentanaSolicitado += () => Dispatcher.Invoke(RestaurarVentana);
+        _bandeja.AtencionSolicitada += () =>
+            Dispatcher.Invoke(() =>
+            {
+                RestaurarVentana();
+                ListaPorAtender.Focus();
+            });
         _bandeja.SalirSolicitado += () => Dispatcher.Invoke(SalirDeVerdad);
 
         CargarPendientes();
         CargarGuardadosRecientes();
         CargarObservados();
+        CargarPorAtender();
         CargarTiempoAhorrado();
         _observador.Iniciar();
     }
@@ -589,6 +602,48 @@ public partial class MainWindow : Window
 
     private void CargarObservados() =>
         ListaObservados.ItemsSource = _carpetasObservadas.LeerActividad();
+
+    private void CargarPorAtender()
+    {
+        var documentos = _carpetasObservadas.LeerPorAtender();
+        ListaPorAtender.ItemsSource = documentos;
+        TxtPorAtender.Text = $"Por atender ({documentos.Count})";
+        BtnMarcarAtendido.IsEnabled = ListaPorAtender.SelectedItem is DocumentoPorAtender;
+    }
+
+    private void BtnMarcarAtendido_Click(object sender, RoutedEventArgs e)
+    {
+        if (ListaPorAtender.SelectedItem is DocumentoPorAtender documento)
+            _carpetasObservadas.MarcarListo(documento.Id);
+        CargarPorAtender();
+    }
+
+    private void ListaPorAtender_SelectionChanged(
+        object sender,
+        System.Windows.Controls.SelectionChangedEventArgs e
+    ) => BtnMarcarAtendido.IsEnabled = ListaPorAtender.SelectedItem is DocumentoPorAtender;
+
+    private void ListaPorAtender_MouseDoubleClick(object sender, MouseButtonEventArgs e)
+    {
+        if (ListaPorAtender.SelectedItem is not DocumentoPorAtender documento)
+            return;
+        try
+        {
+            System.Diagnostics.Process.Start(
+                new System.Diagnostics.ProcessStartInfo(documento.Ruta) { UseShellExecute = true }
+            );
+        }
+        catch (Exception ex)
+        {
+            System.Windows.MessageBox.Show(
+                this,
+                $"No se pudo abrir el PDF: {ex.Message}",
+                "Archivero",
+                MessageBoxButton.OK,
+                MessageBoxImage.Warning
+            );
+        }
+    }
 
     private void BtnCarpetasObservadas_Click(object sender, RoutedEventArgs e)
     {
