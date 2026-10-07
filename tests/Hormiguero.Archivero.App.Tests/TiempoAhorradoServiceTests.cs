@@ -95,6 +95,23 @@ public class TiempoAhorradoServiceTests : IDisposable
     public void Dispose()
     {
         Microsoft.Data.Sqlite.SqliteConnection.ClearAllPools();
-        File.Delete(_rutaDbTemporal);
+        for (var intento = 0; ; intento++)
+        {
+            try
+            {
+                File.Delete(_rutaDbTemporal);
+                break;
+            }
+            catch (IOException) when (intento < 19)
+            {
+                Microsoft.Data.Sqlite.SqliteConnection.ClearAllPools();
+                Thread.Sleep(100);
+            }
+            catch (UnauthorizedAccessException) when (intento < 19)
+            {
+                Microsoft.Data.Sqlite.SqliteConnection.ClearAllPools();
+                Thread.Sleep(100);
+            }
+        }
     }
 }

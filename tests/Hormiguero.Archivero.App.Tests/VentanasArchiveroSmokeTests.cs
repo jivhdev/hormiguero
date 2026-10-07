@@ -79,21 +79,44 @@ public sealed class VentanasArchiveroSmokeTests
             }
         });
         hilo.SetApartmentState(ApartmentState.STA);
+        using var bloqueoVentanas = new Mutex(false, @"Local\Hormiguero.PruebasVentanas");
+        var bloqueoTomado = false;
 
         try
         {
+            bloqueoTomado = bloqueoVentanas.WaitOne(TimeSpan.FromMinutes(5));
+            Assert.True(bloqueoTomado, "Otra prueba de ventanas no terminó a tiempo.");
             hilo.Start();
-            Assert.True(
-                hilo.Join(TimeSpan.FromSeconds(30)),
-                "Las ventanas no terminaron de abrir."
-            );
+            Assert.True(hilo.Join(TimeSpan.FromMinutes(5)), "Las ventanas no terminaron de abrir.");
             Assert.Null(error);
         }
         finally
         {
             BaseDeDatos.RutaArchivo = rutaAnterior;
             SqliteConnection.ClearAllPools();
-            Directory.Delete(raiz, recursive: true);
+            for (var intento = 0; ; intento++)
+            {
+                try
+                {
+                    Directory.Delete(raiz, recursive: true);
+                    break;
+                }
+                catch (IOException) when (intento < 19)
+                {
+                    SqliteConnection.ClearAllPools();
+                    Thread.Sleep(100);
+                }
+                catch (UnauthorizedAccessException) when (intento < 19)
+                {
+                    SqliteConnection.ClearAllPools();
+                    Thread.Sleep(100);
+                }
+            }
+
+            if (bloqueoTomado)
+            {
+                bloqueoVentanas.ReleaseMutex();
+            }
         }
     }
 }

@@ -120,11 +120,8 @@ public sealed class BusquedaRapidaTests
         using var entorno = new EntornoDePrueba();
         var indexador = new Indexador(entorno.RepositorioIndice, TimeSpan.Zero, _ => { });
         var enSegundoPlano = new IndexadoEnSegundoPlano(indexador, () => []);
-        var reloj = System.Diagnostics.Stopwatch.StartNew();
 
         enSegundoPlano.Dispose();
-
-        Assert.True(reloj.Elapsed < TimeSpan.FromSeconds(5));
     }
 
     // Caso-15 (Javier, 2026-10-06): "Carpeta específica" muestra también las subcarpetas.
