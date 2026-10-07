@@ -14,17 +14,22 @@ public static class PresentacionAlertas
             _ => string.Empty,
         };
 
-    public static string ParaCuando(DateOnly objetivo, DateOnly hoy, TipoDias modo)
+    public static string ParaCuando(
+        DateOnly objetivo,
+        DateOnly hoy,
+        TipoDias modo,
+        IReadOnlySet<DateOnly>? feriados = null
+    )
     {
         if (objetivo == hoy)
             return "vence hoy";
         if (objetivo < hoy)
         {
-            int transcurridos = ContarDias(hoy, objetivo, modo);
+            int transcurridos = ContarDias(hoy, objetivo, modo, feriados);
             return $"venció hace {transcurridos} {NombreDias(transcurridos, modo)}";
         }
 
-        int restantes = ContarDias(objetivo, hoy, modo);
+        int restantes = ContarDias(objetivo, hoy, modo, feriados);
         return $"vence en {restantes} {NombreDias(restantes, modo)}";
     }
 
@@ -47,12 +52,20 @@ public static class PresentacionAlertas
             _ => throw new ArgumentException("El filtro de alertas no es válido.", nameof(filtro)),
         };
 
-    private static int ContarDias(DateOnly hasta, DateOnly desde, TipoDias modo)
+    private static int ContarDias(
+        DateOnly hasta,
+        DateOnly desde,
+        TipoDias modo,
+        IReadOnlySet<DateOnly>? feriados
+    )
     {
         int dias = 0;
         for (var fecha = desde; fecha < hasta; fecha = fecha.AddDays(1))
-            if (modo == TipoDias.Corridos || CalculoFechas.EsHabil(fecha.AddDays(1)))
+        {
+            DateOnly diaContado = fecha.AddDays(1);
+            if (modo == TipoDias.Corridos || CalculoFechas.EsHabil(diaContado, feriados))
                 dias++;
+        }
         return dias;
     }
 

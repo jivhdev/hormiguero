@@ -46,8 +46,31 @@ public partial class DialogoAlertas : Window
                 )
                 .ToArray();
             var filtro = ((Filtro.SelectedItem as ComboBoxItem)?.Content as string) ?? "Pendientes";
-            Lista.ItemsSource = PresentacionAlertas
-                .Filtrar(alertas, filtro)
+            var visibles = PresentacionAlertas.Filtrar(alertas, filtro);
+            var hoy = DateOnly.FromDateTime(DateTime.Today);
+            int anioInicial =
+                visibles.Count == 0
+                    ? hoy.Year
+                    : Math.Min(hoy.Year, visibles.Min(a => a.FechaObjetivo.Year));
+            int anioFinal =
+                visibles.Count == 0
+                    ? hoy.Year
+                    : Math.Max(hoy.Year, visibles.Max(a => a.FechaObjetivo.Year));
+            var repositorioFeriados = new RepositorioCalendariosFeriados(conexion);
+            var feriadosPorCalendario = visibles
+                .Where(a => a.CalendarioId is not null)
+                .Select(a => a.CalendarioId!.Value)
+                .Distinct()
+                .ToDictionary(
+                    calendario => calendario,
+                    calendario =>
+                        repositorioFeriados.ObtenerFeriadosActivos(
+                            calendario,
+                            anioInicial,
+                            anioFinal
+                        )
+                );
+            Lista.ItemsSource = visibles
                 .Select(a => new AlertaVista
                 {
                     Alerta = a,
@@ -55,8 +78,9 @@ public partial class DialogoAlertas : Window
                     Cadena = a.CadenaId is long id ? $"Cadena {id}" : "Documento",
                     ParaCuando = PresentacionAlertas.ParaCuando(
                         a.FechaObjetivo,
-                        DateOnly.FromDateTime(DateTime.Today),
-                        TipoDias.Habiles
+                        hoy,
+                        a.ModoDias,
+                        a.CalendarioId is long calendario ? feriadosPorCalendario[calendario] : null
                     ),
                     OrigenPlazo = PresentacionAlertas.OrigenDelPlazo(a),
                     EstadoVisible = a.Estado switch
