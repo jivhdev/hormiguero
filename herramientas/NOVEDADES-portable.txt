@@ -18,6 +18,13 @@ LO MÁS NUEVO (07-10, tarde)
   selecciónala y pulsa "Listo". Archivero debe quedar abierto (puede ir minimizado).
   Para Cobelcar: 2-FCV imprimir 1.ª página · 3-GDV avisarme · 6-GDV RECIBIDAS solo registrar ·
   5-NCV imprimir 1.ª página.
+- ARCHIVERO · ASISTENTE NUEVO PARA CONFIGURAR (doble clic en un documento de "Pendientes por reconocer"):
+  Paso 1 ¿Qué documento es? (categoría y documento, un clic) · Paso 2 ¿Quién lo emite? (escribe el
+  emisor, marca dónde aparece y MARCA EL TÍTULO del documento, ej. "FACTURA ELECTRÓNICA": con eso
+  Archivero reconoce solo los próximos iguales) · Paso 3 marca el número (te dice qué leyó) ·
+  Paso 4 otros datos (opcional, "Saltar") · Paso 5 dónde se guarda, con la vista previa abajo ·
+  Paso 6 resumen e impresión. Arreglado: antes ninguna configuración nueva reconocía sola los
+  documentos (faltaba la marca del título).
 - MENSAJERO: ajustador a 4 × 55; Alt+L copia la línea 1, luego la 2, la 3 y la 4 y vuelve a la 1
   (avisa qué línea copió); mini calculadora (escribe "1.250.430 - 1.198.200" y ve el resultado).
 - BUSCADERO: "Carpeta específica" ahora muestra todas tus carpetas y sus subcarpetas (aunque el
