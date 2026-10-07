@@ -37,6 +37,11 @@ NUEVO EN MENSAJERO
 - MAYÚSCULAS: pega un texto y cópialo en mayúsculas.
 - Retiro con VARIAS OCC: "Último PDF" y "Buscar" van agregando OCC a la lista (mismo proveedor).
 - Facturas: avisos abajo ("Cuerpo copiado correctamente", "... marcado como enviado").
+- Facturas abre en el MES ACTUAL (antes siempre en julio).
+- Facturas: botón "Abrir en Gmail" (Alt+G): abre Gmail en Chrome con destinatarios, asunto y cuerpo
+  ya escritos y deja los PDF copiados: solo pega con Ctrl+V, revisa y envía. No marca como enviado
+  (eso lo sigues haciendo tú). Si tienes varias cuentas en Chrome, escribe la tuya en
+  "Cuenta de Gmail (opcional)".
 
 - "Códigos para Excel" (botón arriba): eliges el PDF (OC del cliente o NVV) y saca los códigos de
   5 dígitos (sin confundir precios, fechas, RUT ni teléfonos). "Copiar todos en columna" para pegar
@@ -60,4 +65,3 @@ NUEVO EN BUSCADERO
   reemplazan las cadenas simples. Lo antiguo queda guardado en la base, pero ya no se muestra.
 - Buscadero ya no se salta un PDF recién creado en una carpeta indexada en ese mismo momento.
 
-PENDIENTE: envío de facturas armando borradores en Gmail (lo conversamos: requiere autorizar tu cuenta).
