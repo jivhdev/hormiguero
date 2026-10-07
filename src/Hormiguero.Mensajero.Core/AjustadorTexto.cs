@@ -24,7 +24,7 @@ public sealed record ResultadoAjusteTexto(
 public static class AjustadorTexto
 {
     public const int LineasPredeterminadas = 4;
-    public const int AnchoPredeterminado = 57;
+    public const int AnchoPredeterminado = 55;
 
     public static ResultadoAjusteTexto Ajustar(string texto, int maximoLineas, int ancho)
     {

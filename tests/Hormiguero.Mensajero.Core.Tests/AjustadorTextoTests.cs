@@ -5,6 +5,12 @@ namespace Hormiguero.Mensajero.Core.Tests;
 public sealed class AjustadorTextoTests
 {
     [Fact]
+    public void Usa_cincuenta_y_cinco_caracteres_por_defecto()
+    {
+        Assert.Equal(55, AjustadorTexto.AnchoPredeterminado);
+    }
+
+    [Fact]
     public void Ajusta_el_ejemplo_del_bloque_con_el_resultado_exacto()
     {
         const string texto =
@@ -14,14 +20,14 @@ public sealed class AjustadorTextoTests
             + "CONTACTO ALFREDO A 9 9275 6239\n"
             + "HORARIO 08:00 A 12:00 Y 14:00 A 17:00 LUNES A VIERNES";
 
-        ResultadoAjusteTexto resultado = AjustadorTexto.Ajustar(texto, 4, 57);
+        ResultadoAjusteTexto resultado = AjustadorTexto.Ajustar(texto, 4, 55);
 
         Assert.Equal(
             [
-                "PROYECTO LA FORESTA 2- ENTREGAR EN AV BOSQUE DE MONTEMAR",
-                "CON LOS MEDANOS VIÑA DEL MAR REF ENTRE SHELL Y COPEC",
-                "CONTACTO ALFREDO A 9 9275 6239 HORARIO 08:00 A 12:00 Y",
-                "14:00 A 17:00 LUNES A VIERNES",
+                "PROYECTO LA FORESTA 2- ENTREGAR EN AV BOSQUE DE",
+                "MONTEMAR CON LOS MEDANOS VIÑA DEL MAR REF ENTRE SHELL Y",
+                "COPEC CONTACTO ALFREDO A 9 9275 6239 HORARIO 08:00 A",
+                "12:00 Y 14:00 A 17:00 LUNES A VIERNES",
             ],
             resultado.Lineas
         );
