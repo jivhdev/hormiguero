@@ -389,6 +389,118 @@ public sealed class AlertasTests : IDisposable
         );
     }
 
+    [Fact]
+    public void Evaluador_de_alerta_simple_cuenta_desde_fecha_documento_y_saltea_feriado()
+    {
+        var (cadena, version, regla, calendario) = CrearAlertaSimpleConFecha();
+        new RepositorioDatosInformativos(conexion).GuardarValores(
+            version,
+            [FechaDocumentoParser.InterpretarFecha("24-12-2026")]
+        );
+
+        new EvaluadorAlertas(conexion).Evaluar(new DateOnly(2026, 12, 27));
+
+        Alerta alerta = Assert.Single(
+            new RepositorioAlertas(conexion).Listar(cadenaId: cadena).Alertas
+        );
+        Assert.Equal(new DateOnly(2026, 12, 24), alerta.FechaBase);
+        Assert.Equal("fecha_documento", alerta.OrigenFecha);
+        Assert.Equal(new DateOnly(2026, 12, 28), alerta.FechaObjetivo);
+        Assert.Equal(calendario, ObtenerCalendarioAlerta(alerta.Id));
+    }
+
+    [Theory]
+    [InlineData(null)]
+    [InlineData("ilegible")]
+    public void Evaluador_de_alerta_simple_usa_entrada_a_cadena_si_fecha_no_reconocida(
+        string? valor
+    )
+    {
+        var (cadena, version, _, _) = CrearAlertaSimpleConFecha();
+        if (valor is not null)
+            new RepositorioDatosInformativos(conexion).GuardarValores(
+                version,
+                [FechaDocumentoParser.InterpretarFecha(valor)]
+            );
+        using (var fecha = conexion.CreateCommand())
+        {
+            fecha.CommandText =
+                "UPDATE enlaces_cadena SET creada_en='2026-10-01T12:00:00.0000000' WHERE version_id=$v;";
+            fecha.Parameters.AddWithValue("$v", version);
+            fecha.ExecuteNonQuery();
+        }
+
+        new EvaluadorAlertas(conexion).Evaluar(new DateOnly(2026, 10, 3));
+
+        Alerta alerta = Assert.Single(
+            new RepositorioAlertas(conexion).Listar(cadenaId: cadena).Alertas
+        );
+        Assert.Equal(new DateOnly(2026, 10, 1), alerta.FechaBase);
+        Assert.Equal("entrada_cadena", alerta.OrigenFecha);
+        Assert.Equal(new DateOnly(2026, 10, 2), alerta.FechaObjetivo);
+    }
+
+    [Fact]
+    public void Evaluador_no_cambia_vencimiento_de_alerta_simple_existente()
+    {
+        var (cadena, version, _, _) = CrearAlertaSimpleConFecha();
+        var datos = new RepositorioDatosInformativos(conexion);
+        datos.GuardarValores(version, [FechaDocumentoParser.InterpretarFecha("24-12-2026")]);
+        var evaluador = new EvaluadorAlertas(conexion);
+        evaluador.Evaluar(new DateOnly(2026, 12, 24));
+        Alerta inicial = Assert.Single(
+            new RepositorioAlertas(conexion).Listar(cadenaId: cadena).Alertas
+        );
+        datos.GuardarValores(version, [FechaDocumentoParser.InterpretarFecha("30-12-2026")]);
+
+        evaluador.Evaluar(new DateOnly(2026, 12, 24));
+
+        Alerta actual = Assert.Single(
+            new RepositorioAlertas(conexion).Listar(cadenaId: cadena).Alertas
+        );
+        Assert.Equal(inicial.FechaObjetivo, actual.FechaObjetivo);
+        Assert.Equal(inicial.FechaBase, actual.FechaBase);
+        Assert.Equal(inicial.OrigenFecha, actual.OrigenFecha);
+    }
+
+    private (long Cadena, long Version, long Regla, long Calendario) CrearAlertaSimpleConFecha()
+    {
+        long version = CrearVersionConDato("Guia alerta", "oc_cliente");
+        long cadena = new RepositorioCadenas(conexion).CrearCadenaSimple(
+            "Cadena alerta",
+            DateTime.Now
+        );
+        long vagon = new RepositorioCadenas(conexion).AgregarDocumentoCadena(
+            cadena,
+            version,
+            "Guía"
+        );
+        new RepositorioReglasYEnlaces(conexion).CrearEnlace(vagon, version, "manual");
+        var calendarios = new RepositorioCalendariosFeriados(conexion);
+        long calendario = calendarios.CrearCalendario("Feriados de alerta", "ZZ");
+        calendarios.AgregarFeriado(calendario, new DateOnly(2026, 12, 25), "Feriado");
+        long regla = new RepositorioAlertas(conexion).CrearReglaCadenaSimple(
+            "Esperar factura con fecha",
+            "oc_cliente",
+            null,
+            "factura_propia",
+            null,
+            1,
+            TipoDias.Habiles,
+            "Falta la factura",
+            calendario
+        );
+        return (cadena, version, regla, calendario);
+    }
+
+    private long ObtenerCalendarioAlerta(long alertaId)
+    {
+        using var cmd = conexion.CreateCommand();
+        cmd.CommandText = "SELECT calendario_id FROM alertas WHERE id=$id;";
+        cmd.Parameters.AddWithValue("$id", alertaId);
+        return Convert.ToInt64(cmd.ExecuteScalar());
+    }
+
     private long CrearVersionConDato(string nombre, string dato)
     {
         string ruta = Path.Combine(

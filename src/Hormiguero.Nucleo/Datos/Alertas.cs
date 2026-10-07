@@ -44,7 +44,9 @@ public sealed record Alerta(
     string Estado,
     string? Motivo,
     DateOnly FechaObjetivo,
-    DateTime CreadaEn
+    DateTime CreadaEn,
+    DateOnly? FechaBase = null,
+    string? OrigenFecha = null
 );
 
 public sealed record HistorialAlerta(
@@ -138,8 +140,15 @@ public sealed class RepositorioAlertas(SqliteConnection conexion)
         return resultado;
     }
 
-    public long CrearAlertaDeReglaCadenaSimple(long reglaId, long cadenaId, DateOnly fechaBase)
+    public long CrearAlertaDeReglaCadenaSimple(
+        long reglaId,
+        long cadenaId,
+        DateOnly fechaBase,
+        string origenFecha = "entrada_cadena"
+    )
     {
+        if (origenFecha is not ("fecha_documento" or "entrada_cadena"))
+            throw new ArgumentException("El origen de la fecha no es válido.", nameof(origenFecha));
         ReglaAlertaCadenaSimple regla = ListarReglasCadenaSimple()
             .Single(r => r.Id == reglaId && r.Estado == "activa");
         DateOnly objetivo = CalculoFechas.Sumar(
@@ -154,7 +163,7 @@ public sealed class RepositorioAlertas(SqliteConnection conexion)
         using var cmd = conexion.CreateCommand();
         cmd.Transaction = tx;
         cmd.CommandText =
-            "INSERT INTO alertas(regla_id,regla_simple_id,cadena_id,texto,estado,fecha_base,cantidad_dias,modo_dias,calendario_id,fecha_objetivo,creada_en,actualizada_en) VALUES(NULL,$r,$c,$texto,'pendiente',$base,$dias,$modo,$cal,$objetivo,$ahora,$ahora) ON CONFLICT(regla_simple_id,cadena_id) WHERE regla_simple_id IS NOT NULL DO NOTHING RETURNING id;";
+            "INSERT INTO alertas(regla_id,regla_simple_id,cadena_id,texto,estado,fecha_base,cantidad_dias,modo_dias,calendario_id,fecha_objetivo,creada_en,actualizada_en,origen_fecha) VALUES(NULL,$r,$c,$texto,'pendiente',$base,$dias,$modo,$cal,$objetivo,$ahora,$ahora,$origen) ON CONFLICT(regla_simple_id,cadena_id) WHERE regla_simple_id IS NOT NULL DO NOTHING RETURNING id;";
         cmd.Parameters.AddWithValue("$r", reglaId);
         cmd.Parameters.AddWithValue("$c", cadenaId);
         cmd.Parameters.AddWithValue("$texto", regla.TextoAviso);
@@ -163,6 +172,7 @@ public sealed class RepositorioAlertas(SqliteConnection conexion)
         cmd.Parameters.AddWithValue("$modo", ATexto(regla.ModoDias));
         cmd.Parameters.AddWithValue("$cal", (object?)regla.CalendarioId ?? DBNull.Value);
         cmd.Parameters.AddWithValue("$objetivo", Fecha(objetivo));
+        cmd.Parameters.AddWithValue("$origen", origenFecha);
         cmd.Parameters.AddWithValue("$ahora", Ahora());
         object? inserted = cmd.ExecuteScalar();
         if (inserted is null)
@@ -503,7 +513,7 @@ public sealed class RepositorioAlertas(SqliteConnection conexion)
             throw new ArgumentException("El estado de alerta no es válido.", nameof(estado));
         using var cmd = conexion.CreateCommand();
         cmd.CommandText =
-            "SELECT a.id,a.regla_id,a.cadena_id,a.vagon_cadena_id,a.version_id,a.texto,a.estado,a.motivo,a.fecha_objetivo,a.creada_en,COUNT(*) OVER() FROM alertas a LEFT JOIN versiones_documento v ON v.id=a.version_id WHERE ($estado IS NULL OR a.estado=$estado) AND ($cadena IS NULL OR a.cadena_id=$cadena) AND ($version IS NULL OR a.version_id=$version) AND ($documento IS NULL OR v.documento_id=$documento) ORDER BY a.fecha_objetivo,a.id LIMIT $limite OFFSET $desplazamiento;";
+            "SELECT a.id,a.regla_id,a.cadena_id,a.vagon_cadena_id,a.version_id,a.texto,a.estado,a.motivo,a.fecha_objetivo,a.creada_en,COUNT(*) OVER(),a.fecha_base,a.origen_fecha FROM alertas a LEFT JOIN versiones_documento v ON v.id=a.version_id WHERE ($estado IS NULL OR a.estado=$estado) AND ($cadena IS NULL OR a.cadena_id=$cadena) AND ($version IS NULL OR a.version_id=$version) AND ($documento IS NULL OR v.documento_id=$documento) ORDER BY a.fecha_objetivo,a.id LIMIT $limite OFFSET $desplazamiento;";
         cmd.Parameters.AddWithValue("$estado", (object?)estado ?? DBNull.Value);
         cmd.Parameters.AddWithValue("$cadena", (object?)cadenaId ?? DBNull.Value);
         cmd.Parameters.AddWithValue("$version", (object?)versionId ?? DBNull.Value);
@@ -712,7 +722,11 @@ public sealed class RepositorioAlertas(SqliteConnection conexion)
             r.GetString(6),
             NuloTexto(r, 7),
             DateOnly.ParseExact(r.GetString(8), "yyyy-MM-dd", CultureInfo.InvariantCulture),
-            DateTime.Parse(r.GetString(9), CultureInfo.InvariantCulture)
+            DateTime.Parse(r.GetString(9), CultureInfo.InvariantCulture),
+            r.IsDBNull(11)
+                ? null
+                : DateOnly.ParseExact(r.GetString(11), "yyyy-MM-dd", CultureInfo.InvariantCulture),
+            NuloTexto(r, 12)
         );
 
     private void RegistrarHistoria(

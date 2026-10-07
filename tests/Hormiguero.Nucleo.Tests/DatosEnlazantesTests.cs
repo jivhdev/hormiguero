@@ -75,7 +75,7 @@ public sealed class DatosEnlazantesTests : IDisposable
                 "SELECT COUNT(*) FROM valores_documento WHERE dato_diccionario_id IS NOT NULL;"
             )
         );
-        Assert.Equal(11L, Escalar(v8, "SELECT MAX(version) FROM migraciones;"));
+        Assert.Equal(12L, Escalar(v8, "SELECT MAX(version) FROM migraciones;"));
     }
 
     [Fact]

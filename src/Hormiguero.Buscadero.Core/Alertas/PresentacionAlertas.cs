@@ -5,6 +5,15 @@ namespace Buscadero.Core.Alertas;
 
 public static class PresentacionAlertas
 {
+    public static string OrigenDelPlazo(Alerta alerta) =>
+        alerta.OrigenFecha switch
+        {
+            "fecha_documento" when alerta.FechaBase is DateOnly fecha =>
+                $"Desde la fecha del documento {fecha.ToString("dd-MM-yyyy", System.Globalization.CultureInfo.InvariantCulture)}",
+            "entrada_cadena" => "Desde que entró a la cadena",
+            _ => string.Empty,
+        };
+
     public static string ParaCuando(DateOnly objetivo, DateOnly hoy, TipoDias modo)
     {
         if (objetivo == hoy)

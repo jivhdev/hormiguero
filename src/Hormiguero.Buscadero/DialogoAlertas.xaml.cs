@@ -12,6 +12,7 @@ public sealed class AlertaVista
     public required string Texto { get; init; }
     public required string Cadena { get; init; }
     public required string ParaCuando { get; init; }
+    public required string OrigenPlazo { get; init; }
     public required string EstadoVisible { get; init; }
 }
 
@@ -47,6 +48,7 @@ public partial class DialogoAlertas : Window
                         DateOnly.FromDateTime(DateTime.Today),
                         TipoDias.Habiles
                     ),
+                    OrigenPlazo = PresentacionAlertas.OrigenDelPlazo(a),
                     EstadoVisible = a.Estado switch
                     {
                         "pendiente" => "Pendiente",
