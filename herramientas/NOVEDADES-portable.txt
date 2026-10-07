@@ -20,6 +20,9 @@ NUEVO EN ARCHIVERO
 - Duplicados: ya no salta la ventana; quedan en Pendientes como "Duplicado: revisar".
 - La fecha se define ANTES de elegir la carpeta.
 - PDF sin texto: Alt+A elige el primer acceso rápido y Alt+A otra vez guarda.
+- IMPRESIÓN AUTOMÁTICA por tipo de documento (en su configuración, sección "Impresión"):
+  No / Primera página / Todo el documento / Preguntar cada vez (abre el visor). Impresora
+  predeterminada o la que elijas. Si la impresión falla, el documento igual queda guardado.
 
 NUEVO EN MENSAJERO
 - "Ajustar texto (4 × 57)": pega el texto de la orden; lo acomoda en 4 líneas de 57 sin cortar
@@ -38,9 +41,13 @@ NUEVO EN LAS 3 APPS
 - Barra de título legible en modo oscuro.
 
 NUEVO EN BUSCADERO
+- Alertas: el plazo cuenta desde la FECHA IMPRESA en el documento (si no se pudo leer, desde que
+  entró a la cadena), y la lista muestra desde qué fecha cuenta.
 - "Segunda búsqueda": abre un segundo panel al lado, independiente, con su propio visor.
 - "Carpeta específica" muestra también las subcarpetas.
 - Cadenas: "Administrar cadenas simples" (las creas tú; sugiere documentos que comparten número;
   si un documento nuevo calza con una sola cadena, entra solo; si calza con varias, va a dudosos).
+- "Buscador maestro" (pestaña nueva): filtras por número, tipo, emisor, cliente, emitido/recibido y
+  fechas; al elegir un documento ves sus datos y los de toda su cadena, con botón para copiar cada uno.
 
 PENDIENTE: envío de facturas armando borradores en Gmail (lo conversamos: requiere autorizar tu cuenta).

@@ -69,22 +69,20 @@ public partial class DialogoCadenasSimples : Window
 
     private DocumentoDisponibleCadena? DocumentoDeVagon(VagonCadena vagon)
     {
-        using var cmd = _conexion!.CreateCommand();
-        cmd.CommandText =
-            "SELECT ver.id,d.ruta,d.nombre,COALESCE(i.tipo,''),COALESCE(i.emisor,''),ver.registrada_en,COALESCE((SELECT numero FROM numeros_documento n WHERE n.documento_id=d.id LIMIT 1),'') FROM versiones_documento ver JOIN documentos d ON d.id=ver.documento_id LEFT JOIN identificaciones i ON i.id=(SELECT f.identificacion_id FROM valores_documento x JOIN campos_documento f ON f.id=x.campo_id WHERE x.version_id=ver.id AND x.estado='vigente' LIMIT 1) WHERE ver.id=$id;";
-        cmd.Parameters.AddWithValue("$id", vagon.VersionId ?? -1);
-        using var r = cmd.ExecuteReader();
-        return r.Read()
-            ? new(
-                r.GetInt64(0),
-                r.GetString(1),
-                r.GetString(2),
-                r.GetString(3),
-                r.GetString(4),
-                DateTime.Parse(r.GetString(5)),
-                r.GetString(6)
-            )
-            : null;
+        if (vagon.VersionId is not long versionId)
+            return null;
+        var documento = new RepositorioCadenas(_conexion!).ObtenerVersionDocumento(versionId);
+        return documento is null
+            ? null
+            : new(
+                documento.VersionId,
+                documento.Ruta,
+                documento.Nombre,
+                documento.Tipo,
+                documento.Emisor,
+                documento.Fecha,
+                documento.Numero
+            );
     }
 
     private async void Buscar_Click(object sender, RoutedEventArgs e)

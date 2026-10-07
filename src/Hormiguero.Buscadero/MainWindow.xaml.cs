@@ -72,10 +72,13 @@ public partial class MainWindow : Window
     private Point _finArrastre;
     private bool _arrastrando;
     private bool _inicializandoTema = true;
+    private int _busquedaMaestraId;
+    private DocumentoBuscadorMaestro? _documentoMaestroSeleccionado;
 
     public MainWindow()
     {
         InitializeComponent();
+        MaestroNumero.TextChanged += MaestroFiltroChanged;
         ComboTema.SelectedIndex = IndiceTema(DatosDeApp.LeerPreferencia("tema.buscadero"));
         _inicializandoTema = false;
 
@@ -128,6 +131,7 @@ public partial class MainWindow : Window
 
         _ = EvaluarAlertasAlAbrirAsync();
         CargarCarpetas();
+        _ = CargarTiposMaestroAsync();
         ActualizarSugerenciasCarpeta();
         RefrescarLineas();
         _indexadoEnSegundoPlano.Pedir();
@@ -1108,11 +1112,9 @@ public partial class MainWindow : Window
         try
         {
             using (var conexion = Hormiguero.Nucleo.Datos.BaseComun.Abrir(ruta))
-            using (var consulta = conexion.CreateCommand())
             {
-                consulta.CommandText =
-                    "SELECT valor FROM configuracion WHERE clave='buscadero_transicion_cadenas_simples';";
-                if (consulta.ExecuteScalar() is null)
+                var repositorioCadenas = new RepositorioCadenas(conexion);
+                if (!repositorioCadenas.TransicionCadenasSimplesAceptada())
                 {
                     MessageBox.Show(
                         this,
@@ -1121,10 +1123,7 @@ public partial class MainWindow : Window
                         MessageBoxButton.OK,
                         MessageBoxImage.Information
                     );
-                    using var guardar = conexion.CreateCommand();
-                    guardar.CommandText =
-                        "INSERT INTO configuracion(clave,valor) VALUES('buscadero_transicion_cadenas_simples','aceptada') ON CONFLICT(clave) DO UPDATE SET valor='aceptada';";
-                    guardar.ExecuteNonQuery();
+                    repositorioCadenas.AceptarTransicionCadenasSimples();
                 }
             }
             new DialogoCadenasSimples { Owner = this }.ShowDialog();
@@ -2274,6 +2273,176 @@ public partial class MainWindow : Window
             );
         }
     }
+
+    private async Task CargarTiposMaestroAsync()
+    {
+        try
+        {
+            var tipos = await Task.Run(() =>
+            {
+                using var conexion = BaseComun.Abrir(DocumentosGuardados.RutaBaseComun);
+                return new RepositorioBuscadorMaestro(conexion).Tipos();
+            });
+            MaestroTipo.ItemsSource = new string?[] { null }
+                .Concat(tipos)
+                .ToList();
+            MaestroTipo.SelectedIndex = 0;
+        }
+        catch (Exception error)
+        {
+            MaestroEstado.Text = $"No se pudieron cargar los tipos: {error.Message}";
+        }
+    }
+
+    private async void MaestroBuscar_Click(object sender, RoutedEventArgs e) =>
+        await BuscarMaestroAsync();
+
+    private void MaestroFiltroChanged(object sender, RoutedEventArgs e) => ++_busquedaMaestraId;
+
+    private async Task BuscarMaestroAsync()
+    {
+        int id = ++_busquedaMaestraId;
+        MaestroEstado.Text = "Buscando...";
+        MaestroResultados.ItemsSource = null;
+        MaestroDatos.ItemsSource = null;
+        MaestroDatosCadena.ItemsSource = null;
+        _documentoMaestroSeleccionado = null;
+        MaestroVerCadena.IsEnabled = false;
+        string? tipo = MaestroTipo.SelectedItem as string;
+        string grupo = (MaestroGrupo.SelectedItem as ComboBoxItem)?.Content?.ToString() ?? "Todos";
+        var filtros = new FiltrosBuscadorMaestro(
+            MaestroNumero.Text,
+            tipo,
+            MaestroEmisor.Text,
+            MaestroCliente.Text,
+            MaestroEncargado.Text,
+            grupo,
+            MaestroFechaDesde.SelectedDate,
+            MaestroFechaHasta.SelectedDate
+        );
+        try
+        {
+            var resultados = await Task.Run(() =>
+            {
+                using var conexion = BaseComun.Abrir(DocumentosGuardados.RutaBaseComun);
+                return new RepositorioBuscadorMaestro(conexion).Buscar(filtros);
+            });
+            if (id != _busquedaMaestraId)
+                return;
+            MaestroResultados.ItemsSource = resultados.Select(f => new MaestroFilaVm(f)).ToList();
+            MaestroEstado.Text = $"{resultados.Count} documento(s).";
+        }
+        catch (Exception error)
+        {
+            if (id == _busquedaMaestraId)
+                MaestroEstado.Text = $"No se pudo completar la búsqueda: {error.Message}";
+        }
+    }
+
+    private void MaestroLimpiar_Click(object sender, RoutedEventArgs e)
+    {
+        ++_busquedaMaestraId;
+        MaestroNumero.Clear();
+        MaestroTipo.SelectedIndex = 0;
+        MaestroEmisor.Clear();
+        MaestroCliente.Clear();
+        MaestroEncargado.Clear();
+        MaestroGrupo.SelectedIndex = 2;
+        MaestroFechaDesde.SelectedDate = null;
+        MaestroFechaHasta.SelectedDate = null;
+        MaestroResultados.ItemsSource = null;
+        MaestroDatos.ItemsSource = null;
+        MaestroDatosCadena.ItemsSource = null;
+        MaestroEstado.Text = "";
+        MaestroVerCadena.IsEnabled = false;
+        _documentoMaestroSeleccionado = null;
+    }
+
+    private async void MaestroResultados_SelectionChanged(
+        object sender,
+        SelectionChangedEventArgs e
+    )
+    {
+        if (MaestroResultados.SelectedItem is not MaestroFilaVm fila)
+            return;
+        _documentoMaestroSeleccionado = fila.Documento;
+        MaestroDatos.ItemsSource = null;
+        MaestroDatosCadena.ItemsSource = null;
+        MaestroVerCadena.IsEnabled = fila.Documento.CadenaId.HasValue;
+        int id = _busquedaMaestraId;
+        try
+        {
+            var detalle = await Task.Run(() =>
+            {
+                using var conexion = BaseComun.Abrir(DocumentosGuardados.RutaBaseComun);
+                var repositorio = new RepositorioBuscadorMaestro(conexion);
+                var datos = repositorio.ObtenerDatos(fila.Documento.VersionId);
+                var documentos = fila.Documento.CadenaId is long cadenaId
+                    ? repositorio.ObtenerCadena(cadenaId)
+                    : [];
+                return (Datos: datos, Documentos: documentos);
+            });
+            if (
+                id != _busquedaMaestraId
+                || _documentoMaestroSeleccionado?.VersionId != fila.Documento.VersionId
+            )
+                return;
+            MaestroDatos.ItemsSource = detalle
+                .Datos.Select(d => new MaestroDatoVm(d.Nombre, d.Valor))
+                .ToList();
+            MaestroDatosCadena.ItemsSource = detalle
+                .Documentos.Where(d => d.VersionId != fila.Documento.VersionId)
+                .Select(d => new MaestroCadenaVm(
+                    $"{d.Tipo} · {d.Emisor} — {d.Numeros}",
+                    d.Datos.Select(x => new MaestroDatoVm(x.Nombre, x.Valor)).ToList()
+                ))
+                .ToList();
+        }
+        catch (Exception error)
+        {
+            MaestroEstado.Text = $"No se pudieron cargar los datos de la cadena: {error.Message}";
+        }
+    }
+
+    private void MaestroVerCadena_Click(object sender, RoutedEventArgs e)
+    {
+        if (_documentoMaestroSeleccionado?.CadenaId is not long cadenaId)
+            return;
+        _cadenaActivaId = cadenaId;
+        Pestanas.SelectedIndex = 1;
+        RefrescarPrevisualizacion();
+        MostrarCadena(cadenaId);
+    }
+
+    private void MaestroCopiar_Click(object sender, RoutedEventArgs e)
+    {
+        if ((sender as FrameworkElement)?.Tag is not string valor)
+            return;
+        try
+        {
+            Clipboard.SetText(valor);
+            MaestroEstado.Text = "✓ Copiado";
+        }
+        catch (Exception error)
+        {
+            MaestroEstado.Text = $"No se pudo copiar: {error.Message}";
+        }
+    }
+
+    private async void MaestroResultados_MouseDoubleClick(object sender, MouseButtonEventArgs e)
+    {
+        if (MaestroResultados.SelectedItem is MaestroFilaVm fila)
+        {
+            try
+            {
+                await AbrirDocumentoAsync(fila.Documento.Ruta);
+            }
+            catch (Exception error)
+            {
+                MaestroEstado.Text = $"No se pudo abrir el PDF: {error.Message}";
+            }
+        }
+    }
 }
 
 public sealed class CarpetaVm
@@ -2290,6 +2459,27 @@ public sealed class ResultadoBusquedaVm
     public required string Nombre { get; init; }
     public required string Modificado { get; init; }
 }
+
+public sealed class MaestroFilaVm
+{
+    public DocumentoBuscadorMaestro Documento { get; }
+
+    public MaestroFilaVm(DocumentoBuscadorMaestro documento) => Documento = documento;
+
+    public string TipoEmisor => $"{Documento.Tipo} · {Documento.Emisor}";
+    public string Numeros => Documento.Numeros;
+    public string FechaTexto => Documento.Fecha?.ToString("dd/MM/yyyy") ?? "";
+    public string Cliente => Documento.Cliente;
+    public string Encargado => Documento.Encargado;
+    public string Cadena => Documento.Cadena;
+}
+
+public sealed record MaestroDatoVm(string Nombre, string Valor)
+{
+    public string Texto => $"{Nombre}: {Valor}";
+}
+
+public sealed record MaestroCadenaVm(string Encabezado, IReadOnlyList<MaestroDatoVm> Datos);
 
 public sealed class VagonPlantillaVm
 {

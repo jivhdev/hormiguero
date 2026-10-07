@@ -42,6 +42,19 @@ public sealed class CadenasSimplesTests : IDisposable
     }
 
     [Fact]
+    public void Repositorio_central_busca_cadenas_y_versiones_para_Buscadero()
+    {
+        long version = CrearVersion("orden-4500012345.pdf", "orden", "4500012345");
+        long cadena = CrearCadenaConDocumento(version);
+        var repo = new RepositorioCadenas(_conexion);
+
+        Assert.Equal(cadena, Assert.Single(repo.BuscarCadenasSimples("4500012345")).Id);
+        var encontrada = Assert.Single(repo.BuscarVersionesDocumento("4500012345"));
+        Assert.Equal(version, encontrada.VersionId);
+        Assert.Equal(encontrada, repo.ObtenerVersionDocumento(version));
+    }
+
+    [Fact]
     public void Asistencia_agrupa_documentos_por_dato_compartido()
     {
         long uno = CrearVersion("uno.pdf", "uno", "4500012345");

@@ -86,7 +86,8 @@ public static class GuardadoAutomaticoService
 
     public static ResultadoProcesamiento Procesar(
         string rutaArchivo,
-        ConfiguracionDocumento configuracionConPatronCoincidente
+        ConfiguracionDocumento configuracionConPatronCoincidente,
+        ImpresionAlArchivarService? impresion = null
     )
     {
         var (campos, error) = ExtraerCamposParaClasificar(
@@ -108,7 +109,7 @@ public static class GuardadoAutomaticoService
             return new ResultadoProcesamiento(ResultadoGuardadoAutomatico.NombrePorConfirmar);
         }
 
-        return Guardar(rutaArchivo, configuracionConPatronCoincidente, campos);
+        return Guardar(rutaArchivo, configuracionConPatronCoincidente, campos, impresion);
     }
 
     /// <summary>
@@ -119,7 +120,8 @@ public static class GuardadoAutomaticoService
     public static ResultadoProcesamiento GuardarConNombreConfirmado(
         string rutaArchivo,
         ConfiguracionDocumento configuracionConPatronCoincidente,
-        string nombreConfirmado
+        string nombreConfirmado,
+        ImpresionAlArchivarService? impresion = null
     )
     {
         var (campos, error) = ExtraerCamposParaClasificar(
@@ -148,14 +150,16 @@ public static class GuardadoAutomaticoService
             campos with
             {
                 NombreExtraido = nombreConfirmado,
-            }
+            },
+            impresion
         );
     }
 
     private static ResultadoProcesamiento Guardar(
         string rutaArchivo,
         ConfiguracionDocumento configuracionConPatronCoincidente,
-        CamposExtraidos campos
+        CamposExtraidos campos,
+        ImpresionAlArchivarService? impresion
     )
     {
         // Caso-1, punto 2 (ultimo parrafo): si la carpeta del periodo actual todavia no existe,
@@ -223,6 +227,18 @@ public static class GuardadoAutomaticoService
             {
                 AbrirEnVisorDelSistema(rutaFinal);
             }
+
+            string? avisoImpresion = (impresion ?? new(new AccionImpresionWindows())).Procesar(
+                rutaFinal,
+                configuracionConPatronCoincidente
+            );
+            if (!string.IsNullOrWhiteSpace(avisoImpresion))
+                detallePublicacion = string.Join(
+                    "\n",
+                    new[] { detallePublicacion, avisoImpresion }.Where(x =>
+                        !string.IsNullOrWhiteSpace(x)
+                    )
+                );
 
             return new ResultadoProcesamiento(
                 ResultadoGuardadoAutomatico.Guardado,

@@ -39,6 +39,16 @@ public sealed record DatosDudoso(
     string? Motivo
 );
 
+public sealed record DatosDudosoCadenaSimple(
+    long EnlaceId,
+    string Motivo,
+    long VersionId,
+    string Ruta,
+    string Nombre
+);
+
+public sealed record DocumentoDudosoCadenaSimple(long VagonId, long VersionId, string Nombre);
+
 public sealed class RepositorioReglasYEnlaces(SqliteConnection conexion)
 {
     public void AnularReglasDeVagones(IEnumerable<long> vagones)
@@ -288,6 +298,47 @@ public sealed class RepositorioReglasYEnlaces(SqliteConnection conexion)
                 )
             );
         return resultado;
+    }
+
+    public IReadOnlyList<DatosDudosoCadenaSimple> ListarDudososCadenasSimples()
+    {
+        using var comando = conexion.CreateCommand();
+        comando.CommandText =
+            "SELECT e.id,e.motivo,e.version_id,d.ruta,d.nombre FROM enlaces_cadena e JOIN vagones_cadena v ON v.id=e.vagon_cadena_id JOIN cadenas c ON c.id=v.cadena_id JOIN versiones_documento ver ON ver.id=e.version_id JOIN documentos d ON d.id=ver.documento_id WHERE e.estado='dudoso' AND c.modelo_id IS NULL ORDER BY e.id;";
+        using var lector = comando.ExecuteReader();
+        var resultado = new List<DatosDudosoCadenaSimple>();
+        while (lector.Read())
+            resultado.Add(
+                new(
+                    lector.GetInt64(0),
+                    lector.IsDBNull(1) ? "Revisar coincidencia" : lector.GetString(1),
+                    lector.GetInt64(2),
+                    lector.GetString(3),
+                    lector.GetString(4)
+                )
+            );
+        return resultado;
+    }
+
+    public DocumentoDudosoCadenaSimple? ObtenerDocumentoDudosoCadenaSimple(long enlaceId)
+    {
+        using var comando = conexion.CreateCommand();
+        comando.CommandText =
+            "SELECT e.vagon_cadena_id,e.version_id,d.nombre FROM enlaces_cadena e JOIN vagones_cadena v ON v.id=e.vagon_cadena_id JOIN cadenas c ON c.id=v.cadena_id JOIN versiones_documento ver ON ver.id=e.version_id JOIN documentos d ON d.id=ver.documento_id WHERE e.id=$e AND e.estado='dudoso' AND c.modelo_id IS NULL;";
+        comando.Parameters.AddWithValue("$e", enlaceId);
+        using var lector = comando.ExecuteReader();
+        return lector.Read()
+            ? new(lector.GetInt64(0), lector.GetInt64(1), lector.GetString(2))
+            : null;
+    }
+
+    public long? ObtenerVagonDudosoCadenaSimple(long enlaceId)
+    {
+        using var comando = conexion.CreateCommand();
+        comando.CommandText =
+            "SELECT e.vagon_cadena_id FROM enlaces_cadena e JOIN vagones_cadena v ON v.id=e.vagon_cadena_id JOIN cadenas c ON c.id=v.cadena_id WHERE e.id=$id AND e.estado='dudoso' AND c.modelo_id IS NULL;";
+        comando.Parameters.AddWithValue("$id", enlaceId);
+        return comando.ExecuteScalar() is long id ? id : null;
     }
 
     public DatosDudoso? ObtenerDatosDudoso(long id)
