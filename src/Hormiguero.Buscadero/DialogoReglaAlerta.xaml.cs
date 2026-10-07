@@ -16,16 +16,21 @@ public partial class DialogoReglaAlerta : Window
         try
         {
             using var conexion = BaseComun.Abrir(DocumentosGuardados.RutaBaseComun);
-            using (var tipos = conexion.CreateCommand())
-            {
-                tipos.CommandText =
-                    "SELECT id,COALESCE(NULLIF(nombre_estandar,''),tipo || ' · ' || emisor) FROM identificaciones ORDER BY tipo,emisor;";
-                using var r = tipos.ExecuteReader();
-                while (r.Read())
-                    _criterios.Add(
-                        new($"Tipo de documento: {r.GetString(1)}", null, r.GetInt64(0))
-                    );
-            }
+            _criterios.AddRange(
+                new Identificaciones(conexion)
+                    .Listar()
+                    .OrderBy(i => i.Tipo)
+                    .ThenBy(i => i.Emisor)
+                    .Select(i => new CriterioAlerta(
+                        $"Tipo de documento: {(
+                            string.IsNullOrWhiteSpace(i.NombreEstandar)
+                                ? $"{i.Tipo} · {i.Emisor}"
+                                : i.NombreEstandar
+                        )}",
+                        null,
+                        i.Id
+                    ))
+            );
             _criterios.AddRange(
                 new RepositorioDatosEnlazantes(conexion)
                     .LeerDiccionario()

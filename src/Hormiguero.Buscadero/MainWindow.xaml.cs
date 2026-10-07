@@ -1112,11 +1112,9 @@ public partial class MainWindow : Window
         try
         {
             using (var conexion = Hormiguero.Nucleo.Datos.BaseComun.Abrir(ruta))
-            using (var consulta = conexion.CreateCommand())
             {
-                consulta.CommandText =
-                    "SELECT valor FROM configuracion WHERE clave='buscadero_transicion_cadenas_simples';";
-                if (consulta.ExecuteScalar() is null)
+                var repositorioCadenas = new RepositorioCadenas(conexion);
+                if (!repositorioCadenas.TransicionCadenasSimplesAceptada())
                 {
                     MessageBox.Show(
                         this,
@@ -1125,10 +1123,7 @@ public partial class MainWindow : Window
                         MessageBoxButton.OK,
                         MessageBoxImage.Information
                     );
-                    using var guardar = conexion.CreateCommand();
-                    guardar.CommandText =
-                        "INSERT INTO configuracion(clave,valor) VALUES('buscadero_transicion_cadenas_simples','aceptada') ON CONFLICT(clave) DO UPDATE SET valor='aceptada';";
-                    guardar.ExecuteNonQuery();
+                    repositorioCadenas.AceptarTransicionCadenasSimples();
                 }
             }
             new DialogoCadenasSimples { Owner = this }.ShowDialog();
