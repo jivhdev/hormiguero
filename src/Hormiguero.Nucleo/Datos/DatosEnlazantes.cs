@@ -8,7 +8,8 @@ public sealed record DatoEnlazante(
     string Nombre,
     string Grupo,
     int Orden,
-    string? CodigoReferencia
+    string? CodigoReferencia,
+    string EtiquetaTipo
 );
 
 public sealed record DatoTipoDocumento(
@@ -22,10 +23,220 @@ public sealed record DatoTipoDocumento(
     double Y,
     double Ancho,
     double Alto,
-    bool Activo
+    bool Activo,
+    bool DefineTipo = false,
+    bool Enlazable = true
 );
 
-public sealed record DocumentoConDato(long DocumentoId, long VersionId, string Ruta, string Valor);
+public sealed record ZonaInformativa(
+    string Dato,
+    int Pagina,
+    double X,
+    double Y,
+    double Ancho,
+    double Alto
+);
+
+public sealed record ValorInformativo(
+    string Dato,
+    string Valor,
+    DateTime? Fecha,
+    bool FechaNoReconocida
+);
+
+public static class FechaDocumentoParser
+{
+    private static readonly string[] formatos =
+    [
+        "d-M-yyyy",
+        "dd-MM-yyyy",
+        "d/M/yyyy",
+        "dd/MM/yyyy",
+        "d.M.yyyy",
+        "dd.MM.yyyy",
+    ];
+    private static readonly System.Globalization.CultureInfo cultura =
+        System.Globalization.CultureInfo.GetCultureInfo("es-CL");
+
+    public static ValorInformativo InterpretarFecha(string? valor)
+    {
+        string texto = valor?.Trim() ?? "";
+        if (
+            DateTime.TryParseExact(
+                texto,
+                formatos,
+                cultura,
+                System.Globalization.DateTimeStyles.None,
+                out var fecha
+            )
+            || DateTime.TryParse(
+                texto,
+                cultura,
+                System.Globalization.DateTimeStyles.None,
+                out fecha
+            )
+        )
+            return new("fecha_documento", texto, fecha.Date, false);
+        return new("fecha_documento", texto, null, texto.Length > 0);
+    }
+}
+
+public sealed class RepositorioDatosInformativos(SqliteConnection conexion)
+{
+    public IReadOnlyList<ZonaInformativa> LeerZonas(long identificacionId, string diseno)
+    {
+        using var cmd = conexion.CreateCommand();
+        cmd.CommandText =
+            "SELECT dato,pagina,x,y,ancho,alto FROM tipos_documento_informativos WHERE identificacion_id=$i AND diseno=$s AND activo=1 ORDER BY dato;";
+        cmd.Parameters.AddWithValue("$i", identificacionId);
+        cmd.Parameters.AddWithValue("$s", diseno);
+        using var r = cmd.ExecuteReader();
+        var zonas = new List<ZonaInformativa>();
+        while (r.Read())
+            zonas.Add(
+                new(
+                    r.GetString(0),
+                    r.GetInt32(1),
+                    r.GetDouble(2),
+                    r.GetDouble(3),
+                    r.GetDouble(4),
+                    r.GetDouble(5)
+                )
+            );
+        return zonas;
+    }
+
+    public void GuardarZonas(
+        long identificacionId,
+        string diseno,
+        IReadOnlyList<ZonaInformativa> zonas
+    )
+    {
+        using var tx = conexion.BeginTransaction();
+        using (var cmd = conexion.CreateCommand())
+        {
+            cmd.Transaction = tx;
+            cmd.CommandText =
+                "UPDATE tipos_documento_informativos SET activo=0 WHERE identificacion_id=$i AND diseno=$s;";
+            cmd.Parameters.AddWithValue("$i", identificacionId);
+            cmd.Parameters.AddWithValue("$s", diseno);
+            cmd.ExecuteNonQuery();
+        }
+        foreach (var zona in zonas)
+        {
+            if (zona.Pagina < 1 || zona.X < 0 || zona.Y < 0 || zona.Ancho <= 0 || zona.Alto <= 0)
+                throw new ArgumentOutOfRangeException(
+                    nameof(zonas),
+                    "La zona del dato informativo no es válida."
+                );
+            using var cmd = conexion.CreateCommand();
+            cmd.Transaction = tx;
+            cmd.CommandText =
+                "INSERT INTO tipos_documento_informativos(identificacion_id,diseno,dato,pagina,x,y,ancho,alto,activo) VALUES($i,$s,$d,$p,$x,$y,$a,$l,1) ON CONFLICT(identificacion_id,diseno,dato) DO UPDATE SET pagina=excluded.pagina,x=excluded.x,y=excluded.y,ancho=excluded.ancho,alto=excluded.alto,activo=1;";
+            cmd.Parameters.AddWithValue("$i", identificacionId);
+            cmd.Parameters.AddWithValue("$s", diseno);
+            cmd.Parameters.AddWithValue("$d", zona.Dato);
+            cmd.Parameters.AddWithValue("$p", zona.Pagina);
+            cmd.Parameters.AddWithValue("$x", zona.X);
+            cmd.Parameters.AddWithValue("$y", zona.Y);
+            cmd.Parameters.AddWithValue("$a", zona.Ancho);
+            cmd.Parameters.AddWithValue("$l", zona.Alto);
+            cmd.ExecuteNonQuery();
+        }
+        tx.Commit();
+    }
+
+    public void GuardarValores(long versionId, IReadOnlyList<ValorInformativo> valores)
+    {
+        foreach (var valor in valores)
+        {
+            using var cmd = conexion.CreateCommand();
+            cmd.CommandText =
+                "INSERT INTO valores_informativos_documento(version_id,dato,valor,fecha_reconocida,fecha_no_reconocida,creada_en) VALUES($v,$d,$o,$f,$n,$c) ON CONFLICT(version_id,dato) DO UPDATE SET valor=excluded.valor,fecha_reconocida=excluded.fecha_reconocida,fecha_no_reconocida=excluded.fecha_no_reconocida;";
+            cmd.Parameters.AddWithValue("$v", versionId);
+            cmd.Parameters.AddWithValue("$d", valor.Dato);
+            cmd.Parameters.AddWithValue("$o", valor.Valor);
+            cmd.Parameters.AddWithValue(
+                "$f",
+                (object?)valor.Fecha?.ToString("yyyy-MM-dd") ?? DBNull.Value
+            );
+            cmd.Parameters.AddWithValue("$n", valor.FechaNoReconocida ? 1 : 0);
+            cmd.Parameters.AddWithValue("$c", DateTime.Now.ToString("o"));
+            cmd.ExecuteNonQuery();
+        }
+    }
+
+    public IReadOnlyList<ValorInformativo> ConsultarFechas(DateTime desde, DateTime hasta)
+    {
+        using var cmd = conexion.CreateCommand();
+        cmd.CommandText =
+            "SELECT dato,valor,fecha_reconocida,fecha_no_reconocida FROM valores_informativos_documento WHERE dato='fecha_documento' AND fecha_reconocida >= $d AND fecha_reconocida <= $h ORDER BY fecha_reconocida;";
+        cmd.Parameters.AddWithValue("$d", desde.ToString("yyyy-MM-dd"));
+        cmd.Parameters.AddWithValue("$h", hasta.ToString("yyyy-MM-dd"));
+        using var r = cmd.ExecuteReader();
+        var resultado = new List<ValorInformativo>();
+        while (r.Read())
+            resultado.Add(
+                new(
+                    r.GetString(0),
+                    r.GetString(1),
+                    r.IsDBNull(2) ? null : DateTime.Parse(r.GetString(2)),
+                    r.GetInt32(3) != 0
+                )
+            );
+        return resultado;
+    }
+
+    public IReadOnlyList<ValorInformativo> ListarValores(long versionId)
+    {
+        using var cmd = conexion.CreateCommand();
+        cmd.CommandText =
+            "SELECT dato,valor,fecha_reconocida,fecha_no_reconocida FROM valores_informativos_documento WHERE version_id=$v ORDER BY dato;";
+        cmd.Parameters.AddWithValue("$v", versionId);
+        using var r = cmd.ExecuteReader();
+        var resultado = new List<ValorInformativo>();
+        while (r.Read())
+            resultado.Add(
+                new(
+                    r.GetString(0),
+                    r.GetString(1),
+                    r.IsDBNull(2) ? null : DateTime.Parse(r.GetString(2)),
+                    r.GetInt32(3) != 0
+                )
+            );
+        return resultado;
+    }
+
+    public IReadOnlyList<ValorInformativo> BuscarPorRuta(string ruta)
+    {
+        ArgumentException.ThrowIfNullOrWhiteSpace(ruta);
+        using var cmd = conexion.CreateCommand();
+        cmd.CommandText =
+            "SELECT dato,valor,fecha_reconocida,fecha_no_reconocida FROM valores_informativos_documento vi JOIN versiones_documento v ON v.id=vi.version_id JOIN documentos d ON d.id=v.documento_id WHERE d.ruta=$r AND v.estado='vigente' ORDER BY dato;";
+        cmd.Parameters.AddWithValue("$r", ruta);
+        using var r = cmd.ExecuteReader();
+        var resultado = new List<ValorInformativo>();
+        while (r.Read())
+            resultado.Add(
+                new(
+                    r.GetString(0),
+                    r.GetString(1),
+                    r.IsDBNull(2) ? null : DateTime.Parse(r.GetString(2)),
+                    r.GetInt32(3) != 0
+                )
+            );
+        return resultado;
+    }
+}
+
+public sealed record DocumentoConDato(
+    long DocumentoId,
+    long VersionId,
+    string Ruta,
+    string Valor,
+    string NombreEstandar = "",
+    DateTime? FechaDocumento = null
+);
 
 public sealed record CoincidenciasPorDato(
     DatoEnlazante Dato,
@@ -35,6 +246,15 @@ public sealed record CoincidenciasPorDato(
 
 public static class DiccionarioDatosEnlazantes
 {
+    public static string NombreEstandar(string datoId, string emisor)
+    {
+        ArgumentException.ThrowIfNullOrWhiteSpace(emisor);
+        var dato =
+            Todos.SingleOrDefault(d => d.Id == datoId)
+            ?? throw new ArgumentException("El dato no pertenece al diccionario.", nameof(datoId));
+        return $"{dato.EtiquetaTipo} · {emisor.Trim()}";
+    }
+
     // Clave para comparar un dato del diccionario entre documentos: el mismo número se imprime
     // distinto según el documento ("NVV-12345", "0000020508", "1066 086"). Si hay dígitos,
     // cuentan solo los dígitos, sin ceros a la izquierda; si no, letras y dígitos en mayúscula.
@@ -52,47 +272,128 @@ public static class DiccionarioDatosEnlazantes
 
     public static IReadOnlyList<DatoEnlazante> Todos { get; } =
         new ReadOnlyCollection<DatoEnlazante>([
-            new("cotizacion_propia", "N° Cotización propia", "Ventas propias", 1, "COV"),
-            new("nota_venta_propia", "N° Nota de venta propia", "Ventas propias", 2, "NVV"),
-            new("guia_despacho_propia", "N° Guía de despacho propia", "Ventas propias", 3, "GDV"),
-            new("factura_propia", "N° Factura propia", "Ventas propias", 4, "FCV"),
-            new("nota_credito_propia", "N° Nota de crédito propia", "Ventas propias", 5, "NCV"),
-            new("nota_debito_propia", "N° Nota de débito propia", "Ventas propias", 6, null),
-            new("oc_cliente", "N° OC del cliente", "Del cliente", 7, "OCL"),
+            new(
+                "cotizacion_propia",
+                "N° Cotización propia",
+                "Ventas propias",
+                1,
+                "COV",
+                "Cotización propia"
+            ),
+            new(
+                "nota_venta_propia",
+                "N° Nota de venta propia",
+                "Ventas propias",
+                2,
+                "NVV",
+                "Nota de venta propia"
+            ),
+            new(
+                "guia_despacho_propia",
+                "N° Guía de despacho propia",
+                "Ventas propias",
+                3,
+                "GDV",
+                "Guía de despacho propia"
+            ),
+            new(
+                "factura_propia",
+                "N° Factura propia",
+                "Ventas propias",
+                4,
+                "FCV",
+                "Factura propia"
+            ),
+            new(
+                "nota_credito_propia",
+                "N° Nota de crédito propia",
+                "Ventas propias",
+                5,
+                "NCV",
+                "Nota de crédito propia"
+            ),
+            new(
+                "nota_debito_propia",
+                "N° Nota de débito propia",
+                "Ventas propias",
+                6,
+                null,
+                "Nota de débito propia"
+            ),
+            new("oc_cliente", "N° OC del cliente", "Del cliente", 7, "OCL", "OC del cliente"),
             new(
                 "recepcion_cliente",
                 "N° Recepción del cliente",
                 "Del cliente",
                 8,
-                "HES/HEM/recepción"
+                "HES/HEM/recepción",
+                "Recepción del cliente"
             ),
-            new("oc_propia", "N° OC propia", "Compras propias", 9, "OCC"),
-            new("cotizacion_proveedor", "N° Cotización del proveedor", "Del proveedor", 10, null),
+            new("oc_propia", "N° OC propia", "Compras propias", 9, "OCC", "OC propia"),
+            new(
+                "cotizacion_proveedor",
+                "N° Cotización del proveedor",
+                "Del proveedor",
+                10,
+                null,
+                "Cotización del proveedor"
+            ),
             new(
                 "nota_venta_proveedor",
                 "N° Nota de venta del proveedor",
                 "Del proveedor",
                 11,
-                "NVV"
+                "NVV",
+                "Nota de venta del proveedor"
             ),
-            new("guia_proveedor", "N° Guía del proveedor", "Del proveedor", 12, "GRC"),
-            new("factura_proveedor", "N° Factura del proveedor", "Del proveedor", 13, "FCC"),
+            new(
+                "guia_proveedor",
+                "N° Guía del proveedor",
+                "Del proveedor",
+                12,
+                "GRC",
+                "Guía del proveedor"
+            ),
+            new(
+                "factura_proveedor",
+                "N° Factura del proveedor",
+                "Del proveedor",
+                13,
+                "FCC",
+                "Factura del proveedor"
+            ),
             new(
                 "nota_credito_proveedor",
                 "N° Nota de crédito del proveedor",
                 "Del proveedor",
                 14,
-                "NCC"
+                "NCC",
+                "Nota de crédito del proveedor"
             ),
             new(
                 "nota_debito_proveedor",
                 "N° Nota de débito del proveedor",
                 "Del proveedor",
                 15,
-                null
+                null,
+                "Nota de débito del proveedor"
             ),
-            new("codigo_obra", "Código de obra o proyecto", "Otros", 16, null),
-            new("comprobante_pago", "N° Comprobante de pago", "Otros", 17, null),
+            new(
+                "codigo_obra",
+                "Código de obra o proyecto",
+                "Otros",
+                16,
+                null,
+                "Código de obra o proyecto"
+            ),
+            new(
+                "comprobante_pago",
+                "N° Comprobante de pago",
+                "Otros",
+                17,
+                null,
+                "Comprobante de pago"
+            ),
         ]);
 }
 
@@ -112,7 +413,7 @@ public sealed class RepositorioDatosEnlazantes(SqliteConnection conexion)
     {
         using var cmd = conexion.CreateCommand();
         cmd.CommandText =
-            "SELECT DISTINCT dato_diccionario_id,valor_clave FROM valores_documento WHERE version_id=$v AND estado='vigente' AND dato_diccionario_id IS NOT NULL AND valor_clave<>'' ORDER BY dato_diccionario_id;";
+            "SELECT DISTINCT x.dato_diccionario_id,x.valor_clave FROM valores_documento x JOIN campos_documento c ON c.id=x.campo_id WHERE x.version_id=$v AND x.estado='vigente' AND x.dato_diccionario_id IS NOT NULL AND x.valor_clave<>'' AND EXISTS(SELECT 1 FROM tipos_documento_datos t WHERE t.identificacion_id=c.identificacion_id AND t.dato_diccionario_id=x.dato_diccionario_id AND t.activo=1 AND t.enlazable=1) ORDER BY x.dato_diccionario_id;";
         cmd.Parameters.AddWithValue("$v", versionId);
         var datos = new List<(string Id, string Valor)>();
         using (var r = cmd.ExecuteReader())
@@ -146,7 +447,10 @@ public sealed class RepositorioDatosEnlazantes(SqliteConnection conexion)
                     lector.GetString(1),
                     lector.GetString(2),
                     lector.GetInt32(3),
-                    lector.IsDBNull(4) ? null : lector.GetString(4)
+                    lector.IsDBNull(4) ? null : lector.GetString(4),
+                    DiccionarioDatosEnlazantes
+                        .Todos.Single(d => d.Id == lector.GetString(0))
+                        .EtiquetaTipo
                 )
             );
         return datos;
@@ -162,15 +466,25 @@ public sealed class RepositorioDatosEnlazantes(SqliteConnection conexion)
                 "La zona del diseño de PDF no es válida."
             );
         using var transaccion = conexion.BeginTransaction();
+        if (dato.DefineTipo)
+        {
+            using var desmarcar = conexion.CreateCommand();
+            desmarcar.Transaction = transaccion;
+            desmarcar.CommandText =
+                "UPDATE tipos_documento_datos SET define_tipo=0 WHERE identificacion_id=$i AND diseno=$s;";
+            desmarcar.Parameters.AddWithValue("$i", dato.IdentificacionId);
+            desmarcar.Parameters.AddWithValue("$s", dato.Diseno.Trim());
+            desmarcar.ExecuteNonQuery();
+        }
         using var comando = conexion.CreateCommand();
         comando.Transaction = transaccion;
         comando.CommandText =
             dato.Id == 0
                 // Volver a marcar un dato que se había quitado en el mismo diseño lo reactiva con la
                 // zona nueva (D-73: todo se puede rehacer); la fila y su historial se conservan.
-                ? "INSERT INTO tipos_documento_datos(identificacion_id,dato_diccionario_id,diseno,campo_id,pagina,x,y,ancho,alto,creada_en,actualizada_en) VALUES($i,$d,$s,$c,$p,$x,$y,$a,$l,$f,$f) "
-                    + "ON CONFLICT(identificacion_id,dato_diccionario_id,diseno) DO UPDATE SET campo_id=excluded.campo_id,pagina=excluded.pagina,x=excluded.x,y=excluded.y,ancho=excluded.ancho,alto=excluded.alto,activo=1,actualizada_en=excluded.actualizada_en RETURNING id;"
-                : "UPDATE tipos_documento_datos SET dato_diccionario_id=$d,diseno=$s,campo_id=$c,pagina=$p,x=$x,y=$y,ancho=$a,alto=$l,actualizada_en=$f WHERE id=$id AND identificacion_id=$i AND activo=1 RETURNING id;";
+                ? "INSERT INTO tipos_documento_datos(identificacion_id,dato_diccionario_id,diseno,campo_id,pagina,x,y,ancho,alto,creada_en,actualizada_en,define_tipo,enlazable) VALUES($i,$d,$s,$c,$p,$x,$y,$a,$l,$f,$f,$t,$e) "
+                    + "ON CONFLICT(identificacion_id,dato_diccionario_id,diseno) DO UPDATE SET campo_id=excluded.campo_id,pagina=excluded.pagina,x=excluded.x,y=excluded.y,ancho=excluded.ancho,alto=excluded.alto,define_tipo=excluded.define_tipo,enlazable=excluded.enlazable,activo=1,actualizada_en=excluded.actualizada_en RETURNING id;"
+                : "UPDATE tipos_documento_datos SET dato_diccionario_id=$d,diseno=$s,campo_id=$c,pagina=$p,x=$x,y=$y,ancho=$a,alto=$l,define_tipo=$t,enlazable=$e,actualizada_en=$f WHERE id=$id AND identificacion_id=$i AND activo=1 RETURNING id;";
         comando.Parameters.AddWithValue("$i", dato.IdentificacionId);
         comando.Parameters.AddWithValue("$d", dato.DatoId);
         comando.Parameters.AddWithValue("$s", dato.Diseno.Trim());
@@ -182,6 +496,8 @@ public sealed class RepositorioDatosEnlazantes(SqliteConnection conexion)
         comando.Parameters.AddWithValue("$l", dato.Alto);
         comando.Parameters.AddWithValue("$f", DateTime.Now.ToString("o"));
         comando.Parameters.AddWithValue("$id", dato.Id);
+        comando.Parameters.AddWithValue("$t", dato.DefineTipo ? 1 : 0);
+        comando.Parameters.AddWithValue("$e", dato.Enlazable ? 1 : 0);
         long id = Convert.ToInt64(
             comando.ExecuteScalar()
                 ?? throw new InvalidOperationException(
@@ -224,7 +540,7 @@ public sealed class RepositorioDatosEnlazantes(SqliteConnection conexion)
     {
         using var comando = conexion.CreateCommand();
         comando.CommandText =
-            "SELECT id,identificacion_id,dato_diccionario_id,diseno,campo_id,pagina,x,y,ancho,alto,activo FROM tipos_documento_datos WHERE identificacion_id=$i"
+            "SELECT id,identificacion_id,dato_diccionario_id,diseno,campo_id,pagina,x,y,ancho,alto,activo,define_tipo,enlazable FROM tipos_documento_datos WHERE identificacion_id=$i"
             + (diseno is null ? "" : " AND diseno=$s")
             + (incluirAnulados ? "" : " AND activo=1")
             + " ORDER BY id;";
@@ -245,10 +561,52 @@ public sealed class RepositorioDatosEnlazantes(SqliteConnection conexion)
                     lector.GetDouble(7),
                     lector.GetDouble(8),
                     lector.GetDouble(9),
-                    lector.GetInt32(10) != 0
+                    lector.GetInt32(10) != 0,
+                    lector.GetInt32(11) != 0,
+                    lector.GetInt32(12) != 0
                 )
             );
         return lista;
+    }
+
+    public string? TipoDerivado(long identificacionId, string diseno)
+    {
+        using var comando = conexion.CreateCommand();
+        comando.CommandText =
+            "SELECT d.id FROM tipos_documento_datos t JOIN diccionario_datos d ON d.id=t.dato_diccionario_id WHERE t.identificacion_id=$i AND t.diseno=$s AND t.activo=1 AND t.define_tipo=1 LIMIT 1;";
+        comando.Parameters.AddWithValue("$i", identificacionId);
+        comando.Parameters.AddWithValue("$s", diseno);
+        var id = Convert.ToString(comando.ExecuteScalar());
+        return id is null
+            ? null
+            : DiccionarioDatosEnlazantes.Todos.Single(d => d.Id == id).EtiquetaTipo;
+    }
+
+    public IReadOnlyList<DocumentoConDato> SugerirCalce(string datoId, string valor, int maximo = 3)
+    {
+        string clave = DiccionarioDatosEnlazantes.ClaveDeEnlace(valor);
+        if (clave.Length == 0)
+            return [];
+        using var comando = conexion.CreateCommand();
+        comando.CommandText =
+            "SELECT DISTINCT vd.id,ver.id,vd.ruta,val.valor_original,ident.nombre_estandar,vi.fecha_reconocida FROM valores_documento val JOIN versiones_documento ver ON ver.id=val.version_id JOIN documentos vd ON vd.id=ver.documento_id JOIN campos_documento c ON c.id=val.campo_id JOIN identificaciones ident ON ident.id=c.identificacion_id LEFT JOIN valores_informativos_documento vi ON vi.version_id=ver.id AND vi.dato='fecha_documento' WHERE val.dato_diccionario_id=$d AND val.valor_clave=$v AND val.estado='vigente' AND ver.estado='vigente' AND EXISTS(SELECT 1 FROM tipos_documento_datos t WHERE t.identificacion_id=c.identificacion_id AND t.dato_diccionario_id=val.dato_diccionario_id AND t.activo=1 AND t.enlazable=1) ORDER BY ver.id DESC LIMIT $maximo;";
+        comando.Parameters.AddWithValue("$d", datoId);
+        comando.Parameters.AddWithValue("$v", clave);
+        comando.Parameters.AddWithValue("$maximo", maximo);
+        using var lector = comando.ExecuteReader();
+        var resultados = new List<DocumentoConDato>();
+        while (lector.Read())
+            resultados.Add(
+                new(
+                    lector.GetInt64(0),
+                    lector.GetInt64(1),
+                    lector.GetString(2),
+                    lector.GetString(3),
+                    lector.GetString(4),
+                    lector.IsDBNull(5) ? null : DateTime.Parse(lector.GetString(5))
+                )
+            );
+        return resultados;
     }
 
     public IReadOnlyList<DocumentoConDato> BuscarDocumentos(string datoId, string valorClave)
@@ -257,7 +615,7 @@ public sealed class RepositorioDatosEnlazantes(SqliteConnection conexion)
         ArgumentNullException.ThrowIfNull(valorClave);
         using var comando = conexion.CreateCommand();
         comando.CommandText =
-            "SELECT DISTINCT vd.id, val.version_id, vd.ruta, val.valor_original FROM valores_documento val JOIN versiones_documento ver ON ver.id=val.version_id JOIN documentos vd ON vd.id=ver.documento_id WHERE val.dato_diccionario_id=$d AND val.valor_clave=$v AND val.estado='vigente' AND ver.estado='vigente' ORDER BY vd.id,val.version_id;";
+            "SELECT DISTINCT vd.id, val.version_id, vd.ruta, val.valor_original FROM valores_documento val JOIN versiones_documento ver ON ver.id=val.version_id JOIN documentos vd ON vd.id=ver.documento_id JOIN campos_documento c ON c.id=val.campo_id WHERE val.dato_diccionario_id=$d AND val.valor_clave=$v AND val.estado='vigente' AND ver.estado='vigente' AND EXISTS(SELECT 1 FROM tipos_documento_datos t WHERE t.identificacion_id=c.identificacion_id AND t.dato_diccionario_id=val.dato_diccionario_id AND t.activo=1 AND t.enlazable=1) ORDER BY vd.id,val.version_id;";
         comando.Parameters.AddWithValue("$d", datoId);
         comando.Parameters.AddWithValue("$v", valorClave);
         using var lector = comando.ExecuteReader();

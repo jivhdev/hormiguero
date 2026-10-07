@@ -228,6 +228,14 @@ public static class Migraciones
                 + "ALTER TABLE alertas ADD COLUMN regla_simple_id INTEGER NULL REFERENCES reglas_alerta_cadena_simple(id); "
                 + "CREATE UNIQUE INDEX IF NOT EXISTS idx_alertas_idempotencia_regla_simple ON alertas(regla_simple_id,cadena_id) WHERE regla_simple_id IS NOT NULL;"
         ),
+        (
+            11,
+            "ALTER TABLE tipos_documento_datos ADD COLUMN define_tipo INTEGER NOT NULL DEFAULT 0 CHECK(define_tipo IN (0,1)); "
+                + "ALTER TABLE tipos_documento_datos ADD COLUMN enlazable INTEGER NOT NULL DEFAULT 1 CHECK(enlazable IN (0,1)); "
+                + "CREATE TABLE tipos_documento_informativos(id INTEGER PRIMARY KEY, identificacion_id INTEGER NOT NULL REFERENCES identificaciones(id), diseno TEXT NOT NULL, dato TEXT NOT NULL CHECK(dato IN ('fecha_documento','encargado','nombre_cliente')), pagina INTEGER NOT NULL, x REAL NOT NULL, y REAL NOT NULL, ancho REAL NOT NULL, alto REAL NOT NULL, activo INTEGER NOT NULL DEFAULT 1 CHECK(activo IN (0,1)), UNIQUE(identificacion_id,diseno,dato)); "
+                + "CREATE TABLE valores_informativos_documento(id INTEGER PRIMARY KEY, version_id INTEGER NOT NULL REFERENCES versiones_documento(id), dato TEXT NOT NULL CHECK(dato IN ('fecha_documento','encargado','nombre_cliente')), valor TEXT NOT NULL, fecha_reconocida TEXT NULL, fecha_no_reconocida INTEGER NOT NULL DEFAULT 0 CHECK(fecha_no_reconocida IN (0,1)), creada_en TEXT NOT NULL, UNIQUE(version_id,dato)); "
+                + "CREATE INDEX idx_valores_informativos_fecha ON valores_informativos_documento(dato,fecha_reconocida);"
+        ),
     ];
 
     public static void Aplicar(

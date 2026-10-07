@@ -9,6 +9,8 @@ public sealed class DatoEnlazanteEdicion : INotifyPropertyChanged
 {
     private bool _incluido;
     private bool _marcado;
+    private bool _enlazable = true;
+    private bool _defineTipo;
     private string _estado = "No aparece en este diseño.";
 
     public DatoEnlazanteEdicion(DatoEnlazanteConfigurado dato)
@@ -18,6 +20,8 @@ public sealed class DatoEnlazanteEdicion : INotifyPropertyChanged
         Grupo = dato.Grupo;
         Incluido = dato.Incluido;
         Marcado = dato.Marcado;
+        Enlazable = dato.Enlazable;
+        DefineTipo = dato.DefineTipo;
         Pagina = dato.Pagina;
         X = dato.X;
         Y = dato.Y;
@@ -50,6 +54,24 @@ public sealed class DatoEnlazanteEdicion : INotifyPropertyChanged
             AvisarCambio();
         }
     }
+    public bool Enlazable
+    {
+        get => _enlazable;
+        set
+        {
+            _enlazable = value;
+            AvisarCambio();
+        }
+    }
+    public bool DefineTipo
+    {
+        get => _defineTipo;
+        set
+        {
+            _defineTipo = value;
+            AvisarCambio();
+        }
+    }
     public string Estado
     {
         get => _estado;
@@ -66,7 +88,21 @@ public sealed class DatoEnlazanteEdicion : INotifyPropertyChanged
     public double Alto { get; set; }
 
     public DatoEnlazanteConfigurado AConfigurado() =>
-        new(Id, Nombre, Grupo, Incluido, Marcado, Pagina, X, Y, Ancho, Alto, Estado);
+        new(
+            Id,
+            Nombre,
+            Grupo,
+            Incluido,
+            Marcado,
+            Pagina,
+            X,
+            Y,
+            Ancho,
+            Alto,
+            Estado,
+            Enlazable,
+            DefineTipo
+        );
 
     private void AvisarCambio([CallerMemberName] string? propiedad = null) =>
         PropertyChanged?.Invoke(this, new PropertyChangedEventArgs(propiedad));

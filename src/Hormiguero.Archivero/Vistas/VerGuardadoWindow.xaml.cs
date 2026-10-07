@@ -3,6 +3,7 @@ using System.IO;
 using System.Windows;
 using Archivero.Datos;
 using Archivero.Servicios;
+using Hormiguero.Nucleo.Datos;
 
 namespace Archivero.Vistas;
 
@@ -23,6 +24,24 @@ public partial class VerGuardadoWindow : Window
         InitializeComponent();
         _rutaArchivo = rutaArchivo;
         TxtRuta.Text = rutaArchivo;
+        using var conexion = BaseComun.Abrir(DocumentosGuardados.RutaBaseComun);
+        var valores = new RepositorioDatosInformativos(conexion).BuscarPorRuta(rutaArchivo);
+        var lineas = valores
+            .Select(valor =>
+                valor.Dato switch
+                {
+                    "fecha_documento" =>
+                        $"Fecha del documento: {(valor.Fecha is null ? $"{valor.Valor} (fecha no reconocida)" : valor.Fecha.Value.ToString("dd-MM-yyyy"))}",
+                    "encargado" => $"Encargado: {valor.Valor}",
+                    "nombre_cliente" => $"Nombre de cliente: {valor.Valor}",
+                    _ => string.Empty,
+                }
+            )
+            .Where(linea => !string.IsNullOrWhiteSpace(linea));
+        TxtDatosInformativos.Text = string.Join(Environment.NewLine, lineas);
+        TxtDatosInformativos.Visibility = string.IsNullOrWhiteSpace(TxtDatosInformativos.Text)
+            ? Visibility.Collapsed
+            : Visibility.Visible;
     }
 
     private void BtnAbrirUbicacion_Click(object sender, RoutedEventArgs e)

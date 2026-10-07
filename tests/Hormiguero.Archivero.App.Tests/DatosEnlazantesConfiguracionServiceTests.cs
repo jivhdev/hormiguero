@@ -9,6 +9,72 @@ namespace Archivero.Tests;
 public sealed class DatosEnlazantesConfiguracionServiceTests
 {
     [Fact]
+    public void Guarda_tipo_derivado_y_exige_dato_identificador()
+    {
+        string? anterior = Environment.GetEnvironmentVariable("HORMIGUERO_DATOS");
+        string raiz = Path.Combine(
+            Path.GetTempPath(),
+            $"Archivero-identificador-{Guid.NewGuid():N}"
+        );
+        Environment.SetEnvironmentVariable("HORMIGUERO_DATOS", raiz);
+        try
+        {
+            using (BaseComun.Abrir(DocumentosGuardados.RutaBaseComun)) { }
+            var dato = Assert.Single(
+                DiccionarioDatosEnlazantes.Todos,
+                d => d.Id == "factura_proveedor"
+            );
+            var sinIdentificador = new DatoEnlazanteConfigurado(
+                dato.Id,
+                dato.Nombre,
+                dato.Grupo,
+                true,
+                true,
+                0,
+                0.1,
+                0.1,
+                0.2,
+                0.1,
+                "",
+                true,
+                false
+            );
+            Assert.Throws<InvalidOperationException>(() =>
+                DatosEnlazantesConfiguracionService.Guardar(
+                    "Proveedor",
+                    "Factura del proveedor",
+                    "Recibido",
+                    "Factura del proveedor · Proveedor",
+                    1,
+                    [sinIdentificador]
+                )
+            );
+            DatosEnlazantesConfiguracionService.Guardar(
+                "Proveedor",
+                "Factura del proveedor",
+                "Recibido",
+                "Factura del proveedor · Proveedor",
+                1,
+                [sinIdentificador with { DefineTipo = true }]
+            );
+            var guardada = Assert.Single(LeerIdentificacion());
+            Assert.Equal("Factura del proveedor", guardada.Tipo);
+            Assert.Equal("Factura del proveedor · Proveedor", guardada.NombreEstandar);
+            Assert.Equal(
+                "Factura del proveedor · Proveedor",
+                DiccionarioDatosEnlazantes.NombreEstandar(dato.Id, "Proveedor")
+            );
+        }
+        finally
+        {
+            Environment.SetEnvironmentVariable("HORMIGUERO_DATOS", anterior);
+            SqliteConnection.ClearAllPools();
+            if (Directory.Exists(raiz))
+                Directory.Delete(raiz, recursive: true);
+        }
+    }
+
+    [Fact]
     public void Configuracion_GuardaGrupoYNombreEstandarParaLaLista()
     {
         string anterior = BaseDeDatos.RutaArchivo;
@@ -55,6 +121,10 @@ public sealed class DatosEnlazantesConfiguracionServiceTests
                 DiccionarioDatosEnlazantes.Todos,
                 d => d.Id == "oc_cliente"
             );
+            var identificador = Assert.Single(
+                DiccionarioDatosEnlazantes.Todos,
+                d => d.Id == "factura_proveedor"
+            );
             var datos = new[]
             {
                 new DatoEnlazanteConfigurado(
@@ -68,68 +138,91 @@ public sealed class DatosEnlazantesConfiguracionServiceTests
                     0.2,
                     0.3,
                     0.1,
-                    ""
+                    "",
+                    true,
+                    false
+                ),
+                new DatoEnlazanteConfigurado(
+                    identificador.Id,
+                    identificador.Nombre,
+                    identificador.Grupo,
+                    true,
+                    true,
+                    0,
+                    0.5,
+                    0.2,
+                    0.3,
+                    0.1,
+                    "",
+                    true,
+                    true
                 ),
             };
 
             DatosEnlazantesConfiguracionService.Guardar(
                 "Cliente",
-                "Factura",
+                "Factura del proveedor",
                 "Recibido",
                 "Factura de prueba",
                 7,
                 datos
             );
-            var leidos = DatosEnlazantesConfiguracionService.Leer("Cliente", "Factura", 7);
+            var leidos = DatosEnlazantesConfiguracionService.Leer(
+                "Cliente",
+                "Factura del proveedor",
+                7
+            );
             var datoLeido = Assert.Single(leidos, d => d.Id == definicion.Id);
             Assert.True(datoLeido.Incluido);
             Assert.Equal(0.1, datoLeido.X);
             Assert.Equal(
                 "Recibido",
-                Assert.Single(LeerIdentificacion(), i => i.Tipo == "Factura").GrupoDocumento
+                Assert
+                    .Single(LeerIdentificacion(), i => i.Tipo == "Factura del proveedor")
+                    .GrupoDocumento
             );
 
             var editado = datos[0] with { X = 0.4, TextoLeido = "45001" };
             DatosEnlazantesConfiguracionService.Guardar(
                 "Cliente",
-                "Factura",
+                "Factura del proveedor",
                 "Recibido",
                 "Factura de prueba",
                 7,
-                [editado]
+                [editado, datos[1]]
             );
             var anulacion = editado with { Incluido = false, Marcado = false };
             DatosEnlazantesConfiguracionService.Guardar(
                 "Cliente",
-                "Factura",
+                "Factura del proveedor",
                 "Recibido",
                 "Factura de prueba",
                 7,
-                [anulacion]
+                [anulacion, datos[1]]
             );
             var errorRemarcado = Assert.Throws<InvalidOperationException>(() =>
                 DatosEnlazantesConfiguracionService.Guardar(
                     "Cliente",
-                    "Factura",
+                    "Factura del proveedor",
                     "Recibido",
                     "Factura de prueba",
                     7,
-                    [editado]
+                    [editado, datos[1]]
                 )
             );
             Assert.Contains("no permite reactivar", errorRemarcado.Message);
             using var conexion = BaseComun.Abrir(DocumentosGuardados.RutaBaseComun);
             var identificacion = Assert.Single(
                 new Identificaciones(conexion).Listar(),
-                i => i.Tipo == "Factura"
+                i => i.Tipo == "Factura del proveedor"
             );
             var historial = new RepositorioDatosEnlazantes(conexion).ListarDatosTipo(
                 identificacion.Id,
                 "7",
                 incluirAnulados: true
             );
-            Assert.Single(historial);
-            Assert.Contains(historial, d => !d.Activo);
+            Assert.Single(historial, d => d.DatoId == definicion.Id && !d.Activo);
+            Assert.Contains(historial, d => d.DatoId == identificador.Id && d.Activo);
         }
         finally
         {
@@ -158,7 +251,7 @@ public sealed class DatosEnlazantesConfiguracionServiceTests
             );
             DatosEnlazantesConfiguracionService.Guardar(
                 "Cliente",
-                "Factura",
+                "OC del cliente",
                 "Emitido",
                 "Factura · Cliente",
                 3,
@@ -174,14 +267,16 @@ public sealed class DatosEnlazantesConfiguracionServiceTests
                         0.2,
                         0.3,
                         0.1,
-                        ""
+                        "",
+                        true,
+                        true
                     ),
                 ]
             );
             var config = new ConfiguracionDocumento
             {
                 Emisor = "Cliente",
-                Tipo = "Factura",
+                Tipo = "OC del cliente",
                 CarpetaDestino = raiz,
                 FormatoCarpeta = FormatoCarpeta.Directo,
                 Renombrar = false,

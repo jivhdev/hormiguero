@@ -80,6 +80,22 @@ public sealed class CadenasSimplesTests : IDisposable
     }
 
     [Fact]
+    public void Dato_no_enlazable_no_participa_en_enlace_automatico()
+    {
+        long baseVersion = CrearVersion("base.pdf", "base", "123");
+        long nuevaVersion = CrearVersion("nueva.pdf", "nueva", "123");
+        CrearCadenaConDocumento(baseVersion);
+        using (var cmd = _conexion.CreateCommand())
+        {
+            cmd.CommandText =
+                "UPDATE tipos_documento_datos SET enlazable=0 WHERE dato_diccionario_id='oc_cliente';";
+            cmd.ExecuteNonQuery();
+        }
+        Assert.Equal(0, new MotorCadenasSimples(_conexion).Procesar(nuevaVersion));
+        Assert.Empty(new RepositorioReglasYEnlaces(_conexion).ListarDudosos());
+    }
+
+    [Fact]
     public void Varias_cadenas_crean_dudoso_y_sin_coincidencia_no_hacen_nada()
     {
         long base1 = CrearVersion("base1.pdf", "base1", "123");
@@ -186,6 +202,9 @@ public sealed class CadenasSimplesTests : IDisposable
             "INSERT INTO campos_documento(identificacion_id,nombre,nombre_estable,tipo_dato,origen_lectura,dato_diccionario_id) VALUES($i,'OC','oc_cliente','texto','marca','oc_cliente') ON CONFLICT(identificacion_id,nombre_estable) DO UPDATE SET nombre=excluded.nombre RETURNING id;";
         crearCampo.Parameters.AddWithValue("$i", identificacion);
         long campoId = Convert.ToInt64(crearCampo.ExecuteScalar());
+        new RepositorioDatosEnlazantes(_conexion).GuardarDatoTipo(
+            new(0, identificacion, "oc_cliente", "1", campoId, 1, 0.1, 0.1, 0.2, 0.1, true)
+        );
         using var dato = _conexion.CreateCommand();
         dato.CommandText =
             "INSERT INTO valores_documento(version_id,campo_id,valor_original,valor_clave,origen,fecha_creacion,dato_diccionario_id) VALUES($v,$c,$x,$x,'pdf','ahora','oc_cliente');";

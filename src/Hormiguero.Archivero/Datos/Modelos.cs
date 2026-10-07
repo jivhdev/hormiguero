@@ -143,7 +143,9 @@ public record DatoEnlazanteConfigurado(
     double Y,
     double Ancho,
     double Alto,
-    string TextoLeido
+    string TextoLeido,
+    bool Enlazable = true,
+    bool DefineTipo = false
 );
 
 public record ConfiguracionDocumento

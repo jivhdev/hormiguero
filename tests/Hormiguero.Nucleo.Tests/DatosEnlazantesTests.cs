@@ -75,7 +75,7 @@ public sealed class DatosEnlazantesTests : IDisposable
                 "SELECT COUNT(*) FROM valores_documento WHERE dato_diccionario_id IS NOT NULL;"
             )
         );
-        Assert.Equal(10L, Escalar(v8, "SELECT MAX(version) FROM migraciones;"));
+        Assert.Equal(11L, Escalar(v8, "SELECT MAX(version) FROM migraciones;"));
     }
 
     [Fact]
@@ -129,6 +129,23 @@ public sealed class DatosEnlazantesTests : IDisposable
         long campo = new RepositorioDocumentosDatos(conexion).GuardarCampo(
             new(0, identificacion, "OC cliente", "oc_cliente", "texto", true, "marca", "oc_cliente")
         );
+        new RepositorioDatosEnlazantes(conexion).GuardarDatoTipo(
+            new(
+                0,
+                identificacion,
+                "oc_cliente",
+                "1",
+                campo,
+                1,
+                0.1,
+                0.1,
+                0.2,
+                0.1,
+                true,
+                false,
+                true
+            )
+        );
         var datos = new RepositorioDocumentosDatos(conexion);
         datos.GuardarValor(1, campo, " 4500 ", "4500", "pdf");
         var repo = new RepositorioDatosEnlazantes(conexion);
@@ -136,6 +153,111 @@ public sealed class DatosEnlazantesTests : IDisposable
         var valorId = Convert.ToInt64(Escalar(conexion, "SELECT id FROM valores_documento;"));
         Assert.True(datos.AnularValor(valorId));
         Assert.Empty(repo.BuscarDocumentos("oc_cliente", "4500"));
+    }
+
+    [Theory]
+    [InlineData("06-10-2026", 2026, 10, 6)]
+    [InlineData("6/10/2026", 2026, 10, 6)]
+    [InlineData("06.10.2026", 2026, 10, 6)]
+    [InlineData("6 de octubre de 2026", 2026, 10, 6)]
+    public void Reconoce_fechas_comunes_chilenas(string texto, int anio, int mes, int dia)
+    {
+        var fecha = FechaDocumentoParser.InterpretarFecha(texto);
+        Assert.Equal(new DateTime(anio, mes, dia), fecha.Fecha);
+        Assert.False(fecha.FechaNoReconocida);
+    }
+
+    [Fact]
+    public void Conserva_texto_si_no_reconoce_fecha()
+    {
+        var fecha = FechaDocumentoParser.InterpretarFecha("fecha ilegible");
+        Assert.Null(fecha.Fecha);
+        Assert.True(fecha.FechaNoReconocida);
+        Assert.Equal("fecha ilegible", fecha.Valor);
+    }
+
+    [Fact]
+    public void Sugerencia_calce_devuelve_cero_uno_y_hasta_cuatro_coincidencias()
+    {
+        var repo = new RepositorioDatosEnlazantes(conexion);
+        Assert.Empty(repo.SugerirCalce("oc_cliente", "00004500", 4));
+        for (int i = 1; i <= 4; i++)
+        {
+            Ejecutar(
+                $"INSERT INTO documentos(ruta,carpeta_raiz,nombre,tamano,modificado,estado,tiene_texto,indexado_en) VALUES('C:/{i}.pdf','C:/','{i}.pdf',1,'f','ok',1,'f');"
+            );
+            Ejecutar(
+                $"INSERT INTO versiones_documento(documento_id,huella,ruta_observada,registrada_en) VALUES({i},'h{i}','C:/{i}.pdf','f');"
+            );
+            long identificacion = new Identificaciones(conexion).Guardar(
+                new(0, "Factura del proveedor", $"Proveedor {i}", "{}")
+            );
+            long campo = new RepositorioDocumentosDatos(conexion).GuardarCampo(
+                new(
+                    0,
+                    identificacion,
+                    "OC cliente",
+                    "oc_cliente",
+                    "texto",
+                    true,
+                    "marca",
+                    "oc_cliente"
+                )
+            );
+            repo.GuardarDatoTipo(
+                new(
+                    0,
+                    identificacion,
+                    "oc_cliente",
+                    "1",
+                    campo,
+                    1,
+                    0.1,
+                    0.1,
+                    0.2,
+                    0.1,
+                    true,
+                    true,
+                    true
+                )
+            );
+            new RepositorioDocumentosDatos(conexion).GuardarValor(i, campo, "4500", "4500", "pdf");
+            if (i == 1)
+                Assert.Single(repo.SugerirCalce("oc_cliente", "00004500", 4));
+        }
+        Assert.Equal(4, repo.SugerirCalce("oc_cliente", "00004500", 4).Count);
+    }
+
+    [Fact]
+    public void Guarda_fecha_encargado_y_cliente_y_expone_fecha_para_consulta()
+    {
+        Ejecutar(
+            "INSERT INTO documentos(ruta,carpeta_raiz,nombre,tamano,modificado,estado,tiene_texto,indexado_en) VALUES('C:/info.pdf','C:/','info.pdf',1,'f','ok',1,'f');"
+        );
+        Ejecutar(
+            "INSERT INTO versiones_documento(documento_id,huella,ruta_observada,registrada_en) VALUES(1,'info','C:/info.pdf','f');"
+        );
+        var repo = new RepositorioDatosInformativos(conexion);
+        var fecha = FechaDocumentoParser.InterpretarFecha("6 de octubre de 2026");
+        repo.GuardarValores(
+            1,
+            [
+                fecha,
+                new("encargado", "Ana", null, false),
+                new("nombre_cliente", "Cliente Uno", null, false),
+            ]
+        );
+        Assert.Equal(
+            new[] { "encargado", "fecha_documento", "nombre_cliente" },
+            repo.ListarValores(1).Select(v => v.Dato).Order()
+        );
+        Assert.Single(repo.ConsultarFechas(new(2026, 10, 1), new(2026, 10, 31)));
+        Assert.Equal("Ana", repo.ListarValores(1).Single(v => v.Dato == "encargado").Valor);
+        Assert.Equal(
+            "Cliente Uno",
+            repo.ListarValores(1).Single(v => v.Dato == "nombre_cliente").Valor
+        );
+        Assert.Equal(3, repo.BuscarPorRuta("C:/info.pdf").Count);
     }
 
     private void Ejecutar(string sql) => EjecutarEn(conexion, sql);

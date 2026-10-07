@@ -108,6 +108,21 @@ public class ConfiguracionDocumentoRepository
             );
     }
 
+    public void ActualizarTipoDerivado(int configuracionId, string tipo)
+    {
+        ArgumentException.ThrowIfNullOrWhiteSpace(tipo);
+        int tipoId = _entidades.ObtenerOCrear(CategoriaEntidad.Tipo, tipo.Trim());
+        using var conexion = BaseDeDatos.CrearConexion();
+        using var comando = conexion.CreateCommand();
+        comando.CommandText = "UPDATE Configuraciones SET TipoId=$t WHERE Id=$id;";
+        comando.Parameters.AddWithValue("$t", tipoId);
+        comando.Parameters.AddWithValue("$id", configuracionId);
+        if (comando.ExecuteNonQuery() == 0)
+            throw new InvalidOperationException(
+                "No existe la configuración del tipo de documento."
+            );
+    }
+
     public List<ConfiguracionDocumento> ObtenerTodasConPatrones()
     {
         using var conexion = BaseDeDatos.CrearConexion();

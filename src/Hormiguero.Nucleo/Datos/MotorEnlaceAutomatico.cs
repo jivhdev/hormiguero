@@ -227,7 +227,7 @@ public sealed class MotorEnlaceAutomatico(SqliteConnection conexion)
     {
         using var cmd = conexion.CreateCommand();
         cmd.CommandText =
-            "SELECT e.version_id,x.valor_clave,x.confianza FROM enlaces_cadena e JOIN valores_documento x ON x.version_id=e.version_id WHERE e.vagon_cadena_id=$v AND e.estado='activo' AND x.campo_id=$c AND x.estado='vigente' ORDER BY e.id DESC,x.id DESC LIMIT 1;";
+            "SELECT e.version_id,x.valor_clave,x.confianza FROM enlaces_cadena e JOIN valores_documento x ON x.version_id=e.version_id JOIN campos_documento c ON c.id=x.campo_id WHERE e.vagon_cadena_id=$v AND e.estado='activo' AND x.campo_id=$c AND x.estado='vigente' AND (NOT EXISTS(SELECT 1 FROM tipos_documento_datos legado WHERE legado.identificacion_id=c.identificacion_id) OR (c.dato_diccionario_id IS NOT NULL AND EXISTS(SELECT 1 FROM tipos_documento_datos t WHERE t.identificacion_id=c.identificacion_id AND t.dato_diccionario_id=c.dato_diccionario_id AND t.activo=1 AND t.enlazable=1))) ORDER BY e.id DESC,x.id DESC LIMIT 1;";
         cmd.Parameters.AddWithValue("$v", vagon);
         cmd.Parameters.AddWithValue("$c", campo);
         using var r = cmd.ExecuteReader();
@@ -243,7 +243,7 @@ public sealed class MotorEnlaceAutomatico(SqliteConnection conexion)
     {
         using var cmd = conexion.CreateCommand();
         cmd.CommandText =
-            "SELECT DISTINCT x.version_id,x.valor_clave,x.confianza FROM valores_documento x JOIN versiones_documento v ON v.id=x.version_id JOIN campos_documento c ON c.id=x.campo_id WHERE x.campo_id=$campo AND c.identificacion_id=$identificacion AND ((x.estado='vigente' AND v.estado='vigente') OR x.version_id=$publicada) ORDER BY x.version_id;";
+            "SELECT DISTINCT x.version_id,x.valor_clave,x.confianza FROM valores_documento x JOIN versiones_documento v ON v.id=x.version_id JOIN campos_documento c ON c.id=x.campo_id WHERE x.campo_id=$campo AND c.identificacion_id=$identificacion AND ((x.estado='vigente' AND v.estado='vigente') OR x.version_id=$publicada) AND (NOT EXISTS(SELECT 1 FROM tipos_documento_datos legado WHERE legado.identificacion_id=c.identificacion_id) OR (c.dato_diccionario_id IS NOT NULL AND EXISTS(SELECT 1 FROM tipos_documento_datos t WHERE t.identificacion_id=c.identificacion_id AND t.dato_diccionario_id=c.dato_diccionario_id AND t.activo=1 AND t.enlazable=1))) ORDER BY x.version_id;";
         cmd.Parameters.AddWithValue("$publicada", (object?)versionPublicada ?? DBNull.Value);
         cmd.Parameters.AddWithValue("$campo", regla.CampoOrigenId);
         cmd.Parameters.AddWithValue("$identificacion", regla.IdentificacionId);
