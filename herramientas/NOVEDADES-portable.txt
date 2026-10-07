@@ -1,6 +1,28 @@
 HORMIGUERO - NOVEDADES PARA PROBAR (la versión exacta está en VERSION.txt)
 ===============================================================================
 
+LO MÁS NUEVO (07-10, tarde)
+- ARCHIVERO · CARPETAS DE COBELCAR ("Carpetas observadas", arriba). Por cada carpeta:
+  1) Nombre y Ruta: la carpeta del tipo, SIN el año y el mes (ej. ...\COBEL-FCV). Si con
+     "Examinar…" eliges la del mes (...-FCV6610), Archivero te ofrece usar la base.
+  2) Marca "Las subcarpetas cambian por período" (AAAA\AAAAMM): mira el mes actual y el anterior
+     y pasa solo al mes nuevo.
+  3) "¿Cómo se reconocen?" -> "Todos los PDF de esta carpeta son": eliges el tipo del diccionario
+     (ej. "Ventas propias · N° Factura propia") y escribes el emisor. El número sale del nombre del
+     archivo (FCV0000025378 -> 25378). No hace falta clasificar nada.
+  4) "Al llegar un documento nuevo": Solo registrar / Imprimir primera página / Imprimir todo /
+     Avisarme / Avisarme e imprimir primera página. Los cedibles nunca se imprimen.
+  5) "Agregar" y "Listo".
+  Lo que ya estaba en la carpeta al agregarla NO se imprime ni avisa (solo lo que llega después).
+  "Avisarme": notificación de Windows + lista "Por atender" en Archivero; cuando hagas el ingreso,
+  selecciónala y pulsa "Listo". Archivero debe quedar abierto (puede ir minimizado).
+  Para Cobelcar: 2-FCV imprimir 1.ª página · 3-GDV avisarme · 6-GDV RECIBIDAS solo registrar ·
+  5-NCV imprimir 1.ª página.
+- MENSAJERO: ajustador a 4 × 55; Alt+L copia la línea 1, luego la 2, la 3 y la 4 y vuelve a la 1
+  (avisa qué línea copió); mini calculadora (escribe "1.250.430 - 1.198.200" y ve el resultado).
+- BUSCADERO: "Carpeta específica" ahora muestra todas tus carpetas y sus subcarpetas (aunque el
+  índice no haya terminado).
+
 PRIMERO, SI QUIERES PARTIR DE CERO
 - Cierra Archivero, Buscadero y Mensajero.
 - Abre "Reiniciar Hormiguero\ReiniciarHormiguero.exe".
