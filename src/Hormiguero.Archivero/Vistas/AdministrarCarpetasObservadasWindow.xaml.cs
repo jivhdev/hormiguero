@@ -49,7 +49,7 @@ public partial class AdministrarCarpetasObservadasWindow : Window
     {
         if (!Validar())
             return;
-        var carpeta = Crear(Guid.NewGuid());
+        var carpeta = Crear(Guid.NewGuid()) with { Agregada = DateTime.Now };
         _carpetas.Add(carpeta);
         _repositorio.Guardar(_carpetas);
         ActualizarLista(carpeta.Id);
@@ -59,7 +59,7 @@ public partial class AdministrarCarpetasObservadasWindow : Window
     {
         if (ListaCarpetas.SelectedItem is not CarpetaObservadaExterna actual || !Validar())
             return;
-        var editada = Crear(actual.Id);
+        var editada = Crear(actual.Id) with { Agregada = actual.Agregada };
         _carpetas[_carpetas.IndexOf(actual)] = editada;
         _repositorio.Guardar(_carpetas);
         ActualizarLista(editada.Id);

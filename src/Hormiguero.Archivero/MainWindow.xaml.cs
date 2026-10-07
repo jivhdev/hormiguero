@@ -56,10 +56,13 @@ public partial class MainWindow : Window
     public MainWindow(string carpetaObservada, VigilanciaCarpetaService vigilancia)
     {
         InitializeComponent();
-        _observador = new ObservadorCarpetasService(_carpetasObservadas);
+        _observador = new ObservadorCarpetasService(
+            _carpetasObservadas,
+            new ImpresionAlArchivarService(new AccionImpresionWindows())
+        );
         _observador.DocumentoActualizado += documento => Dispatcher.Invoke(CargarObservados);
         _observador.ErrorVisible += mensaje =>
-            Dispatcher.Invoke(() =>
+            Dispatcher.BeginInvoke(() =>
                 System.Windows.MessageBox.Show(
                     this,
                     mensaje,

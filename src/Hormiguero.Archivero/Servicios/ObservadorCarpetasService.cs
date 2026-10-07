@@ -13,6 +13,15 @@ public sealed class ObservadorCarpetasService : IDisposable
     private readonly SemaphoreSlim _procesamiento = new(1, 1);
     private readonly List<FileSystemWatcher> _vigilantes = [];
     private readonly System.Threading.Timer _revision;
+    private readonly ImpresionAlArchivarService? _impresion;
+
+    // Tamaño y fecha de lo ya revisado en esta sesión: evita leer y calcular la huella de cada
+    // PDF cada 30 segundos. "Revisar ahora" lo vacía (p. ej. tras crear una configuración nueva).
+    private readonly System.Collections.Concurrent.ConcurrentDictionary<
+        string,
+        (long Tamano, DateTime Modificado)
+    > _revisados = new(StringComparer.OrdinalIgnoreCase);
+    private readonly HashSet<string> _avisados = [];
     private bool _dispuesto;
 
     public event Action<DocumentoObservadoReciente>? DocumentoActualizado;
@@ -21,9 +30,13 @@ public sealed class ObservadorCarpetasService : IDisposable
     /// <summary>Punto de enganche posterior a identificar, publicar y revisar el enlace automático.</summary>
     public event Action<string, ConfiguracionDocumento>? DocumentoIdentificadoYPublicado;
 
-    public ObservadorCarpetasService(CarpetasObservadasRepository? repositorio = null)
+    public ObservadorCarpetasService(
+        CarpetasObservadasRepository? repositorio = null,
+        ImpresionAlArchivarService? impresion = null
+    )
     {
         _repositorio = repositorio ?? new();
+        _impresion = impresion;
         _revision = new System.Threading.Timer(
             _ => _ = RevisarAsync(),
             null,
@@ -56,9 +69,9 @@ public sealed class ObservadorCarpetasService : IDisposable
                         NotifyFilters.FileName | NotifyFilters.LastWrite | NotifyFilters.Size,
                     EnableRaisingEvents = true,
                 };
-                vigilante.Created += (_, e) => Encolar(e.FullPath);
-                vigilante.Changed += (_, e) => Encolar(e.FullPath);
-                vigilante.Renamed += (_, e) => Encolar(e.FullPath);
+                vigilante.Created += (_, e) => Encolar(e.FullPath, carpeta);
+                vigilante.Changed += (_, e) => Encolar(e.FullPath, carpeta);
+                vigilante.Renamed += (_, e) => Encolar(e.FullPath, carpeta);
                 vigilante.Error += (_, _) =>
                     Avisar(
                         $"Se perdió la vigilancia de «{carpeta.Nombre}». Se seguirá revisando periódicamente."
@@ -77,7 +90,13 @@ public sealed class ObservadorCarpetasService : IDisposable
 
     public void ActualizarCarpetas() => Iniciar();
 
-    public async Task RevisarAhoraAsync() => await RevisarAsync(esperarTurno: true);
+    public async Task RevisarAhoraAsync()
+    {
+        _revisados.Clear();
+        lock (_avisados)
+            _avisados.Clear();
+        await RevisarAsync(esperarTurno: true);
+    }
 
     private async Task RevisarAsync(bool esperarTurno = false)
     {
@@ -99,6 +118,8 @@ public sealed class ObservadorCarpetasService : IDisposable
                     continue;
                 }
 
+                lock (_avisados)
+                    _avisados.RemoveWhere(aviso => aviso.Contains(carpeta.Ruta));
                 try
                 {
                     var opciones = carpeta.IncluirSubcarpetas
@@ -107,7 +128,7 @@ public sealed class ObservadorCarpetasService : IDisposable
                     foreach (
                         string ruta in Directory.EnumerateFiles(carpeta.Ruta, "*.pdf", opciones)
                     )
-                        await ProcesarAsync(ruta);
+                        await ProcesarAsync(ruta, carpeta);
                 }
                 catch (Exception ex) when (ex is IOException or UnauthorizedAccessException)
                 {
@@ -121,14 +142,14 @@ public sealed class ObservadorCarpetasService : IDisposable
         }
     }
 
-    private void Encolar(string ruta) =>
+    private void Encolar(string ruta, CarpetaObservadaExterna carpeta) =>
         _ = Task.Run(async () =>
         {
             if (!_dispuesto && await _procesamiento.WaitAsync(0))
             {
                 try
                 {
-                    await ProcesarAsync(ruta);
+                    await ProcesarAsync(ruta, carpeta);
                 }
                 finally
                 {
@@ -137,18 +158,29 @@ public sealed class ObservadorCarpetasService : IDisposable
             }
         });
 
-    private async Task ProcesarAsync(string ruta)
+    private async Task ProcesarAsync(string ruta, CarpetaObservadaExterna carpeta)
     {
+        var info = new FileInfo(ruta);
+        if (
+            info.Exists
+            && _revisados.TryGetValue(ruta, out var revisado)
+            && revisado == (info.Length, info.LastWriteTimeUtc)
+        )
+            return;
         if (!File.Exists(ruta) || !await EsperarEstableAsync(ruta))
             return;
+        info.Refresh();
+        var estado = (info.Length, info.LastWriteTimeUtc);
         try
         {
             string huella = Huella.Calcular(ruta);
             string? anterior = _repositorio.LeerHuella(ruta);
-            bool cedible = Path.GetFileName(ruta)
-                .Contains("CEDIBLE", StringComparison.OrdinalIgnoreCase);
-            string textoPdf = LectorPdf.ExtraerTextoCompleto(ruta);
-            cedible |= textoPdf.Contains("CEDIBLE", StringComparison.OrdinalIgnoreCase);
+            // Solo la primera página: muchos PDF traen la copia cedible como página 2.
+            bool cedible =
+                Path.GetFileName(ruta).Contains("CEDIBLE", StringComparison.OrdinalIgnoreCase)
+                || LectorPdf
+                    .ExtraerTextoPrimeraPagina(ruta)
+                    .Contains("CEDIBLE", StringComparison.OrdinalIgnoreCase);
             var configuraciones = _configuraciones.ObtenerTodasConPatrones();
             ConfiguracionDocumento? coincidencia = null;
             IReadOnlyList<Hormiguero.Nucleo.Datos.ValorDocumentoLeido> valores = [];
@@ -175,6 +207,7 @@ public sealed class ObservadorCarpetasService : IDisposable
                     .FirstOrDefault(a => a.Ruta == ruta);
                 if (originalExiste)
                 {
+                    _revisados[ruta] = estado;
                     if (
                         actividadAnterior?.Motivo?.Contains(
                             "falta el original",
@@ -210,12 +243,22 @@ public sealed class ObservadorCarpetasService : IDisposable
             }
 
             if (anterior == huella || coincidencia is null)
+            {
+                _revisados[ruta] = estado;
                 return;
+            }
 
             PublicadorDatosDocumentoService.PublicarObservado(ruta, coincidencia, valores);
             await (PublicadorDatosDocumentoService.UltimaRevisionEnlaces ?? Task.CompletedTask);
             _repositorio.GuardarHuella(ruta, huella);
+            _revisados[ruta] = estado;
             DocumentoIdentificadoYPublicado?.Invoke(ruta, coincidencia);
+            if (carpeta.Agregada is DateTime agregada && info.LastWriteTime >= agregada)
+            {
+                string? avisoImpresion = _impresion?.Procesar(ruta, coincidencia);
+                if (avisoImpresion is not null)
+                    Avisar($"{Path.GetFileName(ruta)}: {avisoImpresion}");
+            }
             Registrar(
                 new(
                     DateTime.Now,
@@ -306,7 +349,15 @@ public sealed class ObservadorCarpetasService : IDisposable
         DocumentoActualizado?.Invoke(documento);
     }
 
-    private void Avisar(string mensaje) => ErrorVisible?.Invoke(mensaje);
+    // Cada aviso se muestra una sola vez (la revisión corre cada 30 segundos); vuelve a mostrarse
+    // si la carpeta se recupera y falla otra vez, o tras "Revisar ahora".
+    private void Avisar(string mensaje)
+    {
+        lock (_avisados)
+            if (!_avisados.Add(mensaje))
+                return;
+        ErrorVisible?.Invoke(mensaje);
+    }
 
     public void Dispose()
     {

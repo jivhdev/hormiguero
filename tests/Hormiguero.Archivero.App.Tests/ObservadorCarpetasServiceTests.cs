@@ -138,6 +138,77 @@ public sealed class ObservadorCarpetasServiceTests : IDisposable
         Assert.Contains("no existe", aviso, StringComparison.OrdinalIgnoreCase);
     }
 
+    [Fact]
+    public async Task Imprime_solo_lo_que_llega_despues_de_agregar_la_carpeta()
+    {
+        string observada = Path.Combine(_raiz, "observada");
+        Directory.CreateDirectory(observada);
+        string antiguo = CreadorPdfDePrueba.CrearConLineas(observada, "Proveedor Uno", "Factura");
+        File.SetLastWriteTime(antiguo, DateTime.Now.AddHours(-2));
+        string nuevo = CreadorPdfDePrueba.CrearConLineas(
+            observada,
+            "Proveedor Uno",
+            "Factura",
+            "otra"
+        );
+        int id = new ConfiguracionDocumentoRepository().GuardarNueva(
+            "Proveedor Uno",
+            "Factura",
+            _raiz,
+            FormatoCarpeta.Directo,
+            null,
+            false,
+            [Marca(CampoMarca.Emisor, 0), Marca(CampoMarca.Tipo, 1)]
+        );
+        new ConfiguracionImpresionRepository().Guardar(id, ModoImpresion.PrimeraPagina, null);
+        var carpetas = new CarpetasObservadasRepository();
+        carpetas.Guardar([
+            new(Guid.NewGuid(), "Facturas", observada, false, true, DateTime.Now.AddHours(-1)),
+        ]);
+        var accion = new AccionQueCuenta();
+        using var servicio = new ObservadorCarpetasService(
+            carpetas,
+            new ImpresionAlArchivarService(accion)
+        );
+
+        await servicio.RevisarAhoraAsync();
+        await (PublicadorDatosDocumentoService.UltimaRevisionEnlaces ?? Task.CompletedTask);
+
+        Assert.Equal(2, carpetas.LeerActividad().Count(a => a.Tipo == "Factura"));
+        Assert.Equal(File.ReadAllBytes(nuevo), Assert.Single(accion.Impresos));
+    }
+
+    [Fact]
+    public async Task Un_aviso_repetido_se_muestra_una_sola_vez()
+    {
+        var carpetas = new CarpetasObservadasRepository();
+        carpetas.Guardar([
+            new(Guid.NewGuid(), "Desconectada", Path.Combine(_raiz, "ausente"), false, true),
+        ]);
+        using var servicio = new ObservadorCarpetasService(carpetas);
+        int avisos = 0;
+        servicio.ErrorVisible += _ => avisos++;
+
+        servicio.Iniciar();
+        await Task.Delay(500);
+        servicio.ActualizarCarpetas();
+        await Task.Delay(500);
+
+        Assert.Equal(1, avisos);
+    }
+
+    private sealed class AccionQueCuenta : IAccionImpresion
+    {
+        public List<byte[]> Impresos { get; } = [];
+        public string ImpresoraPredeterminada => "Predeterminada";
+        public IReadOnlyList<string> ImpresorasInstaladas => [];
+
+        public void Imprimir(byte[] pdf, bool soloPrimeraPagina, string? impresora) =>
+            Impresos.Add(pdf);
+
+        public void AbrirVisor(string rutaPdf) { }
+    }
+
     private static Marca Marca(CampoMarca campo, int indice)
     {
         var banda = CreadorPdfDePrueba.ObtenerBandaDeLinea(indice);

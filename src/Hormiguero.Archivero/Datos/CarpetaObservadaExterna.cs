@@ -8,7 +8,10 @@ public sealed record CarpetaObservadaExterna(
     string Nombre,
     string Ruta,
     bool IncluirSubcarpetas,
-    bool Activa
+    bool Activa,
+    // Solo se imprimen automáticamente los PDF que llegan después de agregar la carpeta,
+    // para no imprimir de golpe todo lo que ya estaba ahí.
+    DateTime? Agregada = null
 );
 
 public sealed record DocumentoObservadoReciente(
