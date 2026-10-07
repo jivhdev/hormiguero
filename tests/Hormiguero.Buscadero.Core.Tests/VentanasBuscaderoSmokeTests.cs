@@ -1,5 +1,6 @@
 using System.Threading;
 using System.Windows;
+using System.Windows.Controls;
 using Buscadero.App;
 using Buscadero.Core.Lineas;
 using Hormiguero.Diseno;
@@ -27,6 +28,15 @@ public sealed class VentanasBuscaderoSmokeTests
                 var principal = new MainWindow();
                 principal.Show();
                 principal.UpdateLayout();
+                var botonSegundaBusqueda = Assert.IsType<Button>(
+                    principal.FindName("BotonSegundaBusqueda")
+                );
+                botonSegundaBusqueda.RaiseEvent(new RoutedEventArgs(Button.ClickEvent));
+                principal.UpdateLayout();
+                var panelSecundario = Assert.IsType<PanelBusquedaSecundario>(
+                    principal.FindName("PanelBusquedaSecundario")
+                );
+                Assert.Equal(Visibility.Visible, panelSecundario.Visibility);
                 principal.Close();
                 using var lineas = new ServicioLineas(
                     new RepositorioLineas(Hormiguero.Nucleo.Datos.DocumentosGuardados.RutaBaseComun)
