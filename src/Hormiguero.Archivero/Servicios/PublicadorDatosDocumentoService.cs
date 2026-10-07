@@ -28,6 +28,36 @@ public static class PublicadorDatosDocumentoService
         IReadOnlyList<ValorDocumentoLeido> valoresLeidos
     ) => Publicar(ruta, configuracion, valoresLeidos, "observador");
 
+    public static void PublicarObservado(
+        string ruta,
+        ConfiguracionDocumento configuracion,
+        DatoEnlazante datoIdentificador,
+        string valor
+    )
+    {
+        var valores = new List<ValorDocumentoLeido>
+        {
+            new("Emisor", "emisor", configuracion.Emisor, configuracion.Emisor, "observador"),
+            new("Tipo", "tipo", configuracion.Tipo, configuracion.Tipo, "observador"),
+            new("Fecha", "fecha", "", "", "observador", "fecha"),
+            new(
+                "Nombre de archivo",
+                "nombre_archivo",
+                Path.GetFileNameWithoutExtension(ruta),
+                Path.GetFileNameWithoutExtension(ruta),
+                "observador"
+            ),
+            new(
+                datoIdentificador.Nombre,
+                datoIdentificador.Id,
+                valor,
+                DiccionarioDatosEnlazantes.ClaveDeEnlace(valor),
+                "observador"
+            ),
+        };
+        Publicar(ruta, configuracion, valores, "observador", datoIdentificador);
+    }
+
     public static IReadOnlyList<ValorDocumentoLeido> ExtraerValoresObservados(
         string ruta,
         ConfiguracionDocumento configuracion
@@ -37,7 +67,8 @@ public static class PublicadorDatosDocumentoService
         string ruta,
         ConfiguracionDocumento configuracion,
         IReadOnlyList<ValorDocumentoLeido> valoresLeidos,
-        string procedencia
+        string procedencia,
+        DatoEnlazante? datoIdentificador = null
     )
     {
         var infoAntes = new FileInfo(ruta);
@@ -89,6 +120,22 @@ public static class PublicadorDatosDocumentoService
                 )
             );
         }
+        if (
+            datoIdentificador is not null
+            && !camposExistentes.Any(c => c.NombreEstable == datoIdentificador.Id)
+        )
+            new RepositorioDocumentosDatos(conexion).GuardarCampo(
+                new CampoDocumento(
+                    0,
+                    identificacionId,
+                    datoIdentificador.Nombre,
+                    datoIdentificador.Id,
+                    "texto",
+                    true,
+                    "observador",
+                    datoIdentificador.Id
+                )
+            );
         var publicado = new RepositorioDocumentosDatos(conexion).PublicarDocumento(
             ruta,
             tamano,
