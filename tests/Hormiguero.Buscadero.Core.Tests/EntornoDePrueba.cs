@@ -75,11 +75,23 @@ public sealed class EntornoDePrueba : IDisposable
         RepositorioMarcas.Dispose();
         RepositorioLineas.Dispose();
         SqliteConnection.ClearAllPools();
-        try
+        for (var intento = 0; ; intento++)
         {
-            Directory.Delete(Raiz, true);
+            try
+            {
+                Directory.Delete(Raiz, true);
+                break;
+            }
+            catch (IOException) when (intento < 19)
+            {
+                SqliteConnection.ClearAllPools();
+                Thread.Sleep(100);
+            }
+            catch (UnauthorizedAccessException) when (intento < 19)
+            {
+                SqliteConnection.ClearAllPools();
+                Thread.Sleep(100);
+            }
         }
-        catch (IOException) { }
-        catch (UnauthorizedAccessException) { }
     }
 }

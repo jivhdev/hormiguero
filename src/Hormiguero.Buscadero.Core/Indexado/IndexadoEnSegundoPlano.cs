@@ -47,7 +47,11 @@ public sealed class IndexadoEnSegundoPlano : IDisposable
     public void Dispose()
     {
         _cancelar.Cancel();
-        _hilo.Join(TimeSpan.FromSeconds(5));
+        // No se puede devolver mientras el hilo todavía usa el repositorio: el dueño
+        // puede liberar sus recursos inmediatamente después de Dispose.
+        // ponytail: espera sin límite; si una unidad de red se cuelga leyendo un PDF, cerrar
+        // Buscadero puede tardar. Si molesta: límite + no liberar el repositorio hasta que termine.
+        _hilo.Join();
     }
 
     private void Trabajar()
