@@ -47,5 +47,7 @@ NUEVO EN BUSCADERO
 - "Carpeta específica" muestra también las subcarpetas.
 - Cadenas: "Administrar cadenas simples" (las creas tú; sugiere documentos que comparten número;
   si un documento nuevo calza con una sola cadena, entra solo; si calza con varias, va a dudosos).
+- "Buscador maestro" (pestaña nueva): filtras por emisor, tipo, cliente, encargado, fechas o un
+  número; al elegir un documento ves sus datos y los de toda su cadena, con botón para copiar cada uno.
 
 PENDIENTE: envío de facturas armando borradores en Gmail (lo conversamos: requiere autorizar tu cuenta).
