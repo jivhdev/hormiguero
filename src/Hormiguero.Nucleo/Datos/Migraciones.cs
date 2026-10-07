@@ -241,6 +241,10 @@ public static class Migraciones
             "ALTER TABLE alertas ADD COLUMN origen_fecha TEXT NULL CHECK(origen_fecha IN ('fecha_documento','entrada_cadena')); "
                 + "UPDATE alertas SET origen_fecha='entrada_cadena' WHERE regla_simple_id IS NOT NULL;"
         ),
+        (
+            13,
+            "CREATE INDEX IF NOT EXISTS idx_valores_informativos_version_dato ON valores_informativos_documento(version_id,dato);"
+        ),
     ];
 
     public static void Aplicar(

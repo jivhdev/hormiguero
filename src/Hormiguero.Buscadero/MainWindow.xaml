@@ -816,6 +816,197 @@
         </Grid>
       </TabItem>
 
+      <TabItem Header="Buscador maestro">
+        <Grid Margin="8">
+          <Grid.RowDefinitions>
+            <RowDefinition Height="Auto" />
+            <RowDefinition Height="*" />
+            <RowDefinition Height="Auto" />
+          </Grid.RowDefinitions>
+          <StackPanel Grid.Row="0">
+            <WrapPanel Margin="0,0,0,6">
+              <TextBox x:Name="MaestroNumero" Width="130" Margin="0,0,6,4" ToolTip="Número" />
+              <ComboBox
+                x:Name="MaestroTipo"
+                Width="150"
+                Margin="0,0,6,4"
+                IsEditable="False"
+                ToolTip="Tipo"
+                SelectionChanged="MaestroFiltroChanged"
+              />
+              <TextBox
+                x:Name="MaestroEmisor"
+                Width="145"
+                Margin="0,0,6,4"
+                ToolTip="Emisor o proveedor"
+                TextChanged="MaestroFiltroChanged"
+              />
+              <TextBox
+                x:Name="MaestroCliente"
+                Width="145"
+                Margin="0,0,6,4"
+                ToolTip="Cliente"
+                TextChanged="MaestroFiltroChanged"
+              />
+              <TextBox
+                x:Name="MaestroEncargado"
+                Width="145"
+                Margin="0,0,6,4"
+                ToolTip="Encargado"
+                TextChanged="MaestroFiltroChanged"
+              />
+              <ComboBox
+                x:Name="MaestroGrupo"
+                Width="115"
+                Margin="0,0,6,4"
+                SelectedIndex="2"
+                SelectionChanged="MaestroFiltroChanged"
+              >
+                <ComboBoxItem Content="Emitido" />
+                <ComboBoxItem Content="Recibido" />
+                <ComboBoxItem Content="Todos" />
+              </ComboBox>
+            </WrapPanel>
+            <WrapPanel Margin="0,0,0,8">
+              <TextBlock Text="Fecha desde" VerticalAlignment="Center" Margin="0,0,4,4" />
+              <DatePicker
+                x:Name="MaestroFechaDesde"
+                Width="135"
+                Margin="0,0,8,4"
+                SelectedDateChanged="MaestroFiltroChanged"
+              />
+              <TextBlock Text="hasta" VerticalAlignment="Center" Margin="0,0,4,4" />
+              <DatePicker
+                x:Name="MaestroFechaHasta"
+                Width="135"
+                Margin="0,0,8,4"
+                SelectedDateChanged="MaestroFiltroChanged"
+              />
+              <Button
+                Content="Buscar"
+                Padding="10,4"
+                Margin="0,0,6,4"
+                Click="MaestroBuscar_Click"
+              />
+              <Button
+                Content="Limpiar"
+                Padding="10,4"
+                Margin="0,0,6,4"
+                Click="MaestroLimpiar_Click"
+              />
+            </WrapPanel>
+          </StackPanel>
+          <Grid Grid.Row="1">
+            <Grid.ColumnDefinitions>
+              <ColumnDefinition Width="3*" />
+              <ColumnDefinition Width="2*" />
+            </Grid.ColumnDefinitions>
+            <DataGrid
+              x:Name="MaestroResultados"
+              Grid.Column="0"
+              AutoGenerateColumns="False"
+              IsReadOnly="True"
+              SelectionMode="Single"
+              SelectionChanged="MaestroResultados_SelectionChanged"
+              MouseDoubleClick="MaestroResultados_MouseDoubleClick"
+              CanUserAddRows="False"
+            >
+              <DataGrid.Columns>
+                <DataGridTextColumn Header="Tipo" Binding="{Binding TipoEmisor}" Width="150" />
+                <DataGridTextColumn
+                  Header="Números principales"
+                  Binding="{Binding Numeros}"
+                  Width="130"
+                />
+                <DataGridTextColumn Header="Fecha" Binding="{Binding FechaTexto}" Width="90" />
+                <DataGridTextColumn Header="Cliente" Binding="{Binding Cliente}" Width="120" />
+                <DataGridTextColumn Header="Encargado" Binding="{Binding Encargado}" Width="110" />
+                <DataGridTextColumn Header="Cadena" Binding="{Binding Cadena}" Width="120" />
+              </DataGrid.Columns>
+            </DataGrid>
+            <DockPanel Grid.Column="1" Margin="10,0,0,0">
+              <StackPanel DockPanel.Dock="Top" Orientation="Horizontal" Margin="0,0,0,6">
+                <TextBlock
+                  Text="Datos de este documento"
+                  FontSize="16"
+                  FontWeight="Bold"
+                  VerticalAlignment="Center"
+                />
+                <Button
+                  x:Name="MaestroVerCadena"
+                  Content="Ver cadena"
+                  Margin="8,0,0,0"
+                  Padding="8,3"
+                  Click="MaestroVerCadena_Click"
+                  IsEnabled="False"
+                />
+              </StackPanel>
+              <ScrollViewer VerticalScrollBarVisibility="Auto">
+                <StackPanel>
+                  <ItemsControl x:Name="MaestroDatos">
+                    <ItemsControl.ItemTemplate>
+                      <DataTemplate>
+                        <DockPanel Margin="0,2">
+                          <Button
+                            DockPanel.Dock="Right"
+                            Content="Copiar"
+                            Padding="5,1"
+                            Tag="{Binding Valor}"
+                            Click="MaestroCopiar_Click"
+                          />
+                          <TextBlock
+                            Text="{Binding Texto}"
+                            TextWrapping="Wrap"
+                            VerticalAlignment="Center"
+                          />
+                        </DockPanel>
+                      </DataTemplate>
+                    </ItemsControl.ItemTemplate>
+                  </ItemsControl>
+                  <TextBlock Text="Documentos de la cadena" FontWeight="Bold" Margin="0,10,0,4" />
+                  <ItemsControl x:Name="MaestroDatosCadena">
+                    <ItemsControl.ItemTemplate>
+                      <DataTemplate>
+                        <StackPanel Margin="0,4">
+                          <TextBlock Text="{Binding Encabezado}" FontWeight="Bold" />
+                          <ItemsControl ItemsSource="{Binding Datos}">
+                            <ItemsControl.ItemTemplate>
+                              <DataTemplate>
+                                <DockPanel Margin="0,1">
+                                  <Button
+                                    DockPanel.Dock="Right"
+                                    Content="Copiar"
+                                    Padding="5,1"
+                                    Tag="{Binding Valor}"
+                                    Click="MaestroCopiar_Click"
+                                  />
+                                  <TextBlock
+                                    Text="{Binding Texto}"
+                                    TextWrapping="Wrap"
+                                    VerticalAlignment="Center"
+                                  />
+                                </DockPanel>
+                              </DataTemplate>
+                            </ItemsControl.ItemTemplate>
+                          </ItemsControl>
+                        </StackPanel>
+                      </DataTemplate>
+                    </ItemsControl.ItemTemplate>
+                  </ItemsControl>
+                </StackPanel>
+              </ScrollViewer>
+            </DockPanel>
+          </Grid>
+          <TextBlock
+            x:Name="MaestroEstado"
+            Grid.Row="2"
+            Margin="0,6,0,0"
+            Foreground="{DynamicResource Hormiguero.Error}"
+            TextWrapping="Wrap"
+          />
+        </Grid>
+      </TabItem>
+
       <TabItem Header="Carpetas">
         <DockPanel Margin="8">
           <TextBlock
