@@ -29,7 +29,6 @@ tipo: estado
   - Posible mejora a consultar: Facturas abre en julio (fijo en el original); abrir en el mes actual.
   - Barra de título blanca en modo oscuro en Windows 10 (las 3 apps).
 - **Pendientes al cierre del 2026-10-05**: C-1h ("para cuándo" respeta días corridos y calendario de cada alerta; hoy muestra hábiles) — no alcanzó por capacidad de Codex; 2027-09-17 marcado VERIFICAR en feriados de Chile; pruebas de Buscadero sensibles al tiempo cuando el PC está cargado (`Cerrar_el_indice_en_segundo_plano_no_se_cuelga`, `Buscar_CoincidenciasMultiples_DevuelveTodas`).
-- **Deuda técnica**: `RepositorioLineas` (Buscadero) todavía ejecuta SQL directo contra tablas comunes; pasarlo a repositorios del Núcleo (B-6e/B-6f2).
 
 ## Traspasos anteriores
 

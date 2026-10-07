@@ -43,85 +43,18 @@ public sealed class AlertasTests : IDisposable
     }
 
     [Fact]
-    public void Crea_regla_valida_y_rechaza_vagon_de_otro_modelo()
-    {
-        var (modelId, sourceId, targetId, otherTargetId) = CrearModelos();
-        var repo = new RepositorioAlertas(conexion);
-
-        long ruleId = repo.CrearRegla(
-            "Espera factura",
-            modelId,
-            sourceId,
-            targetId,
-            "vagon_completado",
-            2,
-            TipoDias.Habiles,
-            "Guía esperando factura"
-        );
-
-        Assert.Equal("activa", Assert.Single(repo.ListarReglas()).Estado);
-        Assert.Throws<InvalidOperationException>(() =>
-            repo.CrearRegla(
-                "Regla inválida",
-                modelId,
-                sourceId,
-                otherTargetId,
-                "vagon_completado",
-                2,
-                TipoDias.Habiles,
-                "Aviso"
-            )
-        );
-        Assert.Throws<InvalidOperationException>(() =>
-            repo.EditarRegla(
-                ruleId,
-                "Inválida",
-                modelId,
-                sourceId,
-                otherTargetId,
-                "vagon_completado",
-                2,
-                TipoDias.Habiles,
-                "Aviso",
-                null,
-                false
-            )
-        );
-        repo.EditarRegla(
-            ruleId,
-            "Editada",
-            modelId,
-            sourceId,
-            targetId,
-            "vagon_completado",
-            3,
-            TipoDias.Corridos,
-            "Aviso actualizado",
-            null,
-            true
-        );
-        Assert.Equal("Editada", Assert.Single(repo.ListarReglas()).Nombre);
-        Assert.True(repo.AnularRegla(ruleId));
-        Assert.False(repo.AnularRegla(ruleId));
-    }
-
-    [Fact]
     public void Alerta_manual_cambia_estado_reabre_y_guarda_historial_y_auditoria()
     {
-        var (modelId, _, targetId, _) = CrearModelos();
-        long cadenaId = new RepositorioCadenas(conexion).CrearCadena(
-            modelId,
+        long cadenaId = new RepositorioCadenas(conexion).CrearCadenaSimple(
             "Cadena de prueba",
             DateTime.Today
         );
-        long vagonId = IdVagonCadena(cadenaId, targetId);
         var repo = new RepositorioAlertas(conexion);
 
         long alertaId = repo.CrearAlertaManual(
             "Revisar factura",
             new DateOnly(2026, 12, 31),
-            cadenaId,
-            vagonId
+            cadenaId
         );
         repo.Resolver(alertaId, "Documento verificado");
         repo.Reabrir(alertaId);
@@ -192,124 +125,14 @@ public sealed class AlertasTests : IDisposable
     }
 
     [Fact]
-    public void Regla_crea_una_alerta_por_cadena_y_vagon_y_calcula_saltando_feriado()
-    {
-        var (modelId, sourceId, targetId, _) = CrearModelos();
-        long cadenaId = new RepositorioCadenas(conexion).CrearCadena(
-            modelId,
-            "Cadena de prueba",
-            DateTime.Today
-        );
-        long vagonId = IdVagonCadena(cadenaId, targetId);
-        var calendarios = new RepositorioCalendariosFeriados(conexion);
-        long calendario = calendarios.CrearCalendario("Prueba", "ZZ");
-        calendarios.AgregarFeriado(calendario, new DateOnly(2026, 12, 25), "Feriado de prueba");
-        var repo = new RepositorioAlertas(conexion);
-        long regla = repo.CrearRegla(
-            "Espera",
-            modelId,
-            sourceId,
-            targetId,
-            "vagon_completado",
-            1,
-            TipoDias.Habiles,
-            "Aviso",
-            calendario
-        );
-
-        Assert.Equal(
-            new DateOnly(2026, 12, 28),
-            repo.CalcularVencimiento(regla, new DateOnly(2026, 12, 24))
-        );
-        long primera = repo.CrearAlertaDeRegla(
-            regla,
-            cadenaId,
-            vagonId,
-            new DateOnly(2026, 12, 24),
-            "evento-1"
-        );
-        long segunda = repo.CrearAlertaDeRegla(
-            regla,
-            cadenaId,
-            vagonId,
-            new DateOnly(2026, 12, 29),
-            "evento-2"
-        );
-
-        Assert.Equal(primera, segunda);
-        Assert.Single(repo.Listar().Alertas);
-    }
-
-    [Fact]
-    public void Evaluador_crea_alerta_una_sola_vez_si_falta_el_vagon_esperado()
-    {
-        var datos = CrearCadenaAlerta();
-        var enlaces = new RepositorioReglasYEnlaces(conexion);
-        enlaces.CrearEnlace(datos.VagonOrigen, datos.VersionOrigen, "manual");
-        var evaluador = new EvaluadorAlertas(conexion);
-        DateOnly hoy = DateOnly.FromDateTime(DateTime.Today).AddDays(-1);
-
-        evaluador.Evaluar(hoy);
-        evaluador.Evaluar(hoy);
-
-        Alerta alerta = Assert.Single(new RepositorioAlertas(conexion).Listar().Alertas);
-        Assert.Equal("pendiente", alerta.Estado);
-        Assert.Single(new RepositorioAlertas(conexion).ObtenerHistorial(alerta.Id));
-    }
-
-    [Fact]
-    public void Evaluador_vence_alerta_automatica_cuando_pasa_su_fecha()
-    {
-        var datos = CrearCadenaAlerta(dias: 0);
-        new RepositorioReglasYEnlaces(conexion).CrearEnlace(
-            datos.VagonOrigen,
-            datos.VersionOrigen,
-            "manual"
-        );
-
-        new EvaluadorAlertas(conexion).Evaluar(DateOnly.FromDateTime(DateTime.Today).AddDays(1));
-
-        Assert.Equal(
-            "vencida",
-            Assert.Single(new RepositorioAlertas(conexion).Listar().Alertas).Estado
-        );
-    }
-
-    [Fact]
-    public void Evaluador_resuelve_alerta_si_llega_enlace_confirmado_al_vagon_esperado()
-    {
-        var datos = CrearCadenaAlerta();
-        var enlaces = new RepositorioReglasYEnlaces(conexion);
-        enlaces.CrearEnlace(datos.VagonOrigen, datos.VersionOrigen, "manual");
-        var evaluador = new EvaluadorAlertas(conexion);
-        evaluador.Evaluar(DateOnly.FromDateTime(DateTime.Today).AddDays(-1));
-        long alertaId = Assert.Single(new RepositorioAlertas(conexion).Listar().Alertas).Id;
-        enlaces.CrearEnlace(datos.VagonDestino, datos.VersionDestino, "manual");
-
-        evaluador.Evaluar();
-
-        Alerta alerta = Assert.Single(new RepositorioAlertas(conexion).Listar().Alertas);
-        Assert.Equal("resuelta", alerta.Estado);
-        Assert.Equal("resuelta automáticamente: llegó Factura", alerta.Motivo);
-        Assert.Equal(alertaId, alerta.Id);
-    }
-
-    [Fact]
     public void Evaluador_marca_alerta_manual_vencida_al_llegar_su_fecha()
     {
-        var (modelo, _, destino, _) = CrearModelos();
-        long cadena = new RepositorioCadenas(conexion).CrearCadena(
-            modelo,
-            "Cadena",
-            DateTime.Today
-        );
-        long vagon = IdVagonCadena(cadena, destino);
+        long cadena = new RepositorioCadenas(conexion).CrearCadenaSimple("Cadena", DateTime.Today);
         var alertas = new RepositorioAlertas(conexion);
         long id = alertas.CrearAlertaManual(
             "Revisar",
             DateOnly.FromDateTime(DateTime.Today),
-            cadena,
-            vagon
+            cadena
         );
 
         // El mismo día de la fecha objetivo sigue pendiente ("vence hoy"); vence al día siguiente.
@@ -319,26 +142,6 @@ public sealed class AlertasTests : IDisposable
 
         Assert.Equal("vencida", Assert.Single(alertas.Listar().Alertas).Estado);
         Assert.Equal("marcar_vencida", alertas.ObtenerHistorial(id).Last().Accion);
-    }
-
-    [Fact]
-    public void Evaluador_no_resuelve_alerta_existente_si_se_anula_la_regla()
-    {
-        var datos = CrearCadenaAlerta();
-        var enlaces = new RepositorioReglasYEnlaces(conexion);
-        enlaces.CrearEnlace(datos.VagonOrigen, datos.VersionOrigen, "manual");
-        var alertas = new RepositorioAlertas(conexion);
-        var evaluador = new EvaluadorAlertas(conexion);
-        evaluador.Evaluar(DateOnly.FromDateTime(DateTime.Today).AddDays(-1));
-        long alerta = Assert.Single(alertas.Listar().Alertas).Id;
-        long regla = Assert.Single(alertas.ListarReglas()).Id;
-        alertas.AnularRegla(regla);
-        enlaces.CrearEnlace(datos.VagonDestino, datos.VersionDestino, "manual");
-
-        evaluador.Evaluar();
-
-        Assert.Equal("pendiente", Assert.Single(alertas.Listar().Alertas).Estado);
-        Assert.Single(alertas.ObtenerHistorial(alerta));
     }
 
     [Fact]
@@ -541,42 +344,11 @@ public sealed class AlertasTests : IDisposable
     }
 
     [Fact]
-    public void Evaluador_expone_y_audita_error_de_evaluacion()
-    {
-        var datos = CrearCadenaAlerta();
-        new RepositorioReglasYEnlaces(conexion).CrearEnlace(
-            datos.VagonOrigen,
-            datos.VersionOrigen,
-            "manual"
-        );
-        using (var trigger = conexion.CreateCommand())
-        {
-            trigger.CommandText =
-                "CREATE TRIGGER fallar_alerta BEFORE INSERT ON alertas WHEN NEW.regla_id IS NOT NULL BEGIN SELECT RAISE(FAIL,'error de prueba'); END;";
-            trigger.ExecuteNonQuery();
-        }
-
-        var error = Assert.Throws<SqliteException>(() => new EvaluadorAlertas(conexion).Evaluar());
-
-        Assert.Contains("error de prueba", error.Message);
-        using var auditoria = conexion.CreateCommand();
-        auditoria.CommandText =
-            "SELECT COUNT(*) FROM auditoria WHERE accion='error_evaluar_alertas' AND destino LIKE '%error de prueba%';";
-        Assert.Equal(1L, Convert.ToInt64(auditoria.ExecuteScalar()));
-    }
-
-    [Fact]
     public void Lista_por_estado_y_cadena_con_contador_total()
     {
-        var (modelId, _, targetId, _) = CrearModelos();
-        long cadena = new RepositorioCadenas(conexion).CrearCadena(
-            modelId,
-            "Cadena",
-            DateTime.Today
-        );
-        long vagon = IdVagonCadena(cadena, targetId);
+        long cadena = new RepositorioCadenas(conexion).CrearCadenaSimple("Cadena", DateTime.Today);
         var repo = new RepositorioAlertas(conexion);
-        repo.CrearAlertaManual("Una", new DateOnly(2026, 1, 1), cadena, vagon);
+        repo.CrearAlertaManual("Una", new DateOnly(2026, 1, 1), cadena);
         repo.CrearAlertaManual("Dos", new DateOnly(2026, 1, 2), cadena);
 
         ResultadoAlertas pagina = repo.Listar(estado: "pendiente", cadenaId: cadena, limite: 1);
@@ -584,47 +356,6 @@ public sealed class AlertasTests : IDisposable
         Assert.Single(pagina.Alertas);
         Assert.Equal(2, pagina.Total);
         Assert.Equal(2, repo.Listar(estado: "pendiente").Total);
-    }
-
-    private (long Modelo, long Origen, long Destino, long OtroDestino) CrearModelos()
-    {
-        var cadenas = new RepositorioCadenas(conexion);
-        long modelo = cadenas.CrearModelo("Modelo", DateTime.Today);
-        long origen = cadenas.AgregarVagonModelo(modelo, null, "Guía");
-        long destino = cadenas.AgregarVagonModelo(modelo, null, "Factura");
-        long otroModelo = cadenas.CrearModelo("Otro modelo", DateTime.Today);
-        long destinoAjeno = cadenas.AgregarVagonModelo(otroModelo, null, "Factura externa");
-        return (modelo, origen, destino, destinoAjeno);
-    }
-
-    private (
-        long VagonOrigen,
-        long VagonDestino,
-        long VersionOrigen,
-        long VersionDestino
-    ) CrearCadenaAlerta(int dias = 5)
-    {
-        var (modelo, origen, destino, _) = CrearModelos();
-        long cadena = new RepositorioCadenas(conexion).CrearCadena(
-            modelo,
-            "Cadena",
-            DateTime.Today
-        );
-        long vagonOrigen = IdVagonCadena(cadena, origen);
-        long vagonDestino = IdVagonCadena(cadena, destino);
-        long versionOrigen = CrearVersion("origen");
-        long versionDestino = CrearVersion("destino");
-        new RepositorioAlertas(conexion).CrearRegla(
-            "Esperar factura",
-            modelo,
-            origen,
-            destino,
-            "vagon_completado",
-            dias,
-            TipoDias.Corridos,
-            "Guía esperando factura"
-        );
-        return (vagonOrigen, vagonDestino, versionOrigen, versionDestino);
     }
 
     private long CrearVersion(string nombre)
@@ -641,15 +372,5 @@ public sealed class AlertasTests : IDisposable
         {
             File.Delete(ruta);
         }
-    }
-
-    private long IdVagonCadena(long cadenaId, long vagonModeloId)
-    {
-        using var cmd = conexion.CreateCommand();
-        cmd.CommandText =
-            "SELECT id FROM vagones_cadena WHERE cadena_id=$cadena AND vagon_modelo_id=$modelo;";
-        cmd.Parameters.AddWithValue("$cadena", cadenaId);
-        cmd.Parameters.AddWithValue("$modelo", vagonModeloId);
-        return Convert.ToInt64(cmd.ExecuteScalar());
     }
 }

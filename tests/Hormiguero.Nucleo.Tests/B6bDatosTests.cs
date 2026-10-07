@@ -77,50 +77,6 @@ public sealed class B6bDatosTests : IDisposable
     }
 
     [Fact]
-    public void Arbol_de_modelo_instantanea_orden_y_cadena_hija()
-    {
-        var repo = new RepositorioCadenas(conexion);
-        long modeloHijo = repo.CrearModelo("Hija", DateTime.UtcNow, true);
-        repo.AgregarVagonModelo(modeloHijo, null, "Documento hijo");
-        long modelo = repo.CrearModelo("Principal", DateTime.UtcNow);
-        long principal = repo.AgregarVagonModelo(
-            modelo,
-            null,
-            "Factura",
-            esMultiple: true,
-            modeloCadenaHijaId: modeloHijo
-        );
-        long anexo = repo.AgregarVagonModelo(modelo, principal, "Anexo", esAnexo: true);
-        Assert.Equal(
-            principal,
-            Convert.ToInt64(
-                Escalar(conexion, "SELECT padre_id FROM vagones_modelo WHERE id=" + anexo)
-            )
-        );
-        repo.AgregarVagonModelo(modelo, null, "Orden");
-        var arbol = repo.ObtenerArbolModelo(modelo);
-        Assert.Equal(new[] { "Factura", "Orden" }, arbol.Select(n => n.Vagon.Nombre));
-        Assert.True(arbol[0].Vagon.EsMultiple);
-        Assert.Equal("Anexo", Assert.Single(arbol[0].Hijos).Vagon.Nombre);
-        Assert.True(arbol[0].Hijos[0].Vagon.EsAnexo);
-        long cadena = repo.CrearCadena(modelo, "Principal 1", DateTime.UtcNow);
-        var instancias = repo.ObtenerArbolCadena(cadena);
-        Assert.Equal(new[] { "Factura", "Orden" }, instancias.Select(n => n.Vagon.Nombre));
-        using (var cambio = conexion.CreateCommand())
-        {
-            cambio.CommandText = "UPDATE vagones_modelo SET nombre='Modificado' WHERE id=$id;";
-            cambio.Parameters.AddWithValue("$id", principal);
-            cambio.ExecuteNonQuery();
-        }
-        Assert.Contains("Factura", repo.ObtenerCadena(cadena)!.EstructuraJson);
-        long vagonPadre = instancias[0].Vagon.Id;
-        long hija = repo.CrearCadena(modeloHijo, "Hija 1", DateTime.UtcNow, cadena, vagonPadre);
-        Assert.Equal(cadena, repo.ObtenerCadena(hija)!.CadenaMadreId);
-        Assert.Equal(vagonPadre, repo.ObtenerCadena(hija)!.VagonPadreId);
-        Assert.Equal(anexo, arbol[0].Hijos[0].Vagon.Id);
-    }
-
-    [Fact]
     public void Versiones_campos_valores_marcas_y_enlaces_con_historial_auditado()
     {
         long identificacion = new Identificaciones(conexion).Guardar(
@@ -141,23 +97,16 @@ public sealed class B6bDatosTests : IDisposable
             new(0, version.Id, "texto", 1, 1, 2, 3, 4, "OC 123", DateTime.UtcNow, "activa")
         );
         Assert.True(datos.AnularMarca(marca));
-        long modelo = new RepositorioCadenas(conexion).CrearModelo("M", DateTime.UtcNow);
-        long vm = new RepositorioCadenas(conexion).AgregarVagonModelo(modelo, null, "V");
-        long cadena = new RepositorioCadenas(conexion).CrearCadena(modelo, "C", DateTime.UtcNow);
-        long vagon = Assert
-            .Single(new RepositorioCadenas(conexion).ObtenerArbolCadena(cadena))
-            .Vagon.Id;
+        var cadenas = new RepositorioCadenas(conexion);
+        long cadena = cadenas.CrearCadenaSimple("C", DateTime.UtcNow);
+        long vagon = cadenas.AgregarDocumentoCadena(cadena, version.Id, "V");
         var reglas = new RepositorioReglasYEnlaces(conexion);
-        long regla = reglas.GuardarRegla(
-            new(0, vm, identificacion, campo, vm, campo, "igual", true, false, false, 6, "activa")
-        );
-        long enlace = reglas.CrearEnlace(vagon, version.Id, "manual", regla);
+        long enlace = reglas.CrearEnlace(vagon, version.Id, "manual");
         Assert.True(reglas.DeshacerEnlace(enlace));
         Assert.Equal("anulado", Assert.Single(reglas.HistorialEnlaces(vagon)).Estado);
         Assert.True(datos.AnularValor(Assert.Single(datos.BuscarValores(campo, "OC 123")).Id));
-        Assert.True(reglas.AnularRegla(regla));
         Assert.Equal(
-            9L,
+            7L,
             Convert.ToInt64(Escalar(conexion, "SELECT COUNT(*) FROM auditoria WHERE app='Nucleo';"))
         );
         Assert.Equal(
@@ -256,167 +205,6 @@ public sealed class B6bDatosTests : IDisposable
     }
 
     [Fact]
-    public void Motor_enlaza_coincidencia_unica_y_deja_empate_como_dudoso()
-    {
-        long identificacion = new Identificaciones(conexion).Guardar(new(0, "OC", "Emisor", "{}"));
-        var datos = new RepositorioDocumentosDatos(conexion);
-        long campoOrigen = datos.GuardarCampo(
-            new(0, identificacion, "OC", "oc", "texto", true, "marca")
-        );
-        long campoComparacion = datos.GuardarCampo(
-            new(0, identificacion, "OC ref", "oc_ref", "texto", true, "marca")
-        );
-        long modelo = new RepositorioCadenas(conexion).CrearModelo("M", DateTime.UtcNow);
-        long comparador = new RepositorioCadenas(conexion).AgregarVagonModelo(
-            modelo,
-            null,
-            "Factura"
-        );
-        long destino = new RepositorioCadenas(conexion).AgregarVagonModelo(modelo, null, "Guía");
-        long cadena = new RepositorioCadenas(conexion).CrearCadena(modelo, "C", DateTime.UtcNow);
-        var vagones = new RepositorioCadenas(conexion)
-            .ObtenerArbolCadena(cadena)
-            .ToDictionary(n => n.Vagon.VagonModeloId!.Value, n => n.Vagon.Id);
-        long docRef = AgregarDocumento("ref");
-        long versionRef = datos.RegistrarVersion(docRef, "ref", "ref.pdf").Id;
-        datos.GuardarValor(versionRef, campoComparacion, "  OC  00123 ", "OC  00123", "manual");
-        var enlaces = new RepositorioReglasYEnlaces(conexion);
-        enlaces.CrearEnlace(vagones[comparador], versionRef, "manual");
-        long regla = enlaces.GuardarRegla(
-            new(
-                0,
-                destino,
-                identificacion,
-                campoOrigen,
-                comparador,
-                campoComparacion,
-                "igual",
-                true,
-                false,
-                false,
-                6,
-                "activa"
-            )
-        );
-        long doc = AgregarDocumento("uno");
-        long version = datos.RegistrarVersion(doc, "uno", "uno.pdf").Id;
-        datos.GuardarValor(version, campoOrigen, "OC 00123", "OC 00123", "marca");
-
-        new MotorEnlaceAutomatico(conexion).Ejecutar();
-
-        var destinoUno = enlaces.HistorialEnlaces(vagones[destino]);
-        Assert.Equal("automatico", Assert.Single(destinoUno).Origen);
-        Assert.Equal(regla, destinoUno[0].ReglaId);
-
-        long cadenaDos = new RepositorioCadenas(conexion).CrearCadena(
-            modelo,
-            "C2",
-            DateTime.UtcNow
-        );
-        var vagonesDos = new RepositorioCadenas(conexion)
-            .ObtenerArbolCadena(cadenaDos)
-            .ToDictionary(n => n.Vagon.VagonModeloId!.Value, n => n.Vagon.Id);
-        enlaces.CrearEnlace(vagonesDos[comparador], versionRef, "manual");
-        long segundoDoc = AgregarDocumento("dos");
-        long versionDos = datos.RegistrarVersion(segundoDoc, "dos", "dos.pdf").Id;
-        datos.GuardarValor(versionDos, campoOrigen, "OC 00123", "OC 00123", "marca");
-
-        new MotorEnlaceAutomatico(conexion).Ejecutar();
-
-        var propuestas = enlaces
-            .HistorialEnlaces(vagonesDos[destino])
-            .Where(e => e.Estado == "dudoso")
-            .ToArray();
-        Assert.Equal(2, propuestas.Length);
-        var propuesta = propuestas[0];
-        Assert.Contains("documentos con el mismo dato", propuesta.Motivo);
-        Assert.Equal(propuesta.Id, enlaces.ObtenerDatosDudoso(propuesta.Id)!.EnlaceId);
-        Assert.True(enlaces.RechazarDudoso(propuesta.Id));
-        new MotorEnlaceAutomatico(conexion).Ejecutar();
-        Assert.DoesNotContain(enlaces.ListarDudosos(), e => e.Id == propuesta.Id);
-    }
-
-    [Theory]
-    [InlineData("ocupado", "El vag\u00f3n ya tiene")]
-    [InlineData("corto", "demasiado corto")]
-    [InlineData("version", "La versi\u00f3n del documento cambi\u00f3")]
-    [InlineData("faltante", "Falta el dato necesario")]
-    [InlineData("confianza", "la lectura no es segura")]
-    public void Motor_deja_como_dudoso_casos_inseguros(string caso, string motivoEsperado)
-    {
-        var datos = PrepararMotor();
-        var enlaces = new RepositorioReglasYEnlaces(conexion);
-        long version = AgregarVersionConValor(
-            datos.CampoOrigen,
-            caso == "corto" ? "123" : "OC12345",
-            caso == "confianza" ? 0.4 : null
-        );
-
-        if (caso == "corto")
-        {
-            using var acortar = conexion.CreateCommand();
-            acortar.CommandText =
-                "UPDATE valores_documento SET valor_clave='123' WHERE campo_id=$c AND version_id=$v;";
-            acortar.Parameters.AddWithValue("$c", datos.CampoComparacion);
-            acortar.Parameters.AddWithValue("$v", datos.VersionReferencia);
-            acortar.ExecuteNonQuery();
-        }
-        else if (caso == "faltante")
-        {
-            using var borrar = conexion.CreateCommand();
-            borrar.CommandText =
-                "UPDATE valores_documento SET estado='anulado' WHERE campo_id=$c AND version_id=$v;";
-            borrar.Parameters.AddWithValue("$c", datos.CampoComparacion);
-            borrar.Parameters.AddWithValue("$v", datos.VersionReferencia);
-            borrar.ExecuteNonQuery();
-        }
-        else if (caso == "version")
-        {
-            using var cambiar = conexion.CreateCommand();
-            cambiar.CommandText =
-                "UPDATE versiones_documento SET estado='anulada' WHERE id=$v; UPDATE valores_documento SET estado='anulado' WHERE version_id=$v;";
-            cambiar.Parameters.AddWithValue("$v", version);
-            cambiar.ExecuteNonQuery();
-        }
-        else if (caso == "ocupado")
-        {
-            long ocupante = AgregarVersionConValor(datos.CampoOrigen, "OTRO123");
-            enlaces.CrearEnlace(datos.VagonDestino, ocupante, "manual");
-        }
-
-        new MotorEnlaceAutomatico(conexion).Ejecutar(version);
-
-        var dudoso = Assert.Single(
-            enlaces.HistorialEnlaces(datos.VagonDestino),
-            e => e.VersionId == version
-        );
-        Assert.Equal("dudoso", dudoso.Estado);
-        Assert.Contains(motivoEsperado, dudoso.Motivo, StringComparison.OrdinalIgnoreCase);
-        Assert.DoesNotContain(
-            enlaces.HistorialEnlaces(datos.VagonDestino),
-            e => e.VersionId == version && e.Estado == "activo"
-        );
-    }
-
-    [Fact]
-    public void Motor_normaliza_solo_las_opciones_guardadas_y_persiste_confianza_minima()
-    {
-        var motor = new MotorEnlaceAutomatico(conexion);
-        Assert.Equal(0.90, motor.ConfianzaMinima);
-        motor.ConfianzaMinima = 0.95;
-        Assert.Equal(0.95, new MotorEnlaceAutomatico(conexion).ConfianzaMinima);
-
-        var regla = new ReglaVagon(1, 1, 1, 1, 1, 1, "igual", true, true, true, 6, "activa");
-        Assert.Equal("A 123", MotorEnlaceAutomatico.NormalizarClave(" A   123 ", regla));
-        Assert.Equal("A123", MotorEnlaceAutomatico.NormalizarClave("A-123", regla));
-        Assert.Equal("123", MotorEnlaceAutomatico.NormalizarClave("00123", regla));
-        Assert.Equal(
-            "A-123",
-            MotorEnlaceAutomatico.NormalizarClave("A-123", regla with { IgnorarGuiones = false })
-        );
-    }
-
-    [Fact]
     public void Asegurar_documento_reutiliza_ruta_huella_y_crea_version_por_cambio()
     {
         string carpeta = Path.Combine(
@@ -457,76 +245,6 @@ public sealed class B6bDatosTests : IDisposable
         {
             Directory.Delete(carpeta, true);
         }
-    }
-
-    private (
-        long CampoOrigen,
-        long CampoComparacion,
-        long VagonDestino,
-        long VersionReferencia
-    ) PrepararMotor()
-    {
-        long identificacion = new Identificaciones(conexion).Guardar(new(0, "OC", "Emisor", "{}"));
-        var datos = new RepositorioDocumentosDatos(conexion);
-        long campoOrigen = datos.GuardarCampo(
-            new(0, identificacion, "OC", "oc", "texto", true, "marca")
-        );
-        long campoComparacion = datos.GuardarCampo(
-            new(0, identificacion, "OC ref", "oc_ref", "texto", true, "marca")
-        );
-        long modelo = new RepositorioCadenas(conexion).CrearModelo("M", DateTime.UtcNow);
-        long comparador = new RepositorioCadenas(conexion).AgregarVagonModelo(
-            modelo,
-            null,
-            "Factura"
-        );
-        long destino = new RepositorioCadenas(conexion).AgregarVagonModelo(
-            modelo,
-            null,
-            "Gu\u00eda"
-        );
-        long cadena = new RepositorioCadenas(conexion).CrearCadena(modelo, "C", DateTime.UtcNow);
-        var vagones = new RepositorioCadenas(conexion)
-            .ObtenerArbolCadena(cadena)
-            .ToDictionary(n => n.Vagon.VagonModeloId!.Value, n => n.Vagon.Id);
-        long refVersion = datos.RegistrarVersion(AgregarDocumento("ref"), "ref", "ref.pdf").Id;
-        datos.GuardarValor(refVersion, campoComparacion, "OC12345", "OC12345", "manual");
-        new RepositorioReglasYEnlaces(conexion).CrearEnlace(
-            vagones[comparador],
-            refVersion,
-            "manual"
-        );
-        new RepositorioReglasYEnlaces(conexion).GuardarRegla(
-            new(
-                0,
-                destino,
-                identificacion,
-                campoOrigen,
-                comparador,
-                campoComparacion,
-                "igual",
-                true,
-                false,
-                false,
-                6,
-                "activa"
-            )
-        );
-        return (campoOrigen, campoComparacion, vagones[destino], refVersion);
-    }
-
-    private long AgregarVersionConValor(long campo, string valor, double? confianza = null)
-    {
-        var datos = new RepositorioDocumentosDatos(conexion);
-        long version = datos
-            .RegistrarVersion(
-                AgregarDocumento(Guid.NewGuid().ToString("N")),
-                Guid.NewGuid().ToString("N"),
-                "candidato.pdf"
-            )
-            .Id;
-        datos.GuardarValor(version, campo, valor, valor, "marca", confianza);
-        return version;
     }
 
     private long AgregarDocumento(string huella)

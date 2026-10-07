@@ -43,7 +43,6 @@ public partial class MainWindow : Window
     private readonly ServicioBusqueda _servicioBusqueda;
     private readonly IndexadoEnSegundoPlano _indexadoEnSegundoPlano;
     private readonly RepositorioMarcas _repositorioMarcas;
-    private readonly ServicioLineas _lineas;
 
     private enum ModoInteraccionPdf
     {
@@ -63,9 +62,6 @@ public partial class MainWindow : Window
 
     private SesionMarcas? _sesionMarcas;
     private Marca? _moviendo;
-    private long? _cadenaActivaId;
-    private string? _documentoEspiado;
-    private DispatcherTimer? _temporizadorClicPrevisualizacion;
     private Point _desplazamiento;
     private Point? _vistaPrevia;
     private Point _inicioArrastre;
@@ -119,21 +115,12 @@ public partial class MainWindow : Window
         );
         PanelBusquedaSecundario.Configurar(_servicioBusqueda, _repositorioMarcas);
         Closed += (_, _) => _repositorioMarcas.Dispose();
-        var repositorioLineas = new RepositorioLineas(
-            Hormiguero.Nucleo.Datos.DocumentosGuardados.RutaBaseComun
-        );
-        repositorioLineas.ErrorRevisionMotor += mensaje =>
-            Dispatcher.Invoke(() => MostrarMensaje(mensaje));
-        repositorioLineas.RevisionMotorCompletada += () =>
-            Dispatcher.Invoke(ActualizarContadorDudosos);
-        _lineas = new ServicioLineas(repositorioLineas);
-        Closed += (_, _) => _lineas.Dispose();
 
         _ = EvaluarAlertasAlAbrirAsync();
         CargarCarpetas();
         _ = CargarTiposMaestroAsync();
         ActualizarSugerenciasCarpeta();
-        RefrescarLineas();
+        ActualizarContadorDudosos();
         _indexadoEnSegundoPlano.Pedir();
         ActualizarContadorAlertas();
     }
@@ -465,8 +452,6 @@ public partial class MainWindow : Window
             TextoVisorVacio.Visibility = Visibility.Collapsed;
 
             await RenderizarPaginaActualAsync();
-            RefrescarPrevisualizacion();
-            RefrescarCadenas();
         }
         catch (Exception excepcion)
         {
@@ -1135,20 +1120,26 @@ public partial class MainWindow : Window
         }
     }
 
-    private void RefrescarLineas()
+    private void ActualizarContadorDudosos()
     {
-        RefrescarPlantillas();
-        RefrescarPrevisualizacion();
-        RefrescarCadenas();
-        ActualizarContadorDudosos();
+        try
+        {
+            using var conexion = BaseComun.Abrir(DocumentosGuardados.RutaBaseComun);
+            int cantidad = new RepositorioReglasYEnlaces(conexion)
+                .ListarDudososCadenasSimples()
+                .Count;
+            BotonDudosos.Content = $"{cantidad} dudosos";
+        }
+        catch (Exception error)
+        {
+            BotonDudosos.Content = "Dudosos no disponibles";
+            MostrarMensaje($"No se pudieron cargar los dudosos: {error.Message}");
+        }
     }
-
-    private void ActualizarContadorDudosos() =>
-        BotonDudosos.Content = $"{_lineas.ContarDudosos()} dudosos";
 
     private void BotonDudosos_Click(object sender, RoutedEventArgs e)
     {
-        var dialogo = new DialogoDudosos(_lineas) { Owner = this };
+        var dialogo = new DialogoDudosos { Owner = this };
         dialogo.ShowDialog();
         ActualizarContadorDudosos();
     }
@@ -1157,23 +1148,29 @@ public partial class MainWindow : Window
     {
         try
         {
-            using var conexion = Hormiguero.Nucleo.Datos.BaseComun.Abrir(
-                Hormiguero.Nucleo.Datos.DocumentosGuardados.RutaBaseComun
-            );
-            var alertas = new Hormiguero.Nucleo.Datos.RepositorioAlertas(conexion)
+            using var conexion = BaseComun.Abrir(DocumentosGuardados.RutaBaseComun);
+            var cadenasSimples = new RepositorioCadenas(conexion)
+                .ListarCadenasSimples()
+                .Select(c => c.Id)
+                .ToHashSet();
+            var alertas = new RepositorioAlertas(conexion)
                 .Listar(limite: 10000)
-                .Alertas;
+                .Alertas.Where(a =>
+                    a.ReglaId is null
+                    && (a.CadenaId is null || cadenasSimples.Contains(a.CadenaId.Value))
+                )
+                .ToArray();
             int abiertas = alertas.Count(a => a.Estado is "pendiente" or "vencida");
             int vencidas = alertas.Count(a => a.Estado == "vencida");
             BotonAlertas.Content = $"{abiertas} alertas";
-            BotonAlertas.Background =
-                vencidas > 0
-                    ? (Brush)Application.Current.FindResource("Hormiguero.AvisoSuave")
-                    : (Brush)Application.Current.FindResource("Hormiguero.Superficie");
-            BotonAlertas.BorderBrush =
-                vencidas > 0
-                    ? (Brush)Application.Current.FindResource("Hormiguero.Aviso")
-                    : (Brush)Application.Current.FindResource("Hormiguero.Borde");
+            BotonAlertas.Background = (Brush)
+                Application.Current.FindResource(
+                    vencidas > 0 ? "Hormiguero.AvisoSuave" : "Hormiguero.Superficie"
+                );
+            BotonAlertas.BorderBrush = (Brush)
+                Application.Current.FindResource(
+                    vencidas > 0 ? "Hormiguero.Aviso" : "Hormiguero.Borde"
+                );
         }
         catch (Exception error)
         {
@@ -1186,11 +1183,10 @@ public partial class MainWindow : Window
     {
         try
         {
-            var ruta = Hormiguero.Nucleo.Datos.DocumentosGuardados.RutaBaseComun;
-            using (var conexion = Hormiguero.Nucleo.Datos.BaseComun.Abrir(ruta))
-                new Hormiguero.Nucleo.Datos.EvaluadorAlertas(conexion).Evaluar();
-            var dialogo = new DialogoAlertas(ruta, MostrarCadena) { Owner = this };
-            dialogo.ShowDialog();
+            string ruta = DocumentosGuardados.RutaBaseComun;
+            using (var conexion = BaseComun.Abrir(ruta))
+                new EvaluadorAlertas(conexion).Evaluar();
+            new DialogoAlertas(ruta, _ => { }) { Owner = this }.ShowDialog();
         }
         catch (Exception error)
         {
@@ -1199,579 +1195,17 @@ public partial class MainWindow : Window
         ActualizarContadorAlertas();
     }
 
-    private void BotonRecordarme_Click(object sender, RoutedEventArgs e)
-    {
-        if (_cadenaActivaId is not long cadenaId)
-            return;
-        var dialogo = new DialogoRecordatorio(cadenaId) { Owner = this };
-        if (dialogo.ShowDialog() == true)
-        {
-            ActualizarContadorAlertas();
-            ActualizarAlertasCadena(cadenaId);
-        }
-    }
-
     private void BotonCalcularFecha_Click(object sender, RoutedEventArgs e) =>
         new DialogoCalculadoraFechas { Owner = this }.ShowDialog();
 
     private void BotonFeriados_Click(object sender, RoutedEventArgs e) =>
         new DialogoFeriados { Owner = this }.ShowDialog();
 
-    private void RefrescarPlantillas()
-    {
-        var idSeleccionada = (ListaPlantillas.SelectedItem as PlantillaLinea)?.Id;
-        var plantillas = _lineas.ObtenerPlantillas();
-        ListaPlantillas.ItemsSource = plantillas;
-        if (idSeleccionada is not null)
-        {
-            ListaPlantillas.SelectedItem = plantillas.FirstOrDefault(p => p.Id == idSeleccionada);
-        }
-
-        RefrescarArbolPlantilla();
-    }
-
-    private void RefrescarArbolPlantilla()
-    {
-        TextoEstadoPlantilla.Text = string.Empty;
-        ArbolPlantilla.ItemsSource = ListaPlantillas.SelectedItem is PlantillaLinea plantilla
-            ? _lineas.ObtenerArbolPlantilla(plantilla.Id).Select(ConvertirPlantilla).ToList()
-            : null;
-    }
-
-    private static VagonPlantillaVm ConvertirPlantilla(NodoPlantilla nodo) =>
-        new()
-        {
-            Vagon = nodo.Vagon,
-            Texto =
-                nodo.Vagon.Nombre
-                + (nodo.Vagon.EsMultiple ? "  (ramificado)" : string.Empty)
-                + (nodo.Vagon.EsAnexo ? "  (anexo)" : string.Empty),
-            Hijos = nodo.Hijos.Select(ConvertirPlantilla).ToList(),
-        };
-
-    private void ListaPlantillas_SelectionChanged(object sender, SelectionChangedEventArgs e) =>
-        RefrescarArbolPlantilla();
-
     private void BotonReglaAlerta_Click(object sender, RoutedEventArgs e)
     {
         var dialogo = new DialogoReglaAlerta { Owner = this };
         if (dialogo.ShowDialog() == true)
             MostrarMensaje("La regla quedó configurada para las cadenas simples.");
-    }
-
-    private void ArbolPlantilla_SelectedItemChanged(
-        object sender,
-        RoutedPropertyChangedEventArgs<object> e
-    ) { }
-
-    private void RefrescarCadenas()
-    {
-        if (PanelModelos.Visibility == Visibility.Visible)
-        {
-            return;
-        }
-
-        if (_cadenaActivaId is long cadenaId)
-        {
-            MostrarCadena(cadenaId);
-            return;
-        }
-
-        PanelCadena.Visibility = Visibility.Collapsed;
-        PanelEntrada.Visibility = Visibility.Visible;
-        BotonVincularCadena.IsEnabled = _documentoActual is not null;
-        TextoEntrada.Text = _documentoActual is null
-            ? "Abra un documento y vínclelo a una cadena documental."
-            : "El documento observado no pertenece a ninguna cadena documental. Puede vincularlo a una existente o crear una nueva.";
-    }
-
-    private void MostrarCadena(long cadenaId)
-    {
-        try
-        {
-            var cadena = _lineas.ObtenerInstancia(cadenaId);
-            TextoCadenaActiva.Text = $"Cadena: {_lineas.ObtenerNombreVisible(cadena)}";
-        }
-        catch
-        {
-            _cadenaActivaId = null;
-            PanelCadena.Visibility = Visibility.Collapsed;
-            PanelEntrada.Visibility = Visibility.Visible;
-            return;
-        }
-
-        _cadenaActivaId = cadenaId;
-        PanelModelos.Visibility = Visibility.Collapsed;
-        PanelEntrada.Visibility = Visibility.Collapsed;
-        PanelCadena.Visibility = Visibility.Visible;
-        ListaFilasCadena.ItemsSource = ConstruirFilas(cadenaId, string.Empty);
-        ActualizarAlertasCadena(cadenaId);
-        Pestanas.SelectedIndex = 1;
-    }
-
-    private void ActualizarAlertasCadena(long cadenaId)
-    {
-        try
-        {
-            using var conexion = Hormiguero.Nucleo.Datos.BaseComun.Abrir(
-                Hormiguero.Nucleo.Datos.DocumentosGuardados.RutaBaseComun
-            );
-            var alertas = new Hormiguero.Nucleo.Datos.RepositorioAlertas(conexion)
-                .Listar(cadenaId: cadenaId, limite: 10000)
-                .Alertas;
-            var abiertas = alertas.Where(a => a.Estado is "pendiente" or "vencida").ToList();
-            TextoAlertasCadena.Text =
-                abiertas.Count == 0
-                    ? "No hay avisos pendientes para esta cadena."
-                    : string.Join(
-                        "\n",
-                        abiertas.Select(a =>
-                            $"{a.Texto} — {Buscadero.Core.Alertas.PresentacionAlertas.ParaCuando(a.FechaObjetivo, DateOnly.FromDateTime(DateTime.Today), Hormiguero.Nucleo.Utilidades.TipoDias.Habiles)} ({(a.Estado == "vencida" ? "Vencida" : "Pendiente")})"
-                        )
-                    );
-        }
-        catch (Exception error)
-        {
-            TextoAlertasCadena.Text =
-                $"No se pudieron cargar los avisos de esta cadena: {error.Message}";
-        }
-    }
-
-    private async void CajaCadena_MouseLeftButtonDown(object sender, MouseButtonEventArgs e)
-    {
-        if (e.ClickCount != 2 || (sender as FrameworkElement)?.Tag is not CajaCadenaVm caja)
-        {
-            return;
-        }
-
-        if (caja.RutaDocumento is null)
-        {
-            return;
-        }
-
-        await AbrirVistaRapidaAsync(caja.RutaDocumento, caja.NombreDocumento ?? caja.Texto);
-    }
-
-    private async Task AbrirVistaRapidaAsync(string ruta, string nombreVisible)
-    {
-        if (_documentoActual is null)
-        {
-            return;
-        }
-
-        if (
-            string.Equals(
-                ruta,
-                _documentoEspiado ?? _documentoActual,
-                StringComparison.OrdinalIgnoreCase
-            )
-        )
-        {
-            return;
-        }
-
-        try
-        {
-            var fuente = await Task.Run(() => VisorPdf.RenderizarPagina(ruta, 0));
-
-            _documentoEspiado = ruta;
-            ImagenPdf.Source = fuente;
-            AplicarZoom();
-            CanvasMarcas.Children.Clear();
-
-            BarraVisor.IsEnabled = false;
-            BarraMarcas.Visibility = Visibility.Collapsed;
-            BarraEspiar.Visibility = Visibility.Visible;
-            BotonVolverEspiar.Content = $"Volver a {System.IO.Path.GetFileName(_documentoActual)}";
-            BotonObservarEspiado.Content = $"Observar {nombreVisible}";
-        }
-        catch (Exception excepcion)
-        {
-            MessageBox.Show(
-                this,
-                $"No se pudo abrir la vista rápida.\n\nDetalle: {excepcion.Message}",
-                "Buscadero",
-                MessageBoxButton.OK,
-                MessageBoxImage.Warning
-            );
-        }
-    }
-
-    private async void BotonVolverEspiar_Click(object sender, RoutedEventArgs e)
-    {
-        _documentoEspiado = null;
-        BarraEspiar.Visibility = Visibility.Collapsed;
-        BarraVisor.IsEnabled = true;
-        BarraMarcas.Visibility = Visibility.Visible;
-        await RenderizarPaginaActualAsync();
-    }
-
-    private async void BotonObservarEspiado_Click(object sender, RoutedEventArgs e)
-    {
-        if (_documentoEspiado is not string ruta)
-        {
-            return;
-        }
-
-        _documentoEspiado = null;
-        BarraEspiar.Visibility = Visibility.Collapsed;
-        BarraVisor.IsEnabled = true;
-        await AbrirDocumentoAsync(ruta);
-    }
-
-    private List<FilaCadenaVm> ConstruirFilas(long cadenaId, string prefijo)
-    {
-        var filas = new List<FilaCadenaVm>();
-        var documentos = _lineas.ObtenerArbolInstancia(cadenaId);
-        filas.Add(
-            new FilaCadenaVm { Prefijo = prefijo, Cajas = ConstruirCajas(cadenaId, documentos) }
-        );
-
-        foreach (var nodo in documentos)
-        {
-            if (!nodo.Vagon.EsMultiple)
-            {
-                continue;
-            }
-
-            foreach (var hija in _lineas.ObtenerCadenasHijas(nodo.Vagon.Id))
-            {
-                var filasHijas = ConstruirFilas(hija.Id, "└→ ");
-                if (filasHijas.Count > 0)
-                {
-                    var tieneArchivo = TieneAlgunArchivoVinculado(hija.Id);
-                    var accion = new AccionCadenaVm
-                    {
-                        Texto = "Quitar cadena hija",
-                        Accion = TipoAccion.QuitarCadenaHija,
-                        InstanciaId = hija.Id,
-                        RequiereConfirmacion = tieneArchivo,
-                    };
-
-                    filasHijas[0] = new FilaCadenaVm
-                    {
-                        Prefijo = filasHijas[0].Prefijo,
-                        Cajas = AgregarAccionAPrimera(filasHijas[0].Cajas, accion),
-                    };
-                }
-
-                filas.AddRange(filasHijas);
-            }
-        }
-
-        return filas;
-    }
-
-    private List<CajaCadenaVm> ConstruirCajas(long cadenaId, IReadOnlyList<NodoInstancia> nodos)
-    {
-        var cajas = new List<CajaCadenaVm>();
-        var indice = 0;
-        foreach (var nodo in nodos)
-        {
-            indice++;
-            cajas.Add(ConstruirCaja(cadenaId, nodo.Vagon, esUltima: indice == nodos.Count));
-            foreach (var anexo in nodo.Hijos)
-            {
-                cajas.Add(ConstruirCaja(cadenaId, anexo.Vagon, esUltima: false));
-            }
-        }
-
-        return cajas;
-    }
-
-    private CajaCadenaVm ConstruirCaja(long cadenaId, InstanciaVagon documento, bool esUltima)
-    {
-        var acciones = new List<AccionCadenaVm>();
-
-        if (documento.NombreDocumento is null)
-        {
-            acciones.Add(
-                new AccionCadenaVm
-                {
-                    Texto = "Buscar y vincular...",
-                    Accion = TipoAccion.BuscarVincular,
-                    InstanciaId = cadenaId,
-                    InstanciaVagonId = documento.Id,
-                }
-            );
-        }
-        else
-        {
-            acciones.Add(
-                new AccionCadenaVm
-                {
-                    Texto = "Deshacer vínculo",
-                    Accion = TipoAccion.QuitarVinculo,
-                    InstanciaId = cadenaId,
-                    InstanciaVagonId = documento.Id,
-                }
-            );
-        }
-
-        if (documento.EsAnexo)
-        {
-            acciones.Add(
-                new AccionCadenaVm
-                {
-                    Texto = "Quitar anexo",
-                    Accion = TipoAccion.QuitarAnexo,
-                    InstanciaId = cadenaId,
-                    InstanciaVagonId = documento.Id,
-                    RequiereConfirmacion = documento.NombreDocumento is not null,
-                }
-            );
-        }
-
-        if (documento.PlantillaVagonId is long plantillaVagonId)
-        {
-            var estructura = _lineas.BuscarNodoEstructura(cadenaId, plantillaVagonId);
-            if (estructura is not null && !documento.EsAnexo)
-            {
-                var materializados = _lineas
-                    .ObtenerArbolInstancia(cadenaId)
-                    .Where(n =>
-                        n.Vagon.PadreId == documento.Id
-                        && n.Vagon.EsAnexo
-                        && n.Vagon.PlantillaVagonId is not null
-                    )
-                    .Select(n => n.Vagon.PlantillaVagonId!.Value)
-                    .ToHashSet();
-
-                foreach (
-                    var anexo in estructura.Hijos.Where(h =>
-                        h.EsAnexo && !materializados.Contains(h.PlantillaVagonId)
-                    )
-                )
-                {
-                    acciones.Add(
-                        new AccionCadenaVm
-                        {
-                            Texto = $"+ Agregar documento anexo: {anexo.Nombre}",
-                            Accion = TipoAccion.AgregarAnexo,
-                            InstanciaId = cadenaId,
-                            InstanciaVagonId = documento.Id,
-                            PlantillaVagonId = anexo.PlantillaVagonId,
-                        }
-                    );
-                }
-            }
-
-            if (documento.EsMultiple)
-            {
-                var nombreHijo = estructura?.NombreModeloCadenaHija ?? "cadena hija";
-                acciones.Add(
-                    new AccionCadenaVm
-                    {
-                        Texto = $"+ Agregar cadena hija: {nombreHijo}",
-                        Accion = TipoAccion.AgregarCadenaHija,
-                        InstanciaId = cadenaId,
-                        InstanciaVagonId = documento.Id,
-                        PlantillaVagonId = plantillaVagonId,
-                    }
-                );
-            }
-        }
-
-        return new CajaCadenaVm
-        {
-            Texto =
-                documento.Nombre
-                + " — "
-                + (documento.NombreDocumento ?? "(vacío)")
-                + (documento.AvisoDocumentoModificado ? " — el contenido cambió" : string.Empty),
-            ColorFondo = documento.NombreDocumento is null ? FondoCajaVacia : FondoCajaConDocumento,
-            ColorBorde = documento.NombreDocumento is null ? BordeCajaVacia : BordeCajaConDocumento,
-            Imagen = CargarMiniatura(documento.RutaDocumento),
-            Conector = esUltima ? string.Empty : "→",
-            Acciones = acciones,
-            RutaDocumento = documento.RutaDocumento,
-            NombreDocumento = documento.NombreDocumento,
-        };
-    }
-
-    private bool TieneAlgunArchivoVinculado(long cadenaId)
-    {
-        try
-        {
-            return _lineas
-                .ObtenerTodosLosDocumentos(cadenaId)
-                .Any(d => d.NombreDocumento is not null);
-        }
-        catch
-        {
-            // Caso-10: ante cualquier error inesperado al evaluar esto, es preferible
-            // pedir confirmacion de mas que borrar una cadena hija sin avisar.
-            return true;
-        }
-    }
-
-    private static CajaCadenaVm AgregarAccion(CajaCadenaVm caja, AccionCadenaVm accion) =>
-        new()
-        {
-            Texto = caja.Texto,
-            ColorFondo = caja.ColorFondo,
-            ColorBorde = caja.ColorBorde,
-            Imagen = caja.Imagen,
-            Conector = caja.Conector,
-            Acciones = caja.Acciones.Concat(new[] { accion }).ToList(),
-        };
-
-    private static IReadOnlyList<CajaCadenaVm> AgregarAccionAPrimera(
-        IReadOnlyList<CajaCadenaVm> cajas,
-        AccionCadenaVm accion
-    )
-    {
-        var lista = cajas.ToList();
-        if (lista.Count > 0)
-        {
-            lista[0] = AgregarAccion(lista[0], accion);
-        }
-
-        return lista;
-    }
-
-    private static BitmapSource? CargarMiniatura(string? ruta)
-    {
-        if (ruta is null || !System.IO.File.Exists(ruta))
-        {
-            return null;
-        }
-
-        try
-        {
-            return VisorPdf.RenderizarPagina(ruta, 0);
-        }
-        catch
-        {
-            return null;
-        }
-    }
-
-    private void RefrescarPrevisualizacion()
-    {
-        if (_documentoActual is null)
-        {
-            PanelPrevisualizacion.Visibility = Visibility.Collapsed;
-            return;
-        }
-
-        var coincidencias = _lineas.BuscarCadenasDeDocumento(_documentoActual);
-        if (coincidencias.Count == 0)
-        {
-            PanelPrevisualizacion.Visibility = Visibility.Collapsed;
-            return;
-        }
-
-        var coincidencia = coincidencias[0];
-        _cadenaActivaId = coincidencia.CadenaRaiz.Id;
-        var camino = _lineas.ObtenerCaminoCompleto(
-            coincidencia.CadenaRaiz.Id,
-            coincidencia.Documento.Id
-        );
-        var cajas = new List<CajaCadenaVm>();
-        for (var indice = 0; indice < camino.Count; indice++)
-        {
-            var documento = camino[indice];
-            var esActual = documento.Id == coincidencia.Documento.Id;
-            cajas.Add(
-                new CajaCadenaVm
-                {
-                    Texto =
-                        documento.Nombre
-                        + " — "
-                        + (documento.NombreDocumento ?? "(vacío)")
-                        + (
-                            documento.AvisoDocumentoModificado
-                                ? " — el contenido cambió"
-                                : string.Empty
-                        ),
-                    ColorFondo =
-                        esActual ? FondoCajaActual
-                        : documento.NombreDocumento is null ? FondoCajaVacia
-                        : FondoCajaConDocumento,
-                    ColorBorde =
-                        esActual ? BordeCajaActual
-                        : documento.NombreDocumento is null ? BordeCajaVacia
-                        : BordeCajaConDocumento,
-                    Conector = indice == camino.Count - 1 ? string.Empty : "→",
-                    Acciones = Array.Empty<AccionCadenaVm>(),
-                    RutaDocumento = documento.RutaDocumento,
-                    NombreDocumento = documento.NombreDocumento,
-                }
-            );
-        }
-
-        ListaPrevisualizacion.ItemsSource = cajas;
-        PanelPrevisualizacion.Visibility = Visibility.Visible;
-    }
-
-    private void BotonAbrirModelos_Click(object sender, RoutedEventArgs e)
-    {
-        PanelModelos.Visibility = Visibility.Visible;
-        PanelEntrada.Visibility = Visibility.Collapsed;
-        PanelCadena.Visibility = Visibility.Collapsed;
-        RefrescarPlantillas();
-    }
-
-    private void BotonVolverModelos_Click(object sender, RoutedEventArgs e)
-    {
-        PanelModelos.Visibility = Visibility.Collapsed;
-        RefrescarCadenas();
-    }
-
-    private void BotonModeloGuiado_Click(object sender, RoutedEventArgs e)
-    {
-        var dialogo = new DialogoModeloGuiado(_lineas) { Owner = this };
-        if (dialogo.ShowDialog() == true)
-        {
-            RefrescarPlantillas();
-            RefrescarCadenas();
-        }
-    }
-
-    private void BotonVincularCadena_Click(object sender, RoutedEventArgs e) => AbrirVinculacion();
-
-    private void BotonVincularVisualizado_Click(object sender, RoutedEventArgs e) =>
-        AbrirVinculacion();
-
-    private void BotonVincularDocumentoAVacio_Click(object sender, RoutedEventArgs e)
-    {
-        if (_documentoActual is null)
-        {
-            TextoEstadoCadena.Text = "Abra primero un documento en la pestaña Documento.";
-            return;
-        }
-
-        if (_cadenaActivaId is not long cadenaId)
-        {
-            AbrirVinculacion();
-            return;
-        }
-
-        var destino = DialogoElegirDestino.Elegir(
-            this,
-            _lineas.ObtenerTodosLosDocumentos(cadenaId)
-        );
-        if (destino is null)
-        {
-            return;
-        }
-
-        if (destino.NombreDocumento is not null)
-        {
-            MessageBox.Show(
-                this,
-                "Este documento ya tiene un archivo vinculado y no admite documentos anexos.",
-                "Buscadero",
-                MessageBoxButton.OK,
-                MessageBoxImage.Warning
-            );
-            return;
-        }
-
-        _lineas.VincularDocumento(destino.Id, _documentoActual);
-        RefrescarPrevisualizacion();
-        MostrarCadena(cadenaId);
     }
 
     private void BotonComparar_Click(object sender, RoutedEventArgs e)
@@ -1781,10 +1215,7 @@ public partial class MainWindow : Window
             return;
         }
 
-        var dialogo = new DialogoComparar(_lineas, _servicioBusqueda, _documentoActual)
-        {
-            Owner = this,
-        };
+        var dialogo = new DialogoComparar(_servicioBusqueda) { Owner = this };
         if (dialogo.ShowDialog() != true || dialogo.RutaSeleccionada is not string segunda)
         {
             return;
@@ -1807,471 +1238,6 @@ public partial class MainWindow : Window
             Owner = this,
         };
         ventana.ShowDialog();
-    }
-
-    private void AbrirVinculacion()
-    {
-        if (_documentoActual is null)
-        {
-            TextoEstadoCadena.Text = "Abra primero un documento en la pestaña Documento.";
-            return;
-        }
-
-        var dialogo = new DialogoVincularCadena(_lineas, _servicioBusqueda, _documentoActual)
-        {
-            Owner = this,
-        };
-        if (dialogo.ShowDialog() != true)
-        {
-            return;
-        }
-
-        var cadenaId = dialogo.CadenaResultanteId ?? dialogo.CadenaCreadaId;
-        if (cadenaId is not long id)
-        {
-            return;
-        }
-
-        _cadenaActivaId = id;
-        Pestanas.SelectedIndex = 1;
-        RefrescarPrevisualizacion();
-        MostrarCadena(id);
-    }
-
-    private void BotonCerrarCadena_Click(object sender, RoutedEventArgs e)
-    {
-        _cadenaActivaId = null;
-        RefrescarCadenas();
-    }
-
-    private void BotonBorrarCadena_Click(object sender, RoutedEventArgs e)
-    {
-        if (_cadenaActivaId is not long cadenaId)
-        {
-            return;
-        }
-
-        var confirmado = DialogoEspera.Pedir(
-            this,
-            "¿Borrar la cadena documental activa? Se perderá todo su trabajo de relación. Esta acción no se puede deshacer."
-        );
-        if (!confirmado)
-        {
-            return;
-        }
-
-        _lineas.BorrarInstancia(cadenaId);
-        _cadenaActivaId = null;
-        RefrescarPrevisualizacion();
-        RefrescarCadenas();
-    }
-
-    private void CasillaPrevisualizacion_MouseLeftButtonDown(object sender, MouseButtonEventArgs e)
-    {
-        if ((sender as FrameworkElement)?.Tag is not CajaCadenaVm casilla)
-        {
-            return;
-        }
-
-        if (e.ClickCount == 2)
-        {
-            _temporizadorClicPrevisualizacion?.Stop();
-            _temporizadorClicPrevisualizacion = null;
-            if (_cadenaActivaId is long cadenaId)
-            {
-                Pestanas.SelectedIndex = 1;
-                MostrarCadena(cadenaId);
-            }
-
-            return;
-        }
-
-        if (e.ClickCount != 1)
-        {
-            return;
-        }
-
-        // Caso-14: un clic simple espia el documento (vista rapida); recien el doble
-        // clic navega a la vista completa. Se demora la accion del clic simple lo que
-        // dura la ventana de doble clic del sistema, para poder distinguir ambos casos.
-        _temporizadorClicPrevisualizacion?.Stop();
-        _temporizadorClicPrevisualizacion = new DispatcherTimer
-        {
-            Interval = TimeSpan.FromMilliseconds(400),
-        };
-        _temporizadorClicPrevisualizacion.Tick += async (_, _) =>
-        {
-            _temporizadorClicPrevisualizacion?.Stop();
-            _temporizadorClicPrevisualizacion = null;
-            if (casilla.RutaDocumento is string ruta)
-            {
-                await AbrirVistaRapidaAsync(ruta, casilla.NombreDocumento ?? casilla.Texto);
-            }
-        };
-        _temporizadorClicPrevisualizacion.Start();
-    }
-
-    private void BotonAccionCadena_Click(object sender, RoutedEventArgs e)
-    {
-        if ((sender as FrameworkElement)?.Tag is not AccionCadenaVm accion)
-        {
-            return;
-        }
-
-        try
-        {
-            switch (accion.Accion)
-            {
-                case TipoAccion.AgregarCadenaHija:
-                    _lineas.AgregarCadenaHija(accion.InstanciaId, accion.InstanciaVagonId);
-                    break;
-                case TipoAccion.AgregarAnexo:
-                    _lineas.AgregarAnexo(
-                        accion.InstanciaId,
-                        accion.PlantillaVagonId,
-                        accion.InstanciaVagonId
-                    );
-                    break;
-                case TipoAccion.BuscarVincular:
-                    if (!BuscarVincularEnDocumento(accion.InstanciaVagonId))
-                    {
-                        return;
-                    }
-
-                    break;
-                case TipoAccion.QuitarVinculo:
-                    _lineas.DesvincularDocumento(accion.InstanciaVagonId);
-                    break;
-                case TipoAccion.QuitarCadenaHija:
-                    if (
-                        accion.RequiereConfirmacion
-                        && !DialogoEspera.Pedir(
-                            this,
-                            "La cadena hija tiene documentos vinculados. ¿Quitarla de todos modos? Se perderá su trabajo de relación."
-                        )
-                    )
-                    {
-                        return;
-                    }
-
-                    _lineas.BorrarInstancia(accion.InstanciaId);
-                    break;
-                case TipoAccion.QuitarAnexo:
-                    if (
-                        accion.RequiereConfirmacion
-                        && !DialogoEspera.Pedir(
-                            this,
-                            "El documento anexo tiene un archivo vinculado. ¿Quitarlo de todos modos?"
-                        )
-                    )
-                    {
-                        return;
-                    }
-
-                    _lineas.QuitarVagonInstancia(accion.InstanciaVagonId);
-                    break;
-            }
-
-            RefrescarPrevisualizacion();
-            MostrarCadena(_cadenaActivaId ?? accion.InstanciaId);
-        }
-        catch (Exception excepcion)
-        {
-            _lineas.RegistrarErrorOperacion("Administrar documentos de una cadena", excepcion);
-            TextoEstadoCadena.Text = excepcion.Message;
-            MessageBox.Show(
-                this,
-                $"No se pudo completar la acción: {excepcion.Message}",
-                "Buscadero",
-                MessageBoxButton.OK,
-                MessageBoxImage.Warning
-            );
-        }
-    }
-
-    private bool BuscarVincularEnDocumento(long instanciaVagonId)
-    {
-        var dialogo = new DialogoBuscarDocumento(_servicioBusqueda) { Owner = this };
-        if (dialogo.ShowDialog() != true || dialogo.RutaSeleccionada is null)
-        {
-            return false;
-        }
-
-        _lineas.VincularDocumento(instanciaVagonId, dialogo.RutaSeleccionada);
-        return true;
-    }
-
-    private void BotonNuevaPlantilla_Click(object sender, RoutedEventArgs e)
-    {
-        var nombre = DialogoTexto.Pedir(this, "Nuevo modelo de cadena", "Nombre del modelo:");
-        if (nombre is null)
-        {
-            return;
-        }
-
-        try
-        {
-            _lineas.CrearPlantilla(nombre);
-            RefrescarPlantillas();
-        }
-        catch (Exception excepcion)
-        {
-            _lineas.RegistrarErrorOperacion("Editar documento de un modelo", excepcion);
-            TextoEstadoPlantilla.Text = excepcion.Message;
-        }
-    }
-
-    private void BotonRenombrarPlantilla_Click(object sender, RoutedEventArgs e)
-    {
-        if (ListaPlantillas.SelectedItem is not PlantillaLinea plantilla)
-        {
-            TextoEstadoPlantilla.Text = "Seleccione un modelo de la lista.";
-            return;
-        }
-
-        var nombre = DialogoTexto.Pedir(
-            this,
-            "Renombrar modelo",
-            "Nuevo nombre:",
-            plantilla.Nombre
-        );
-        if (nombre is null)
-        {
-            return;
-        }
-
-        try
-        {
-            _lineas.RenombrarPlantilla(plantilla.Id, nombre);
-            RefrescarPlantillas();
-        }
-        catch (Exception excepcion)
-        {
-            TextoEstadoPlantilla.Text = excepcion.Message;
-        }
-    }
-
-    private void BotonBorrarPlantilla_Click(object sender, RoutedEventArgs e)
-    {
-        if (ListaPlantillas.SelectedItem is not PlantillaLinea plantilla)
-        {
-            TextoEstadoPlantilla.Text = "Seleccione un modelo de la lista.";
-            return;
-        }
-
-        var confirmacion = MessageBox.Show(
-            this,
-            $"¿Borrar el modelo de cadena \"{plantilla.Nombre}\"? Las cadenas ya creadas no se modifican.",
-            "Buscadero",
-            MessageBoxButton.YesNo,
-            MessageBoxImage.Question
-        );
-        if (confirmacion != MessageBoxResult.Yes)
-        {
-            return;
-        }
-
-        _lineas.BorrarPlantilla(plantilla.Id);
-        RefrescarPlantillas();
-    }
-
-    private void BotonAgregarVagon_Click(object sender, RoutedEventArgs e)
-    {
-        if (ListaPlantillas.SelectedItem is not PlantillaLinea plantilla)
-        {
-            TextoEstadoPlantilla.Text = "Seleccione un modelo de la lista.";
-            return;
-        }
-
-        var principal = (ArbolPlantilla.SelectedItem as VagonPlantillaVm)?.Vagon;
-        var modelos = _lineas.ObtenerModelosIndependientes();
-        if (
-            !DialogoVagon.Pedir(
-                this,
-                "Agregar documento",
-                string.Empty,
-                false,
-                false,
-                null,
-                modelos,
-                out var nombre,
-                out var esMultiple,
-                out var esAnexo,
-                out var modeloHijoId,
-                out var crearModeloNuevo
-            )
-        )
-        {
-            return;
-        }
-
-        try
-        {
-            if (esMultiple && crearModeloNuevo)
-            {
-                var nombreModelo = DialogoTexto.Pedir(
-                    this,
-                    "Nuevo modelo de cadena",
-                    "Nombre del modelo de cadena hija:"
-                );
-                if (nombreModelo is null)
-                {
-                    return;
-                }
-
-                modeloHijoId = _lineas.CrearPlantilla(nombreModelo).Id;
-                RefrescarPlantillas();
-            }
-
-            if (esAnexo && principal is null)
-            {
-                TextoEstadoPlantilla.Text =
-                    "Seleccione el documento principal del anexo en el árbol.";
-                return;
-            }
-
-            _lineas.AgregarVagon(
-                plantilla.Id,
-                esAnexo ? principal!.Id : null,
-                nombre,
-                esMultiple,
-                esAnexo,
-                modeloHijoId
-            );
-            RefrescarArbolPlantilla();
-        }
-        catch (Exception excepcion)
-        {
-            TextoEstadoPlantilla.Text = excepcion.Message;
-        }
-    }
-
-    private void BotonEditarVagon_Click(object sender, RoutedEventArgs e)
-    {
-        if (ArbolPlantilla.SelectedItem is not VagonPlantillaVm vm)
-        {
-            TextoEstadoPlantilla.Text = "Seleccione un documento en el árbol.";
-            return;
-        }
-
-        var modelos = _lineas.ObtenerModelosIndependientes();
-        if (
-            !DialogoVagon.Pedir(
-                this,
-                "Editar documento",
-                vm.Vagon.Nombre,
-                vm.Vagon.EsMultiple,
-                vm.Vagon.EsAnexo,
-                vm.Vagon.ModeloCadenaHijaId,
-                modelos,
-                out var nombre,
-                out var esMultiple,
-                out var esAnexo,
-                out var modeloHijoId,
-                out var crearModeloNuevo
-            )
-        )
-        {
-            return;
-        }
-
-        try
-        {
-            if (esMultiple && crearModeloNuevo)
-            {
-                var nombreModelo = DialogoTexto.Pedir(
-                    this,
-                    "Nuevo modelo de cadena",
-                    "Nombre del modelo de cadena hija:"
-                );
-                if (nombreModelo is null)
-                {
-                    return;
-                }
-
-                modeloHijoId = _lineas.CrearPlantilla(nombreModelo).Id;
-                RefrescarPlantillas();
-            }
-
-            _lineas.ActualizarVagon(vm.Vagon.Id, nombre, esMultiple, esAnexo, modeloHijoId);
-            RefrescarArbolPlantilla();
-        }
-        catch (Exception excepcion)
-        {
-            TextoEstadoPlantilla.Text = excepcion.Message;
-        }
-    }
-
-    private void BotonBorrarVagon_Click(object sender, RoutedEventArgs e)
-    {
-        if (ArbolPlantilla.SelectedItem is not VagonPlantillaVm vm)
-        {
-            TextoEstadoPlantilla.Text = "Seleccione un documento en el árbol.";
-            return;
-        }
-
-        var confirmacion = MessageBox.Show(
-            this,
-            $"¿Borrar el documento \"{vm.Vagon.Nombre}\" y sus anexos?",
-            "Buscadero",
-            MessageBoxButton.YesNo,
-            MessageBoxImage.Question
-        );
-        if (confirmacion != MessageBoxResult.Yes)
-        {
-            return;
-        }
-
-        try
-        {
-            _lineas.BorrarVagon(vm.Vagon.Id);
-            RefrescarArbolPlantilla();
-        }
-        catch (Exception excepcion)
-        {
-            _lineas.RegistrarErrorOperacion("Borrar documento de un modelo", excepcion);
-            TextoEstadoPlantilla.Text = excepcion.Message;
-            MessageBox.Show(
-                this,
-                $"No se pudo borrar el documento: {excepcion.Message}",
-                "Buscadero",
-                MessageBoxButton.OK,
-                MessageBoxImage.Warning
-            );
-        }
-    }
-
-    private void BotonMoverVagonArriba_Click(object sender, RoutedEventArgs e) =>
-        MoverVagonSeleccionado(-1);
-
-    private void BotonMoverVagonAbajo_Click(object sender, RoutedEventArgs e) =>
-        MoverVagonSeleccionado(1);
-
-    private void MoverVagonSeleccionado(int desplazamiento)
-    {
-        if (ArbolPlantilla.SelectedItem is not VagonPlantillaVm vm)
-        {
-            TextoEstadoPlantilla.Text = "Seleccione un documento en el árbol.";
-            return;
-        }
-
-        try
-        {
-            _lineas.MoverVagon(vm.Vagon.Id, desplazamiento);
-            RefrescarArbolPlantilla();
-        }
-        catch (Exception excepcion)
-        {
-            _lineas.RegistrarErrorOperacion("Mover documento de un modelo", excepcion);
-            TextoEstadoPlantilla.Text = excepcion.Message;
-            MessageBox.Show(
-                this,
-                $"No se pudo mover el documento: {excepcion.Message}",
-                "Buscadero",
-                MessageBoxButton.OK,
-                MessageBoxImage.Warning
-            );
-        }
     }
 
     private async Task CargarTiposMaestroAsync()
@@ -2404,15 +1370,8 @@ public partial class MainWindow : Window
         }
     }
 
-    private void MaestroVerCadena_Click(object sender, RoutedEventArgs e)
-    {
-        if (_documentoMaestroSeleccionado?.CadenaId is not long cadenaId)
-            return;
-        _cadenaActivaId = cadenaId;
-        Pestanas.SelectedIndex = 1;
-        RefrescarPrevisualizacion();
-        MostrarCadena(cadenaId);
-    }
+    private void MaestroVerCadena_Click(object sender, RoutedEventArgs e) =>
+        new DialogoCadenasSimples { Owner = this }.ShowDialog();
 
     private void MaestroCopiar_Click(object sender, RoutedEventArgs e)
     {
@@ -2480,48 +1439,3 @@ public sealed record MaestroDatoVm(string Nombre, string Valor)
 }
 
 public sealed record MaestroCadenaVm(string Encabezado, IReadOnlyList<MaestroDatoVm> Datos);
-
-public sealed class VagonPlantillaVm
-{
-    public required PlantillaVagon Vagon { get; init; }
-    public required string Texto { get; init; }
-    public required IReadOnlyList<VagonPlantillaVm> Hijos { get; init; }
-}
-
-public sealed class FilaCadenaVm
-{
-    public required string Prefijo { get; init; }
-    public required IReadOnlyList<CajaCadenaVm> Cajas { get; init; }
-}
-
-public sealed class CajaCadenaVm
-{
-    public required string Texto { get; init; }
-    public required Brush ColorFondo { get; init; }
-    public required Brush ColorBorde { get; init; }
-    public BitmapSource? Imagen { get; init; }
-    public required string Conector { get; init; }
-    public required IReadOnlyList<AccionCadenaVm> Acciones { get; init; }
-    public string? RutaDocumento { get; init; }
-    public string? NombreDocumento { get; init; }
-}
-
-public sealed class AccionCadenaVm
-{
-    public required string Texto { get; init; }
-    public required TipoAccion Accion { get; init; }
-    public long InstanciaId { get; init; }
-    public long InstanciaVagonId { get; init; }
-    public long PlantillaVagonId { get; init; }
-    public bool RequiereConfirmacion { get; init; }
-}
-
-public enum TipoAccion
-{
-    AgregarCadenaHija,
-    AgregarAnexo,
-    BuscarVincular,
-    QuitarVinculo,
-    QuitarCadenaHija,
-    QuitarAnexo,
-}

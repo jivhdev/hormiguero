@@ -50,9 +50,9 @@
         <ListBox.ItemTemplate>
           <DataTemplate>
             <StackPanel Margin="4">
-              <TextBlock Text="{Binding NombreDocumento}" TextWrapping="Wrap" FontWeight="Bold" />
+              <TextBlock Text="{Binding Nombre}" TextWrapping="Wrap" FontWeight="Bold" />
               <TextBlock
-                Text="{Binding NombreVagon}"
+                Text="{Binding Motivo}"
                 TextWrapping="Wrap"
                 Foreground="{DynamicResource Hormiguero.TextoSecundario}"
               />
@@ -72,7 +72,7 @@
             x:Name="ListaCadenas"
             DisplayMemberPath="Nombre"
             Margin="0,4,0,12"
-            Visibility="Collapsed"
+            Visibility="Visible"
           />
           <TextBlock Text="Documentos" FontWeight="Bold" />
           <TextBlock x:Name="TextoDocumentos" TextWrapping="Wrap" Margin="0,4,0,12" />

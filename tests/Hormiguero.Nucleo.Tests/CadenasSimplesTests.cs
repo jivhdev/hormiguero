@@ -1,4 +1,4 @@
-using Hormiguero.Nucleo.Datos;
+﻿using Hormiguero.Nucleo.Datos;
 using Microsoft.Data.Sqlite;
 
 namespace Hormiguero.Nucleo.Tests;
@@ -105,7 +105,7 @@ public sealed class CadenasSimplesTests : IDisposable
             cmd.ExecuteNonQuery();
         }
         Assert.Equal(0, new MotorCadenasSimples(_conexion).Procesar(nuevaVersion));
-        Assert.Empty(new RepositorioReglasYEnlaces(_conexion).ListarDudosos());
+        Assert.Empty(new RepositorioReglasYEnlaces(_conexion).ListarDudososCadenasSimples());
     }
 
     [Fact]
@@ -118,7 +118,9 @@ public sealed class CadenasSimplesTests : IDisposable
         CrearCadenaConDocumento(base2);
 
         Assert.Equal(0, new MotorCadenasSimples(_conexion).Procesar(nueva));
-        var dudoso = Assert.Single(new RepositorioReglasYEnlaces(_conexion).ListarDudosos());
+        var dudoso = Assert.Single(
+            new RepositorioReglasYEnlaces(_conexion).ListarDudososCadenasSimples()
+        );
         Assert.Contains("Coincide con 2 cadenas por N\u00b0 OC del cliente 123", dudoso.Motivo);
         Assert.Equal(
             0,
@@ -145,7 +147,7 @@ public sealed class CadenasSimplesTests : IDisposable
             repo.ListarDocumentosCadena(primera),
             v => v.VersionId == nueva
         );
-        Assert.DoesNotContain(servicio.Dudosos(), e => e.Id == dudoso.EnlaceId);
+        Assert.DoesNotContain(servicio.DudososCadenasSimples(), e => e.EnlaceId == dudoso.EnlaceId);
         Assert.Contains(
             new RepositorioReglasYEnlaces(_conexion).HistorialEnlaces(vagonEnlazado.Id),
             e => e.Estado == "activo"

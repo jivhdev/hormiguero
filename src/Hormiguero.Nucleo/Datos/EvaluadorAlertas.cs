@@ -12,7 +12,6 @@ public sealed class EvaluadorAlertas(SqliteConnection conexion)
         try
         {
             var alertas = new RepositorioAlertas(conexion);
-            EvaluarReglas(alertas, fechaHoy);
             EvaluarReglasCadenasSimples(alertas, fechaHoy);
             EvaluarManuales(alertas, fechaHoy);
         }
@@ -39,59 +38,18 @@ public sealed class EvaluadorAlertas(SqliteConnection conexion)
         }
     }
 
-    private void EvaluarReglas(RepositorioAlertas alertas, DateOnly hoy)
-    {
-        foreach (ReglaAlerta regla in alertas.ListarReglas().Where(r => r.Estado == "activa"))
-        {
-            foreach (var cadena in CadenasDelModelo(regla.ModeloCadenaId))
-            {
-                var origen = EnlaceActivo(cadena.Id, regla.VagonOrigenModeloId);
-                if (origen is null)
-                    continue;
-
-                var destino = Vagon(cadena.Id, regla.VagonDestinoModeloId);
-                if (destino is null)
-                    continue;
-
-                bool destinoConfirmado =
-                    EnlaceActivo(cadena.Id, regla.VagonDestinoModeloId) is not null;
-                Alerta? existente = alertas
-                    .Listar(cadenaId: cadena.Id)
-                    .Alertas.FirstOrDefault(a =>
-                        a.ReglaId == regla.Id && a.VagonCadenaId == destino.Value.Id
-                    );
-
-                if (destinoConfirmado)
-                {
-                    if (existente is { Estado: "pendiente" or "vencida" })
-                        alertas.Resolver(
-                            existente.Id,
-                            $"resuelta automáticamente: llegó {destino.Value.Nombre}"
-                        );
-                    continue;
-                }
-
-                long alertaId =
-                    existente?.Id
-                    ?? alertas.CrearAlertaDeRegla(
-                        regla.Id,
-                        cadena.Id,
-                        destino.Value.Id,
-                        DateOnly.FromDateTime(origen.Value.CreadaEn)
-                    );
-                Alerta alerta = alertas
-                    .Listar(cadenaId: cadena.Id)
-                    .Alertas.Single(a => a.Id == alertaId);
-                if (alerta.Estado == "pendiente" && alerta.FechaObjetivo < hoy)
-                    alertas.MarcarVencida(alerta.Id);
-            }
-        }
-    }
-
     private void EvaluarManuales(RepositorioAlertas alertas, DateOnly hoy)
     {
-        foreach (Alerta alerta in alertas.Listar(estado: "pendiente").Alertas)
-            if (alerta.ReglaId is null && alerta.FechaObjetivo < hoy)
+        var cadenasSimples = CadenasSimples().ToHashSet();
+        foreach (
+            Alerta alerta in alertas
+                .Listar(estado: "pendiente")
+                .Alertas.Where(a =>
+                    a.ReglaId is null
+                    && (a.CadenaId is null || cadenasSimples.Contains(a.CadenaId.Value))
+                )
+        )
+            if (alerta.FechaObjetivo < hoy)
                 alertas.MarcarVencida(alerta.Id);
     }
 
@@ -194,46 +152,6 @@ public sealed class EvaluadorAlertas(SqliteConnection conexion)
         using var r = cmd.ExecuteReader();
         return r.Read()
             ? (DateTime.Parse(r.GetString(0), CultureInfo.InvariantCulture), r.GetInt64(1))
-            : null;
-    }
-
-    private IReadOnlyList<(long Id, string Estado)> CadenasDelModelo(long modeloId)
-    {
-        using var cmd = conexion.CreateCommand();
-        cmd.CommandText =
-            "SELECT id,estado FROM cadenas WHERE modelo_id=$modelo AND estado='activa' ORDER BY id;";
-        cmd.Parameters.AddWithValue("$modelo", modeloId);
-        using var reader = cmd.ExecuteReader();
-        var cadenas = new List<(long, string)>();
-        while (reader.Read())
-            cadenas.Add((reader.GetInt64(0), reader.GetString(1)));
-        return cadenas;
-    }
-
-    private (long Id, string Nombre)? Vagon(long cadenaId, long vagonModeloId)
-    {
-        using var cmd = conexion.CreateCommand();
-        cmd.CommandText =
-            "SELECT id,nombre FROM vagones_cadena WHERE cadena_id=$cadena AND vagon_modelo_id=$modelo AND estado='activo' LIMIT 1;";
-        cmd.Parameters.AddWithValue("$cadena", cadenaId);
-        cmd.Parameters.AddWithValue("$modelo", vagonModeloId);
-        using var reader = cmd.ExecuteReader();
-        return reader.Read() ? (reader.GetInt64(0), reader.GetString(1)) : null;
-    }
-
-    private (DateTime CreadaEn, long Id)? EnlaceActivo(long cadenaId, long vagonModeloId)
-    {
-        using var cmd = conexion.CreateCommand();
-        cmd.CommandText =
-            "SELECT e.creada_en,e.id FROM enlaces_cadena e JOIN vagones_cadena v ON v.id=e.vagon_cadena_id JOIN versiones_documento d ON d.id=e.version_id WHERE v.cadena_id=$cadena AND v.vagon_modelo_id=$modelo AND v.estado='activo' AND e.estado='activo' AND d.estado='vigente' ORDER BY e.id DESC LIMIT 1;";
-        cmd.Parameters.AddWithValue("$cadena", cadenaId);
-        cmd.Parameters.AddWithValue("$modelo", vagonModeloId);
-        using var reader = cmd.ExecuteReader();
-        return reader.Read()
-            ? (
-                DateTime.Parse(reader.GetString(0), CultureInfo.InvariantCulture),
-                reader.GetInt64(1)
-            )
             : null;
     }
 }
