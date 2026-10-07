@@ -3,8 +3,8 @@ HORMIGUERO - NOVEDADES PARA PROBAR (la versión exacta está en VERSION.txt)
 
 LO MÁS NUEVO (07-10, tarde)
 - ARCHIVERO · CARPETAS DE COBELCAR ("Carpetas observadas", arriba). Por cada carpeta:
-  1) Nombre y Ruta: la carpeta del tipo, SIN el año y el mes (ej. ...\COBEL-FCV). Si con
-     "Examinar…" eliges la del mes (...-FCV6610), Archivero te ofrece usar la base.
+  1) Nombre y Ruta: la carpeta del tipo, SIN el año y el mes (ej. ...\COBEL\2-FCV). Si con
+     "Examinar…" eliges la del mes (...\2-FCV\2026\202610), Archivero te ofrece usar la base.
   2) Marca "Las subcarpetas cambian por período" (AAAA\AAAAMM): mira el mes actual y el anterior
      y pasa solo al mes nuevo.
   3) "¿Cómo se reconocen?" -> "Todos los PDF de esta carpeta son": eliges el tipo del diccionario
