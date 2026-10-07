@@ -57,30 +57,57 @@
             <TextBlock Name="TxtDocumentoElegido" TextWrapping="Wrap" FontWeight="SemiBold" />
           </StackPanel>
           <StackPanel Name="PanelEmisor">
-            <TextBlock Text="Grupo" FontWeight="Bold" Margin="0,0,0,3" />
-            <StackPanel Orientation="Horizontal" Margin="0,0,0,8">
-              <RadioButton Name="RbEmitido" Content="Emitido" IsChecked="True" Margin="0,0,12,0" />
-              <RadioButton Name="RbRecibido" Content="Recibido" />
+            <StackPanel Name="PanelGrupo">
+              <TextBlock Text="¿Lo emites tú o lo recibes?" FontWeight="Bold" Margin="0,0,0,3" />
+              <StackPanel Orientation="Horizontal" Margin="0,0,0,12">
+                <RadioButton
+                  Name="RbEmitido"
+                  Content="Emitido"
+                  IsChecked="True"
+                  Margin="0,0,12,0"
+                />
+                <RadioButton Name="RbRecibido" Content="Recibido" />
+              </StackPanel>
             </StackPanel>
-            <TextBlock Text="Emisor" FontWeight="Bold" />
+            <TextBlock Text="1. ¿Quién lo emite?" FontWeight="Bold" />
+            <ComboBox
+              Name="CmbEmisor"
+              IsEditable="True"
+              Margin="0,4,0,6"
+              TextBoxBase.TextChanged="CmbEmisor_TextChanged"
+            />
             <Button
               Name="BtnMarcarEmisor"
-              Content="Marcar Emisor en el PDF"
-              Margin="0,4,0,4"
+              Content="Marcar dónde aparece el emisor en el PDF"
+              Margin="0,0,0,4"
               Padding="6,4"
               Click="BtnMarcarEmisor_Click"
             />
             <TextBlock
               Name="TxtEstadoMarcaEmisor"
               Foreground="{DynamicResource Hormiguero.TextoSecundario}"
-              Margin="0,0,0,4"
+              Margin="0,0,0,16"
               TextWrapping="Wrap"
             />
-            <ComboBox
-              Name="CmbEmisor"
-              IsEditable="True"
+            <TextBlock Text="2. ¿Cómo se reconoce?" FontWeight="Bold" />
+            <TextBlock
+              Text="Marca el título fijo que dice qué documento es (por ejemplo «FACTURA ELECTRÓNICA» o «GUÍA DE DESPACHO»). Con el emisor y el título, Archivero reconocerá solo los próximos documentos iguales."
+              TextWrapping="Wrap"
+              Foreground="{DynamicResource Hormiguero.TextoSecundario}"
+              Margin="0,2,0,6"
+            />
+            <Button
+              Name="BtnMarcarTitulo"
+              Content="Marcar el título del documento en el PDF"
+              Margin="0,0,0,4"
+              Padding="6,4"
+              Click="BtnMarcarTitulo_Click"
+            />
+            <TextBlock
+              Name="TxtEstadoMarcaTitulo"
+              Foreground="{DynamicResource Hormiguero.TextoSecundario}"
               Margin="0,0,0,16"
-              TextBoxBase.TextChanged="CmbEmisor_TextChanged"
+              TextWrapping="Wrap"
             />
           </StackPanel>
 
@@ -296,11 +323,13 @@
           />
           <RadioButton
             Name="RbGuardarDirecto"
+            Checked="RbGuardar_Checked"
             Content="Guardar directo en esta carpeta"
             Margin="0,0,0,6"
           />
           <RadioButton
             Name="RbGuardarSubcarpetas"
+            Checked="RbGuardar_Checked"
             Content="Guardar en subcarpetas dentro de esta carpeta"
             Margin="0,0,0,6"
           />

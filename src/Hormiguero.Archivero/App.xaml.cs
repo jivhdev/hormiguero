@@ -60,6 +60,9 @@ public partial class App : System.Windows.Application
             // Ya hay una instancia de Archivero corriendo: la segunda apertura solo enfoca
             // la ventana de la primera (REQ-005), no abre nada nuevo.
             EnfocarInstanciaExistente();
+            // Esta instancia no es dueña del mutex: soltarlo al salir lanzaba una excepción.
+            _mutexInstanciaUnica.Dispose();
+            _mutexInstanciaUnica = null;
             Shutdown();
             return;
         }

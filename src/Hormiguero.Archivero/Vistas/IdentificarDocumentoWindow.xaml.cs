@@ -414,7 +414,9 @@ public partial class IdentificarDocumentoWindow : Window
         PanelCarpeta.Visibility =
             nuevoPaso == Paso.Guardar ? Visibility.Visible : Visibility.Collapsed;
         PanelOrganizacion.Visibility =
-            nuevoPaso == Paso.Guardar ? Visibility.Visible : Visibility.Collapsed;
+            nuevoPaso == Paso.Guardar && RbGuardarSubcarpetas.IsChecked == true
+                ? Visibility.Visible
+                : Visibility.Collapsed;
         PanelNombreArchivo.Visibility =
             nuevoPaso == Paso.Guardar ? Visibility.Visible : Visibility.Collapsed;
         PanelConfirmar.Visibility =
@@ -502,6 +504,9 @@ public partial class IdentificarDocumentoWindow : Window
     private void BtnMarcarEmisor_Click(object sender, RoutedEventArgs e) =>
         ArmarMarca(CampoMarca.Emisor);
 
+    private void BtnMarcarTitulo_Click(object sender, RoutedEventArgs e) =>
+        ArmarMarca(CampoMarca.Tipo);
+
     private void BtnMarcarFecha_Click(object sender, RoutedEventArgs e) =>
         ArmarMarca(CampoMarca.Fecha);
 
@@ -520,8 +525,20 @@ public partial class IdentificarDocumentoWindow : Window
 
     private void ResaltarBotonActivo(CampoMarca? campoActivo)
     {
-        var botones = new[] { BtnMarcarEmisor, BtnMarcarFecha, BtnMarcarNombreArchivo };
-        var camposEnOrden = new[] { CampoMarca.Emisor, CampoMarca.Fecha, CampoMarca.NombreArchivo };
+        var botones = new[]
+        {
+            BtnMarcarEmisor,
+            BtnMarcarTitulo,
+            BtnMarcarFecha,
+            BtnMarcarNombreArchivo,
+        };
+        var camposEnOrden = new[]
+        {
+            CampoMarca.Emisor,
+            CampoMarca.Tipo,
+            CampoMarca.Fecha,
+            CampoMarca.NombreArchivo,
+        };
 
         for (var i = 0; i < botones.Length; i++)
         {
@@ -546,6 +563,7 @@ public partial class IdentificarDocumentoWindow : Window
         campo switch
         {
             CampoMarca.Emisor => "Emisor",
+            CampoMarca.Tipo => "Título del documento",
             CampoMarca.Fecha => "Fecha",
             CampoMarca.NombreArchivo => "Campo para el nombre de archivo",
             _ => campo.ToString(),
@@ -754,6 +772,7 @@ public partial class IdentificarDocumentoWindow : Window
         RbEmitido.IsChecked = grupo == "Emitido";
         RbRecibido.IsChecked = grupo == "Recibido";
         RbEmitido.Visibility = grupo.Length == 0 ? Visibility.Visible : Visibility.Collapsed;
+        PanelGrupo.Visibility = grupo.Length == 0 ? Visibility.Visible : Visibility.Collapsed;
         RbRecibido.Visibility = grupo.Length == 0 ? Visibility.Visible : Visibility.Collapsed;
         var vista = CollectionViewSource.GetDefaultView(_datosEnlazantes);
         vista?.Refresh();
@@ -1023,6 +1042,7 @@ public partial class IdentificarDocumentoWindow : Window
     private void ActualizarEstadosDeMarca()
     {
         TxtEstadoMarcaEmisor.Text = EstadoTexto(CampoMarca.Emisor);
+        TxtEstadoMarcaTitulo.Text = EstadoTexto(CampoMarca.Tipo);
         TxtEstadoMarcaFecha.Text = EstadoTexto(CampoMarca.Fecha);
         TxtEstadoMarcaNombre.Text = EstadoTexto(CampoMarca.NombreArchivo);
     }
@@ -1190,7 +1210,23 @@ public partial class IdentificarDocumentoWindow : Window
         if (dialogo.ShowDialog() == System.Windows.Forms.DialogResult.OK)
         {
             TxtCarpetaDestino.Text = dialogo.SelectedPath;
+            if (PanelPreview.Visibility == Visibility.Visible)
+                ActualizarPreview();
         }
+    }
+
+    // Todo el paso 5 está en una pantalla: la organización de subcarpetas solo se muestra si se
+    // eligió guardar en subcarpetas, y la vista previa se actualiza sola.
+    private void RbGuardar_Checked(object sender, RoutedEventArgs e)
+    {
+        if (PanelOrganizacion is null || PanelPreview is null)
+            return;
+        PanelOrganizacion.Visibility =
+            _paso == Paso.Guardar && RbGuardarSubcarpetas.IsChecked == true
+                ? Visibility.Visible
+                : Visibility.Collapsed;
+        if (PanelPreview.Visibility == Visibility.Visible)
+            ActualizarPreview();
     }
 
     // ----- Paso 3 (Caso-3): organización de subcarpetas -----
@@ -1410,10 +1446,17 @@ public partial class IdentificarDocumentoWindow : Window
     {
         var formato = LeerFormatoElegido() ?? _formato;
         var patron = LeerPatronElegido() ?? (formato == _formato ? _patronCarpeta : null);
-        var carpetaDestino = _configuracionExistente?.CarpetaDestino ?? _carpetaDestino;
+        var carpetaDestino =
+            _configuracionExistente?.CarpetaDestino
+            ?? (
+                string.IsNullOrWhiteSpace(_carpetaDestino)
+                    ? TxtCarpetaDestino.Text
+                    : _carpetaDestino
+            );
 
         if (string.IsNullOrWhiteSpace(carpetaDestino))
         {
+            TxtPreviewActual.Text = "(Elige la carpeta madre para ver aquí dónde quedará.)";
             return;
         }
 
@@ -1622,6 +1665,18 @@ public partial class IdentificarDocumentoWindow : Window
                 if (errorEmisor is not null)
                 {
                     MostrarError(errorEmisor);
+                    return;
+                }
+                // Sin el título marcado, CoincidenciaAutomaticaService nunca reconoce el documento
+                // (exige Emisor y Tipo): el tipo ya no se escribe, pero su texto fijo sí se marca.
+                if (
+                    !_marcas.TryGetValue(CampoMarca.Tipo, out var marcaTitulo)
+                    || string.IsNullOrWhiteSpace(marcaTitulo.TextoReferencia)
+                )
+                {
+                    MostrarError(
+                        "Marca el título del documento (el texto fijo que dice qué es, por ejemplo FACTURA ELECTRÓNICA). Sin él, Archivero no puede reconocerlo solo."
+                    );
                     return;
                 }
                 if (
