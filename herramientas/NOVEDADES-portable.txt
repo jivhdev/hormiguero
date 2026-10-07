@@ -1,0 +1,46 @@
+HORMIGUERO - NOVEDADES PARA PROBAR (la versión exacta está en VERSION.txt)
+===============================================================================
+
+PRIMERO, SI QUIERES PARTIR DE CERO
+- Cierra Archivero, Buscadero y Mensajero.
+- Abre "Reiniciar Hormiguero\ReiniciarHormiguero.exe".
+- Conserva SOLO los clientes de ClickFactura (RUT, razón social y correos).
+  Todo lo demás queda RESPALDADO (no se borra) en una carpeta al lado de los datos.
+- Después configura todo de nuevo con lo nuevo de abajo.
+
+NUEVO EN ARCHIVERO
+- Al configurar un documento: anotas el EMISOR y, entre los datos del diccionario que marcas,
+  eliges UNO como "Este dato define qué es el documento". El tipo sale solo
+  (ej.: N° Factura del proveedor + Cobelcar = "Factura del proveedor · Cobelcar").
+- Cada dato tiene la casilla "Se puede enlazar" y, si ya existe un documento con ese número,
+  muestra "Calzaría con: ...".
+- Datos informativos (no enlazan): Fecha del documento (sirve para alertas), Encargado y Cliente.
+- Borrar clasificaciones ya no da error. Se pueden marcar zonas que están juntas
+  (las demás marcas se ocultan mientras marcas).
+- Duplicados: ya no salta la ventana; quedan en Pendientes como "Duplicado: revisar".
+- La fecha se define ANTES de elegir la carpeta.
+- PDF sin texto: Alt+A elige el primer acceso rápido y Alt+A otra vez guarda.
+
+NUEVO EN MENSAJERO
+- "Ajustar texto (4 × 57)": pega el texto de la orden; lo acomoda en 4 líneas de 57 sin cortar
+  palabras o te dice cuántos caracteres sobran. Copiar con saltos o "relleno a 57".
+- MAYÚSCULAS: pega un texto y cópialo en mayúsculas.
+- Retiro con VARIAS OCC: "Último PDF" y "Buscar" van agregando OCC a la lista (mismo proveedor).
+- Facturas: avisos abajo ("Cuerpo copiado correctamente", "... marcado como enviado").
+
+- "Códigos para Excel" (botón arriba): eliges el PDF (OC del cliente o NVV) y saca los códigos de
+  5 dígitos (sin confundir precios, fechas, RUT ni teléfonos). "Copiar todos en columna" para pegar
+  de una vez en Excel, o "Ventana flotante" siempre encima para copiar uno a uno.
+
+NUEVO EN LAS 3 APPS
+- Logos: B verde (Buscadero), M naranja (Mensajero).
+- "Tema: Sistema / Claro / Oscuro" arriba en cada app; cada una recuerda el suyo.
+- Barra de título legible en modo oscuro.
+
+NUEVO EN BUSCADERO
+- "Segunda búsqueda": abre un segundo panel al lado, independiente, con su propio visor.
+- "Carpeta específica" muestra también las subcarpetas.
+- Cadenas: "Administrar cadenas simples" (las creas tú; sugiere documentos que comparten número;
+  si un documento nuevo calza con una sola cadena, entra solo; si calza con varias, va a dudosos).
+
+PENDIENTE: envío de facturas armando borradores en Gmail (lo conversamos: requiere autorizar tu cuenta).

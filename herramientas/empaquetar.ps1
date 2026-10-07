@@ -17,6 +17,7 @@ dotnet publish (Join-Path $repo "src\Hormiguero.Reinicio") -c Release -r win-x64
 if ($LASTEXITCODE -ne 0) { throw "Falló la publicación de Reiniciar Hormiguero" }
 Copy-Item (Join-Path $PSScriptRoot 'crear-accesos.ps1') $Destino
 Copy-Item (Join-Path $PSScriptRoot 'LEEME-portable.txt') (Join-Path $Destino 'LEEME.txt')
+Copy-Item (Join-Path $PSScriptRoot 'NOVEDADES-portable.txt') (Join-Path $Destino 'NOVEDADES.txt')
 $version = (git -C $repo log -1 --format='%h %cd' --date=format:'%Y-%m-%d %H:%M')
 Set-Content -Path (Join-Path $Destino 'VERSION.txt') -Value "Hormiguero $version" -Encoding utf8
 Write-Host "Listo: $Destino"
