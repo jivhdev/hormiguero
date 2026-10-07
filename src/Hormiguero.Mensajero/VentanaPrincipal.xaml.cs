@@ -26,6 +26,7 @@ public partial class VentanaPrincipal : Window
     private bool editorAbierto;
     private VentanaFacturas? ventanaFacturas;
     private VentanaPlantillas? ventanaPlantillas;
+    private VentanaCodigosExcel? ventanaCodigosExcel;
     private int lineasAjustador;
     private int anchoAjustador;
     private ResultadoAjusteTexto? resultadoAjustador;
@@ -176,6 +177,21 @@ public partial class VentanaPrincipal : Window
         if (ventanaPlantillas.WindowState == WindowState.Minimized)
             ventanaPlantillas.WindowState = WindowState.Normal;
         ventanaPlantillas.Activate();
+    }
+
+    private void AbrirCodigosExcel_Click(object sender, RoutedEventArgs e)
+    {
+        if (ventanaCodigosExcel is null)
+        {
+            ventanaCodigosExcel = new VentanaCodigosExcel(almacen, MostrarToast) { Owner = this };
+            ventanaCodigosExcel.Closed += (_, _) => ventanaCodigosExcel = null;
+            ventanaCodigosExcel.Show();
+            return;
+        }
+
+        if (ventanaCodigosExcel.WindowState == WindowState.Minimized)
+            ventanaCodigosExcel.WindowState = WindowState.Normal;
+        ventanaCodigosExcel.Activate();
     }
 
     private void UltimoAsunto_Click(object sender, RoutedEventArgs e) => CopiarUltimoAsunto();

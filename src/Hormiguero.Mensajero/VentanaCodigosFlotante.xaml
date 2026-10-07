@@ -1,0 +1,32 @@
+<Window
+  x:Class="Hormiguero.Mensajero.App.VentanaCodigosFlotante"
+  xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+  xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+  Title="Códigos"
+  Width="230"
+  Height="360"
+  MinWidth="180"
+  MinHeight="180"
+  WindowStartupLocation="CenterOwner"
+  Topmost="True"
+  ResizeMode="CanResize"
+>
+  <DockPanel Margin="8">
+    <TextBlock x:Name="TextoProgreso" DockPanel.Dock="Top" Margin="2,0,2,6" />
+    <ScrollViewer VerticalScrollBarVisibility="Auto">
+      <ItemsControl x:Name="ListaCodigos">
+        <ItemsControl.ItemTemplate>
+          <DataTemplate>
+            <Button
+              Content="{Binding}"
+              Click="Copiar_Click"
+              Tag="{Binding}"
+              HorizontalContentAlignment="Left"
+              Margin="0,0,0,4"
+            />
+          </DataTemplate>
+        </ItemsControl.ItemTemplate>
+      </ItemsControl>
+    </ScrollViewer>
+  </DockPanel>
+</Window>
