@@ -5,6 +5,7 @@ namespace Archivero.Datos;
 public class ConfiguracionDocumentoRepository
 {
     private readonly EntidadRepository _entidades = new();
+    private readonly ConfiguracionImpresionRepository _impresion = new();
 
     public bool ExisteCoincidenciaExacta(string emisor, string tipo) =>
         BuscarPorEmisorYTipo(emisor, tipo) is not null;
@@ -424,10 +425,13 @@ public class ConfiguracionDocumentoRepository
         return resultado;
     }
 
-    private static ConfiguracionDocumento LeerConfiguracion(SqliteDataReader lector) =>
-        new()
+    private ConfiguracionDocumento LeerConfiguracion(SqliteDataReader lector)
+    {
+        int id = lector.GetInt32(0);
+        var impresion = _impresion.Leer(id);
+        return new()
         {
-            Id = lector.GetInt32(0),
+            Id = id,
             Emisor = lector.GetString(1),
             Tipo = lector.GetString(2),
             CarpetaDestino = lector.GetString(3),
@@ -438,8 +442,11 @@ public class ConfiguracionDocumentoRepository
             PreguntarNombre = lector.GetInt32(8) != 0,
             GrupoDocumento = lector.GetString(9),
             NombreEstandar = lector.GetString(10),
+            ModoImpresion = impresion.Modo,
+            Impresora = impresion.Impresora,
             Patrones = [],
         };
+    }
 
     private static List<PatronReconocimiento> ObtenerPatrones(
         SqliteConnection conexion,
