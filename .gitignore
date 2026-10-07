@@ -30,3 +30,6 @@ artifacts/
 
 # Capturas temporales
 capturas-temp/
+
+# Proyectos temporales que genera WPF al compilar
+*_wpftmp.csproj
