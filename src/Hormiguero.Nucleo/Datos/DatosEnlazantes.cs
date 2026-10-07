@@ -83,6 +83,18 @@ public static class FechaDocumentoParser
 
 public sealed class RepositorioDatosInformativos(SqliteConnection conexion)
 {
+    public DateTime? ObtenerFechaDocumento(long versionId)
+    {
+        using var cmd = conexion.CreateCommand();
+        cmd.CommandText =
+            "SELECT fecha_reconocida FROM valores_informativos_documento WHERE version_id=$v AND dato='fecha_documento';";
+        cmd.Parameters.AddWithValue("$v", versionId);
+        object? fecha = cmd.ExecuteScalar();
+        return fecha is string texto
+            ? DateTime.Parse(texto, System.Globalization.CultureInfo.InvariantCulture)
+            : null;
+    }
+
     public IReadOnlyList<ZonaInformativa> LeerZonas(long identificacionId, string diseno)
     {
         using var cmd = conexion.CreateCommand();

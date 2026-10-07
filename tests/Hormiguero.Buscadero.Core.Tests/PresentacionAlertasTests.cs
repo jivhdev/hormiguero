@@ -37,6 +37,30 @@ public sealed class PresentacionAlertasTests
     }
 
     [Fact]
+    public void OrigenDelPlazo_ExplicaLaFechaUsada()
+    {
+        Assert.Equal(
+            "Desde la fecha del documento 06-10-2026",
+            PresentacionAlertas.OrigenDelPlazo(
+                Crear("pendiente") with
+                {
+                    FechaBase = new DateOnly(2026, 10, 6),
+                    OrigenFecha = "fecha_documento",
+                }
+            )
+        );
+        Assert.Equal(
+            "Desde que entró a la cadena",
+            PresentacionAlertas.OrigenDelPlazo(
+                Crear("pendiente") with
+                {
+                    OrigenFecha = "entrada_cadena",
+                }
+            )
+        );
+    }
+
+    [Fact]
     public void Filtrar_SeparaEstadosSolicitados()
     {
         var alertas = new[]

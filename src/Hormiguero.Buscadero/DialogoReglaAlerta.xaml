@@ -12,6 +12,11 @@
 >
   <ScrollViewer VerticalScrollBarVisibility="Auto">
     <StackPanel Margin="20">
+      <TextBlock
+        Text="El plazo cuenta desde la fecha impresa en el documento; si no se pudo leer, desde que entró a la cadena"
+        TextWrapping="Wrap"
+        Margin="0,0,0,10"
+      />
       <TextBlock Text="Si la cadena tiene un documento de…" Margin="0,0,0,5" />
       <ComboBox
         x:Name="Origen"

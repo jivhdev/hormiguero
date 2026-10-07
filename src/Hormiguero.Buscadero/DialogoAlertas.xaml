@@ -51,6 +51,11 @@
       HeadersVisibility="Column"
     >
       <DataGrid.Columns>
+        <DataGridTextColumn
+          Header="El plazo cuenta desde"
+          Binding="{Binding OrigenPlazo}"
+          Width="2*"
+        />
         <DataGridTextColumn Header="Qué falta o qué hacer" Binding="{Binding Texto}" Width="2*" />
         <DataGridTextColumn Header="Cadena" Binding="{Binding Cadena}" Width="*" />
         <DataGridTextColumn Header="Para cuándo" Binding="{Binding ParaCuando}" Width="*" />

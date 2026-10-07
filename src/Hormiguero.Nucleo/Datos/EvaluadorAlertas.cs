@@ -138,13 +138,33 @@ public sealed class EvaluadorAlertas(SqliteConnection conexion)
                     ?? alertas.CrearAlertaDeReglaCadenaSimple(
                         regla.Id,
                         cadenaId,
-                        DateOnly.FromDateTime(origen.Value.Fecha)
+                        FechaBaseAlerta(
+                            origen.Value.VersionId,
+                            origen.Value.Fecha,
+                            out string origenFecha
+                        ),
+                        origenFecha
                     );
                 Alerta actual = alertas.Listar(cadenaId: cadenaId).Alertas.Single(a => a.Id == id);
                 if (actual.Estado == "pendiente" && actual.FechaObjetivo < hoy)
                     alertas.MarcarVencida(actual.Id);
             }
         }
+    }
+
+    private DateOnly FechaBaseAlerta(long versionId, DateTime fechaEntrada, out string origenFecha)
+    {
+        DateTime? fechaDocumento = new RepositorioDatosInformativos(conexion).ObtenerFechaDocumento(
+            versionId
+        );
+        if (fechaDocumento is DateTime reconocida)
+        {
+            origenFecha = "fecha_documento";
+            return DateOnly.FromDateTime(reconocida);
+        }
+
+        origenFecha = "entrada_cadena";
+        return DateOnly.FromDateTime(fechaEntrada);
     }
 
     private IReadOnlyList<long> CadenasSimples()

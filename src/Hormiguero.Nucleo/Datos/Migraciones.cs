@@ -236,6 +236,11 @@ public static class Migraciones
                 + "CREATE TABLE valores_informativos_documento(id INTEGER PRIMARY KEY, version_id INTEGER NOT NULL REFERENCES versiones_documento(id), dato TEXT NOT NULL CHECK(dato IN ('fecha_documento','encargado','nombre_cliente')), valor TEXT NOT NULL, fecha_reconocida TEXT NULL, fecha_no_reconocida INTEGER NOT NULL DEFAULT 0 CHECK(fecha_no_reconocida IN (0,1)), creada_en TEXT NOT NULL, UNIQUE(version_id,dato)); "
                 + "CREATE INDEX idx_valores_informativos_fecha ON valores_informativos_documento(dato,fecha_reconocida);"
         ),
+        (
+            12,
+            "ALTER TABLE alertas ADD COLUMN origen_fecha TEXT NULL CHECK(origen_fecha IN ('fecha_documento','entrada_cadena')); "
+                + "UPDATE alertas SET origen_fecha='entrada_cadena' WHERE regla_simple_id IS NOT NULL;"
+        ),
     ];
 
     public static void Aplicar(
