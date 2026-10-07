@@ -64,4 +64,7 @@ NUEVO EN BUSCADERO
 - Se quitaron los "modelos de cadena" antiguos (modelo guiado, vagones, reglas de vagón): los
   reemplazan las cadenas simples. Lo antiguo queda guardado en la base, pero ya no se muestra.
 - Buscadero ya no se salta un PDF recién creado en una carpeta indexada en ese mismo momento.
+- "Imprimir ▾" en el visor (y en la segunda búsqueda): Primera página / Primeras 2 páginas / Todo,
+  directo a la impresora predeterminada. Ctrl+P = primera página del documento abierto.
+- Alertas: "Para cuándo" respeta si la alerta es de días hábiles o corridos y salta los feriados.
 
