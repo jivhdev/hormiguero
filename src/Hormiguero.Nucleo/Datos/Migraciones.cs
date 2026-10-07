@@ -236,6 +236,10 @@ public static class Migraciones
                 + "CREATE TABLE valores_informativos_documento(id INTEGER PRIMARY KEY, version_id INTEGER NOT NULL REFERENCES versiones_documento(id), dato TEXT NOT NULL CHECK(dato IN ('fecha_documento','encargado','nombre_cliente')), valor TEXT NOT NULL, fecha_reconocida TEXT NULL, fecha_no_reconocida INTEGER NOT NULL DEFAULT 0 CHECK(fecha_no_reconocida IN (0,1)), creada_en TEXT NOT NULL, UNIQUE(version_id,dato)); "
                 + "CREATE INDEX idx_valores_informativos_fecha ON valores_informativos_documento(dato,fecha_reconocida);"
         ),
+        (
+            13,
+            "CREATE INDEX IF NOT EXISTS idx_valores_informativos_version_dato ON valores_informativos_documento(version_id,dato);"
+        ),
     ];
 
     public static void Aplicar(

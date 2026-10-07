@@ -26,8 +26,15 @@ public sealed class VentanasBuscaderoSmokeTests
                 aplicacion.ShutdownMode = ShutdownMode.OnExplicitShutdown;
                 Tema.Aplicar(aplicacion, ModoTema.Claro);
                 var principal = new MainWindow();
+                principal.Width = 1366;
+                principal.Height = 768;
                 principal.Show();
                 principal.UpdateLayout();
+                Assert.IsType<TextBox>(principal.FindName("MaestroNumero"));
+                Assert.IsType<System.Windows.Controls.DataGrid>(
+                    principal.FindName("MaestroResultados")
+                );
+                Assert.IsType<Button>(principal.FindName("MaestroVerCadena"));
                 var botonSegundaBusqueda = Assert.IsType<Button>(
                     principal.FindName("BotonSegundaBusqueda")
                 );
