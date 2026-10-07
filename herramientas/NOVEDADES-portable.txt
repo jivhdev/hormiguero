@@ -56,5 +56,8 @@ NUEVO EN BUSCADERO
   si un documento nuevo calza con una sola cadena, entra solo; si calza con varias, va a dudosos).
 - "Buscador maestro" (pestaña nueva): filtras por número, tipo, emisor, cliente, emitido/recibido y
   fechas; al elegir un documento ves sus datos y los de toda su cadena, con botón para copiar cada uno.
+- Se quitaron los "modelos de cadena" antiguos (modelo guiado, vagones, reglas de vagón): los
+  reemplazan las cadenas simples. Lo antiguo queda guardado en la base, pero ya no se muestra.
+- Buscadero ya no se salta un PDF recién creado en una carpeta indexada en ese mismo momento.
 
 PENDIENTE: envío de facturas armando borradores en Gmail (lo conversamos: requiere autorizar tu cuenta).
