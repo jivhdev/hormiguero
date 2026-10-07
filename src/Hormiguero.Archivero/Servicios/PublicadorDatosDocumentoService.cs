@@ -28,6 +28,11 @@ public static class PublicadorDatosDocumentoService
         IReadOnlyList<ValorDocumentoLeido> valoresLeidos
     ) => Publicar(ruta, configuracion, valoresLeidos, "observador");
 
+    public static IReadOnlyList<ValorDocumentoLeido> ExtraerValoresObservados(
+        string ruta,
+        ConfiguracionDocumento configuracion
+    ) => CrearValores(ruta, configuracion, new CamposExtraidos(null, null));
+
     public static void Publicar(
         string ruta,
         ConfiguracionDocumento configuracion,
