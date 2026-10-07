@@ -22,6 +22,7 @@ public static class DatosEnlazantesConfiguracionService
                 identificacion.Id,
                 patronId.ToString(System.Globalization.CultureInfo.InvariantCulture)
             );
+        var datoIdentificador = zonas.FirstOrDefault(z => z.Activo && z.DefineTipo)?.DatoId;
         return diccionario
             .Select(d =>
             {
@@ -37,7 +38,9 @@ public static class DatosEnlazantesConfiguracionService
                     zona?.Y ?? 0,
                     zona?.Ancho ?? 0,
                     zona?.Alto ?? 0,
-                    string.Empty
+                    string.Empty,
+                    zona?.Enlazable ?? true,
+                    datoIdentificador == d.Id
                 );
             })
             .ToList();
@@ -49,18 +52,26 @@ public static class DatosEnlazantesConfiguracionService
         string grupo,
         string nombreEstandar,
         int patronId,
-        IReadOnlyList<DatoEnlazanteConfigurado> datos
+        IReadOnlyList<DatoEnlazanteConfigurado> datos,
+        IReadOnlyList<ZonaInformativa>? informativos = null,
+        string? tipoAnterior = null
     )
     {
         using var conexion = BaseComun.Abrir(DocumentosGuardados.RutaBaseComun);
         var repositorioIdentificaciones = new Identificaciones(conexion);
         var identificacion = repositorioIdentificaciones
             .Listar()
-            .FirstOrDefault(i => i.Emisor == emisor && i.Tipo == tipo);
+            .FirstOrDefault(i => i.Emisor == emisor && (i.Tipo == tipo || i.Tipo == tipoAnterior));
+        var identificador = datos.SingleOrDefault(d => d.Incluido && d.DefineTipo);
+        if (identificador is null)
+            throw new InvalidOperationException("Elige un dato para definir qué es el documento.");
+        string tipoDerivado = DiccionarioDatosEnlazantes
+            .Todos.Single(d => d.Id == identificador.Id)
+            .EtiquetaTipo;
         long identificacionId = repositorioIdentificaciones.Guardar(
             new Identificacion(
                 identificacion?.Id ?? 0,
-                tipo,
+                tipoDerivado,
                 emisor,
                 identificacion?.Datos ?? "{}",
                 grupo,
@@ -99,10 +110,38 @@ public static class DatosEnlazantesConfiguracionService
                     dato.Y,
                     dato.Ancho,
                     dato.Alto,
-                    true
+                    true,
+                    dato.DefineTipo,
+                    dato.Enlazable
                 )
             );
         }
+        if (informativos is not null)
+            new RepositorioDatosInformativos(conexion).GuardarZonas(
+                identificacionId,
+                diseno,
+                informativos
+            );
+    }
+
+    public static IReadOnlyList<ZonaInformativa> LeerInformativos(
+        string emisor,
+        string tipo,
+        int patronId
+    )
+    {
+        if (string.IsNullOrWhiteSpace(emisor) || string.IsNullOrWhiteSpace(tipo) || patronId <= 0)
+            return [];
+        using var conexion = BaseComun.Abrir(DocumentosGuardados.RutaBaseComun);
+        var identificacion = new Identificaciones(conexion)
+            .Listar()
+            .FirstOrDefault(i => i.Emisor == emisor && i.Tipo == tipo);
+        return identificacion is null
+            ? []
+            : new RepositorioDatosInformativos(conexion).LeerZonas(
+                identificacion.Id,
+                patronId.ToString(System.Globalization.CultureInfo.InvariantCulture)
+            );
     }
 
     public static void VincularCamposAnteriores(

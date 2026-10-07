@@ -67,23 +67,10 @@
           />
 
           <TextBlock Text="Tipo de documento" FontWeight="Bold" />
-          <Button
-            Name="BtnMarcarTipo"
-            Content="Marcar Tipo en el PDF"
-            Margin="0,4,0,4"
-            Padding="6,4"
-            Click="BtnMarcarTipo_Click"
-          />
           <TextBlock
-            Name="TxtEstadoMarcaTipo"
-            Foreground="{DynamicResource Hormiguero.TextoSecundario}"
-            Margin="0,0,0,4"
-            TextWrapping="Wrap"
-          />
-          <ComboBox
-            Name="CmbTipo"
-            IsEditable="True"
-            TextBoxBase.TextChanged="CmbTipo_TextChanged"
+            Name="TxtTipoDerivado"
+            Margin="0,3,0,8"
+            Text="Se define con el dato marcado abajo."
           />
 
           <Expander
@@ -123,6 +110,19 @@
                           Checked="DatoIncluido_Changed"
                           Unchecked="DatoIncluido_Changed"
                         />
+                        <RadioButton
+                          Content="Este dato define qué es el documento"
+                          IsChecked="{Binding DefineTipo, UpdateSourceTrigger=PropertyChanged}"
+                          Checked="DatoDefineTipo_Changed"
+                          Margin="18,2,0,2"
+                        />
+                        <CheckBox
+                          Content="Se puede enlazar"
+                          IsChecked="{Binding Enlazable, UpdateSourceTrigger=PropertyChanged}"
+                          Checked="DatoEnlazable_Enlazable_Changed"
+                          Unchecked="DatoEnlazable_Enlazable_Changed"
+                          Margin="18,0,0,4"
+                        />
                         <TextBlock
                           Text="{Binding Estado}"
                           TextWrapping="Wrap"
@@ -142,6 +142,46 @@
                             Click="BtnMarcarDatoEnlazante_Click"
                           />
                         </StackPanel>
+                      </StackPanel>
+                    </Border>
+                  </DataTemplate>
+                </ItemsControl.ItemTemplate>
+              </ItemsControl>
+              <TextBlock Text="Datos informativos" FontWeight="Bold" Margin="0,12,0,4" />
+              <TextBlock
+                Text="Se leen y muestran, pero no se usan para enlazar documentos."
+                TextWrapping="Wrap"
+                Foreground="{DynamicResource Hormiguero.TextoSecundario}"
+                Margin="0,0,0,6"
+              />
+              <ItemsControl Name="ListaDatosInformativos">
+                <ItemsControl.ItemTemplate>
+                  <DataTemplate>
+                    <Border
+                      BorderBrush="{DynamicResource Hormiguero.Borde}"
+                      BorderThickness="1"
+                      Padding="6"
+                      Margin="0,0,0,6"
+                    >
+                      <StackPanel>
+                        <CheckBox
+                          Content="{Binding Nombre}"
+                          IsChecked="{Binding Marcado, UpdateSourceTrigger=PropertyChanged}"
+                          Checked="DatoInformativo_Changed"
+                          Unchecked="DatoInformativo_Changed"
+                        />
+                        <TextBlock
+                          Text="{Binding Estado}"
+                          TextWrapping="Wrap"
+                          Foreground="{DynamicResource Hormiguero.TextoSecundario}"
+                          Margin="0,3,0,4"
+                        />
+                        <Button
+                          Content="Marcar zona"
+                          Padding="5,3"
+                          HorizontalAlignment="Left"
+                          Click="BtnMarcarDatoInformativo_Click"
+                        />
                       </StackPanel>
                     </Border>
                   </DataTemplate>

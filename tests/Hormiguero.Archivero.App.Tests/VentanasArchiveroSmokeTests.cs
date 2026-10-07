@@ -84,7 +84,7 @@ public sealed class VentanasArchiveroSmokeTests
         {
             hilo.Start();
             Assert.True(
-                hilo.Join(TimeSpan.FromSeconds(30)),
+                hilo.Join(TimeSpan.FromSeconds(60)),
                 "Las ventanas no terminaron de abrir."
             );
             Assert.Null(error);

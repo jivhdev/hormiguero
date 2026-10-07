@@ -94,6 +94,30 @@ public static class PublicadorDatosDocumentoService
             ConCamposBase(valoresLeidos),
             procedencia
         );
+        if (patronConfigurado is not null)
+        {
+            var zonasInformativas = new RepositorioDatosInformativos(conexion).LeerZonas(
+                identificacionId,
+                patronConfigurado.Id.ToString(System.Globalization.CultureInfo.InvariantCulture)
+            );
+            var valoresInformativos = zonasInformativas
+                .Select(zona =>
+                {
+                    string valor = LectorPdf.ExtraerTexto(
+                        ruta,
+                        zona.Pagina - 1,
+                        new(zona.X, zona.Y, zona.Ancho, zona.Alto)
+                    );
+                    return zona.Dato == "fecha_documento"
+                        ? FechaDocumentoParser.InterpretarFecha(valor)
+                        : new ValorInformativo(zona.Dato, valor, null, false);
+                })
+                .ToArray();
+            new RepositorioDatosInformativos(conexion).GuardarValores(
+                publicado.Version.Id,
+                valoresInformativos
+            );
+        }
         infoAntes.Refresh();
         if (
             !infoAntes.Exists

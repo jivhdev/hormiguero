@@ -98,6 +98,7 @@ public partial class IdentificarDocumentoWindow : Window
     private readonly Dictionary<CampoMarca, Marca> _marcas = new();
     private readonly ObservableCollection<CampoPropioEdicion> _camposPropios = [];
     private readonly ObservableCollection<DatoEnlazanteEdicion> _datosEnlazantes = [];
+    private readonly ObservableCollection<DatoInformativoEdicion> _datosInformativos = [];
     private readonly Stack<Paso> _pasosRecorridos = new();
 
     private Paso _paso;
@@ -105,6 +106,7 @@ public partial class IdentificarDocumentoWindow : Window
     private CampoMarca? _campoActivoParaMarcar;
     private CampoPropioEdicion? _campoPropioActivoParaMarcar;
     private DatoEnlazanteEdicion? _datoEnlazanteActivoParaMarcar;
+    private DatoInformativoEdicion? _datoInformativoActivoParaMarcar;
     private bool _draftYaResuelto;
     private bool _nombreEstandarEditado;
     private bool _actualizandoNombreEstandar;
@@ -136,6 +138,7 @@ public partial class IdentificarDocumentoWindow : Window
         };
         ListaCamposPropios.ItemsSource = _camposPropios;
         ConfigurarListaDatosEnlazantes();
+        ConfigurarListaDatosInformativos();
         _rutaArchivo = rutaArchivo;
         CargarDatosEnlazantes(string.Empty, string.Empty, 0);
         ControlOrganizacion.ConfigurarProveedorDeFecha(LeerFechaPreview);
@@ -144,7 +147,6 @@ public partial class IdentificarDocumentoWindow : Window
         Visor.MarcaRealizada += Visor_MarcaRealizada;
 
         CmbEmisor.ItemsSource = _entidades.Buscar(CategoriaEntidad.Emisor, string.Empty);
-        CmbTipo.ItemsSource = _entidades.Buscar(CategoriaEntidad.Tipo, string.Empty);
 
         var borrador = _borradores.Obtener(_rutaArchivo);
         if (borrador is not null)
@@ -194,6 +196,7 @@ public partial class IdentificarDocumentoWindow : Window
         };
         ListaCamposPropios.ItemsSource = _camposPropios;
         ConfigurarListaDatosEnlazantes();
+        ConfigurarListaDatosInformativos();
         _rutaArchivo = rutaArchivo;
         _edicion = (configuracion, patron.Id);
         CargarCamposPropios(configuracion.CamposPropios);
@@ -234,9 +237,7 @@ public partial class IdentificarDocumentoWindow : Window
         _nombreEstandarEditado = true;
 
         CmbEmisor.Text = _emisor;
-        CmbTipo.Text = _tipo;
         CmbEmisor.IsEnabled = false;
-        CmbTipo.IsEnabled = false;
 
         TxtCarpetaDestino.Text = _carpetaDestino;
 
@@ -257,7 +258,6 @@ public partial class IdentificarDocumentoWindow : Window
     private void AplicarBorrador(BorradorAsistente borrador)
     {
         CmbEmisor.Text = borrador.Emisor;
-        CmbTipo.Text = borrador.Tipo;
         TxtCarpetaDestino.Text = borrador.CarpetaDestino;
 
         if (
@@ -322,7 +322,7 @@ public partial class IdentificarDocumentoWindow : Window
         var borrador = new BorradorAsistente
         {
             Emisor = CmbEmisor.Text.Trim(),
-            Tipo = CmbTipo.Text.Trim(),
+            Tipo = TipoDerivado(),
             CarpetaDestino = TxtCarpetaDestino.Text,
             Formato = formatoElegido?.ToString(),
             GuardaEnSubcarpetas = RbGuardarSubcarpetas.IsChecked == true,
@@ -452,9 +452,6 @@ public partial class IdentificarDocumentoWindow : Window
     private void BtnMarcarEmisor_Click(object sender, RoutedEventArgs e) =>
         ArmarMarca(CampoMarca.Emisor);
 
-    private void BtnMarcarTipo_Click(object sender, RoutedEventArgs e) =>
-        ArmarMarca(CampoMarca.Tipo);
-
     private void BtnMarcarFecha_Click(object sender, RoutedEventArgs e) =>
         ArmarMarca(CampoMarca.Fecha);
 
@@ -473,20 +470,8 @@ public partial class IdentificarDocumentoWindow : Window
 
     private void ResaltarBotonActivo(CampoMarca? campoActivo)
     {
-        var botones = new[]
-        {
-            BtnMarcarEmisor,
-            BtnMarcarTipo,
-            BtnMarcarFecha,
-            BtnMarcarNombreArchivo,
-        };
-        var camposEnOrden = new[]
-        {
-            CampoMarca.Emisor,
-            CampoMarca.Tipo,
-            CampoMarca.Fecha,
-            CampoMarca.NombreArchivo,
-        };
+        var botones = new[] { BtnMarcarEmisor, BtnMarcarFecha, BtnMarcarNombreArchivo };
+        var camposEnOrden = new[] { CampoMarca.Emisor, CampoMarca.Fecha, CampoMarca.NombreArchivo };
 
         for (var i = 0; i < botones.Length; i++)
         {
@@ -511,7 +496,6 @@ public partial class IdentificarDocumentoWindow : Window
         campo switch
         {
             CampoMarca.Emisor => "Emisor",
-            CampoMarca.Tipo => "Tipo de documento",
             CampoMarca.Fecha => "Fecha",
             CampoMarca.NombreArchivo => "Campo para el nombre de archivo",
             _ => campo.ToString(),
@@ -520,6 +504,22 @@ public partial class IdentificarDocumentoWindow : Window
     private void Visor_MarcaRealizada(int pagina, RectanguloFraccion fraccion)
     {
         Visor.TerminarMarcado();
+        if (_datoInformativoActivoParaMarcar is { } datoInformativo)
+        {
+            string textoInformativo = LectorPdf.ExtraerTexto(_rutaArchivo, pagina, fraccion);
+            datoInformativo.Marcado = true;
+            datoInformativo.Pagina = pagina;
+            datoInformativo.X = fraccion.X;
+            datoInformativo.Y = fraccion.Y;
+            datoInformativo.Ancho = fraccion.Ancho;
+            datoInformativo.Alto = fraccion.Alto;
+            datoInformativo.Estado = string.IsNullOrWhiteSpace(textoInformativo)
+                ? "Zona marcada; no se pudo leer el ejemplo."
+                : $"Valor de ejemplo: {textoInformativo}";
+            _datoInformativoActivoParaMarcar = null;
+            ActualizarMarcasEnVisor();
+            return;
+        }
         if (_datoEnlazanteActivoParaMarcar is { } datoEnlazante)
         {
             string texto = LectorPdf.ExtraerTexto(_rutaArchivo, pagina, fraccion);
@@ -533,6 +533,7 @@ public partial class IdentificarDocumentoWindow : Window
             datoEnlazante.Estado = string.IsNullOrWhiteSpace(texto)
                 ? $"Zona marcada en la página {pagina + 1}; no se pudo leer texto."
                 : $"Texto leído: {texto} (página {pagina + 1}).";
+            ActualizarSugerencia(datoEnlazante);
             _datoEnlazanteActivoParaMarcar = null;
             ActualizarMarcasEnVisor();
             return;
@@ -595,6 +596,13 @@ public partial class IdentificarDocumentoWindow : Window
                             (d.Nombre, d.Pagina, new RectanguloFraccion(d.X, d.Y, d.Ancho, d.Alto))
                         )
                 )
+                .Concat(
+                    _datosInformativos
+                        .Where(d => d.Marcado)
+                        .Select(d =>
+                            (d.Nombre, d.Pagina, new RectanguloFraccion(d.X, d.Y, d.Ancho, d.Alto))
+                        )
+                )
         );
     }
 
@@ -614,9 +622,40 @@ public partial class IdentificarDocumentoWindow : Window
                 edicion.Estado = string.IsNullOrWhiteSpace(texto)
                     ? "Zona guardada; no se pudo leer el texto de ejemplo."
                     : $"Texto leído: {texto} (página {dato.Pagina + 1}).";
+                if (dato.Enlazable && !string.IsNullOrWhiteSpace(texto))
+                {
+                    using var conexion = Hormiguero.Nucleo.Datos.BaseComun.Abrir(
+                        Hormiguero.Nucleo.Datos.DocumentosGuardados.RutaBaseComun
+                    );
+                    var coincidencias = new Hormiguero.Nucleo.Datos.RepositorioDatosEnlazantes(
+                        conexion
+                    ).SugerirCalce(dato.Id, texto, 4);
+                    edicion.Estado +=
+                        coincidencias.Count == 0
+                            ? " Aún no hay documentos con este número."
+                            : " Calzaría con: "
+                                + string.Join(
+                                    "; ",
+                                    coincidencias
+                                        .Take(3)
+                                        .Select(c =>
+                                            $"{c.NombreEstandar} N° {c.Valor}{(c.FechaDocumento is null ? "" : $" ({c.FechaDocumento:dd-MM-yyyy})")}"
+                                        )
+                                )
+                                + (
+                                    coincidencias.Count > 3
+                                        ? $"; y {coincidencias.Count - 3} más"
+                                        : ""
+                                );
+                }
             }
             _datosEnlazantes.Add(edicion);
         }
+        _tipo = TipoDerivado();
+        TxtTipoDerivado.Text = string.IsNullOrEmpty(_tipo)
+            ? "Se define con el dato marcado abajo."
+            : _tipo;
+        CargarDatosInformativos(emisor, tipo, patronId);
     }
 
     private void ConfigurarListaDatosEnlazantes()
@@ -699,6 +738,12 @@ public partial class IdentificarDocumentoWindow : Window
         {
             dato.Marcado = false;
             dato.Estado = "No aparece en este diseño.";
+            dato.DefineTipo = false;
+            _tipo = TipoDerivado();
+            TxtTipoDerivado.Text = string.IsNullOrEmpty(_tipo)
+                ? "Se define con el dato marcado abajo."
+                : _tipo;
+            ActualizarNombreEstandarSugerido();
         }
         ActualizarMarcasEnVisor();
     }
@@ -829,7 +874,6 @@ public partial class IdentificarDocumentoWindow : Window
     private void ActualizarEstadosDeMarca()
     {
         TxtEstadoMarcaEmisor.Text = EstadoTexto(CampoMarca.Emisor);
-        TxtEstadoMarcaTipo.Text = EstadoTexto(CampoMarca.Tipo);
         TxtEstadoMarcaFecha.Text = EstadoTexto(CampoMarca.Fecha);
         TxtEstadoMarcaNombre.Text = EstadoTexto(CampoMarca.NombreArchivo);
     }
@@ -852,19 +896,161 @@ public partial class IdentificarDocumentoWindow : Window
         ActualizarNombreEstandarSugerido();
     }
 
-    private void CmbTipo_TextChanged(object sender, TextChangedEventArgs e)
-    {
-        CmbTipo.ItemsSource = _entidades.Buscar(CategoriaEntidad.Tipo, CmbTipo.Text);
-        ActualizarNombreEstandarSugerido();
-    }
-
     private void ActualizarNombreEstandarSugerido()
     {
         if (_nombreEstandarEditado || TxtNombreEstandar is null)
             return;
         _actualizandoNombreEstandar = true;
-        TxtNombreEstandar.Text = $"{CmbTipo.Text.Trim()} · {CmbEmisor.Text.Trim()}";
+        string tipo = TipoDerivado();
+        TxtNombreEstandar.Text =
+            tipo.Length > 0
+                ? Hormiguero.Nucleo.Datos.DiccionarioDatosEnlazantes.NombreEstandar(
+                    _datosEnlazantes.Single(d => d.DefineTipo).Id,
+                    CmbEmisor.Text
+                )
+                : string.Empty;
         _actualizandoNombreEstandar = false;
+    }
+
+    private void ConfigurarListaDatosInformativos()
+    {
+        ListaDatosInformativos.ItemsSource = _datosInformativos;
+    }
+
+    private void CargarDatosInformativos(string emisor, string tipo, int patronId)
+    {
+        _datosInformativos.Clear();
+        var zonas = DatosEnlazantesConfiguracionService.LeerInformativos(emisor, tipo, patronId);
+        foreach (
+            var (id, nombre) in new[]
+            {
+                ("fecha_documento", "Fecha del documento"),
+                ("encargado", "Encargado"),
+                ("nombre_cliente", "Nombre de cliente"),
+            }
+        )
+        {
+            var dato = new DatoInformativoEdicion(
+                id,
+                nombre,
+                zonas.FirstOrDefault(z => z.Dato == id)
+            );
+            if (dato.Marcado)
+            {
+                string ejemplo = LectorPdf.ExtraerTexto(
+                    _rutaArchivo,
+                    dato.Pagina,
+                    new(dato.X, dato.Y, dato.Ancho, dato.Alto)
+                );
+                dato.Estado = string.IsNullOrWhiteSpace(ejemplo)
+                    ? "Zona guardada; no se pudo leer el ejemplo."
+                    : $"Valor de ejemplo: {ejemplo}";
+            }
+            _datosInformativos.Add(dato);
+        }
+    }
+
+    private void BtnMarcarDatoInformativo_Click(object sender, RoutedEventArgs e)
+    {
+        if (sender is not Button { DataContext: DatoInformativoEdicion dato })
+            return;
+        _datoEnlazanteActivoParaMarcar = null;
+        _campoPropioActivoParaMarcar = null;
+        _datoInformativoActivoParaMarcar = dato;
+        Visor.IniciarMarcado();
+        dato.Marcado = true;
+        TxtInstruccionPaso.Text = $"Dibuja un rectángulo donde aparece: {dato.Nombre}.";
+    }
+
+    private void DatoInformativo_Changed(object sender, RoutedEventArgs e)
+    {
+        if (
+            sender is System.Windows.Controls.CheckBox
+            {
+                DataContext: DatoInformativoEdicion dato,
+                IsChecked: false
+            }
+        )
+        {
+            dato.Marcado = false;
+            dato.Estado = "No aparece en este diseño.";
+        }
+        ActualizarMarcasEnVisor();
+    }
+
+    private void DatoEnlazable_Enlazable_Changed(object sender, RoutedEventArgs e)
+    {
+        if (sender is System.Windows.Controls.CheckBox { DataContext: DatoEnlazanteEdicion dato })
+            ActualizarSugerencia(dato);
+    }
+
+    private void ActualizarSugerencia(DatoEnlazanteEdicion dato)
+    {
+        if (!dato.Marcado || !dato.Enlazable)
+            return;
+        string texto = LectorPdf.ExtraerTexto(
+            _rutaArchivo,
+            dato.Pagina,
+            new(dato.X, dato.Y, dato.Ancho, dato.Alto)
+        );
+        if (string.IsNullOrWhiteSpace(texto))
+            return;
+        using var conexion = Hormiguero.Nucleo.Datos.BaseComun.Abrir(
+            Hormiguero.Nucleo.Datos.DocumentosGuardados.RutaBaseComun
+        );
+        var coincidencias = new Hormiguero.Nucleo.Datos.RepositorioDatosEnlazantes(
+            conexion
+        ).SugerirCalce(dato.Id, texto, 4);
+        dato.Estado =
+            $"Texto leído: {texto}. "
+            + (
+                coincidencias.Count == 0
+                    ? "Aún no hay documentos con este número."
+                    : "Calzaría con: "
+                        + string.Join(
+                            "; ",
+                            coincidencias
+                                .Take(3)
+                                .Select(c =>
+                                    $"{c.NombreEstandar} N° {c.Valor}{(c.FechaDocumento is null ? "" : $" ({c.FechaDocumento:dd-MM-yyyy})")}"
+                                )
+                        )
+                        + (coincidencias.Count > 3 ? $"; y {coincidencias.Count - 3} más" : "")
+            );
+    }
+
+    private string TipoDerivado()
+    {
+        var id = _datosEnlazantes.FirstOrDefault(d => d.Incluido && d.DefineTipo)?.Id;
+        return id is null
+            ? string.Empty
+            : Hormiguero
+                .Nucleo.Datos.DiccionarioDatosEnlazantes.Todos.Single(d => d.Id == id)
+                .EtiquetaTipo;
+    }
+
+    private void DatoDefineTipo_Changed(object sender, RoutedEventArgs e)
+    {
+        if (
+            sender
+            is not System.Windows.Controls.RadioButton
+            {
+                DataContext: DatoEnlazanteEdicion elegido,
+                IsChecked: true
+            }
+        )
+            return;
+        if (!elegido.Incluido || !elegido.Marcado)
+        {
+            elegido.DefineTipo = false;
+            MostrarError("Marca la zona del dato antes de elegirlo como identificador.");
+            return;
+        }
+        foreach (var dato in _datosEnlazantes)
+            dato.DefineTipo = dato == elegido;
+        _tipo = TipoDerivado();
+        TxtTipoDerivado.Text = _tipo;
+        ActualizarNombreEstandarSugerido();
     }
 
     private void BtnElegirCarpeta_Click(object sender, RoutedEventArgs e)
@@ -1199,10 +1385,14 @@ public partial class IdentificarDocumentoWindow : Window
         {
             case Paso.EmisorTipo:
                 _emisor = CmbEmisor.Text.Trim();
-                _tipo = CmbTipo.Text.Trim();
+                _tipo = TipoDerivado();
                 if (string.IsNullOrWhiteSpace(_emisor) || string.IsNullOrWhiteSpace(_tipo))
                 {
-                    MostrarError("Completar el Emisor y el Tipo.");
+                    MostrarError(
+                        string.IsNullOrWhiteSpace(_emisor)
+                            ? "Completar el Emisor."
+                            : "Elige un dato marcado para definir qué es el documento."
+                    );
                     return;
                 }
 
@@ -1219,11 +1409,9 @@ public partial class IdentificarDocumentoWindow : Window
                     return;
                 }
 
-                if (
-                    !_marcas.ContainsKey(CampoMarca.Emisor) || !_marcas.ContainsKey(CampoMarca.Tipo)
-                )
+                if (!_marcas.ContainsKey(CampoMarca.Emisor))
                 {
-                    MostrarError("Marcar el Emisor y el Tipo sobre el PDF.");
+                    MostrarError("Marcar el Emisor sobre el PDF.");
                     return;
                 }
 
@@ -1451,13 +1639,16 @@ public partial class IdentificarDocumentoWindow : Window
                     grupoDocumento,
                     nombreEstandar
                 );
+                _configuraciones.ActualizarTipoDerivado(edicion.Configuracion.Id, _tipo);
                 DatosEnlazantesConfiguracionService.Guardar(
                     _emisor,
                     _tipo,
                     grupoDocumento,
                     nombreEstandar,
                     edicion.PatronId,
-                    _datosEnlazantes.Select(d => d.AConfigurado()).ToList()
+                    _datosEnlazantes.Select(d => d.AConfigurado()).ToList(),
+                    _datosInformativos.Where(d => d.Marcado).Select(d => d.ComoZona()).ToList(),
+                    edicion.Configuracion.Tipo
                 );
                 DatosEnlazantesConfiguracionService.VincularCamposAnteriores(
                     _emisor,
@@ -1579,7 +1770,8 @@ public partial class IdentificarDocumentoWindow : Window
                 grupo,
                 nombre,
                 patronGuardado.Id,
-                _datosEnlazantes.Select(d => d.AConfigurado()).ToList()
+                _datosEnlazantes.Select(d => d.AConfigurado()).ToList(),
+                _datosInformativos.Where(d => d.Marcado).Select(d => d.ComoZona()).ToList()
             );
             DatosEnlazantesConfiguracionService.VincularCamposAnteriores(
                 _emisor,
@@ -1628,7 +1820,8 @@ public partial class IdentificarDocumentoWindow : Window
                     ? $"{_tipo.Trim()} · {_emisor.Trim()}"
                     : TxtNombreEstandar.Text.Trim(),
                 patronGuardado.Id,
-                _datosEnlazantes.Select(d => d.AConfigurado()).ToList()
+                _datosEnlazantes.Select(d => d.AConfigurado()).ToList(),
+                _datosInformativos.Where(d => d.Marcado).Select(d => d.ComoZona()).ToList()
             );
             DatosEnlazantesConfiguracionService.VincularCamposAnteriores(
                 _emisor,

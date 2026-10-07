@@ -18,7 +18,7 @@ public sealed class MotorCadenasSimples(SqliteConnection conexion)
             {
                 using var cmd = conexion.CreateCommand();
                 cmd.CommandText =
-                    "SELECT DISTINCT c.id FROM cadenas c JOIN vagones_cadena v ON v.cadena_id=c.id JOIN enlaces_cadena e ON e.vagon_cadena_id=v.id JOIN valores_documento x ON x.version_id=e.version_id JOIN versiones_documento ver ON ver.id=e.version_id WHERE c.estado='activa' AND c.modelo_id IS NULL AND v.estado='activo' AND e.estado='activo' AND ver.estado='vigente' AND e.version_id<>$version AND x.estado='vigente' AND x.dato_diccionario_id=$dato AND x.valor_clave=$valor;";
+                    "SELECT DISTINCT c.id FROM cadenas c JOIN vagones_cadena v ON v.cadena_id=c.id JOIN enlaces_cadena e ON e.vagon_cadena_id=v.id JOIN valores_documento x ON x.version_id=e.version_id JOIN campos_documento campo ON campo.id=x.campo_id JOIN versiones_documento ver ON ver.id=e.version_id WHERE c.estado='activa' AND c.modelo_id IS NULL AND v.estado='activo' AND e.estado='activo' AND ver.estado='vigente' AND e.version_id<>$version AND x.estado='vigente' AND x.dato_diccionario_id=$dato AND x.valor_clave=$valor AND EXISTS(SELECT 1 FROM tipos_documento_datos t WHERE t.identificacion_id=campo.identificacion_id AND t.dato_diccionario_id=x.dato_diccionario_id AND t.activo=1 AND t.enlazable=1);";
                 cmd.Parameters.AddWithValue("$version", version);
                 cmd.Parameters.AddWithValue("$dato", dato);
                 cmd.Parameters.AddWithValue("$valor", valor);
@@ -97,7 +97,7 @@ public sealed class MotorCadenasSimples(SqliteConnection conexion)
     {
         using var cmd = conexion.CreateCommand();
         cmd.CommandText =
-            "SELECT DISTINCT dato_diccionario_id,valor_clave FROM valores_documento WHERE version_id=$v AND estado='vigente' AND dato_diccionario_id IS NOT NULL AND valor_clave<>'' ORDER BY dato_diccionario_id;";
+            "SELECT DISTINCT x.dato_diccionario_id,x.valor_clave FROM valores_documento x JOIN campos_documento c ON c.id=x.campo_id WHERE x.version_id=$v AND x.estado='vigente' AND x.dato_diccionario_id IS NOT NULL AND x.valor_clave<>'' AND EXISTS(SELECT 1 FROM tipos_documento_datos t WHERE t.identificacion_id=c.identificacion_id AND t.dato_diccionario_id=x.dato_diccionario_id AND t.activo=1 AND t.enlazable=1) ORDER BY x.dato_diccionario_id;";
         cmd.Parameters.AddWithValue("$v", versionId);
         using var r = cmd.ExecuteReader();
         var resultado = new List<(string, string)>();
