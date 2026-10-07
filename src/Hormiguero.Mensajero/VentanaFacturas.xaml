@@ -75,6 +75,13 @@
           Content="🔍 Buscar en todas las carpetas (modo búsqueda ampliada)"
           Margin="0,8,0,16"
         />
+        <GroupBox Header="Cuenta de Gmail (opcional)" Padding="8" Margin="0,0,0,12">
+          <TextBox
+            x:Name="CuentaGmail"
+            TextChanged="CuentaGmail_TextChanged"
+            ToolTip="Correo de la cuenta que se abrirá en Gmail"
+          />
+        </GroupBox>
         <Button
           Content="👁️ Vista previa"
           Click="VistaPrevia_Click"
@@ -328,6 +335,13 @@
             x:Name="BotonPreparar"
             Content="📋 Preparar Envío (Alt+F)"
             Click="PrepararEnvio_Click"
+            Margin="3"
+            Padding="10,7"
+          />
+          <Button
+            x:Name="BotonGmail"
+            Content="Abrir en Gmail (Alt+G)"
+            Click="AbrirEnGmail_Click"
             Margin="3"
             Padding="10,7"
           />
