@@ -1,0 +1,69 @@
+<Window
+  x:Class="Archivero.Vistas.AdministrarCarpetasObservadasWindow"
+  xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+  xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+  Title="Carpetas observadas"
+  Height="520"
+  Width="720"
+  MinHeight="480"
+  MinWidth="640"
+  WindowStartupLocation="CenterOwner"
+>
+  <Grid Margin="16">
+    <Grid.RowDefinitions>
+      <RowDefinition Height="*" />
+      <RowDefinition Height="Auto" />
+    </Grid.RowDefinitions>
+    <Grid Grid.Row="0">
+      <Grid.ColumnDefinitions>
+        <ColumnDefinition Width="2*" />
+        <ColumnDefinition Width="3*" />
+      </Grid.ColumnDefinitions>
+      <DockPanel Grid.Column="0" Margin="0,0,16,0">
+        <TextBlock
+          DockPanel.Dock="Top"
+          Text="Carpetas guardadas"
+          FontWeight="Bold"
+          Margin="0,0,0,8"
+        />
+        <ListBox
+          Name="ListaCarpetas"
+          DisplayMemberPath="Nombre"
+          SelectionChanged="ListaCarpetas_SelectionChanged"
+        />
+      </DockPanel>
+      <StackPanel Grid.Column="1">
+        <TextBlock Text="Nombre" />
+        <TextBox Name="TxtNombre" Margin="0,4,0,12" />
+        <TextBlock Text="Ruta" />
+        <DockPanel Margin="0,4,0,12">
+          <Button DockPanel.Dock="Right" Content="Examinar…" Click="Examinar_Click" Padding="8,3" />
+          <TextBox Name="TxtRuta" Margin="0,0,8,0" />
+        </DockPanel>
+        <CheckBox Name="ChkSubcarpetas" Content="Incluir subcarpetas" Margin="0,0,0,8" />
+        <CheckBox Name="ChkActiva" Content="Activa" IsChecked="True" Margin="0,0,0,16" />
+        <WrapPanel>
+          <Button Content="Agregar" Click="Agregar_Click" Padding="10,5" Margin="0,0,8,8" />
+          <Button Content="Guardar cambios" Click="Guardar_Click" Padding="10,5" Margin="0,0,8,8" />
+          <Button Content="Quitar" Click="Quitar_Click" Padding="10,5" Margin="0,0,8,8" />
+        </WrapPanel>
+        <TextBlock
+          Text="Archivero solo lee estas carpetas. Los PDF no se mueven, renombran ni eliminan."
+          TextWrapping="Wrap"
+          Foreground="{DynamicResource Hormiguero.TextoSecundario}"
+          Margin="0,16,0,0"
+        />
+      </StackPanel>
+    </Grid>
+    <Button
+      Grid.Row="1"
+      Content="Listo"
+      IsDefault="True"
+      HorizontalAlignment="Right"
+      MinWidth="90"
+      Padding="12,5"
+      Margin="0,12,0,0"
+      Click="Listo_Click"
+    />
+  </Grid>
+</Window>

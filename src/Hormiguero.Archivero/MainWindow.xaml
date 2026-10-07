@@ -4,8 +4,8 @@
   xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
   Title="Archivero"
   Icon="pack://application:,,,/Archivero;component/Recursos/icono.ico"
-  Height="700"
-  Width="640"
+  Height="740"
+  Width="860"
   WindowStartupLocation="CenterScreen"
 >
   <Grid Margin="16">
@@ -13,8 +13,9 @@
       <RowDefinition Height="Auto" />
       <RowDefinition Height="Auto" />
       <RowDefinition Height="*" />
-      <RowDefinition Height="140" />
-      <RowDefinition Height="140" />
+      <RowDefinition Height="100" />
+      <RowDefinition Height="100" />
+      <RowDefinition Height="100" />
       <RowDefinition Height="Auto" />
     </Grid.RowDefinitions>
 
@@ -36,6 +37,13 @@
         Content="Administrar clasificaciones"
         Padding="8,4"
         Click="BtnAdministrarClasificaciones_Click"
+      />
+      <Button
+        DockPanel.Dock="Right"
+        Content="Carpetas observadas"
+        Padding="8,4"
+        Margin="0,0,8,0"
+        Click="BtnCarpetasObservadas_Click"
       />
       <TextBlock FontSize="16" FontWeight="Bold" Text="Archivero" VerticalAlignment="Center" />
     </DockPanel>
@@ -81,7 +89,7 @@
       />
     </Grid>
 
-    <Grid Grid.Row="3" Margin="0,0,0,16">
+    <Grid Grid.Row="3" Margin="0,0,0,12">
       <Grid.RowDefinitions>
         <RowDefinition Height="Auto" />
         <RowDefinition Height="*" />
@@ -108,7 +116,30 @@
       />
     </Grid>
 
-    <Grid Grid.Row="4">
+    <Grid Grid.Row="4" Margin="0,0,0,12">
+      <Grid.RowDefinitions>
+        <RowDefinition Height="Auto" />
+        <RowDefinition Height="*" />
+      </Grid.RowDefinitions>
+      <DockPanel Grid.Row="0" Margin="0,0,0,8">
+        <Button
+          DockPanel.Dock="Right"
+          Content="Revisar ahora"
+          Padding="8,2"
+          Click="BtnRevisarObservadas_Click"
+        />
+        <TextBlock Text="Observados recientemente" FontWeight="Bold" VerticalAlignment="Center" />
+      </DockPanel>
+      <ListBox
+        Grid.Row="1"
+        Name="ListaObservados"
+        DisplayMemberPath="Resumen"
+        MouseDoubleClick="ListaObservados_MouseDoubleClick"
+        ToolTip="Si aparece «Buscar original», haz doble clic para abrir la carpeta del PDF."
+      />
+    </Grid>
+
+    <Grid Grid.Row="5">
       <Grid.RowDefinitions>
         <RowDefinition Height="Auto" />
         <RowDefinition Height="*" />
@@ -130,7 +161,7 @@
 
     <!-- Caso-8: franja chica de estado con el tiempo humano ahorrado, total histórico
              acumulado (no una ventana de tiempo); no compite con las listas de arriba. -->
-    <StackPanel Grid.Row="5" Margin="0,10,0,0">
+    <StackPanel Grid.Row="6" Margin="0,10,0,0">
       <TextBlock Name="TxtTiempoAhorrado" FontSize="12" FontWeight="SemiBold" TextWrapping="Wrap" />
       <TextBlock
         Name="TxtTiempoAhorradoAclaracion"

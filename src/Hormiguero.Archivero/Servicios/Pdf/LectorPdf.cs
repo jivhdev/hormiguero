@@ -31,6 +31,17 @@ public static class LectorPdf
         return info.Palabras.Count > 0;
     }
 
+    public static string ExtraerTextoPrimeraPagina(string rutaPdf)
+    {
+        InfoPdf info = LeerInfo(rutaPdf);
+        if (info.Estado != EstadoPdf.Correcto)
+            throw new InvalidDataException("El PDF no se pudo leer.");
+        return string.Join(
+            ' ',
+            info.Palabras.Where(palabra => palabra.Pagina == 1).Select(palabra => palabra.Texto)
+        );
+    }
+
     public static string ExtraerTexto(
         string rutaPdf,
         int numeroPagina,

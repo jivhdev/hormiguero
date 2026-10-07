@@ -45,6 +45,8 @@ public partial class MainWindow : Window
     private readonly ConfiguracionRepository _configuracion = new();
     private readonly CarpetaObservadaService _servicioCarpeta;
     private readonly GuardadoRecienteRepository _guardadosRecientes = new();
+    private readonly CarpetasObservadasRepository _carpetasObservadas = new();
+    private readonly ObservadorCarpetasService _observador;
     private VigilanciaCarpetaService _vigilancia;
     private string _carpetaObservada;
     private readonly TrayIconService _bandeja = new();
@@ -54,6 +56,21 @@ public partial class MainWindow : Window
     public MainWindow(string carpetaObservada, VigilanciaCarpetaService vigilancia)
     {
         InitializeComponent();
+        _observador = new ObservadorCarpetasService(
+            _carpetasObservadas,
+            new ImpresionAlArchivarService(new AccionImpresionWindows())
+        );
+        _observador.DocumentoActualizado += documento => Dispatcher.Invoke(CargarObservados);
+        _observador.ErrorVisible += mensaje =>
+            Dispatcher.BeginInvoke(() =>
+                System.Windows.MessageBox.Show(
+                    this,
+                    mensaje,
+                    "Carpetas observadas",
+                    MessageBoxButton.OK,
+                    MessageBoxImage.Warning
+                )
+            );
         ComboTema.SelectedIndex = IndiceTema(DatosDeApp.LeerPreferencia("tema.archivero"));
         _inicializandoTema = false;
         PublicadorDatosDocumentoService.RevisionEnlacesFallida += (_, mensaje) =>
@@ -78,7 +95,9 @@ public partial class MainWindow : Window
 
         CargarPendientes();
         CargarGuardadosRecientes();
+        CargarObservados();
         CargarTiempoAhorrado();
+        _observador.Iniciar();
     }
 
     private static int IndiceTema(string? preferencia) =>
@@ -292,6 +311,7 @@ public partial class MainWindow : Window
         }
 
         _bandeja.Dispose();
+        _observador.Dispose();
         base.OnClosing(e);
         System.Windows.Application.Current.Shutdown();
     }
@@ -564,6 +584,68 @@ public partial class MainWindow : Window
         if (ventana.HuboConfiguracionesEditadas)
         {
             _ = ReprocesarPendientesAsync();
+        }
+    }
+
+    private void CargarObservados() =>
+        ListaObservados.ItemsSource = _carpetasObservadas.LeerActividad();
+
+    private void BtnCarpetasObservadas_Click(object sender, RoutedEventArgs e)
+    {
+        var ventana = new AdministrarCarpetasObservadasWindow { Owner = this };
+        if (ventana.ShowDialog() == true)
+        {
+            _observador.ActualizarCarpetas();
+            CargarObservados();
+        }
+    }
+
+    private async void BtnRevisarObservadas_Click(object sender, RoutedEventArgs e)
+    {
+        try
+        {
+            await _observador.RevisarAhoraAsync();
+            CargarObservados();
+        }
+        catch (Exception ex)
+        {
+            System.Windows.MessageBox.Show(
+                this,
+                $"No se pudieron revisar las carpetas observadas: {ex.Message}",
+                "Archivero",
+                MessageBoxButton.OK,
+                MessageBoxImage.Warning
+            );
+        }
+    }
+
+    private void ListaObservados_MouseDoubleClick(object sender, MouseButtonEventArgs e)
+    {
+        if (
+            ListaObservados.SelectedItem is not DocumentoObservadoReciente documento
+            || documento.Motivo?.Contains("Buscar original", StringComparison.OrdinalIgnoreCase)
+                != true
+        )
+            return;
+        try
+        {
+            System.Diagnostics.Process.Start(
+                new System.Diagnostics.ProcessStartInfo
+                {
+                    FileName = Path.GetDirectoryName(documento.Ruta)!,
+                    UseShellExecute = true,
+                }
+            );
+        }
+        catch (Exception ex)
+        {
+            System.Windows.MessageBox.Show(
+                this,
+                $"No se pudo abrir la carpeta del cedible: {ex.Message}",
+                "Archivero",
+                MessageBoxButton.OK,
+                MessageBoxImage.Warning
+            );
         }
     }
 }
