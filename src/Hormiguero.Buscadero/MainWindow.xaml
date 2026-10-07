@@ -13,6 +13,7 @@
   MinHeight="650"
   MinWidth="1000"
   PreviewMouseLeftButtonUp="Ventana_PreviewMouseLeftButtonUp"
+  PreviewKeyDown="Ventana_PreviewKeyDown"
 >
   <Grid>
     <Grid.RowDefinitions>
@@ -225,6 +226,40 @@
                   Margin="0,0,16,0"
                   Click="BotonVerEnCarpeta_Click"
                   ToolTip="Abrir el Explorador de Windows en la carpeta del documento, con el archivo seleccionado"
+                />
+                <Button
+                  x:Name="BotonImprimir"
+                  Content="Imprimir ▾"
+                  Padding="8,4"
+                  Margin="0,0,10,0"
+                  IsEnabled="False"
+                  Click="BotonImprimir_Click"
+                >
+                  <Button.ContextMenu>
+                    <ContextMenu>
+                      <MenuItem
+                        Header="Primera página"
+                        Tag="PrimeraPagina"
+                        Click="OpcionImprimir_Click"
+                      />
+                      <MenuItem
+                        Header="Primeras 2 páginas"
+                        Tag="PrimerasDosPaginas"
+                        Click="OpcionImprimir_Click"
+                      />
+                      <MenuItem
+                        Header="Todo el documento"
+                        Tag="DocumentoCompleto"
+                        Click="OpcionImprimir_Click"
+                      />
+                    </ContextMenu>
+                  </Button.ContextMenu>
+                </Button>
+                <TextBlock
+                  x:Name="TextoAvisoImpresion"
+                  VerticalAlignment="Center"
+                  Margin="0,0,8,0"
+                  Foreground="{DynamicResource Hormiguero.TextoSecundario}"
                 />
                 <Button
                   x:Name="BotonPaginaAnterior"

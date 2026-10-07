@@ -87,6 +87,30 @@
         Margin="0,0,4,0"
         Click="BotonVerEnCarpeta_Click"
       />
+      <Button
+        x:Name="BotonImprimir"
+        Content="Imprimir ▾"
+        Padding="5,2"
+        Margin="0,0,4,0"
+        IsEnabled="False"
+        Click="BotonImprimir_Click"
+      >
+        <Button.ContextMenu>
+          <ContextMenu>
+            <MenuItem Header="Primera página" Tag="PrimeraPagina" Click="OpcionImprimir_Click" />
+            <MenuItem
+              Header="Primeras 2 páginas"
+              Tag="PrimerasDosPaginas"
+              Click="OpcionImprimir_Click"
+            />
+            <MenuItem
+              Header="Todo el documento"
+              Tag="DocumentoCompleto"
+              Click="OpcionImprimir_Click"
+            />
+          </ContextMenu>
+        </Button.ContextMenu>
+      </Button>
       <Button Content="Anterior" Padding="5,2" Margin="0,0,4,0" Click="BotonPaginaAnterior_Click" />
       <TextBlock x:Name="TextoPagina" VerticalAlignment="Center" Margin="0,0,4,0" />
       <Button

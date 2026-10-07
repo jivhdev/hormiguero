@@ -29,6 +29,7 @@ public sealed class VentanasBuscaderoSmokeTests
                 principal.Height = 768;
                 principal.Show();
                 principal.UpdateLayout();
+                Assert.False(Assert.IsType<Button>(principal.FindName("BotonImprimir")).IsEnabled);
                 Assert.IsType<TextBox>(principal.FindName("MaestroNumero"));
                 Assert.IsType<System.Windows.Controls.DataGrid>(
                     principal.FindName("MaestroResultados")
@@ -43,6 +44,9 @@ public sealed class VentanasBuscaderoSmokeTests
                     principal.FindName("PanelBusquedaSecundario")
                 );
                 Assert.Equal(Visibility.Visible, panelSecundario.Visibility);
+                Assert.False(
+                    Assert.IsType<Button>(panelSecundario.FindName("BotonImprimir")).IsEnabled
+                );
                 principal.Close();
                 foreach (var tema in new[] { ModoTema.Claro, ModoTema.Oscuro })
                 {

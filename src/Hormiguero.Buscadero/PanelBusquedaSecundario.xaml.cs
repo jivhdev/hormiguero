@@ -9,6 +9,8 @@ using Buscadero.App.Pdf;
 using Buscadero.Core.Busqueda;
 using Buscadero.Core.Indexado;
 using Buscadero.Core.Marcas;
+using Buscadero.Core.Pdf;
+using Hormiguero.Nucleo.Pdf;
 
 namespace Buscadero.App;
 
@@ -40,6 +42,7 @@ public partial class PanelBusquedaSecundario : UserControl
         _cancelacionBusqueda?.Cancel();
         _generacionDocumento++;
         _documentoActual = null;
+        BotonImprimir.IsEnabled = false;
         _sesionMarcas = null;
         ImagenPdf.Source = null;
         CanvasMarcas.Children.Clear();
@@ -167,6 +170,7 @@ public partial class PanelBusquedaSecundario : UserControl
     {
         var generacion = ++_generacionDocumento;
         _documentoActual = ruta;
+        BotonImprimir.IsEnabled = false;
         TextoVisorVacio.Text = "Cargando documento...";
         try
         {
@@ -181,6 +185,7 @@ public partial class PanelBusquedaSecundario : UserControl
             _zoom = 1;
             _sesionMarcas = sesion;
             TextoDocumento.Text = System.IO.Path.GetFileName(ruta);
+            BotonImprimir.IsEnabled = true;
             BarraVisor.Visibility = Visibility.Visible;
             TextoVisorVacio.Visibility = Visibility.Collapsed;
             await RenderizarPaginaAsync(generacion);
@@ -190,6 +195,7 @@ public partial class PanelBusquedaSecundario : UserControl
             if (generacion != _generacionDocumento)
                 return;
             _documentoActual = null;
+            BotonImprimir.IsEnabled = false;
             _sesionMarcas = null;
             ImagenPdf.Source = null;
             CanvasMarcas.Children.Clear();
@@ -321,6 +327,63 @@ public partial class PanelBusquedaSecundario : UserControl
         catch (Exception excepcion)
         {
             TextoEstado.Text = $"No se pudo abrir la carpeta: {excepcion.Message}";
+        }
+    }
+
+    private void BotonImprimir_Click(object sender, RoutedEventArgs e)
+    {
+        if (sender is Button boton)
+        {
+            boton.ContextMenu.PlacementTarget = boton;
+            boton.ContextMenu.IsOpen = true;
+        }
+    }
+
+    private async void OpcionImprimir_Click(object sender, RoutedEventArgs e)
+    {
+        if (sender is MenuItem { Tag: string etiqueta })
+        {
+            await ImprimirAsync(_documentoActual, Enum.Parse<OpcionImpresion>(etiqueta));
+        }
+    }
+
+    public void ImprimirPrimeraPagina() =>
+        _ = ImprimirAsync(_documentoActual, OpcionImpresion.PrimeraPagina);
+
+    private async Task ImprimirAsync(string? ruta, OpcionImpresion opcion)
+    {
+        if (ruta is null)
+        {
+            return;
+        }
+
+        var cantidad = Math.Min(ImpresionDocumento.CuantasPaginas(opcion), _totalPaginas);
+        try
+        {
+            await ImpresionDocumento.ImprimirAsync(
+                ruta,
+                opcion,
+                (bytes, cuantas, impresora) => ImpresionPdf.Imprimir(bytes, cuantas, impresora)
+            );
+            _ = MostrarAvisoImpresionAsync(
+                $"Enviado a imprimir: {cantidad} {(cantidad == 1 ? "página" : "páginas")}."
+            );
+        }
+        catch (Exception excepcion)
+        {
+            _ = MostrarAvisoImpresionAsync(
+                $"No se pudo imprimir el documento: {excepcion.Message}"
+            );
+        }
+    }
+
+    private async Task MostrarAvisoImpresionAsync(string mensaje)
+    {
+        TextoEstado.Text = mensaje;
+        await Task.Delay(TimeSpan.FromSeconds(5));
+        if (TextoEstado.Text == mensaje)
+        {
+            TextoEstado.Text = string.Empty;
         }
     }
 

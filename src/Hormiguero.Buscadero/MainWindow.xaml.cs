@@ -13,8 +13,10 @@ using Buscadero.Core.Carpetas;
 using Buscadero.Core.Indexado;
 using Buscadero.Core.Lineas;
 using Buscadero.Core.Marcas;
+using Buscadero.Core.Pdf;
 using Hormiguero.Diseno;
 using Hormiguero.Nucleo.Datos;
+using Hormiguero.Nucleo.Pdf;
 using Microsoft.Win32;
 
 namespace Buscadero.App;
@@ -425,6 +427,7 @@ public partial class MainWindow : Window
 
     private async Task AbrirDocumentoAsync(string ruta)
     {
+        BotonImprimir.IsEnabled = false;
         try
         {
             var totalPaginas = await Task.Run(() => VisorPdf.ObtenerTotalPaginas(ruta));
@@ -447,6 +450,7 @@ public partial class MainWindow : Window
             BotonModoSeleccionarTexto.IsChecked = false;
 
             TextoDocumentoAbierto.Text = System.IO.Path.GetFileName(ruta);
+            BotonImprimir.IsEnabled = true;
             BarraVisor.Visibility = Visibility.Visible;
             BarraMarcas.Visibility = Visibility.Visible;
             TextoVisorVacio.Visibility = Visibility.Collapsed;
@@ -460,6 +464,7 @@ public partial class MainWindow : Window
             ImagenPdf.Source = null;
             CanvasMarcas.Children.Clear();
             BarraVisor.Visibility = Visibility.Collapsed;
+            BotonImprimir.IsEnabled = false;
             BarraMarcas.Visibility = Visibility.Collapsed;
             TextoVisorVacio.Visibility = Visibility.Visible;
             MessageBox.Show(
@@ -593,6 +598,82 @@ public partial class MainWindow : Window
                 MessageBoxImage.Warning
             );
         }
+    }
+
+    private void BotonImprimir_Click(object sender, RoutedEventArgs e)
+    {
+        if (sender is Button boton)
+        {
+            boton.ContextMenu.PlacementTarget = boton;
+            boton.ContextMenu.IsOpen = true;
+        }
+    }
+
+    private async void OpcionImprimir_Click(object sender, RoutedEventArgs e)
+    {
+        if (sender is not MenuItem { Tag: string etiqueta })
+        {
+            return;
+        }
+
+        var opcion = Enum.Parse<OpcionImpresion>(etiqueta);
+        await ImprimirDocumentoAsync(_documentoActual, opcion);
+    }
+
+    private async Task ImprimirDocumentoAsync(string? ruta, OpcionImpresion opcion)
+    {
+        if (ruta is null)
+        {
+            return;
+        }
+
+        var cantidad = Math.Min(ImpresionDocumento.CuantasPaginas(opcion), _totalPaginas);
+        try
+        {
+            await ImpresionDocumento.ImprimirAsync(
+                ruta,
+                opcion,
+                (bytes, cuantas, impresora) => ImpresionPdf.Imprimir(bytes, cuantas, impresora)
+            );
+            _ = MostrarAvisoImpresionAsync(
+                $"Enviado a imprimir: {cantidad} {(cantidad == 1 ? "página" : "páginas")}."
+            );
+        }
+        catch (Exception excepcion)
+        {
+            _ = MostrarAvisoImpresionAsync(
+                $"No se pudo imprimir el documento: {excepcion.Message}"
+            );
+        }
+    }
+
+    private async Task MostrarAvisoImpresionAsync(string mensaje)
+    {
+        TextoAvisoImpresion.Text = mensaje;
+        await Task.Delay(TimeSpan.FromSeconds(5));
+        if (TextoAvisoImpresion.Text == mensaje)
+        {
+            TextoAvisoImpresion.Text = string.Empty;
+        }
+    }
+
+    private void Ventana_PreviewKeyDown(object sender, KeyEventArgs e)
+    {
+        if (Keyboard.Modifiers != ModifierKeys.Control || e.Key != Key.P)
+        {
+            return;
+        }
+
+        if (PanelBusquedaSecundario.IsKeyboardFocusWithin)
+        {
+            PanelBusquedaSecundario.ImprimirPrimeraPagina();
+        }
+        else if (_documentoActual is not null)
+        {
+            _ = ImprimirDocumentoAsync(_documentoActual, OpcionImpresion.PrimeraPagina);
+        }
+
+        e.Handled = true;
     }
 
     private void LienzoVisor_PreviewMouseWheel(object sender, MouseWheelEventArgs e)
