@@ -114,6 +114,7 @@ public partial class MainWindow : Window
         _repositorioMarcas = new RepositorioMarcas(
             Hormiguero.Nucleo.Datos.DocumentosGuardados.RutaBaseComun
         );
+        PanelBusquedaSecundario.Configurar(_servicioBusqueda, _repositorioMarcas);
         Closed += (_, _) => _repositorioMarcas.Dispose();
         var repositorioLineas = new RepositorioLineas(
             Hormiguero.Nucleo.Datos.DocumentosGuardados.RutaBaseComun
@@ -180,6 +181,25 @@ public partial class MainWindow : Window
     }
 
     private void MostrarMensaje(string mensaje) => TextoMensaje.Text = mensaje;
+
+    private void BotonSegundaBusqueda_Click(object sender, RoutedEventArgs e)
+    {
+        ColumnaPanelSecundario.Width = new GridLength(1, GridUnitType.Star);
+        PanelBusquedaSecundario.Visibility = Visibility.Visible;
+        SeparadorPaneles.Visibility = Visibility.Visible;
+        BotonSegundaBusqueda.Visibility = Visibility.Collapsed;
+        BotonCerrarSegundaBusqueda.Visibility = Visibility.Visible;
+    }
+
+    private void BotonCerrarSegundaBusqueda_Click(object sender, RoutedEventArgs e)
+    {
+        PanelBusquedaSecundario.Limpiar();
+        PanelBusquedaSecundario.Visibility = Visibility.Collapsed;
+        SeparadorPaneles.Visibility = Visibility.Collapsed;
+        ColumnaPanelSecundario.Width = new GridLength(0);
+        BotonSegundaBusqueda.Visibility = Visibility.Visible;
+        BotonCerrarSegundaBusqueda.Visibility = Visibility.Collapsed;
+    }
 
     private async void BotonBuscar_Click(object sender, RoutedEventArgs e) => await BuscarAsync();
 
