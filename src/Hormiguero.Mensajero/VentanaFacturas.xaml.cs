@@ -47,6 +47,7 @@ public partial class VentanaFacturas : Window
     {
         InitializeComponent();
         almacen = AlmacenMensajero.AbrirComun();
+        CuentaGmail.Text = almacen.LeerValor("factura.cuenta_gmail");
         temporizadorToast = new DispatcherTimer { Interval = TimeSpan.FromSeconds(3) };
         temporizadorToast.Tick += (_, _) =>
         {
@@ -75,11 +76,14 @@ public partial class VentanaFacturas : Window
         SemanaUno.ItemsSource = SemanaDos.ItemsSource = Enumerable.Range(1, 5).ToArray();
         SemanaUno.SelectedIndex = SemanaDos.SelectedIndex = 0;
         MesUno.ItemsSource = MesDos.ItemsSource = Meses;
-        MesUno.SelectedIndex = 6;
-        MesDos.SelectedIndex = 7;
-        int[] anios = Enumerable.Range(2020, 11).ToArray();
+        DateTime mesActual = DateTime.Today;
+        DateTime mesSiguiente = mesActual.AddMonths(1);
+        MesUno.SelectedIndex = mesActual.Month - 1;
+        MesDos.SelectedIndex = mesSiguiente.Month - 1;
+        int[] anios = Enumerable.Range(mesActual.Year - 6, 11).ToArray();
         AnioUno.ItemsSource = AnioDos.ItemsSource = anios;
-        AnioUno.SelectedItem = AnioDos.SelectedItem = 2026;
+        AnioUno.SelectedItem = mesActual.Year;
+        AnioDos.SelectedItem = mesSiguiente.Year;
         Height = Math.Min(Height, SystemParameters.WorkArea.Height);
         Width = Math.Min(Width, SystemParameters.WorkArea.Width);
         Closed += (_, _) => almacen.Dispose();
@@ -421,6 +425,7 @@ public partial class VentanaFacturas : Window
         if (indice < 0)
         {
             BotonPreparar.IsEnabled = false;
+            BotonGmail.IsEnabled = false;
             BotonPendiente.IsEnabled = false;
             BotonEnviado.IsEnabled = false;
             TextoClienteActual.Text = "No hay clientes en este filtro.";
@@ -456,6 +461,7 @@ public partial class VentanaFacturas : Window
                 .ToArray()
         );
         BotonPreparar.IsEnabled = true;
+        BotonGmail.IsEnabled = true;
         BotonPendiente.IsEnabled = true;
         BotonEnviado.IsEnabled = false;
     }
@@ -545,6 +551,83 @@ public partial class VentanaFacturas : Window
             MensajeroLog.RegistrarError("Preparar envío", excepcion);
             MostrarAviso("Error", $"Error al preparar envío:\n{excepcion.Message}", "error");
         }
+    }
+
+    private void AbrirEnGmail_Click(object sender, RoutedEventArgs e)
+    {
+        if (indiceCliente >= clientes.Count)
+            return;
+        ClienteAnalizado cliente = clientes[indiceCliente];
+        DocumentoAnalizado[] faltantes = cliente
+            .Documentos.Where(documento => documento.RutaPdf is null)
+            .ToArray();
+        if (faltantes.Length > 0 && cliente.PdfsEncontrados.Count > 0)
+        {
+            string listaFaltantes = string.Join(
+                ", ",
+                faltantes.Select(documento => $"{documento.Tipo} {documento.Numero}")
+            );
+            if (
+                !Preguntar(
+                    "PDF faltantes",
+                    $"Faltan {faltantes.Length} PDF: {listaFaltantes}. ¿Desea abrir Gmail con los PDF encontrados?"
+                )
+            )
+                return;
+        }
+        else if (cliente.PdfsEncontrados.Count == 0)
+        {
+            if (
+                !Preguntar(
+                    "Sin PDFs",
+                    "No hay PDFs para este cliente. ¿Desea abrir Gmail sin adjuntos?"
+                )
+            )
+                return;
+        }
+
+        try
+        {
+            if (cliente.PdfsEncontrados.Count > 0)
+            {
+                carpetaTemporalActual = PreparadorEnvioFactura.CrearCarpetaTemporal(
+                    baseTemporal,
+                    cliente.Rut,
+                    DateTime.Now
+                );
+                IReadOnlyList<string> copiados = PreparadorEnvioFactura.CopiarPdfs(
+                    cliente
+                        .PdfsEncontrados.Where(documento => documento.RutaPdf is not null)
+                        .Select(documento => documento.RutaPdf!)
+                        .ToArray(),
+                    carpetaTemporalActual
+                );
+                CopiarArchivos(copiados);
+            }
+
+            UrlGmailFactura resultado = GeneradorUrlGmailFactura.Generar(
+                CorreoFactura.Separar(TextoCorreo.Text),
+                CampoAsunto.Text,
+                PrepararCuerpoCorreo(CampoCuerpo.Text),
+                CuentaGmail.Text
+            );
+            Process.Start(new ProcessStartInfo(resultado.Url) { UseShellExecute = true });
+            string mensaje = "Gmail abierto. Pega los PDF con Ctrl+V y revisa antes de enviar.";
+            if (resultado.OmitioCuerpo)
+                mensaje += " El cuerpo es largo: pégalo con Alt+D.";
+            MostrarToast(mensaje, "success");
+        }
+        catch (Exception excepcion)
+        {
+            MensajeroLog.RegistrarError("Abrir envío en Gmail", excepcion);
+            MostrarAviso("Error", $"No se pudo abrir Gmail: {excepcion.Message}", "error");
+        }
+    }
+
+    private void CuentaGmail_TextChanged(object sender, TextChangedEventArgs e)
+    {
+        if (almacen is not null)
+            almacen.GuardarValor("factura.cuenta_gmail", CuentaGmail.Text.Trim());
     }
 
     private void Pendiente_Click(object sender, RoutedEventArgs e)
@@ -731,6 +814,11 @@ public partial class VentanaFacturas : Window
             case Key.F
                 when PaginaEnvio.Visibility == Visibility.Visible && indiceCliente < clientes.Count:
                 PrepararEnvio_Click(this, new RoutedEventArgs());
+                e.Handled = true;
+                break;
+            case Key.G
+                when PaginaEnvio.Visibility == Visibility.Visible && indiceCliente < clientes.Count:
+                AbrirEnGmail_Click(this, new RoutedEventArgs());
                 e.Handled = true;
                 break;
         }
