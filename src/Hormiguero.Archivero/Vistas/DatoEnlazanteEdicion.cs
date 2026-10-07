@@ -12,6 +12,7 @@ public sealed class DatoEnlazanteEdicion : INotifyPropertyChanged
     private bool _enlazable = true;
     private bool _defineTipo;
     private string _estado = "No aparece en este diseño.";
+    public string ValorLeido { get; set; } = string.Empty;
 
     public DatoEnlazanteEdicion(DatoEnlazanteConfigurado dato)
     {

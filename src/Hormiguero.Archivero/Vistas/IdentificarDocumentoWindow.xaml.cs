@@ -1,5 +1,6 @@
 using System.Collections.ObjectModel;
 using System.ComponentModel;
+using System.IO;
 using System.Runtime.CompilerServices;
 using System.Windows;
 using System.Windows.Controls;
@@ -83,11 +84,12 @@ public partial class IdentificarDocumentoWindow : Window
 {
     private enum Paso
     {
-        EmisorTipo,
-        Carpeta,
-        Organizacion,
-        NombreArchivo,
-        Confirmar,
+        QueDocumento,
+        Emisor,
+        Numero,
+        OtrosDatos,
+        Guardar,
+        Resumen,
     }
 
     private readonly string _rutaArchivo;
@@ -102,7 +104,7 @@ public partial class IdentificarDocumentoWindow : Window
     private readonly Stack<Paso> _pasosRecorridos = new();
 
     private Paso _paso;
-    private Paso _pasoInicial = Paso.EmisorTipo;
+    private Paso _pasoInicial = Paso.QueDocumento;
     private CampoMarca? _campoActivoParaMarcar;
     private CampoPropioEdicion? _campoPropioActivoParaMarcar;
     private DatoEnlazanteEdicion? _datoEnlazanteActivoParaMarcar;
@@ -145,6 +147,7 @@ public partial class IdentificarDocumentoWindow : Window
         ListaCamposPropios.ItemsSource = _camposPropios;
         ConfigurarListaDatosEnlazantes();
         ConfigurarListaDatosInformativos();
+        CmbCategoriaDocumento.ItemsSource = AsistenteClasificacionService.Categorias;
         _rutaArchivo = rutaArchivo;
         CargarDatosEnlazantes(string.Empty, string.Empty, 0);
         ControlOrganizacion.ConfigurarProveedorDeFecha(LeerFechaPreview);
@@ -162,7 +165,7 @@ public partial class IdentificarDocumentoWindow : Window
 
         ActualizarEstadosDeMarca();
         ActualizarMarcasEnVisor();
-        MostrarPaso(Paso.EmisorTipo);
+        MostrarPaso(Paso.QueDocumento);
         Closing += IdentificarDocumentoWindow_Closing;
 
         if (borrador is not null)
@@ -203,6 +206,7 @@ public partial class IdentificarDocumentoWindow : Window
         ListaCamposPropios.ItemsSource = _camposPropios;
         ConfigurarListaDatosEnlazantes();
         ConfigurarListaDatosInformativos();
+        CmbCategoriaDocumento.ItemsSource = AsistenteClasificacionService.Categorias;
         _rutaArchivo = rutaArchivo;
         _edicion = (configuracion, patron.Id);
         CargarCamposPropios(configuracion.CamposPropios);
@@ -218,7 +222,7 @@ public partial class IdentificarDocumentoWindow : Window
 
         ActualizarEstadosDeMarca();
         ActualizarMarcasEnVisor();
-        _pasoInicial = comenzarEnPasoCarpeta ? Paso.Carpeta : Paso.EmisorTipo;
+        _pasoInicial = comenzarEnPasoCarpeta ? Paso.Guardar : Paso.QueDocumento;
         MostrarPaso(_pasoInicial);
     }
 
@@ -379,18 +383,40 @@ public partial class IdentificarDocumentoWindow : Window
     {
         _paso = nuevoPaso;
 
-        PanelEmisorTipo.Visibility =
-            nuevoPaso == Paso.EmisorTipo ? Visibility.Visible : Visibility.Collapsed;
+        var esPasoIdentificacion =
+            nuevoPaso is Paso.QueDocumento or Paso.Emisor or Paso.Numero or Paso.OtrosDatos;
+        PanelEmisorTipo.Visibility = esPasoIdentificacion
+            ? Visibility.Visible
+            : Visibility.Collapsed;
+        PanelCategoriaDocumento.Visibility =
+            nuevoPaso == Paso.QueDocumento ? Visibility.Visible : Visibility.Collapsed;
+        PanelEmisor.Visibility =
+            nuevoPaso == Paso.Emisor ? Visibility.Visible : Visibility.Collapsed;
+        PanelDatosDiccionario.Visibility = nuevoPaso
+            is Paso.QueDocumento
+                or Paso.Numero
+                or Paso.OtrosDatos
+            ? Visibility.Visible
+            : Visibility.Collapsed;
+        PanelDatosDiccionario.IsExpanded = nuevoPaso is Paso.QueDocumento or Paso.Numero;
+        PanelInformativos.Visibility =
+            nuevoPaso == Paso.OtrosDatos ? Visibility.Visible : Visibility.Collapsed;
+        PanelDatosAnteriores.Visibility =
+            nuevoPaso == Paso.OtrosDatos && _camposPropios.Count > 0
+                ? Visibility.Visible
+                : Visibility.Collapsed;
+        ChkSinNumero.Visibility =
+            nuevoPaso == Paso.Numero ? Visibility.Visible : Visibility.Collapsed;
         PanelCarpeta.Visibility =
-            nuevoPaso == Paso.Carpeta ? Visibility.Visible : Visibility.Collapsed;
+            nuevoPaso == Paso.Guardar ? Visibility.Visible : Visibility.Collapsed;
         PanelOrganizacion.Visibility =
-            nuevoPaso == Paso.Organizacion ? Visibility.Visible : Visibility.Collapsed;
+            nuevoPaso == Paso.Guardar ? Visibility.Visible : Visibility.Collapsed;
         PanelNombreArchivo.Visibility =
-            nuevoPaso == Paso.NombreArchivo ? Visibility.Visible : Visibility.Collapsed;
+            nuevoPaso == Paso.Guardar ? Visibility.Visible : Visibility.Collapsed;
         PanelConfirmar.Visibility =
-            nuevoPaso == Paso.Confirmar ? Visibility.Visible : Visibility.Collapsed;
+            nuevoPaso == Paso.Resumen ? Visibility.Visible : Visibility.Collapsed;
 
-        if (nuevoPaso == Paso.Organizacion)
+        if (nuevoPaso == Paso.Guardar)
         {
             PrepararVistaOrganizacion();
         }
@@ -398,7 +424,7 @@ public partial class IdentificarDocumentoWindow : Window
         // Preview obligatorio de anterior/actual/futuro (Caso-1, punto 3): visible desde que hay
         // carpeta+organización elegidas hasta confirmar, para que sea imposible llegar a "Guardar y
         // clasificar" sin haberlo visto.
-        var mostrarPreview = nuevoPaso is Paso.Organizacion or Paso.NombreArchivo or Paso.Confirmar;
+        var mostrarPreview = nuevoPaso == Paso.Guardar;
         PanelPreview.Visibility = mostrarPreview ? Visibility.Visible : Visibility.Collapsed;
         if (mostrarPreview)
         {
@@ -411,40 +437,45 @@ public partial class IdentificarDocumentoWindow : Window
 
         (TxtTituloPaso.Text, TxtInstruccionPaso.Text) = nuevoPaso switch
         {
-            Paso.EmisorTipo => (
-                "Paso 1 de 5 — Emisor y Tipo",
-                "Marcar sobre el PDF dónde aparecen el Emisor y el Tipo de documento, y escribirlos (o elegir uno ya conocido)."
+            Paso.QueDocumento => (
+                "Paso 1 de 6 — ¿Qué documento es?",
+                "Elige una categoría y luego el documento que aparece en la lista."
             ),
-            Paso.Carpeta => (
-                "Paso 3 de 5 — Carpeta madre",
+            Paso.Emisor => (
+                "Paso 2 de 6 — ¿Quién lo emite?",
+                "Escribe o elige el emisor y marca su ubicación en el PDF."
+            ),
+            Paso.Numero => (
+                "Paso 3 de 6 — Marca el número del documento",
+                "Marca el número que identifica el documento. Si no tiene número, indícalo aquí."
+            ),
+            Paso.OtrosDatos => (
+                "Paso 4 de 6 — Otros datos (opcional)",
+                "Marca solo los datos que te serviría buscar después. Puedes saltar este paso."
+            ),
+            Paso.Guardar => (
+                "Paso 5 de 6 — ¿Dónde se guarda?",
                 vinculando
-                    ? "Esta carpeta ya está definida por la configuración existente a la que se va a vincular este documento."
-                    : "Elegir la carpeta raíz donde va a vivir todo lo de este tipo de documento, y cómo se va a guardar dentro de ella."
+                    ? "La carpeta y el formato ya pertenecen a la configuración elegida."
+                    : "Elige carpeta, organización, fecha y nombre del archivo."
             ),
-            Paso.Organizacion => (
-                "Paso 2 de 5 — Fecha y organización de las subcarpetas",
-                vinculando
-                    ? "El tipo de organización ya está definido por la configuración existente. Si corresponde, marcar la fecha en este documento."
-                    : "Elegir el tipo de organización y cuál de los ejemplos se parece más a las carpetas que ya usas."
+            Paso.Resumen => (
+                "Paso 6 de 6 — Al llegar y resumen",
+                "Revisa las opciones antes de guardar y clasificar."
             ),
-            Paso.NombreArchivo => (
-                "Paso 4 de 5 — Nombre de archivo",
-                vinculando
-                    ? "La regla de nombre ya está definida por la configuración existente. Si corresponde, marcar el campo en este documento."
-                    : "Elegir cómo se va a llamar el archivo guardado."
-            ),
-            Paso.Confirmar => ("Paso 5 de 5 — Confirmar", "Revisar los datos antes de guardar."),
             _ => (string.Empty, string.Empty),
         };
 
-        BtnSiguiente.Content =
-            nuevoPaso == Paso.Confirmar
-                ? (_edicion is not null ? "Guardar cambios" : "Guardar y clasificar")
-                : "Siguiente";
+        BtnSiguiente.Content = nuevoPaso switch
+        {
+            Paso.Resumen => _edicion is not null ? "Guardar cambios" : "Guardar y clasificar",
+            Paso.OtrosDatos => "Saltar",
+            _ => "Siguiente",
+        };
 
         // Se puede retroceder un paso, pero nunca saltar hacia adelante -- sigue siendo
         // estrictamente paso a paso.
-        BtnAtras.IsEnabled = _pasosRecorridos.Count > 0;
+        BtnAtras.IsEnabled = true;
     }
 
     private void BtnAtras_Click(object sender, RoutedEventArgs e)
@@ -453,6 +484,15 @@ public partial class IdentificarDocumentoWindow : Window
         {
             MostrarPaso(_pasosRecorridos.Pop());
         }
+    }
+
+    private void BtnCambiarPaso_Click(object sender, RoutedEventArgs e)
+    {
+        if (
+            sender is Button { Tag: string etiqueta }
+            && Enum.TryParse<Paso>(etiqueta, out var paso)
+        )
+            IrA(paso);
     }
 
     private void BtnMarcarEmisor_Click(object sender, RoutedEventArgs e) =>
@@ -536,9 +576,14 @@ public partial class IdentificarDocumentoWindow : Window
             datoEnlazante.Y = fraccion.Y;
             datoEnlazante.Ancho = fraccion.Ancho;
             datoEnlazante.Alto = fraccion.Alto;
-            datoEnlazante.Estado = string.IsNullOrWhiteSpace(texto)
-                ? $"Zona marcada en la página {pagina + 1}; no se pudo leer texto."
-                : $"Texto leído: {texto} (página {pagina + 1}).";
+            datoEnlazante.ValorLeido = texto;
+            datoEnlazante.Estado = datoEnlazante.DefineTipo
+                ? string.IsNullOrWhiteSpace(texto)
+                    ? "No se leyó ningún número. Prueba otra vez o indica que no trae número."
+                    : $"Leí: {texto} → se enlaza como {Hormiguero.Nucleo.Datos.DiccionarioDatosEnlazantes.ClaveDeEnlace(texto)} ✓"
+                : string.IsNullOrWhiteSpace(texto)
+                    ? $"Zona marcada en la página {pagina + 1}; no se pudo leer texto."
+                    : $"Texto leído: {texto} (página {pagina + 1}).";
             ActualizarSugerencia(datoEnlazante);
             _datoEnlazanteActivoParaMarcar = null;
             ActualizarMarcasEnVisor();
@@ -572,7 +617,7 @@ public partial class IdentificarDocumentoWindow : Window
 
         // Caso-3, punto 3d: apenas se marca la fecha del documento, los ejemplos del patrón y la
         // vista previa dejan de usar la fecha de hoy y pasan a usar la fecha real detectada.
-        if (campo == CampoMarca.Fecha && _paso == Paso.Organizacion)
+        if (campo == CampoMarca.Fecha && _paso == Paso.Guardar)
         {
             ControlOrganizacion.RefrescarPorCambioDeFecha();
         }
@@ -625,6 +670,7 @@ public partial class IdentificarDocumentoWindow : Window
                     dato.Pagina,
                     new(dato.X, dato.Y, dato.Ancho, dato.Alto)
                 );
+                edicion.ValorLeido = texto;
                 edicion.Estado = string.IsNullOrWhiteSpace(texto)
                     ? "Zona guardada; no se pudo leer el texto de ejemplo."
                     : $"Texto leído: {texto} (página {dato.Pagina + 1}).";
@@ -661,7 +707,12 @@ public partial class IdentificarDocumentoWindow : Window
         TxtTipoDerivado.Text = string.IsNullOrEmpty(_tipo)
             ? "Se define con el dato marcado abajo."
             : _tipo;
+        if (_datosEnlazantes.FirstOrDefault(d => d.DefineTipo) is { } definido)
+            CmbCategoriaDocumento.SelectedItem = definido.Grupo;
+        else if (CmbCategoriaDocumento.SelectedIndex < 0 && CmbCategoriaDocumento.Items.Count > 0)
+            CmbCategoriaDocumento.SelectedIndex = 0;
         CargarDatosInformativos(emisor, tipo, patronId);
+        CollectionViewSource.GetDefaultView(_datosEnlazantes)?.Refresh();
     }
 
     private void ConfigurarListaDatosEnlazantes()
@@ -671,7 +722,33 @@ public partial class IdentificarDocumentoWindow : Window
         vista.GroupDescriptions.Add(
             new PropertyGroupDescription(nameof(DatoEnlazanteEdicion.Grupo))
         );
+        vista.Filter = elemento =>
+        {
+            if (elemento is not DatoEnlazanteEdicion dato)
+                return false;
+            if (CmbCategoriaDocumento.SelectedItem is string categoria && dato.Grupo != categoria)
+                return false;
+            return _paso switch
+            {
+                Paso.Numero => dato.DefineTipo,
+                Paso.OtrosDatos => !dato.DefineTipo,
+                _ => true,
+            };
+        };
         ListaDatosEnlazantes.ItemsSource = vista;
+    }
+
+    private void CmbCategoriaDocumento_SelectionChanged(object sender, SelectionChangedEventArgs e)
+    {
+        if (CmbCategoriaDocumento.SelectedItem is not string categoria)
+            return;
+        string grupo = AsistenteClasificacionService.GrupoDocumento(categoria);
+        RbEmitido.IsChecked = grupo == "Emitido";
+        RbRecibido.IsChecked = grupo == "Recibido";
+        RbEmitido.Visibility = grupo.Length == 0 ? Visibility.Visible : Visibility.Collapsed;
+        RbRecibido.Visibility = grupo.Length == 0 ? Visibility.Visible : Visibility.Collapsed;
+        var vista = CollectionViewSource.GetDefaultView(_datosEnlazantes);
+        vista?.Refresh();
     }
 
     private void ActualizarOpcionesMigracion()
@@ -1046,17 +1123,18 @@ public partial class IdentificarDocumentoWindow : Window
             }
         )
             return;
-        if (!elegido.Incluido || !elegido.Marcado)
+        if (!elegido.Incluido)
         {
             elegido.DefineTipo = false;
-            MostrarError("Marca la zona del dato antes de elegirlo como identificador.");
-            return;
+            elegido.Incluido = true;
+            elegido.DefineTipo = true;
         }
         foreach (var dato in _datosEnlazantes)
             dato.DefineTipo = dato == elegido;
         _tipo = TipoDerivado();
         TxtTipoDerivado.Text = _tipo;
         ActualizarNombreEstandarSugerido();
+        CollectionViewSource.GetDefaultView(_datosEnlazantes)?.Refresh();
     }
 
     private void BtnElegirCarpeta_Click(object sender, RoutedEventArgs e)
@@ -1468,8 +1546,11 @@ public partial class IdentificarDocumentoWindow : Window
 
         TxtResumen.Text =
             encabezado
+            + $"Categoría: {CmbCategoriaDocumento.SelectedItem}\n"
             + $"Emisor: {_emisor}\n"
             + $"Tipo: {_tipo}\n"
+            + $"Grupo: {(RbEmitido.IsChecked == true ? "Emitido" : "Recibido")}\n"
+            + $"Número: {(_datosEnlazantes.FirstOrDefault(d => d.DefineTipo)?.ValorLeido is { Length: > 0 } numero ? numero : "no informado")}\n"
             + $"Carpeta madre: {_carpetaDestino}\n"
             + $"Subcarpetas: {formatoTexto}\n"
             + $"Nombre de archivo: {nombreTexto}";
@@ -1479,16 +1560,41 @@ public partial class IdentificarDocumentoWindow : Window
     {
         switch (_paso)
         {
-            case Paso.EmisorTipo:
-                _emisor = CmbEmisor.Text.Trim();
+            case Paso.QueDocumento:
                 _tipo = TipoDerivado();
-                if (string.IsNullOrWhiteSpace(_emisor) || string.IsNullOrWhiteSpace(_tipo))
+                if (AsistenteClasificacionService.ValidarDocumento(_tipo) is not null)
                 {
                     MostrarError(
-                        string.IsNullOrWhiteSpace(_emisor)
-                            ? "Completar el Emisor."
-                            : "Elige un dato marcado para definir qué es el documento."
+                        "Elige el documento y marca «Este dato define qué es el documento»."
                     );
+                    return;
+                }
+                ActualizarNombreEstandarSugerido();
+                IrA(Paso.Emisor);
+                break;
+
+            case Paso.Emisor:
+                _emisor = CmbEmisor.Text.Trim();
+                var errorEmisor = AsistenteClasificacionService.ValidarEmisor(
+                    _emisor,
+                    _marcas.ContainsKey(CampoMarca.Emisor)
+                );
+                if (errorEmisor is not null)
+                {
+                    MostrarError(errorEmisor);
+                    return;
+                }
+                if (
+                    AsistenteClasificacionService
+                        .GrupoDocumento(
+                            CmbCategoriaDocumento.SelectedItem as string ?? string.Empty
+                        )
+                        .Length == 0
+                    && RbEmitido.IsChecked != true
+                    && RbRecibido.IsChecked != true
+                )
+                {
+                    MostrarError("Indica si este documento se emite o se recibe.");
                     return;
                 }
 
@@ -1502,12 +1608,6 @@ public partial class IdentificarDocumentoWindow : Window
                 catch (ValidacionSeguridadException ex)
                 {
                     MostrarError(ex.Message);
-                    return;
-                }
-
-                if (!_marcas.ContainsKey(CampoMarca.Emisor))
-                {
-                    MostrarError("Marcar el Emisor sobre el PDF.");
                     return;
                 }
 
@@ -1546,66 +1646,90 @@ public partial class IdentificarDocumentoWindow : Window
                     }
                 }
 
-                IrA(Paso.Organizacion);
+                IrA(Paso.Numero);
                 break;
 
-            case Paso.Carpeta:
+            case Paso.Numero:
+                var identificador = _datosEnlazantes.FirstOrDefault(d =>
+                    d.DefineTipo && d.Incluido
+                );
+                if (identificador is null)
+                {
+                    MostrarError(
+                        "Vuelve al primer paso, elige el documento y marca su número en el PDF."
+                    );
+                    return;
+                }
+                var errorNumero = AsistenteClasificacionService.ValidarNumero(
+                    identificador.ValorLeido,
+                    identificador.Marcado,
+                    ChkSinNumero.IsChecked == true
+                );
+                if (errorNumero is not null)
+                {
+                    MostrarError(errorNumero);
+                    return;
+                }
+                IrA(Paso.OtrosDatos);
+                break;
+
+            case Paso.OtrosDatos:
+                foreach (var dato in _datosEnlazantes.Where(d => d.Incluido && !d.Marcado))
+                {
+                    MostrarError($"Marca dónde aparece «{dato.Nombre}» o desmarca ese dato.");
+                    return;
+                }
+                IrA(Paso.Guardar);
+                break;
+
+            case Paso.Guardar:
+                if (
+                    _configuracionExistente is null
+                    && string.IsNullOrWhiteSpace(TxtCarpetaDestino.Text)
+                )
+                {
+                    MostrarError("Elige la carpeta donde se guardarán estos documentos.");
+                    return;
+                }
                 if (_configuracionExistente is null)
                 {
-                    if (string.IsNullOrWhiteSpace(TxtCarpetaDestino.Text))
+                    _carpetaDestino = TxtCarpetaDestino.Text;
+                    if (!Directory.Exists(_carpetaDestino))
                     {
-                        MostrarError("Elegir una carpeta de destino.");
+                        MostrarError(
+                            "La carpeta elegida ya no existe. Elige una carpeta disponible."
+                        );
                         return;
                     }
-
-                    _carpetaDestino = TxtCarpetaDestino.Text;
-
+                    if (
+                        RbGuardarDirecto.IsChecked != true
+                        && RbGuardarSubcarpetas.IsChecked != true
+                    )
+                    {
+                        MostrarError("Elige guardar directo o dentro de subcarpetas.");
+                        return;
+                    }
                     if (RbGuardarDirecto.IsChecked == true)
                     {
                         _formato = FormatoCarpeta.Directo;
                         _patronCarpeta = null;
-                        IrA(Paso.NombreArchivo);
-                        return;
-                    }
-
-                    if (RbGuardarSubcarpetas.IsChecked != true)
-                    {
-                        MostrarError(
-                            "Elegir si el documento se guarda directo en la carpeta o en subcarpetas dentro de ella."
-                        );
-                        return;
                     }
                 }
-                else if (_formato == FormatoCarpeta.Directo)
-                {
-                    IrA(Paso.NombreArchivo);
-                    return;
-                }
-
-                if (_configuracionExistente is not null && _formato != FormatoCarpeta.Directo)
-                {
-                    IrA(Paso.Organizacion);
-                }
-                else
-                {
-                    IrA(Paso.NombreArchivo);
-                }
-                break;
-
-            case Paso.Organizacion:
                 if (_configuracionExistente is null)
                 {
-                    if (!ControlOrganizacion.Validar(out var errorOrganizacion))
+                    if (
+                        _formato != FormatoCarpeta.Directo
+                        && !ControlOrganizacion.Validar(out var errorOrganizacion)
+                    )
                     {
                         MostrarError(errorOrganizacion!);
                         return;
                     }
-
-                    _formato = ControlOrganizacion.FormatoElegido!.Value;
-                    _patronCarpeta =
-                        _formato == FormatoCarpeta.Directo
-                            ? null
-                            : ControlOrganizacion.PatronElegido;
+                    if (_formato != FormatoCarpeta.Directo)
+                    {
+                        _formato = ControlOrganizacion.FormatoElegido!.Value;
+                        _patronCarpeta = ControlOrganizacion.PatronElegido;
+                    }
                 }
 
                 // La marca de fecha es obligatoria salvo para "directo en la carpeta" (SPEC
@@ -1616,14 +1740,11 @@ public partial class IdentificarDocumentoWindow : Window
                     && !_marcas.ContainsKey(CampoMarca.Fecha)
                 )
                 {
-                    MostrarError("Marcar dónde aparece la fecha en el PDF.");
+                    MostrarError(
+                        "Marca la fecha en el PDF para crear las subcarpetas por período."
+                    );
                     return;
                 }
-
-                IrA(_configuracionExistente is null ? Paso.Carpeta : Paso.NombreArchivo);
-                break;
-
-            case Paso.NombreArchivo:
                 if (_configuracionExistente is null)
                 {
                     if (
@@ -1649,10 +1770,10 @@ public partial class IdentificarDocumentoWindow : Window
                 }
 
                 MostrarResumen();
-                IrA(Paso.Confirmar);
+                IrA(Paso.Resumen);
                 break;
 
-            case Paso.Confirmar:
+            case Paso.Resumen:
                 GuardarYClasificar();
                 break;
         }
