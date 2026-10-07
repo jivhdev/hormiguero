@@ -197,6 +197,202 @@ public sealed class ObservadorCarpetasServiceTests : IDisposable
         Assert.Equal(1, avisos);
     }
 
+    [Theory]
+    [InlineData("FCV0000025378.pdf", "0000025378")]
+    [InlineData("sin-numero.pdf", null)]
+    public void Extrae_digitos_del_nombre(string nombre, string? esperado) =>
+        Assert.Equal(esperado, ObservadorCarpetasService.NumeroDesdeNombre(nombre));
+
+    [Theory]
+    [InlineData("AAAA_AAAAMM", "2026\\202610", "2026\\202609")]
+    [InlineData("AAAA_MM", "2026\\10", "2026\\09")]
+    [InlineData("AAAA", "2026", "2025")]
+    public void Calcula_periodo_actual_y_anterior(string formato, string actual, string anterior)
+    {
+        string basePrueba = Path.Combine(_raiz, "periodos");
+        DateTime reloj = new(2026, 10, 7);
+        var carpeta = new CarpetaObservadaExterna(
+            Guid.NewGuid(),
+            "Mes",
+            basePrueba,
+            false,
+            true,
+            SeguirPeriodo: true,
+            FormatoPeriodo: formato
+        );
+        foreach (string ruta in new[] { actual, anterior })
+            Directory.CreateDirectory(Path.Combine(basePrueba, ruta));
+
+        Assert.Equal(
+            new[] { Path.Combine(basePrueba, actual), Path.Combine(basePrueba, anterior) },
+            PeriodosCarpetaObservada.Rutas(carpeta, reloj)
+        );
+        string nuevoPeriodo = formato switch
+        {
+            "AAAA" => Path.Combine(basePrueba, "2026"),
+            "AAAA_MM" => Path.Combine(basePrueba, "2026", "11"),
+            _ => Path.Combine(basePrueba, "2026", "202611"),
+        };
+        Directory.CreateDirectory(nuevoPeriodo);
+        Assert.Equal(
+            nuevoPeriodo,
+            PeriodosCarpetaObservada.Rutas(carpeta, new DateTime(2026, 11, 2)).First()
+        );
+    }
+
+    [Theory]
+    [InlineData("2026\\202610", "AAAA_AAAAMM")]
+    [InlineData("2026\\10", "AAAA_MM")]
+    [InlineData("202610", "AAAAMM")]
+    [InlineData("2026", "AAAA")]
+    public void Detecta_ruta_de_periodo(string sufijo, string formato)
+    {
+        string ruta = Path.Combine(_raiz, "documentos", sufijo);
+        var detectada = PeriodosCarpetaObservada.Detectar(ruta);
+
+        Assert.NotNull(detectada);
+        Assert.Equal(formato, detectada.Value.Formato);
+        Assert.Equal(Path.Combine(_raiz, "documentos"), detectada.Value.RutaBase);
+    }
+
+    [Fact]
+    public async Task TipoPorCarpeta_publica_dato_del_nombre_y_persiste_atencion()
+    {
+        string observada = Path.Combine(_raiz, "fijos");
+        Directory.CreateDirectory(observada);
+        string pdf = CreadorPdfDePrueba.CrearConLineas(observada, "Contenido", "Factura");
+        string ruta = Path.Combine(observada, "FCV0000025378.pdf");
+        File.Move(pdf, ruta);
+        var carpetas = new CarpetasObservadasRepository();
+        carpetas.Guardar([
+            new(
+                Guid.NewGuid(),
+                "Facturas",
+                observada,
+                false,
+                true,
+                DateTime.Now.AddMinutes(-1),
+                "TipoPorCarpeta",
+                "factura_propia",
+                "Proveedor Uno",
+                AccionAlLlegar: "Avisar"
+            ),
+        ]);
+        using var servicio = new ObservadorCarpetasService(carpetas);
+
+        await servicio.RevisarAhoraAsync();
+        await (PublicadorDatosDocumentoService.UltimaRevisionEnlaces ?? Task.CompletedTask);
+
+        var actividad = Assert.Single(carpetas.LeerActividad());
+        Assert.Equal("Factura propia", actividad.Tipo);
+        Assert.Equal("Proveedor Uno", actividad.Emisor);
+        var pendiente = Assert.Single(carpetas.LeerPorAtender());
+        Assert.Equal("0000025378", pendiente.Numero);
+        carpetas.MarcarListo(pendiente.Id);
+        Assert.Empty(new CarpetasObservadasRepository().LeerPorAtender());
+    }
+
+    [Fact]
+    public async Task TipoPorCarpeta_sin_digitos_registra_motivo_y_no_publica()
+    {
+        string observada = Path.Combine(_raiz, "sin-numero");
+        Directory.CreateDirectory(observada);
+        string pdf = CreadorPdfDePrueba.CrearConLineas(observada, "Contenido", "Factura");
+        string ruta = Path.Combine(observada, "sin-numero.pdf");
+        File.Move(pdf, ruta);
+        var carpetas = new CarpetasObservadasRepository();
+        carpetas.Guardar([
+            new(
+                Guid.NewGuid(),
+                "Facturas",
+                observada,
+                false,
+                true,
+                DateTime.Now.AddMinutes(-1),
+                "TipoPorCarpeta",
+                "factura_propia",
+                "Proveedor Uno"
+            ),
+        ]);
+        using var servicio = new ObservadorCarpetasService(carpetas);
+
+        await servicio.RevisarAhoraAsync();
+
+        Assert.Equal("Sin número en el nombre", Assert.Single(carpetas.LeerActividad()).Motivo);
+        using var conexion = BaseComun.Abrir(DocumentosGuardados.RutaBaseComun);
+        using var comando = conexion.CreateCommand();
+        comando.CommandText = "SELECT COUNT(*) FROM auditoria WHERE accion='publicar_documento';";
+        Assert.Equal(0L, (long)comando.ExecuteScalar()!);
+    }
+
+    [Fact]
+    public async Task TipoPorCarpeta_publica_numeros_repetidos_y_lo_anota()
+    {
+        string observada = Path.Combine(_raiz, "repetidos");
+        Directory.CreateDirectory(observada);
+        string primero = CreadorPdfDePrueba.CrearConLineas(observada, "Uno", "Factura");
+        string segundo = CreadorPdfDePrueba.CrearConLineas(observada, "Dos", "Factura");
+        File.Move(primero, Path.Combine(observada, "FCV0000025378.pdf"));
+        File.Move(segundo, Path.Combine(observada, "copia-25378.pdf"));
+        var carpetas = new CarpetasObservadasRepository();
+        carpetas.Guardar([
+            new(
+                Guid.NewGuid(),
+                "Facturas",
+                observada,
+                false,
+                true,
+                DateTime.Now.AddMinutes(-1),
+                "TipoPorCarpeta",
+                "factura_propia",
+                "Proveedor Uno"
+            ),
+        ]);
+        using var servicio = new ObservadorCarpetasService(carpetas);
+
+        await servicio.RevisarAhoraAsync();
+        await (PublicadorDatosDocumentoService.UltimaRevisionEnlaces ?? Task.CompletedTask);
+
+        Assert.Equal(2, carpetas.LeerActividad().Count(a => a.Tipo == "Factura propia"));
+        Assert.Contains(carpetas.LeerActividad(), a => a.Motivo == "Número repetido");
+    }
+
+    [Fact]
+    public async Task Imprimir_omite_una_copia_cedible()
+    {
+        string observada = Path.Combine(_raiz, "impresion-cedible");
+        Directory.CreateDirectory(observada);
+        string original = CreadorPdfDePrueba.CrearConLineas(observada, "Contenido", "Factura");
+        string cedible = CreadorPdfDePrueba.CrearConLineas(observada, "Contenido", "Factura");
+        File.Move(original, Path.Combine(observada, "FCV123.pdf"));
+        File.Move(cedible, Path.Combine(observada, "FCV123_CEDIBLE.pdf"));
+        var carpetas = new CarpetasObservadasRepository();
+        carpetas.Guardar([
+            new(
+                Guid.NewGuid(),
+                "Facturas",
+                observada,
+                false,
+                true,
+                DateTime.Now.AddMinutes(-1),
+                "TipoPorCarpeta",
+                "factura_propia",
+                "Proveedor Uno",
+                AccionAlLlegar: "ImprimirPrimeraPagina"
+            ),
+        ]);
+        var accion = new AccionQueCuenta();
+        using var servicio = new ObservadorCarpetasService(
+            carpetas,
+            new ImpresionAlArchivarService(accion)
+        );
+
+        await servicio.RevisarAhoraAsync();
+        await (PublicadorDatosDocumentoService.UltimaRevisionEnlaces ?? Task.CompletedTask);
+
+        Assert.Single(accion.Impresos);
+    }
+
     private sealed class AccionQueCuenta : IAccionImpresion
     {
         public List<byte[]> Impresos { get; } = [];

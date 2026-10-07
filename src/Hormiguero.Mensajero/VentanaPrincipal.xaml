@@ -218,7 +218,7 @@
           </GroupBox>
           <GroupBox
             x:Name="SeccionAjustador"
-            Header="Ajustar texto (4 × 57)"
+            Header="Ajustar texto (4 × 55)"
             Padding="10"
             Margin="0,10,0,0"
           >
@@ -234,7 +234,7 @@
               />
               <TextBlock
                 x:Name="EtiquetaVistaAjustador"
-                Text="Vista previa (57 caracteres por línea):"
+                Text="Vista previa (55 caracteres por línea):"
                 FontWeight="Bold"
               />
               <TextBlock x:Name="TextoReglaAjustador" FontFamily="Consolas" TextWrapping="NoWrap" />
@@ -251,8 +251,29 @@
                   Click="CopiarAjusteConSaltos_Click"
                   Margin="0,0,6,0"
                 />
-                <Button Content="Copiar relleno a 57" Click="CopiarAjusteRelleno_Click" />
+                <Button Content="Copiar relleno a 55" Click="CopiarAjusteRelleno_Click" />
+                <Button
+                  Content="Copiar línea siguiente (Alt+L)"
+                  Click="CopiarLineaSiguiente_Click"
+                  Margin="6,0,0,0"
+                />
               </WrapPanel>
+            </StackPanel>
+          </GroupBox>
+          <GroupBox Header="Mini calculadora" Padding="10" Margin="0,10,0,0">
+            <StackPanel>
+              <TextBox
+                x:Name="CampoCalculadora"
+                ToolTip="Ejemplo: 1.250.430 - 1.198.200"
+                TextChanged="Calculadora_TextChanged"
+                Margin="0,0,0,5"
+              />
+              <TextBlock x:Name="ResultadoCalculadora" Text="Resultado: —" FontWeight="Bold" />
+              <Button
+                Content="Copiar resultado"
+                Click="CopiarResultadoCalculadora_Click"
+                Margin="0,5,0,0"
+              />
             </StackPanel>
           </GroupBox>
         </StackPanel>

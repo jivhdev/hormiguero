@@ -1,4 +1,5 @@
 using System.IO;
+using System.Text.RegularExpressions;
 using Archivero.Datos;
 using Archivero.Servicios.Pdf;
 using Hormiguero.Nucleo.Datos;
@@ -8,6 +9,14 @@ namespace Archivero.Servicios;
 
 public sealed class ObservadorCarpetasService : IDisposable
 {
+    public static string? NumeroDesdeNombre(string ruta)
+    {
+        string digitos = string.Concat(
+            Path.GetFileNameWithoutExtension(ruta).Where(char.IsAsciiDigit)
+        );
+        return digitos.Length == 0 ? null : digitos;
+    }
+
     private readonly CarpetasObservadasRepository _repositorio;
     private readonly ConfiguracionDocumentoRepository _configuraciones = new();
     private readonly SemaphoreSlim _procesamiento = new(1, 1);
@@ -29,14 +38,18 @@ public sealed class ObservadorCarpetasService : IDisposable
 
     /// <summary>Punto de enganche posterior a identificar, publicar y revisar el enlace automático.</summary>
     public event Action<string, ConfiguracionDocumento>? DocumentoIdentificadoYPublicado;
+    public event Action<DocumentoPorAtender>? DocumentoRequiereAtencion;
+    private readonly Func<DateTime> _reloj;
 
     public ObservadorCarpetasService(
         CarpetasObservadasRepository? repositorio = null,
-        ImpresionAlArchivarService? impresion = null
+        ImpresionAlArchivarService? impresion = null,
+        Func<DateTime>? reloj = null
     )
     {
         _repositorio = repositorio ?? new();
         _impresion = impresion;
+        _reloj = reloj ?? (() => DateTime.Now);
         _revision = new System.Threading.Timer(
             _ => _ = RevisarAsync(),
             null,
@@ -64,7 +77,7 @@ public sealed class ObservadorCarpetasService : IDisposable
             {
                 var vigilante = new FileSystemWatcher(carpeta.Ruta, "*.pdf")
                 {
-                    IncludeSubdirectories = carpeta.IncluirSubcarpetas,
+                    IncludeSubdirectories = carpeta.IncluirSubcarpetas || carpeta.SeguirPeriodo,
                     NotifyFilter =
                         NotifyFilters.FileName | NotifyFilters.LastWrite | NotifyFilters.Size,
                     EnableRaisingEvents = true,
@@ -122,13 +135,19 @@ public sealed class ObservadorCarpetasService : IDisposable
                     _avisados.RemoveWhere(aviso => aviso.Contains(carpeta.Ruta));
                 try
                 {
-                    var opciones = carpeta.IncluirSubcarpetas
-                        ? SearchOption.AllDirectories
-                        : SearchOption.TopDirectoryOnly;
                     foreach (
-                        string ruta in Directory.EnumerateFiles(carpeta.Ruta, "*.pdf", opciones)
+                        string rutaCarpeta in PeriodosCarpetaObservada.Rutas(carpeta, _reloj())
                     )
-                        await ProcesarAsync(ruta, carpeta);
+                    {
+                        var opciones =
+                            carpeta.SeguirPeriodo || carpeta.IncluirSubcarpetas
+                                ? SearchOption.AllDirectories
+                                : SearchOption.TopDirectoryOnly;
+                        foreach (
+                            string ruta in Directory.EnumerateFiles(rutaCarpeta, "*.pdf", opciones)
+                        )
+                            await ProcesarAsync(ruta, carpeta);
+                    }
                 }
                 catch (Exception ex) when (ex is IOException or UnauthorizedAccessException)
                 {
@@ -142,7 +161,10 @@ public sealed class ObservadorCarpetasService : IDisposable
         }
     }
 
-    private void Encolar(string ruta, CarpetaObservadaExterna carpeta) =>
+    private void Encolar(string ruta, CarpetaObservadaExterna carpeta)
+    {
+        if (carpeta.SeguirPeriodo && !PerteneceAPeriodoActivo(ruta, carpeta))
+            return;
         _ = Task.Run(async () =>
         {
             if (!_dispuesto && await _procesamiento.WaitAsync(0))
@@ -157,6 +179,18 @@ public sealed class ObservadorCarpetasService : IDisposable
                 }
             }
         });
+    }
+
+    private bool PerteneceAPeriodoActivo(string ruta, CarpetaObservadaExterna carpeta) =>
+        PeriodosCarpetaObservada
+            .Rutas(carpeta, _reloj())
+            .Any(periodo =>
+                ruta.StartsWith(
+                    Path.GetFullPath(periodo).TrimEnd(Path.DirectorySeparatorChar)
+                        + Path.DirectorySeparatorChar,
+                    StringComparison.OrdinalIgnoreCase
+                )
+            );
 
     private async Task ProcesarAsync(string ruta, CarpetaObservadaExterna carpeta)
     {
@@ -184,7 +218,44 @@ public sealed class ObservadorCarpetasService : IDisposable
             var configuraciones = _configuraciones.ObtenerTodasConPatrones();
             ConfiguracionDocumento? coincidencia = null;
             IReadOnlyList<Hormiguero.Nucleo.Datos.ValorDocumentoLeido> valores = [];
-            if (LectorPdf.TieneTextoExtraible(ruta))
+            DatoEnlazante? datoIdentificador = null;
+            string? numeroNombre = null;
+            if (carpeta.ModoReconocimiento == "TipoPorCarpeta")
+            {
+                datoIdentificador = DiccionarioDatosEnlazantes.Todos.SingleOrDefault(d =>
+                    d.Id == carpeta.DatoIdentificador
+                );
+                numeroNombre = NumeroDesdeNombre(ruta);
+                if (numeroNombre is null)
+                {
+                    _repositorio.GuardarHuella(ruta, huella);
+                    _revisados[ruta] = estado;
+                    Registrar(new(_reloj(), ruta, null, null, null, "Sin número en el nombre"));
+                    return;
+                }
+                if (datoIdentificador is null || string.IsNullOrWhiteSpace(carpeta.Emisor))
+                    throw new InvalidOperationException(
+                        "Completa el dato identificador y el emisor de la carpeta."
+                    );
+                string grupo = datoIdentificador.Grupo is "Ventas propias" or "Compras propias"
+                    ? "Emitido"
+                    : "Recibido";
+                coincidencia = new ConfiguracionDocumento
+                {
+                    Emisor = carpeta.Emisor,
+                    Tipo = datoIdentificador.EtiquetaTipo,
+                    CarpetaDestino = carpeta.Ruta,
+                    FormatoCarpeta = FormatoCarpeta.Directo,
+                    Renombrar = false,
+                    Patrones = [],
+                    GrupoDocumento = grupo,
+                    NombreEstandar = DiccionarioDatosEnlazantes.NombreEstandar(
+                        datoIdentificador.Id,
+                        carpeta.Emisor
+                    ),
+                };
+            }
+            else if (LectorPdf.TieneTextoExtraible(ruta))
             {
                 coincidencia = CoincidenciaAutomaticaService.BuscarConfiguracionQueCoincide(
                     ruta,
@@ -248,14 +319,66 @@ public sealed class ObservadorCarpetasService : IDisposable
                 return;
             }
 
-            PublicadorDatosDocumentoService.PublicarObservado(ruta, coincidencia, valores);
+            if (datoIdentificador is null)
+                PublicadorDatosDocumentoService.PublicarObservado(ruta, coincidencia, valores);
+            else
+                PublicadorDatosDocumentoService.PublicarObservado(
+                    ruta,
+                    coincidencia,
+                    datoIdentificador,
+                    numeroNombre!
+                );
             await (PublicadorDatosDocumentoService.UltimaRevisionEnlaces ?? Task.CompletedTask);
             _repositorio.GuardarHuella(ruta, huella);
             _revisados[ruta] = estado;
             DocumentoIdentificadoYPublicado?.Invoke(ruta, coincidencia);
-            if (carpeta.Agregada is DateTime agregada && info.LastWriteTime >= agregada)
+            bool posteriorAAgregada =
+                carpeta.Agregada is DateTime agregada && info.LastWriteTime >= agregada;
+            bool numeroRepetido =
+                posteriorAAgregada
+                && !string.IsNullOrEmpty(numeroNombre)
+                && _repositorio
+                    .LeerActividad()
+                    .Any(a =>
+                        a.Ruta != ruta
+                        && a.Tipo == coincidencia.Tipo
+                        && a.Emisor == coincidencia.Emisor
+                        && NumeroDesdeNombre(a.Ruta) is string otro
+                        && DiccionarioDatosEnlazantes.ClaveDeEnlace(otro)
+                            == DiccionarioDatosEnlazantes.ClaveDeEnlace(numeroNombre)
+                    );
+            if (
+                posteriorAAgregada
+                && carpeta.AccionAlLlegar is "Avisar" or "AvisarImprimirPrimeraPagina"
+            )
             {
-                string? avisoImpresion = _impresion?.Procesar(ruta, coincidencia);
+                var pendiente = new DocumentoPorAtender(
+                    Guid.NewGuid(),
+                    _reloj(),
+                    ruta,
+                    coincidencia.Tipo,
+                    numeroNombre ?? NumeroDesdeNombre(ruta) ?? ""
+                );
+                _repositorio.AgregarPorAtender(pendiente);
+                DocumentoRequiereAtencion?.Invoke(pendiente);
+            }
+            ModoImpresion? modo = carpeta.AccionAlLlegar switch
+            {
+                "ImprimirPrimeraPagina" or "AvisarImprimirPrimeraPagina" =>
+                    ModoImpresion.PrimeraPagina,
+                "ImprimirTodo" => ModoImpresion.TodoElDocumento,
+                "Configuracion" => coincidencia.ModoImpresion,
+                _ => null,
+            };
+            if (posteriorAAgregada && modo is ModoImpresion modoImpresion)
+            {
+                string? avisoImpresion = _impresion?.Procesar(
+                    ruta,
+                    coincidencia with
+                    {
+                        ModoImpresion = modoImpresion,
+                    }
+                );
                 if (avisoImpresion is not null)
                     Avisar($"{Path.GetFileName(ruta)}: {avisoImpresion}");
             }
@@ -266,7 +389,7 @@ public sealed class ObservadorCarpetasService : IDisposable
                     coincidencia.Tipo,
                     coincidencia.Emisor,
                     LeerCadena(ruta),
-                    null
+                    numeroRepetido ? "Número repetido" : null
                 )
             );
         }

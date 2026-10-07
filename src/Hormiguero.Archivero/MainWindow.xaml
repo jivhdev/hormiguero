@@ -47,20 +47,54 @@
       />
       <TextBlock FontSize="16" FontWeight="Bold" Text="Archivero" VerticalAlignment="Center" />
     </DockPanel>
-    <DockPanel Grid.Row="1" Margin="0,0,0,16">
-      <Button
-        DockPanel.Dock="Right"
-        Content="Cambiar…"
-        Padding="8,2"
-        Click="BtnCambiarCarpetaObservada_Click"
-      />
-      <TextBlock
-        Name="TxtCarpetaObservada"
-        Foreground="{DynamicResource Hormiguero.TextoSecundario}"
-        VerticalAlignment="Center"
-        TextWrapping="Wrap"
-      />
-    </DockPanel>
+    <Grid Grid.Row="1" Margin="0,0,0,10">
+      <Grid.ColumnDefinitions>
+        <ColumnDefinition Width="*" />
+        <ColumnDefinition Width="*" />
+      </Grid.ColumnDefinitions>
+      <DockPanel Grid.Column="0" Margin="0,0,12,0">
+        <Button
+          DockPanel.Dock="Right"
+          Content="Cambiar…"
+          Padding="8,2"
+          Click="BtnCambiarCarpetaObservada_Click"
+        />
+        <TextBlock
+          Name="TxtCarpetaObservada"
+          Foreground="{DynamicResource Hormiguero.TextoSecundario}"
+          VerticalAlignment="Center"
+          TextWrapping="Wrap"
+        />
+      </DockPanel>
+      <Grid Grid.Column="1">
+        <Grid.RowDefinitions>
+          <RowDefinition Height="Auto" />
+          <RowDefinition Height="72" />
+        </Grid.RowDefinitions>
+        <DockPanel Grid.Row="0" Margin="0,0,0,4">
+          <Button
+            DockPanel.Dock="Right"
+            Name="BtnMarcarAtendido"
+            Content="Listo"
+            Padding="8,2"
+            Click="BtnMarcarAtendido_Click"
+          />
+          <TextBlock
+            Name="TxtPorAtender"
+            Text="Por atender (0)"
+            FontWeight="Bold"
+            VerticalAlignment="Center"
+          />
+        </DockPanel>
+        <ListBox
+          Grid.Row="1"
+          Name="ListaPorAtender"
+          DisplayMemberPath="Resumen"
+          MouseDoubleClick="ListaPorAtender_MouseDoubleClick"
+          SelectionChanged="ListaPorAtender_SelectionChanged"
+        />
+      </Grid>
+    </Grid>
 
     <Grid Grid.Row="2" Margin="0,0,0,16">
       <Grid.RowDefinitions>

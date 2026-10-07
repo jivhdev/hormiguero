@@ -221,8 +221,10 @@ public partial class MainWindow : Window
         // Caso-14: el filtro de carpeta solo tiene efecto con el alcance "Carpeta específica".
         var filtro =
             ObtenerAlcanceSeleccionado() == AlcanceBusqueda.CarpetaEspecifica
-                ? ComboFiltroCarpeta.Text.Trim()
+                ? (ComboFiltroCarpeta.SelectedItem as OpcionCarpetaBusqueda)?.Ruta
+                    ?? ComboFiltroCarpeta.Text.Trim()
                 : string.Empty;
+        var carpetaSinIndexar = filtro.Length > 0 && !_servicioBusqueda.EstaCarpetaIndexada(filtro);
 
         _buscando = true;
         BotonBuscar.IsEnabled = false;
@@ -281,6 +283,12 @@ public partial class MainWindow : Window
                     $"{resultados.Count} coincidencias encontradas. Haga doble clic para abrir una.";
                 ListaResultados.Visibility = Visibility.Visible;
             }
+
+            if (carpetaSinIndexar)
+            {
+                TextoEstadoBusqueda.Text +=
+                    " Esta carpeta aún se está indexando; puede faltar algún resultado.";
+            }
         }
         catch (OperationCanceledException)
         {
@@ -329,7 +337,7 @@ public partial class MainWindow : Window
             _ => AlcanceBusqueda.PrimeraCoincidencia,
         };
 
-    private void ComboAlcance_SelectionChanged(object sender, SelectionChangedEventArgs e)
+    private async void ComboAlcance_SelectionChanged(object sender, SelectionChangedEventArgs e)
     {
         if (ComboFiltroCarpeta is null)
         {
@@ -343,23 +351,43 @@ public partial class MainWindow : Window
 
         if (esCarpetaEspecifica)
         {
-            // Caso-15 (Javier, 2026-10-06): al elegir este alcance, mostrar las carpetas
-            // madre y todas sus subcarpetas ya indexadas (madres primero, luego las
-            // subcarpetas alfabeticas por ruta) — nada de "recientes".
             ComboFiltroCarpeta.Text = string.Empty;
-            _carpetasAlcance = _servicioBusqueda.ObtenerCarpetasIndexadas();
-            ComboFiltroCarpeta.ItemsSource = _carpetasAlcance;
+            await ActualizarCarpetasAlcanceAsync();
         }
     }
 
-    // Lista de "Carpeta específica" cargada una vez al elegir el alcance; se filtra en memoria.
-    private IReadOnlyList<string> _carpetasAlcance = [];
+    private IReadOnlyList<OpcionCarpetaBusqueda> _carpetasAlcance = [];
+    private int _generacionSelectorCarpetas;
+
+    private async Task ActualizarCarpetasAlcanceAsync()
+    {
+        var generacion = ++_generacionSelectorCarpetas;
+        var texto = ComboFiltroCarpeta.Text;
+        var carpetas = await Task.Run(_servicioBusqueda.ObtenerCarpetasParaSelector);
+        if (generacion != _generacionSelectorCarpetas)
+        {
+            return;
+        }
+
+        _carpetasAlcance = carpetas;
+        ComboFiltroCarpeta.ItemsSource = ServicioBusqueda.FiltrarCarpetasParaSelector(
+            carpetas,
+            texto
+        );
+        ComboFiltroCarpeta.Text = texto;
+    }
+
+    private async void ComboFiltroCarpeta_DropDownOpened(object sender, EventArgs e) =>
+        await ActualizarCarpetasAlcanceAsync();
 
     private void ComboFiltroCarpeta_TextChanged(object sender, TextChangedEventArgs e)
     {
         var texto = ComboFiltroCarpeta.Text;
 
-        if (ComboFiltroCarpeta.SelectedItem is string seleccionada && seleccionada == texto)
+        if (
+            ComboFiltroCarpeta.SelectedItem is OpcionCarpetaBusqueda seleccionada
+            && seleccionada.Texto == texto
+        )
         {
             // El texto cambió porque el usuario eligió una sugerencia, no porque está
             // escribiendo — no pisar la selección volviendo a filtrar (Caso-14).
@@ -371,12 +399,10 @@ public partial class MainWindow : Window
             // Caso-15 (Javier, 2026-10-06): filtrado instantáneo en memoria, en cualquier
             // parte de la ruta y sin mínimo de letras, sobre la lista completa (madres +
             // subcarpetas ya indexadas, en ese orden) — sin consultar la base en cada letra.
-            var coincidenciasCarpeta = _carpetasAlcance
-                .Where(ruta =>
-                    string.IsNullOrEmpty(texto)
-                    || ruta.Contains(texto, StringComparison.OrdinalIgnoreCase)
-                )
-                .ToList();
+            var coincidenciasCarpeta = ServicioBusqueda.FiltrarCarpetasParaSelector(
+                _carpetasAlcance,
+                texto
+            );
 
             ComboFiltroCarpeta.ItemsSource = coincidenciasCarpeta;
             ComboFiltroCarpeta.Text = texto;

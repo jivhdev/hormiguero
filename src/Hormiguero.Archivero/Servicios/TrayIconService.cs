@@ -19,6 +19,7 @@ public class TrayIconService : IDisposable
 
     public event Action? MostrarVentanaSolicitado;
     public event Action? SalirSolicitado;
+    public event Action? AtencionSolicitada;
 
     public TrayIconService()
     {
@@ -38,6 +39,7 @@ public class TrayIconService : IDisposable
             ContextMenuStrip = menu,
         };
         _notifyIcon.Click += (_, _) => MostrarVentanaSolicitado?.Invoke();
+        _notifyIcon.BalloonTipClicked += (_, _) => AtencionSolicitada?.Invoke();
 
         _timerParpadeo = new Timer { Interval = 800 };
         _timerParpadeo.Tick += (_, _) => AlternarIcono();
@@ -58,6 +60,17 @@ public class TrayIconService : IDisposable
             _mostrandoAlerta = false;
             _notifyIcon.Icon = _iconoNormal;
         }
+    }
+
+    public void NotificarLlegada(string tipo, string numero)
+    {
+        System.Media.SystemSounds.Asterisk.Play();
+        _notifyIcon.ShowBalloonTip(
+            5000,
+            $"Llegó: {tipo} {numero}",
+            "Hay un documento por atender.",
+            ToolTipIcon.Info
+        );
     }
 
     private void AlternarIcono()

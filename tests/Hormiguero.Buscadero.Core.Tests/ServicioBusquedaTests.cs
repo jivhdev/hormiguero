@@ -5,6 +5,61 @@ namespace Buscadero.Core.Tests;
 public sealed class ServicioBusquedaTests
 {
     [Fact]
+    public void ObtenerCarpetasParaSelector_IncluyeMadreAunqueNoEsteIndexada()
+    {
+        using var entorno = new EntornoDePrueba();
+        var raiz = entorno.CrearCarpeta("Documentos");
+        entorno.CrearCarpeta("Documentos", "Subcarpeta");
+        entorno.ServicioCarpetas.Agregar(raiz);
+
+        var carpetas = entorno.ServicioBusqueda.ObtenerCarpetasParaSelector();
+
+        Assert.Equal(raiz, carpetas[0].Ruta);
+        Assert.False(carpetas[0].NoDisponible);
+    }
+
+    [Fact]
+    public void ObtenerCarpetasParaSelector_IncluyeSubcarpetasEnDiscoAunSinIndexar()
+    {
+        using var entorno = new EntornoDePrueba();
+        var raiz = entorno.CrearCarpeta("Documentos");
+        var subcarpeta = entorno.CrearCarpeta("Documentos", "2026", "Marzo");
+        entorno.ServicioCarpetas.Agregar(raiz);
+
+        var carpetas = entorno.ServicioBusqueda.ObtenerCarpetasParaSelector();
+
+        Assert.Contains(carpetas, carpeta => carpeta.Ruta == subcarpeta);
+    }
+
+    [Fact]
+    public void ObtenerCarpetasParaSelector_MarcaMadreNoDisponible()
+    {
+        using var entorno = new EntornoDePrueba();
+        var raiz = Path.Combine(entorno.Raiz, "FueraDeLinea");
+        entorno.ServicioCarpetas.Agregar(raiz);
+
+        var carpeta = Assert.Single(entorno.ServicioBusqueda.ObtenerCarpetasParaSelector());
+
+        Assert.Equal(raiz, carpeta.Ruta);
+        Assert.True(carpeta.NoDisponible);
+        Assert.Contains("(no disponible)", carpeta.Texto);
+    }
+
+    [Fact]
+    public void FiltrarCarpetasParaSelector_BuscaEnCualquierParteDeLaRuta()
+    {
+        var opciones = new[]
+        {
+            new OpcionCarpetaBusqueda(@"C:\\Archivos\\2026\\Enero", false),
+            new OpcionCarpetaBusqueda(@"C:\\Archivos\\2025\\Marzo", false),
+        };
+
+        var filtradas = ServicioBusqueda.FiltrarCarpetasParaSelector(opciones, "2026");
+
+        Assert.Equal(@"C:\\Archivos\\2026\\Enero", Assert.Single(filtradas).Ruta);
+    }
+
+    [Fact]
     public void Buscar_CoincidenciaExacta_DevuelveElDocumento()
     {
         using var entorno = new EntornoDePrueba();
