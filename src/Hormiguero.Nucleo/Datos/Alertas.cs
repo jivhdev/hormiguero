@@ -46,7 +46,9 @@ public sealed record Alerta(
     DateOnly FechaObjetivo,
     DateTime CreadaEn,
     DateOnly? FechaBase = null,
-    string? OrigenFecha = null
+    string? OrigenFecha = null,
+    TipoDias ModoDias = TipoDias.Corridos,
+    long? CalendarioId = null
 );
 
 public sealed record HistorialAlerta(
@@ -513,7 +515,7 @@ public sealed class RepositorioAlertas(SqliteConnection conexion)
             throw new ArgumentException("El estado de alerta no es válido.", nameof(estado));
         using var cmd = conexion.CreateCommand();
         cmd.CommandText =
-            "SELECT a.id,a.regla_id,a.cadena_id,a.vagon_cadena_id,a.version_id,a.texto,a.estado,a.motivo,a.fecha_objetivo,a.creada_en,COUNT(*) OVER(),a.fecha_base,a.origen_fecha FROM alertas a LEFT JOIN versiones_documento v ON v.id=a.version_id WHERE ($estado IS NULL OR a.estado=$estado) AND ($cadena IS NULL OR a.cadena_id=$cadena) AND ($version IS NULL OR a.version_id=$version) AND ($documento IS NULL OR v.documento_id=$documento) ORDER BY a.fecha_objetivo,a.id LIMIT $limite OFFSET $desplazamiento;";
+            "SELECT a.id,a.regla_id,a.cadena_id,a.vagon_cadena_id,a.version_id,a.texto,a.estado,a.motivo,a.fecha_objetivo,a.creada_en,COUNT(*) OVER(),a.fecha_base,a.origen_fecha,a.modo_dias,a.calendario_id FROM alertas a LEFT JOIN versiones_documento v ON v.id=a.version_id WHERE ($estado IS NULL OR a.estado=$estado) AND ($cadena IS NULL OR a.cadena_id=$cadena) AND ($version IS NULL OR a.version_id=$version) AND ($documento IS NULL OR v.documento_id=$documento) ORDER BY a.fecha_objetivo,a.id LIMIT $limite OFFSET $desplazamiento;";
         cmd.Parameters.AddWithValue("$estado", (object?)estado ?? DBNull.Value);
         cmd.Parameters.AddWithValue("$cadena", (object?)cadenaId ?? DBNull.Value);
         cmd.Parameters.AddWithValue("$version", (object?)versionId ?? DBNull.Value);
@@ -726,7 +728,9 @@ public sealed class RepositorioAlertas(SqliteConnection conexion)
             r.IsDBNull(11)
                 ? null
                 : DateOnly.ParseExact(r.GetString(11), "yyyy-MM-dd", CultureInfo.InvariantCulture),
-            NuloTexto(r, 12)
+            NuloTexto(r, 12),
+            r.IsDBNull(13) ? TipoDias.Corridos : DesdeTexto(r.GetString(13)),
+            NuloLong(r, 14)
         );
 
     private void RegistrarHistoria(

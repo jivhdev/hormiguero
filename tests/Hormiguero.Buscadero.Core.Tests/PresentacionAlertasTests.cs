@@ -22,6 +22,43 @@ public sealed class PresentacionAlertasTests
     }
 
     [Fact]
+    public void ParaCuando_RespetaModoYFeriadosDelCalendario()
+    {
+        var hoy = new DateOnly(2026, 10, 5);
+        var objetivo = new DateOnly(2026, 10, 8);
+        IReadOnlySet<DateOnly> feriado = new HashSet<DateOnly> { new(2026, 10, 7) };
+
+        Assert.Equal(
+            "vence en 3 días corridos",
+            PresentacionAlertas.ParaCuando(objetivo, hoy, TipoDias.Corridos, feriado)
+        );
+        Assert.Equal(
+            "vence en 2 días hábiles",
+            PresentacionAlertas.ParaCuando(objetivo, hoy, TipoDias.Habiles, feriado)
+        );
+        Assert.Equal(
+            "vence en 3 días hábiles",
+            PresentacionAlertas.ParaCuando(objetivo, hoy, TipoDias.Habiles, new HashSet<DateOnly>())
+        );
+    }
+
+    [Fact]
+    public void ParaCuando_CuentaVencimientoEnModoReal()
+    {
+        var hoy = new DateOnly(2026, 10, 5);
+        var objetivo = new DateOnly(2026, 10, 1);
+
+        Assert.Equal(
+            "venció hace 4 días corridos",
+            PresentacionAlertas.ParaCuando(objetivo, hoy, TipoDias.Corridos)
+        );
+        Assert.Equal(
+            "venció hace 2 días hábiles",
+            PresentacionAlertas.ParaCuando(objetivo, hoy, TipoDias.Habiles)
+        );
+    }
+
+    [Fact]
     public void CrearFraseRegla_UsaTextoAmigable()
     {
         Assert.Equal(

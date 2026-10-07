@@ -56,6 +56,9 @@ public sealed class AlertasTests : IDisposable
             new DateOnly(2026, 12, 31),
             cadenaId
         );
+        Alerta alertaManual = Assert.Single(repo.Listar(estado: "pendiente").Alertas);
+        Assert.Equal(TipoDias.Corridos, alertaManual.ModoDias);
+        Assert.Null(alertaManual.CalendarioId);
         repo.Resolver(alertaId, "Documento verificado");
         repo.Reabrir(alertaId);
         repo.Descartar(alertaId, "Ya no corresponde");
@@ -209,6 +212,8 @@ public sealed class AlertasTests : IDisposable
         Assert.Equal(new DateOnly(2026, 12, 24), alerta.FechaBase);
         Assert.Equal("fecha_documento", alerta.OrigenFecha);
         Assert.Equal(new DateOnly(2026, 12, 28), alerta.FechaObjetivo);
+        Assert.Equal(TipoDias.Habiles, alerta.ModoDias);
+        Assert.Equal(calendario, alerta.CalendarioId);
         Assert.Equal(calendario, ObtenerCalendarioAlerta(alerta.Id));
     }
 
