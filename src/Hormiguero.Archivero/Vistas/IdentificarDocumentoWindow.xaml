@@ -38,47 +38,128 @@
 
         <!-- Paso 1: Emisor y Tipo -->
         <StackPanel Name="PanelEmisorTipo">
-          <TextBlock Text="Grupo" FontWeight="Bold" Margin="0,0,0,3" />
-          <StackPanel Orientation="Horizontal" Margin="0,0,0,8">
-            <RadioButton Name="RbEmitido" Content="Emitido" IsChecked="True" Margin="0,0,12,0" />
-            <RadioButton Name="RbRecibido" Content="Recibido" />
+          <StackPanel Name="PanelCategoriaDocumento">
+            <TextBlock Text="Categoría" FontWeight="Bold" Margin="0,0,0,3" />
+            <ComboBox
+              Name="CmbCategoriaDocumento"
+              Margin="0,0,0,10"
+              SelectionChanged="CmbCategoriaDocumento_SelectionChanged"
+            />
+            <TextBlock Text="Documento" FontWeight="Bold" Margin="0,0,0,3" />
+            <ListBox
+              Name="ListaDocumentos"
+              SelectedValuePath="Id"
+              DisplayMemberPath="EtiquetaTipo"
+              SelectionChanged="ListaDocumentos_SelectionChanged"
+              MinHeight="150"
+              Margin="0,0,0,8"
+            />
+            <TextBlock Name="TxtDocumentoElegido" TextWrapping="Wrap" FontWeight="SemiBold" />
           </StackPanel>
-          <TextBlock Text="Nombre estándar" FontWeight="Bold" />
-          <TextBox Name="TxtNombreEstandar" Margin="0,3,0,12" />
-          <TextBlock Text="Emisor" FontWeight="Bold" />
-          <Button
-            Name="BtnMarcarEmisor"
-            Content="Marcar Emisor en el PDF"
-            Margin="0,4,0,4"
-            Padding="6,4"
-            Click="BtnMarcarEmisor_Click"
-          />
-          <TextBlock
-            Name="TxtEstadoMarcaEmisor"
-            Foreground="{DynamicResource Hormiguero.TextoSecundario}"
-            Margin="0,0,0,4"
-            TextWrapping="Wrap"
-          />
-          <ComboBox
-            Name="CmbEmisor"
-            IsEditable="True"
-            Margin="0,0,0,16"
-            TextBoxBase.TextChanged="CmbEmisor_TextChanged"
-          />
+          <StackPanel Name="PanelEmisor">
+            <StackPanel Name="PanelGrupo">
+              <TextBlock Text="¿Lo emites tú o lo recibes?" FontWeight="Bold" Margin="0,0,0,3" />
+              <StackPanel Orientation="Horizontal" Margin="0,0,0,12">
+                <RadioButton
+                  Name="RbEmitido"
+                  Content="Emitido"
+                  IsChecked="True"
+                  Margin="0,0,12,0"
+                />
+                <RadioButton Name="RbRecibido" Content="Recibido" />
+              </StackPanel>
+            </StackPanel>
+            <TextBlock Text="1. ¿Quién lo emite?" FontWeight="Bold" />
+            <ComboBox
+              Name="CmbEmisor"
+              IsEditable="True"
+              Margin="0,4,0,6"
+              TextBoxBase.TextChanged="CmbEmisor_TextChanged"
+            />
+            <Button
+              Name="BtnMarcarEmisor"
+              Content="Marcar dónde aparece el emisor en el PDF"
+              Margin="0,0,0,4"
+              Padding="6,4"
+              Click="BtnMarcarEmisor_Click"
+            />
+            <TextBlock
+              Name="TxtEstadoMarcaEmisor"
+              Foreground="{DynamicResource Hormiguero.TextoSecundario}"
+              Margin="0,0,0,16"
+              TextWrapping="Wrap"
+            />
+            <TextBlock Text="2. ¿Cómo se reconoce?" FontWeight="Bold" />
+            <TextBlock
+              Text="Marca el título fijo que dice qué documento es (por ejemplo «FACTURA ELECTRÓNICA» o «GUÍA DE DESPACHO»). Con el emisor y el título, Archivero reconocerá solo los próximos documentos iguales."
+              TextWrapping="Wrap"
+              Foreground="{DynamicResource Hormiguero.TextoSecundario}"
+              Margin="0,2,0,6"
+            />
+            <Button
+              Name="BtnMarcarTitulo"
+              Content="Marcar el título del documento en el PDF"
+              Margin="0,0,0,4"
+              Padding="6,4"
+              Click="BtnMarcarTitulo_Click"
+            />
+            <TextBlock
+              Name="TxtEstadoMarcaTitulo"
+              Foreground="{DynamicResource Hormiguero.TextoSecundario}"
+              Margin="0,0,0,16"
+              TextWrapping="Wrap"
+            />
+          </StackPanel>
 
-          <TextBlock Text="Tipo de documento" FontWeight="Bold" />
-          <TextBlock
-            Name="TxtTipoDerivado"
-            Margin="0,3,0,8"
-            Text="Se define con el dato marcado abajo."
-          />
+          <CheckBox Name="ChkSinNumero" Content="Este documento no trae número" Margin="0,0,0,8" />
+
+          <StackPanel Name="PanelNumeroDato" Visibility="Collapsed">
+            <TextBlock
+              Name="TxtNombreDatoNumero"
+              FontSize="18"
+              FontWeight="Bold"
+              Margin="0,0,0,8"
+            />
+            <CheckBox
+              Name="ChkNumeroEnlazable"
+              Content="Se puede enlazar"
+              IsChecked="True"
+              FontSize="12"
+              Margin="0,0,0,8"
+              Checked="ChkNumeroEnlazable_Changed"
+              Unchecked="ChkNumeroEnlazable_Changed"
+            />
+            <Button
+              Name="BtnMarcarNumero"
+              Content="Marcar el número en el PDF"
+              Padding="10,8"
+              FontSize="16"
+              Margin="0,0,0,8"
+              Click="BtnMarcarNumero_Click"
+            />
+            <TextBlock Name="TxtEstadoNumero" TextWrapping="Wrap" Margin="0,0,0,8" />
+            <Button
+              Name="BtnProbarNumeroOtraVez"
+              Content="Probar otra vez"
+              Padding="8,6"
+              Visibility="Collapsed"
+              Click="BtnMarcarNumero_Click"
+            />
+          </StackPanel>
 
           <Expander
-            Header="Datos que aparecen en este documento"
+            Name="PanelDatosDiccionario"
+            Header="Otros datos que aparecen en este documento"
             Margin="0,12,0,0"
-            IsExpanded="True"
+            IsExpanded="False"
           >
             <StackPanel Margin="0,6,0,0">
+              <TextBlock Text="Filtrar por categoría" FontWeight="Bold" Margin="0,0,0,3" />
+              <ComboBox
+                Name="CmbCategoriaOtrosDatos"
+                Margin="0,0,0,8"
+                SelectionChanged="CmbCategoriaOtrosDatos_SelectionChanged"
+              />
               <TextBlock
                 Text="Selecciona los datos del diccionario y marca su zona en el PDF."
                 Foreground="{DynamicResource Hormiguero.TextoSecundario}"
@@ -109,12 +190,6 @@
                           IsChecked="{Binding Incluido, UpdateSourceTrigger=PropertyChanged}"
                           Checked="DatoIncluido_Changed"
                           Unchecked="DatoIncluido_Changed"
-                        />
-                        <RadioButton
-                          Content="Este dato define qué es el documento"
-                          IsChecked="{Binding DefineTipo, UpdateSourceTrigger=PropertyChanged}"
-                          Checked="DatoDefineTipo_Changed"
-                          Margin="18,2,0,2"
                         />
                         <CheckBox
                           Content="Se puede enlazar"
@@ -147,46 +222,48 @@
                   </DataTemplate>
                 </ItemsControl.ItemTemplate>
               </ItemsControl>
-              <TextBlock Text="Datos informativos" FontWeight="Bold" Margin="0,12,0,4" />
-              <TextBlock
-                Text="Se leen y muestran, pero no se usan para enlazar documentos."
-                TextWrapping="Wrap"
-                Foreground="{DynamicResource Hormiguero.TextoSecundario}"
-                Margin="0,0,0,6"
-              />
-              <ItemsControl Name="ListaDatosInformativos">
-                <ItemsControl.ItemTemplate>
-                  <DataTemplate>
-                    <Border
-                      BorderBrush="{DynamicResource Hormiguero.Borde}"
-                      BorderThickness="1"
-                      Padding="6"
-                      Margin="0,0,0,6"
-                    >
-                      <StackPanel>
-                        <CheckBox
-                          Content="{Binding Nombre}"
-                          IsChecked="{Binding Marcado, UpdateSourceTrigger=PropertyChanged}"
-                          Checked="DatoInformativo_Changed"
-                          Unchecked="DatoInformativo_Changed"
-                        />
-                        <TextBlock
-                          Text="{Binding Estado}"
-                          TextWrapping="Wrap"
-                          Foreground="{DynamicResource Hormiguero.TextoSecundario}"
-                          Margin="0,3,0,4"
-                        />
-                        <Button
-                          Content="Marcar zona"
-                          Padding="5,3"
-                          HorizontalAlignment="Left"
-                          Click="BtnMarcarDatoInformativo_Click"
-                        />
-                      </StackPanel>
-                    </Border>
-                  </DataTemplate>
-                </ItemsControl.ItemTemplate>
-              </ItemsControl>
+              <StackPanel Name="PanelInformativos">
+                <TextBlock Text="Datos informativos" FontWeight="Bold" Margin="0,12,0,4" />
+                <TextBlock
+                  Text="Se leen y muestran, pero no se usan para enlazar documentos."
+                  TextWrapping="Wrap"
+                  Foreground="{DynamicResource Hormiguero.TextoSecundario}"
+                  Margin="0,0,0,6"
+                />
+                <ItemsControl Name="ListaDatosInformativos">
+                  <ItemsControl.ItemTemplate>
+                    <DataTemplate>
+                      <Border
+                        BorderBrush="{DynamicResource Hormiguero.Borde}"
+                        BorderThickness="1"
+                        Padding="6"
+                        Margin="0,0,0,6"
+                      >
+                        <StackPanel>
+                          <CheckBox
+                            Content="{Binding Nombre}"
+                            IsChecked="{Binding Marcado, UpdateSourceTrigger=PropertyChanged}"
+                            Checked="DatoInformativo_Changed"
+                            Unchecked="DatoInformativo_Changed"
+                          />
+                          <TextBlock
+                            Text="{Binding Estado}"
+                            TextWrapping="Wrap"
+                            Foreground="{DynamicResource Hormiguero.TextoSecundario}"
+                            Margin="0,3,0,4"
+                          />
+                          <Button
+                            Content="Marcar zona"
+                            Padding="5,3"
+                            HorizontalAlignment="Left"
+                            Click="BtnMarcarDatoInformativo_Click"
+                          />
+                        </StackPanel>
+                      </Border>
+                    </DataTemplate>
+                  </ItemsControl.ItemTemplate>
+                </ItemsControl>
+              </StackPanel>
               <Expander
                 Name="PanelDatosAnteriores"
                 Header="Datos propios guardados anteriormente"
@@ -246,11 +323,13 @@
           />
           <RadioButton
             Name="RbGuardarDirecto"
+            Checked="RbGuardar_Checked"
             Content="Guardar directo en esta carpeta"
             Margin="0,0,0,6"
           />
           <RadioButton
             Name="RbGuardarSubcarpetas"
+            Checked="RbGuardar_Checked"
             Content="Guardar en subcarpetas dentro de esta carpeta"
             Margin="0,0,0,6"
           />
@@ -319,6 +398,13 @@
             Margin="20,0,0,6"
             Text="La carpeta se sigue eligiendo sola; antes de guardar, el documento queda en &quot;Pendientes por reconocer&quot; para escribir o confirmar su nombre."
           />
+          <CheckBox
+            Name="ChkAbrirDespuesDeGuardar"
+            Content="Abrir el documento después de guardarlo"
+            Checked="ChkAbrirDespuesDeGuardar_Changed"
+            Unchecked="ChkAbrirDespuesDeGuardar_Changed"
+            Margin="0,10,0,0"
+          />
 
           <StackPanel Name="PanelMarcarNombre" Visibility="Collapsed" Margin="0,8,0,0">
             <Button
@@ -338,7 +424,52 @@
 
         <!-- Paso 5: Confirmar -->
         <StackPanel Name="PanelConfirmar" Visibility="Collapsed">
+          <TextBlock Text="Nombre estándar" FontWeight="Bold" Margin="0,0,0,3" />
+          <TextBox Name="TxtNombreEstandar" Margin="0,0,0,4" />
+          <TextBlock
+            Text="Nombre con que este tipo aparece en listas y búsquedas. Puedes acortarlo."
+            TextWrapping="Wrap"
+            Foreground="{DynamicResource Hormiguero.TextoSecundario}"
+            Margin="0,0,0,12"
+          />
           <TextBlock Name="TxtResumen" TextWrapping="Wrap" Margin="0,0,0,12" />
+          <WrapPanel Margin="0,0,0,12">
+            <Button
+              Content="Cambiar documento"
+              Tag="QueDocumento"
+              Click="BtnCambiarPaso_Click"
+              Margin="0,0,6,6"
+              Padding="6,4"
+            />
+            <Button
+              Content="Cambiar emisor"
+              Tag="Emisor"
+              Click="BtnCambiarPaso_Click"
+              Margin="0,0,6,6"
+              Padding="6,4"
+            />
+            <Button
+              Content="Cambiar número"
+              Tag="Numero"
+              Click="BtnCambiarPaso_Click"
+              Margin="0,0,6,6"
+              Padding="6,4"
+            />
+            <Button
+              Content="Cambiar otros datos"
+              Tag="OtrosDatos"
+              Click="BtnCambiarPaso_Click"
+              Margin="0,0,6,6"
+              Padding="6,4"
+            />
+            <Button
+              Content="Cambiar dónde se guarda"
+              Tag="Guardar"
+              Click="BtnCambiarPaso_Click"
+              Margin="0,0,6,6"
+              Padding="6,4"
+            />
+          </WrapPanel>
 
           <!-- Caso-11, punto 1: con "Preguntar el nombre cada vez", también para este primer documento -->
           <StackPanel Name="PanelNombreEsteDocumento" Visibility="Collapsed" Margin="0,0,0,12">
@@ -346,12 +477,6 @@
             <TextBox Name="TxtNombreEsteDocumento" />
           </StackPanel>
 
-          <CheckBox
-            Name="ChkAbrirDespuesDeGuardar"
-            Content="Abrir el documento después de guardarlo automáticamente"
-            Checked="ChkAbrirDespuesDeGuardar_Changed"
-            Unchecked="ChkAbrirDespuesDeGuardar_Changed"
-          />
           <TextBlock Text="Impresión" FontWeight="Bold" Margin="0,12,0,4" />
           <TextBlock Text="Imprimir automáticamente al archivar" />
           <ComboBox
