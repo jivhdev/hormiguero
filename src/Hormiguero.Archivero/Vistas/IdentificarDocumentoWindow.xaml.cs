@@ -119,6 +119,11 @@ public partial class IdentificarDocumentoWindow : Window
     private bool _renombrar;
     private bool _preguntarNombre;
     private bool _abrirDespuesDeGuardar;
+    private ModoImpresion _modoImpresion;
+    private string? _impresora;
+    private bool _inicializandoImpresion;
+    private string? _avisoImpresion;
+    private readonly ConfiguracionImpresionRepository _configuracionImpresion = new();
     private ConfiguracionDocumento? _configuracionExistente;
     private readonly (ConfiguracionDocumento Configuracion, int PatronId)? _edicion;
 
@@ -131,6 +136,7 @@ public partial class IdentificarDocumentoWindow : Window
     public IdentificarDocumentoWindow(string rutaArchivo)
     {
         InitializeComponent();
+        InicializarOpcionesImpresion();
         TxtNombreEstandar.TextChanged += (_, _) =>
         {
             if (!_actualizandoNombreEstandar)
@@ -1146,6 +1152,95 @@ public partial class IdentificarDocumentoWindow : Window
         _abrirDespuesDeGuardar = ChkAbrirDespuesDeGuardar.IsChecked == true;
     }
 
+    private void InicializarOpcionesImpresion()
+    {
+        _inicializandoImpresion = true;
+        CmbModoImpresion.SelectedIndex = 0;
+        CargarImpresoras();
+        _inicializandoImpresion = false;
+    }
+
+    private void CargarImpresoras()
+    {
+        CmbImpresora.Items.Clear();
+        string predeterminada = new System.Drawing.Printing.PrinterSettings().PrinterName;
+        CmbImpresora.Items.Add(
+            new ComboBoxItem
+            {
+                Content = string.IsNullOrWhiteSpace(predeterminada)
+                    ? "Predeterminada de Windows"
+                    : $"Predeterminada de Windows ({predeterminada})",
+                Tag = "",
+            }
+        );
+        foreach (string nombre in System.Drawing.Printing.PrinterSettings.InstalledPrinters)
+            CmbImpresora.Items.Add(new ComboBoxItem { Content = nombre, Tag = nombre });
+        CmbImpresora.SelectedIndex = 0;
+        CmbImpresora.IsEnabled =
+            _modoImpresion is ModoImpresion.PrimeraPagina or ModoImpresion.TodoElDocumento;
+    }
+
+    private void CmbModoImpresion_SelectionChanged(object sender, SelectionChangedEventArgs e)
+    {
+        if (
+            _inicializandoImpresion
+            || CmbModoImpresion.SelectedItem is not ComboBoxItem seleccionado
+        )
+            return;
+        _modoImpresion = Enum.Parse<ModoImpresion>((string)seleccionado.Tag);
+        CmbImpresora.IsEnabled =
+            _modoImpresion is ModoImpresion.PrimeraPagina or ModoImpresion.TodoElDocumento;
+    }
+
+    private void AplicarOpcionesImpresion(ModoImpresion modo, string? impresora)
+    {
+        _inicializandoImpresion = true;
+        _modoImpresion = modo;
+        CmbModoImpresion.SelectedItem = CmbModoImpresion
+            .Items.Cast<ComboBoxItem>()
+            .First(item => (string)item.Tag == modo.ToString());
+        CargarImpresoras();
+        if (!string.IsNullOrWhiteSpace(impresora))
+        {
+            var opcionGuardada = CmbImpresora
+                .Items.Cast<ComboBoxItem>()
+                .FirstOrDefault(item =>
+                    string.Equals((string)item.Tag, impresora, StringComparison.OrdinalIgnoreCase)
+                );
+            if (opcionGuardada is null)
+            {
+                opcionGuardada = new ComboBoxItem
+                {
+                    Content = $"{impresora} (no disponible)",
+                    Tag = impresora,
+                };
+                CmbImpresora.Items.Add(opcionGuardada);
+            }
+            CmbImpresora.SelectedItem = opcionGuardada;
+            _impresora = impresora;
+        }
+        else
+        {
+            _impresora = null;
+        }
+        _inicializandoImpresion = false;
+    }
+
+    private void LeerImpresoraElegida()
+    {
+        _impresora =
+            CmbImpresora.SelectedItem is ComboBoxItem item
+            && !string.IsNullOrWhiteSpace((string?)item.Tag)
+                ? (string)item.Tag
+                : null;
+    }
+
+    private void CmbImpresora_SelectionChanged(object sender, SelectionChangedEventArgs e)
+    {
+        if (!_inicializandoImpresion)
+            LeerImpresoraElegida();
+    }
+
     private void AplicarConfiguracionExistente(ConfiguracionDocumento existente)
     {
         _configuracionExistente = existente;
@@ -1164,6 +1259,7 @@ public partial class IdentificarDocumentoWindow : Window
         _renombrar = existente.Renombrar;
         _preguntarNombre = existente.PreguntarNombre;
         _abrirDespuesDeGuardar = existente.AbrirDespuesDeGuardar;
+        AplicarOpcionesImpresion(existente.ModoImpresion, existente.Impresora);
 
         TxtCarpetaDestino.Text = _carpetaDestino;
         BtnElegirCarpeta.IsEnabled = false;
@@ -1691,6 +1787,12 @@ public partial class IdentificarDocumentoWindow : Window
                     AbrirDespuesDeGuardar = _abrirDespuesDeGuardar,
                     Patrones = [],
                 };
+            LeerImpresoraElegida();
+            configuracionParaClasificar = configuracionParaClasificar with
+            {
+                ModoImpresion = _modoImpresion,
+                Impresora = _impresora,
+            };
 
             // Caso-11, punto 1: el nombre escrito en el paso de confirmar se usa como si fuera
             // un nombre extraído, solo para este documento; la configuración guarda "preguntar".
@@ -1761,6 +1863,7 @@ public partial class IdentificarDocumentoWindow : Window
                 ? $"{_tipo.Trim()} · {_emisor.Trim()}"
                 : TxtNombreEstandar.Text.Trim();
             _configuraciones.ActualizarTipoDocumento(_configuracionExistente.Id, grupo, nombre);
+            _configuracionImpresion.Guardar(_configuracionExistente.Id, _modoImpresion, _impresora);
             var patronGuardado = _configuraciones
                 .BuscarPorEmisorYTipo(_emisor, _tipo)!
                 .Patrones.Last();
@@ -1799,6 +1902,7 @@ public partial class IdentificarDocumentoWindow : Window
                 _preguntarNombre
             );
             _configuraciones.GuardarCamposPropios(configuracionId, []);
+            _configuracionImpresion.Guardar(configuracionId, _modoImpresion, _impresora);
             _configuraciones.ActualizarTipoDocumento(
                 configuracionId,
                 RbEmitido.IsChecked == true ? "Emitido" : "Recibido",
@@ -1830,6 +1934,23 @@ public partial class IdentificarDocumentoWindow : Window
                 LeerVinculosDatosAnteriores()
             );
             AuditoriaService.Registrar("CLASIFICACION_CREADA", $"Emisor={_emisor}; Tipo={_tipo}");
+        }
+
+        if (_edicion is null)
+        {
+            _avisoImpresion = new ImpresionAlArchivarService(new AccionImpresionWindows()).Procesar(
+                rutaFinal,
+                (
+                    _configuraciones.BuscarPorEmisorYTipo(_emisor, _tipo)
+                    ?? throw new InvalidOperationException(
+                        "No se encontró la configuración guardada."
+                    )
+                ) with
+                {
+                    ModoImpresion = _modoImpresion,
+                    Impresora = _impresora,
+                }
+            );
         }
 
         string? errorPublicacion = null;
@@ -1865,9 +1986,9 @@ public partial class IdentificarDocumentoWindow : Window
 
         System.Windows.MessageBox.Show(
             this,
-            errorPublicacion is null
+            errorPublicacion is null && _avisoImpresion is null
                 ? $"Documento guardado en:\n{rutaFinal}"
-                : $"Documento guardado en:\n{rutaFinal}\n\n{errorPublicacion}",
+                : $"Documento guardado en:\n{rutaFinal}\n\n{string.Join("\n", new[] { errorPublicacion, _avisoImpresion }.Where(x => !string.IsNullOrWhiteSpace(x)))}",
             "Archivero",
             MessageBoxButton.OK,
             MessageBoxImage.Information

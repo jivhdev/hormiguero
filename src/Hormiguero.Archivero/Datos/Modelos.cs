@@ -20,6 +20,14 @@ public enum FormatoCarpeta
     Personalizado,
 }
 
+public enum ModoImpresion
+{
+    No,
+    PrimeraPagina,
+    TodoElDocumento,
+    PreguntarCadaVez,
+}
+
 public enum CampoMarca
 {
     Emisor,
@@ -172,6 +180,8 @@ public record ConfiguracionDocumento
 
     public string GrupoDocumento { get; init; } = "Emitido";
     public string NombreEstandar { get; init; } = "";
+    public ModoImpresion ModoImpresion { get; init; } = ModoImpresion.No;
+    public string? Impresora { get; init; }
 }
 
 /// <summary>
