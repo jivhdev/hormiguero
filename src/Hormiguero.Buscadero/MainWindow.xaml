@@ -108,6 +108,8 @@
                   IsEnabled="False"
                   VerticalContentAlignment="Center"
                   IsTextSearchEnabled="False"
+                  DisplayMemberPath="Texto"
+                  DropDownOpened="ComboFiltroCarpeta_DropDownOpened"
                   TextBoxBase.TextChanged="ComboFiltroCarpeta_TextChanged"
                   ToolTip="Solo se usa con el alcance 'Carpeta específica'; escriba 3 o más letras para buscar por nombre"
                 />

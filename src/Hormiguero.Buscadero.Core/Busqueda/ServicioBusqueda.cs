@@ -5,6 +5,8 @@ namespace Buscadero.Core.Busqueda;
 
 public sealed class ServicioBusqueda
 {
+    private const int ProfundidadMaximaSelector = 3;
+    private const int MaximoCarpetasSelector = 2000;
     private readonly ServicioCarpetas _servicioCarpetas;
     private readonly Indexador _indexador;
     private readonly RepositorioIndice _repositorio;
@@ -160,6 +162,105 @@ public sealed class ServicioBusqueda
         var vistas = new HashSet<string>(madres, StringComparer.OrdinalIgnoreCase);
         resultado.AddRange(_repositorio.ObtenerTodasLasCarpetas().Where(vistas.Add));
         return resultado;
+    }
+
+    public IReadOnlyList<OpcionCarpetaBusqueda> ObtenerCarpetasParaSelector()
+    {
+        var madres = ObtenerCarpetasMadre();
+        var vistas = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
+        var opciones = new List<OpcionCarpetaBusqueda>();
+        foreach (var madre in madres)
+        {
+            if (vistas.Add(madre))
+            {
+                opciones.Add(new OpcionCarpetaBusqueda(madre, !Directory.Exists(madre)));
+            }
+        }
+
+        var subcarpetas = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
+        foreach (var ruta in _repositorio.ObtenerTodasLasCarpetas())
+        {
+            if (!vistas.Contains(ruta) && PerteneceAAlgunaMadre(ruta, madres))
+            {
+                subcarpetas.Add(ruta);
+            }
+        }
+
+        var visitadasEnDisco = 0;
+        foreach (var madre in madres)
+        {
+            AgregarSubcarpetasEnDisco(madre, 0, subcarpetas, ref visitadasEnDisco);
+            if (visitadasEnDisco >= MaximoCarpetasSelector)
+            {
+                break;
+            }
+        }
+
+        opciones.AddRange(
+            subcarpetas
+                .Where(vistas.Add)
+                .OrderBy(ruta => ruta, StringComparer.OrdinalIgnoreCase)
+                .Select(ruta => new OpcionCarpetaBusqueda(ruta, false))
+        );
+        return opciones;
+    }
+
+    public static IReadOnlyList<OpcionCarpetaBusqueda> FiltrarCarpetasParaSelector(
+        IReadOnlyList<OpcionCarpetaBusqueda> carpetas,
+        string texto
+    ) =>
+        string.IsNullOrEmpty(texto)
+            ? carpetas
+            : carpetas
+                .Where(carpeta => carpeta.Texto.Contains(texto, StringComparison.OrdinalIgnoreCase))
+                .ToList();
+
+    public bool EstaCarpetaIndexada(string ruta) =>
+        _repositorio.ObtenerTodasLasCarpetas().Contains(ruta, StringComparer.OrdinalIgnoreCase);
+
+    private static bool PerteneceAAlgunaMadre(string ruta, IReadOnlyList<string> madres) =>
+        madres.Any(madre =>
+            ruta.StartsWith(
+                madre.TrimEnd('\\', '/') + Path.DirectorySeparatorChar,
+                StringComparison.OrdinalIgnoreCase
+            )
+            || ruta.StartsWith(
+                madre.TrimEnd('\\', '/') + Path.AltDirectorySeparatorChar,
+                StringComparison.OrdinalIgnoreCase
+            )
+        );
+
+    private static void AgregarSubcarpetasEnDisco(
+        string ruta,
+        int profundidad,
+        HashSet<string> resultado,
+        ref int visitadas
+    )
+    {
+        if (profundidad >= ProfundidadMaximaSelector || visitadas >= MaximoCarpetasSelector)
+        {
+            return;
+        }
+
+        try
+        {
+            foreach (var hija in Directory.EnumerateDirectories(ruta))
+            {
+                if (visitadas++ >= MaximoCarpetasSelector)
+                {
+                    return;
+                }
+
+                resultado.Add(hija);
+                AgregarSubcarpetasEnDisco(hija, profundidad + 1, resultado, ref visitadas);
+            }
+        }
+        catch (Exception excepcion)
+            when (excepcion
+                    is IOException
+                        or UnauthorizedAccessException
+                        or System.Security.SecurityException
+            ) { }
     }
 
     public IReadOnlyList<string> ObtenerSugerenciasCarpeta(int maximo = 4)

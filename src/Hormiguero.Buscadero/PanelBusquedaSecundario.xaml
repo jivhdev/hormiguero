@@ -54,6 +54,9 @@
           IsEnabled="False"
           Margin="0,0,6,4"
           IsTextSearchEnabled="False"
+          DisplayMemberPath="Texto"
+          DropDownOpened="ComboFiltroCarpeta_DropDownOpened"
+          TextBoxBase.TextChanged="ComboFiltroCarpeta_TextChanged"
           ToolTip="Carpeta específica"
         />
       </WrapPanel>

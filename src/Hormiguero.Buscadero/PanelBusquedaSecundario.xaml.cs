@@ -25,6 +25,8 @@ public partial class PanelBusquedaSecundario : UserControl
     private int _paginaActual;
     private int _totalPaginas;
     private double _zoom = 1;
+    private IReadOnlyList<OpcionCarpetaBusqueda> _carpetasAlcance = [];
+    private int _generacionSelectorCarpetas;
 
     public PanelBusquedaSecundario()
     {
@@ -80,7 +82,12 @@ public partial class PanelBusquedaSecundario : UserControl
         var token = cancelacion.Token;
         var numeroBusqueda = numero;
         var filtro =
-            ComboAlcance.SelectedIndex == 2 ? ComboFiltroCarpeta.Text.Trim() : string.Empty;
+            ComboAlcance.SelectedIndex == 2
+                ? (ComboFiltroCarpeta.SelectedItem as OpcionCarpetaBusqueda)?.Ruta
+                    ?? ComboFiltroCarpeta.Text.Trim()
+                : string.Empty;
+        var carpetaSinIndexar =
+            filtro.Length > 0 && !_servicioBusqueda!.EstaCarpetaIndexada(filtro);
         BotonBuscar.IsEnabled = false;
         BarraProgreso.Visibility = Visibility.Visible;
         TextoEstado.Text = "Buscando...";
@@ -131,6 +138,11 @@ public partial class PanelBusquedaSecundario : UserControl
                     $"{resultados.Count} coincidencias. Elija un documento para abrirlo.";
                 ListaResultados.Visibility = Visibility.Visible;
             }
+            if (carpetaSinIndexar)
+            {
+                TextoEstado.Text +=
+                    " Esta carpeta aún se está indexando; puede faltar algún resultado.";
+            }
         }
         catch (OperationCanceledException)
         {
@@ -150,11 +162,65 @@ public partial class PanelBusquedaSecundario : UserControl
         }
     }
 
-    private void ComboAlcance_SelectionChanged(object sender, SelectionChangedEventArgs e)
+    private async void ComboAlcance_SelectionChanged(object sender, SelectionChangedEventArgs e)
     {
         if (ComboFiltroCarpeta is not null)
         {
             ComboFiltroCarpeta.IsEnabled = ComboAlcance.SelectedIndex == 2;
+            if (ComboAlcance.SelectedIndex == 2)
+            {
+                ComboFiltroCarpeta.Text = string.Empty;
+                await ActualizarCarpetasAlcanceAsync();
+            }
+        }
+    }
+
+    private async Task ActualizarCarpetasAlcanceAsync()
+    {
+        if (_servicioBusqueda is null)
+        {
+            return;
+        }
+
+        var generacion = ++_generacionSelectorCarpetas;
+        var texto = ComboFiltroCarpeta.Text;
+        var carpetas = await Task.Run(_servicioBusqueda.ObtenerCarpetasParaSelector);
+        if (generacion != _generacionSelectorCarpetas)
+        {
+            return;
+        }
+
+        _carpetasAlcance = carpetas;
+        ComboFiltroCarpeta.ItemsSource = ServicioBusqueda.FiltrarCarpetasParaSelector(
+            carpetas,
+            texto
+        );
+        ComboFiltroCarpeta.Text = texto;
+    }
+
+    private async void ComboFiltroCarpeta_DropDownOpened(object sender, EventArgs e) =>
+        await ActualizarCarpetasAlcanceAsync();
+
+    private void ComboFiltroCarpeta_TextChanged(object sender, TextChangedEventArgs e)
+    {
+        var texto = ComboFiltroCarpeta.Text;
+        if (
+            ComboFiltroCarpeta.SelectedItem is OpcionCarpetaBusqueda seleccionada
+            && seleccionada.Texto == texto
+        )
+        {
+            return;
+        }
+
+        if (ComboAlcance.SelectedIndex == 2)
+        {
+            var coincidencias = ServicioBusqueda.FiltrarCarpetasParaSelector(
+                _carpetasAlcance,
+                texto
+            );
+            ComboFiltroCarpeta.ItemsSource = coincidencias;
+            ComboFiltroCarpeta.Text = texto;
+            ComboFiltroCarpeta.IsDropDownOpen = coincidencias.Count > 0;
         }
     }
 
