@@ -52,6 +52,16 @@ public sealed record VagonCadena(
 
 public sealed record NodoVagonCadena(VagonCadena Vagon, IReadOnlyList<NodoVagonCadena> Hijos);
 
+public sealed record VersionDocumentoCadena(
+    long VersionId,
+    string Ruta,
+    string Nombre,
+    string Tipo,
+    string Emisor,
+    DateTime Fecha,
+    string Numero
+);
+
 public sealed class RepositorioCadenas(SqliteConnection conexion)
 {
     public long CrearCadenaSimple(string nombre, DateTime fechaCreacion)
@@ -81,6 +91,85 @@ public sealed class RepositorioCadenas(SqliteConnection conexion)
         while (lector.Read())
             resultado.Add(LeerCadena(lector));
         return resultado;
+    }
+
+    public IReadOnlyList<Cadena> BuscarCadenasSimples(string consulta)
+    {
+        if (string.IsNullOrWhiteSpace(consulta))
+            return ListarCadenasSimples();
+        using var comando = conexion.CreateCommand();
+        comando.CommandText =
+            "SELECT DISTINCT c.id FROM cadenas c LEFT JOIN vagones_cadena v ON v.cadena_id=c.id AND v.estado='activo' LEFT JOIN enlaces_cadena e ON e.vagon_cadena_id=v.id AND e.estado='activo' LEFT JOIN versiones_documento ver ON ver.id=e.version_id LEFT JOIN documentos d ON d.id=ver.documento_id LEFT JOIN numeros_documento n ON n.documento_id=d.id WHERE c.modelo_id IS NULL AND c.estado='activa' AND (c.nombre LIKE $q OR n.numero LIKE $q) ORDER BY c.id;";
+        comando.Parameters.AddWithValue("$q", $"%{consulta.Trim()}%");
+        using var lector = comando.ExecuteReader();
+        var ids = new HashSet<long>();
+        while (lector.Read())
+            ids.Add(lector.GetInt64(0));
+        return ListarCadenasSimples().Where(c => ids.Contains(c.Id)).ToArray();
+    }
+
+    public IReadOnlyList<VersionDocumentoCadena> BuscarVersionesDocumento(
+        string consulta,
+        int maximo = 50
+    )
+    {
+        ArgumentException.ThrowIfNullOrWhiteSpace(consulta);
+        using var comando = conexion.CreateCommand();
+        comando.CommandText =
+            "SELECT DISTINCT ver.id,d.ruta,d.nombre,COALESCE(i.tipo,''),COALESCE(i.emisor,''),ver.registrada_en,COALESCE(n.numero,'') FROM versiones_documento ver JOIN documentos d ON d.id=ver.documento_id LEFT JOIN identificaciones i ON i.id=(SELECT f.identificacion_id FROM valores_documento x JOIN campos_documento f ON f.id=x.campo_id WHERE x.version_id=ver.id AND x.estado='vigente' LIMIT 1) LEFT JOIN numeros_documento n ON n.documento_id=d.id WHERE ver.estado='vigente' AND d.estado_baja='activo' AND (d.nombre LIKE $q OR n.numero LIKE $q OR EXISTS(SELECT 1 FROM valores_documento x WHERE x.version_id=ver.id AND x.estado='vigente' AND x.valor_original LIKE $q)) ORDER BY ver.id DESC LIMIT $limite;";
+        comando.Parameters.AddWithValue("$q", $"%{consulta.Trim()}%");
+        comando.Parameters.AddWithValue("$limite", Math.Clamp(maximo, 1, 200));
+        using var lector = comando.ExecuteReader();
+        var resultado = new List<VersionDocumentoCadena>();
+        while (lector.Read())
+            resultado.Add(
+                new(
+                    lector.GetInt64(0),
+                    lector.GetString(1),
+                    lector.GetString(2),
+                    lector.GetString(3),
+                    lector.GetString(4),
+                    DateTime.Parse(lector.GetString(5)),
+                    lector.GetString(6)
+                )
+            );
+        return resultado;
+    }
+
+    public VersionDocumentoCadena? ObtenerVersionDocumento(long versionId)
+    {
+        using var comando = conexion.CreateCommand();
+        comando.CommandText =
+            "SELECT ver.id,d.ruta,d.nombre,COALESCE(i.tipo,''),COALESCE(i.emisor,''),ver.registrada_en,COALESCE((SELECT numero FROM numeros_documento n WHERE n.documento_id=d.id LIMIT 1),'') FROM versiones_documento ver JOIN documentos d ON d.id=ver.documento_id LEFT JOIN identificaciones i ON i.id=(SELECT f.identificacion_id FROM valores_documento x JOIN campos_documento f ON f.id=x.campo_id WHERE x.version_id=ver.id AND x.estado='vigente' LIMIT 1) WHERE ver.id=$id;";
+        comando.Parameters.AddWithValue("$id", versionId);
+        using var lector = comando.ExecuteReader();
+        return lector.Read()
+            ? new(
+                lector.GetInt64(0),
+                lector.GetString(1),
+                lector.GetString(2),
+                lector.GetString(3),
+                lector.GetString(4),
+                DateTime.Parse(lector.GetString(5)),
+                lector.GetString(6)
+            )
+            : null;
+    }
+
+    public bool TransicionCadenasSimplesAceptada()
+    {
+        using var comando = conexion.CreateCommand();
+        comando.CommandText =
+            "SELECT valor FROM configuracion WHERE clave='buscadero_transicion_cadenas_simples';";
+        return comando.ExecuteScalar() is not null;
+    }
+
+    public void AceptarTransicionCadenasSimples()
+    {
+        using var comando = conexion.CreateCommand();
+        comando.CommandText =
+            "INSERT INTO configuracion(clave,valor) VALUES('buscadero_transicion_cadenas_simples','aceptada') ON CONFLICT(clave) DO UPDATE SET valor='aceptada';";
+        comando.ExecuteNonQuery();
     }
 
     public void RenombrarCadena(long cadenaId, string nombre)
