@@ -25,6 +25,7 @@ public partial class VentanaPrincipal : Window
     private readonly ObservableCollection<OrdenRetiro> ordenesRetiro = [];
     private bool editorAbierto;
     private VentanaFacturas? ventanaFacturas;
+    private VentanaEnvioConjuntoOcc? ventanaEnvioConjuntoOcc;
     private VentanaPlantillas? ventanaPlantillas;
     private VentanaCodigosExcel? ventanaCodigosExcel;
     private int lineasAjustador;
@@ -169,6 +170,21 @@ public partial class VentanaPrincipal : Window
         if (ventanaFacturas.WindowState == WindowState.Minimized)
             ventanaFacturas.WindowState = WindowState.Normal;
         ventanaFacturas.Activate();
+    }
+
+    private void AbrirEnvioConjuntoOcc_Click(object sender, RoutedEventArgs e)
+    {
+        if (ventanaEnvioConjuntoOcc is null)
+        {
+            ventanaEnvioConjuntoOcc = new VentanaEnvioConjuntoOcc(carpetaOcc) { Owner = this };
+            ventanaEnvioConjuntoOcc.Closed += (_, _) => ventanaEnvioConjuntoOcc = null;
+            ventanaEnvioConjuntoOcc.Show();
+            return;
+        }
+
+        if (ventanaEnvioConjuntoOcc.WindowState == WindowState.Minimized)
+            ventanaEnvioConjuntoOcc.WindowState = WindowState.Normal;
+        ventanaEnvioConjuntoOcc.Activate();
     }
 
     private void AbrirPlantillas_Click(object sender, RoutedEventArgs e)
