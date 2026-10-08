@@ -21,6 +21,10 @@ public sealed class ObservadorCarpetasService : IDisposable
     private readonly ConfiguracionDocumentoRepository _configuraciones = new();
     private readonly SemaphoreSlim _procesamiento = new(1, 1);
     private readonly List<FileSystemWatcher> _vigilantes = [];
+    private readonly System.Collections.Concurrent.ConcurrentQueue<(
+        string Ruta,
+        CarpetaObservadaExterna Carpeta
+    )> _eventos = new();
     private readonly System.Threading.Timer _revision;
     private readonly ImpresionAlArchivarService? _impresion;
     private readonly Func<TimeSpan, Task> _pausa;
@@ -41,6 +45,7 @@ public sealed class ObservadorCarpetasService : IDisposable
     public event Action<string, ConfiguracionDocumento>? DocumentoIdentificadoYPublicado;
     public event Action<DocumentoPorAtender>? DocumentoRequiereAtencion;
     public event Action<string, int, int>? ProgresoActualizado;
+    public event Action<string>? PdfAbiertoParaProcesar;
     private readonly Func<DateTime> _reloj;
 
     public ObservadorCarpetasService(
@@ -171,6 +176,12 @@ public sealed class ObservadorCarpetasService : IDisposable
                             return Directory.EnumerateFiles(rutaCarpeta, "*.pdf", opciones);
                         })
                         .Distinct(StringComparer.OrdinalIgnoreCase)
+                        .OrderBy(ruta =>
+                            Path.GetFileName(ruta)
+                                .Contains("CEDIBLE", StringComparison.OrdinalIgnoreCase)
+                                ? 1
+                                : 0
+                        )
                         .ToList();
                     int pendientes = archivos.Count(ruta =>
                     {
@@ -184,8 +195,13 @@ public sealed class ObservadorCarpetasService : IDisposable
                     });
                     int procesados = 0;
                     ProgresoActualizado?.Invoke(carpeta.Nombre, 0, pendientes);
+                    bool hayArchivoBarridoAnterior = false;
                     foreach (string ruta in archivos)
                     {
+                        await DrenarEventosAsync();
+                        if (hayArchivoBarridoAnterior && _eventos.IsEmpty)
+                            await _pausa(TimeSpan.FromSeconds(5));
+                        await DrenarEventosAsync();
                         var archivo = new FileInfo(ruta);
                         bool eraNuevo =
                             archivo.Exists
@@ -199,10 +215,10 @@ public sealed class ObservadorCarpetasService : IDisposable
                         {
                             procesados++;
                             ProgresoActualizado?.Invoke(carpeta.Nombre, procesados, pendientes);
-                            if (procesados < pendientes)
-                                await _pausa(TimeSpan.FromSeconds(5));
+                            hayArchivoBarridoAnterior = true;
                         }
                     }
+                    await DrenarEventosAsync();
                     ProgresoActualizado?.Invoke(carpeta.Nombre, pendientes, pendientes);
                 }
                 catch (Exception ex) when (ex is IOException or UnauthorizedAccessException)
@@ -214,6 +230,8 @@ public sealed class ObservadorCarpetasService : IDisposable
         finally
         {
             _procesamiento.Release();
+            if (!_eventos.IsEmpty)
+                _ = ProcesarEventosAsync();
         }
     }
 
@@ -221,20 +239,30 @@ public sealed class ObservadorCarpetasService : IDisposable
     {
         if (carpeta.SeguirPeriodo && !PerteneceAPeriodoActivo(ruta, carpeta))
             return;
-        _ = Task.Run(async () =>
+        _eventos.Enqueue((ruta, carpeta));
+        _ = ProcesarEventosAsync();
+    }
+
+    private async Task ProcesarEventosAsync()
+    {
+        if (_dispuesto || !await _procesamiento.WaitAsync(0))
+            return;
+        try
         {
-            if (!_dispuesto && await _procesamiento.WaitAsync(0))
-            {
-                try
-                {
-                    await ProcesarAsync(ruta, carpeta);
-                }
-                finally
-                {
-                    _procesamiento.Release();
-                }
-            }
-        });
+            await DrenarEventosAsync();
+        }
+        finally
+        {
+            _procesamiento.Release();
+            if (!_eventos.IsEmpty && !_dispuesto)
+                _ = ProcesarEventosAsync();
+        }
+    }
+
+    private async Task DrenarEventosAsync()
+    {
+        while (!_dispuesto && _eventos.TryDequeue(out var evento))
+            await ProcesarAsync(evento.Ruta, evento.Carpeta);
     }
 
     private bool PerteneceAPeriodoActivo(string ruta, CarpetaObservadaExterna carpeta) =>
@@ -250,6 +278,12 @@ public sealed class ObservadorCarpetasService : IDisposable
 
     private async Task ProcesarAsync(string ruta, CarpetaObservadaExterna carpeta)
     {
+        if (Path.GetFileName(ruta).Contains("CEDIBLE", StringComparison.OrdinalIgnoreCase))
+        {
+            string originalPorNombre = RutaOriginal(ruta);
+            if (_repositorio.ResultadoRevisado(originalPorNombre) == "ajeno")
+                return;
+        }
         var info = new FileInfo(ruta);
         if (info.Exists && _repositorio.YaFueRevisado(ruta, info.Length, info.LastWriteTimeUtc))
         {
@@ -268,6 +302,7 @@ public sealed class ObservadorCarpetasService : IDisposable
         var estado = (info.Length, info.LastWriteTimeUtc);
         try
         {
+            PdfAbiertoParaProcesar?.Invoke(ruta);
             string huella = Huella.Calcular(ruta);
             string? anterior = _repositorio.LeerHuella(ruta);
             bool cedible = false;
@@ -305,6 +340,7 @@ public sealed class ObservadorCarpetasService : IDisposable
             IReadOnlyList<Hormiguero.Nucleo.Datos.ValorDocumentoLeido> valores = [];
             DatoEnlazante? datoIdentificador = null;
             string? numeroNombre = null;
+            string? numeroDocumento = null;
             if (carpeta.ModoReconocimiento == "TipoPorCarpeta")
             {
                 datoIdentificador = DiccionarioDatosEnlazantes.Todos.SingleOrDefault(d =>
@@ -339,6 +375,7 @@ public sealed class ObservadorCarpetasService : IDisposable
                         carpeta.Emisor
                     ),
                 };
+                numeroDocumento = numeroNombre;
             }
             else if (LectorPdf.TieneTextoExtraible(ruta))
             {
@@ -352,22 +389,50 @@ public sealed class ObservadorCarpetasService : IDisposable
                         ruta,
                         coincidencia
                     );
+                    var patron = coincidencia.Patrones.FirstOrDefault();
+                    var identificador = patron is null
+                        ? null
+                        : DatosEnlazantesConfiguracionService
+                            .Leer(coincidencia.Emisor, coincidencia.Tipo, patron.Id)
+                            .FirstOrDefault(d => d.Incluido && d.DefineTipo);
+                    if (identificador is not null)
+                    {
+                        datoIdentificador = DiccionarioDatosEnlazantes.Todos.Single(d =>
+                            d.Id == identificador.Id
+                        );
+                        numeroDocumento = valores
+                            .FirstOrDefault(v => v.DatoDiccionarioId == identificador.Id)
+                            ?.ValorOriginal;
+                    }
                 }
             }
 
             bool documentoCedible = cedible;
-            if (cedible && carpeta.ZonaIdentificacion is not null)
+            if (
+                cedible
+                && datoIdentificador is not null
+                && !string.IsNullOrWhiteSpace(numeroDocumento)
+            )
             {
-                if (ExisteOriginal(ruta))
+                using var conexion = BaseComun.Abrir(DocumentosGuardados.RutaBaseComun);
+                if (
+                    new RepositorioDatosEnlazantes(conexion).ExisteDocumentoVigente(
+                        datoIdentificador.Id,
+                        numeroDocumento,
+                        coincidencia!.Emisor,
+                        coincidencia.Tipo
+                    )
+                )
                 {
                     GuardarVisto(ruta, huella, estado, "cedible");
                     _revisados[ruta] = estado;
                     return;
                 }
-                cedible = false;
             }
 
-            if (cedible)
+            if (
+                cedible && (datoIdentificador is null || string.IsNullOrWhiteSpace(numeroDocumento))
+            )
             {
                 bool originalExiste = ExisteOriginal(ruta);
                 var actividadAnterior = _repositorio
@@ -416,24 +481,30 @@ public sealed class ObservadorCarpetasService : IDisposable
                 return;
             }
 
-            if (datoIdentificador is null)
-                PublicadorDatosDocumentoService.PublicarObservado(ruta, coincidencia, valores);
-            else
+            if (datoIdentificador is not null && numeroNombre is not null && !documentoCedible)
                 PublicadorDatosDocumentoService.PublicarObservado(
                     ruta,
                     coincidencia,
                     datoIdentificador,
-                    numeroNombre!
+                    numeroNombre
+                );
+            else
+                PublicadorDatosDocumentoService.PublicarObservado(
+                    ruta,
+                    coincidencia,
+                    valores,
+                    documentoCedible
                 );
             await (PublicadorDatosDocumentoService.UltimaRevisionEnlaces ?? Task.CompletedTask);
             GuardarVisto(ruta, huella, estado, "procesado");
             _revisados[ruta] = estado;
-            DocumentoIdentificadoYPublicado?.Invoke(ruta, coincidencia);
+            if (!documentoCedible)
+                DocumentoIdentificadoYPublicado?.Invoke(ruta, coincidencia);
             bool posteriorAAgregada =
                 carpeta.Agregada is DateTime agregada && info.LastWriteTime >= agregada;
             bool numeroRepetido =
                 posteriorAAgregada
-                && !string.IsNullOrEmpty(numeroNombre)
+                && !string.IsNullOrEmpty(numeroDocumento ?? numeroNombre)
                 && _repositorio
                     .LeerActividad()
                     .Any(a =>
@@ -442,7 +513,9 @@ public sealed class ObservadorCarpetasService : IDisposable
                         && a.Emisor == coincidencia.Emisor
                         && NumeroDesdeNombre(a.Ruta) is string otro
                         && DiccionarioDatosEnlazantes.ClaveDeEnlace(otro)
-                            == DiccionarioDatosEnlazantes.ClaveDeEnlace(numeroNombre)
+                            == DiccionarioDatosEnlazantes.ClaveDeEnlace(
+                                numeroDocumento ?? numeroNombre
+                            )
                     );
             if (
                 posteriorAAgregada
@@ -455,7 +528,7 @@ public sealed class ObservadorCarpetasService : IDisposable
                     _reloj(),
                     ruta,
                     coincidencia.Tipo,
-                    numeroNombre ?? NumeroDesdeNombre(ruta) ?? ""
+                    numeroDocumento ?? numeroNombre ?? NumeroDesdeNombre(ruta) ?? ""
                 );
                 _repositorio.AgregarPorAtender(pendiente);
                 DocumentoRequiereAtencion?.Invoke(pendiente);
@@ -480,16 +553,17 @@ public sealed class ObservadorCarpetasService : IDisposable
                 if (avisoImpresion is not null)
                     Avisar($"{Path.GetFileName(ruta)}: {avisoImpresion}");
             }
-            Registrar(
-                new(
-                    DateTime.Now,
-                    ruta,
-                    coincidencia.Tipo,
-                    coincidencia.Emisor,
-                    LeerCadena(ruta),
-                    numeroRepetido ? "Número repetido" : null
-                )
-            );
+            if (!documentoCedible)
+                Registrar(
+                    new(
+                        DateTime.Now,
+                        ruta,
+                        coincidencia.Tipo,
+                        coincidencia.Emisor,
+                        LeerCadena(ruta),
+                        numeroRepetido ? "Número repetido" : null
+                    )
+                );
         }
         catch (Exception ex)
         {
@@ -569,6 +643,12 @@ public sealed class ObservadorCarpetasService : IDisposable
 
     private static bool ExisteOriginal(string rutaCedible)
     {
+        string original = RutaOriginal(rutaCedible);
+        return original != rutaCedible && File.Exists(original);
+    }
+
+    private static string RutaOriginal(string rutaCedible)
+    {
         string nombre = Path.GetFileNameWithoutExtension(rutaCedible);
         string original = System
             .Text.RegularExpressions.Regex.Replace(
@@ -578,14 +658,12 @@ public sealed class ObservadorCarpetasService : IDisposable
                 System.Text.RegularExpressions.RegexOptions.IgnoreCase
             )
             .TrimEnd('_', '-', ' ');
-        if (original == nombre)
-            return false;
-        return File.Exists(
-            Path.Combine(
+        return original == nombre
+            ? rutaCedible
+            : Path.Combine(
                 Path.GetDirectoryName(rutaCedible)!,
                 original + Path.GetExtension(rutaCedible)
-            )
-        );
+            );
     }
 
     private void Registrar(DocumentoObservadoReciente documento)

@@ -158,6 +158,93 @@ public sealed class DatosEnlazantesTests : IDisposable
         Assert.Empty(repo.BuscarDocumentos("oc_cliente", "4500"));
     }
 
+    [Fact]
+    public void Existe_original_vigente_por_numero_emisor_y_tipo_y_excluye_cedibles()
+    {
+        var identificaciones = new Identificaciones(conexion);
+        var documentos = new RepositorioDocumentosDatos(conexion);
+        var repo = new RepositorioDatosEnlazantes(conexion);
+        var ids = new Dictionary<(string Emisor, string Tipo), long>();
+        var campos = new Dictionary<long, long>();
+        long id = 0;
+        foreach (
+            var (emisor, tipo, origen) in new[]
+            {
+                ("Proveedor", "Factura", "cedible"),
+                ("Proveedor", "Factura", "marca"),
+                ("Otro", "Factura", "marca"),
+                ("Proveedor", "Guía", "marca"),
+            }
+        )
+        {
+            int indice = (int)++id;
+            Ejecutar(
+                $"INSERT INTO documentos(ruta,carpeta_raiz,nombre,tamano,modificado,estado,tiene_texto,indexado_en) VALUES('C:/{indice}.pdf','C:/','{indice}.pdf',1,'f','ok',1,'f');"
+            );
+            Ejecutar(
+                $"INSERT INTO versiones_documento(documento_id,huella,ruta_observada,registrada_en) VALUES({indice},'h{indice}','C:/{indice}.pdf','f');"
+            );
+            var claveIdentificacion = (emisor, tipo);
+            if (!ids.TryGetValue(claveIdentificacion, out long identificacion))
+            {
+                identificacion = identificaciones.Guardar(new(0, tipo, emisor, "{}"));
+                ids.Add(claveIdentificacion, identificacion);
+            }
+            if (!campos.TryGetValue(identificacion, out long campo))
+            {
+                campo = documentos.GuardarCampo(
+                    new(
+                        0,
+                        identificacion,
+                        "Factura",
+                        "factura_proveedor",
+                        "texto",
+                        true,
+                        "marca",
+                        "factura_proveedor"
+                    )
+                );
+                campos.Add(identificacion, campo);
+                repo.GuardarDatoTipo(
+                    new(
+                        0,
+                        identificacion,
+                        "factura_proveedor",
+                        "1",
+                        campo,
+                        1,
+                        0.1,
+                        0.1,
+                        0.2,
+                        0.1,
+                        true,
+                        true,
+                        true
+                    )
+                );
+            }
+            documentos.GuardarValor(
+                indice,
+                campo,
+                " 00-123 ",
+                "00-123",
+                origen,
+                datoDiccionarioId: "factura_proveedor"
+            );
+        }
+
+        Assert.True(
+            repo.ExisteDocumentoVigente("factura_proveedor", "123", "Proveedor", "Factura")
+        );
+        Assert.False(
+            repo.ExisteDocumentoVigente("factura_proveedor", "123", "Proveedor", "Boleta")
+        );
+        Assert.False(repo.ExisteDocumentoVigente("factura_proveedor", "123", "Cliente", "Factura"));
+        Assert.False(
+            repo.ExisteDocumentoVigente("factura_proveedor", "---", "Proveedor", "Factura")
+        );
+    }
+
     [Theory]
     [InlineData("06-10-2026", 2026, 10, 6)]
     [InlineData("6/10/2026", 2026, 10, 6)]

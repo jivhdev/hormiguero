@@ -411,6 +411,39 @@ public static class DiccionarioDatosEnlazantes
 
 public sealed class RepositorioDatosEnlazantes(SqliteConnection conexion)
 {
+    public bool ExisteDocumentoVigente(string datoId, string valor, string emisor, string tipo)
+    {
+        ArgumentException.ThrowIfNullOrWhiteSpace(datoId);
+        ArgumentException.ThrowIfNullOrWhiteSpace(valor);
+        ArgumentException.ThrowIfNullOrWhiteSpace(emisor);
+        ArgumentException.ThrowIfNullOrWhiteSpace(tipo);
+        string clave = DiccionarioDatosEnlazantes.ClaveDeEnlace(valor);
+        if (clave.Length == 0)
+            return false;
+        using var comando = conexion.CreateCommand();
+        comando.CommandText = """
+            SELECT 1
+            FROM valores_documento val
+            JOIN versiones_documento ver ON ver.id=val.version_id
+            JOIN documentos doc ON doc.id=ver.documento_id
+            JOIN campos_documento campo ON campo.id=val.campo_id
+            JOIN identificaciones ident ON ident.id=campo.identificacion_id
+            WHERE val.dato_diccionario_id=$dato
+              AND val.valor_clave=$clave
+              AND val.estado='vigente'
+              AND val.origen<>'cedible'
+              AND ver.estado='vigente'
+              AND ident.emisor=$emisor
+              AND ident.tipo=$tipo
+            LIMIT 1;
+            """;
+        comando.Parameters.AddWithValue("$dato", datoId);
+        comando.Parameters.AddWithValue("$clave", clave);
+        comando.Parameters.AddWithValue("$emisor", emisor);
+        comando.Parameters.AddWithValue("$tipo", tipo);
+        return comando.ExecuteScalar() is not null;
+    }
+
     public IReadOnlyList<CoincidenciasPorDato> SugerirPorDato(string datoId, string valor)
     {
         ArgumentException.ThrowIfNullOrWhiteSpace(datoId);

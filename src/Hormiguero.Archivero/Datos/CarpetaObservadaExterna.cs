@@ -236,6 +236,24 @@ public sealed class CarpetasObservadasRepository(ConfiguracionRepository? config
         }
     }
 
+    public string? ResultadoRevisado(string ruta)
+    {
+        try
+        {
+            var estados =
+                JsonSerializer.Deserialize<Dictionary<string, EstadoArchivoObservado>>(
+                    _configuracion.Obtener(ClaveEstados) ?? "{}"
+                ) ?? [];
+            return estados.TryGetValue(Path.GetFullPath(ruta), out var estado)
+                ? estado.Resultado
+                : null;
+        }
+        catch (JsonException)
+        {
+            return null;
+        }
+    }
+
     public void GuardarEstado(string ruta, long tamano, DateTime modificado, string resultado)
     {
         Dictionary<string, EstadoArchivoObservado> estados;

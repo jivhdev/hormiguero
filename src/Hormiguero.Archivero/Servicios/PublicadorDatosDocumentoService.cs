@@ -25,8 +25,19 @@ public static class PublicadorDatosDocumentoService
     public static void PublicarObservado(
         string ruta,
         ConfiguracionDocumento configuracion,
-        IReadOnlyList<ValorDocumentoLeido> valoresLeidos
-    ) => Publicar(ruta, configuracion, valoresLeidos, "observador");
+        IReadOnlyList<ValorDocumentoLeido> valoresLeidos,
+        bool cedible = false
+    ) =>
+        Publicar(
+            ruta,
+            configuracion,
+            cedible
+                ? valoresLeidos
+                    .Select(v => v.DatoDiccionarioId is null ? v : v with { Origen = "cedible" })
+                    .ToArray()
+                : valoresLeidos,
+            "observador"
+        );
 
     public static void PublicarObservado(
         string ruta,
@@ -288,7 +299,16 @@ public static class PublicadorDatosDocumentoService
                     dato.Pagina,
                     new(dato.X, dato.Y, dato.Ancho, dato.Alto)
                 );
-                valores.Add(new(dato.Nombre, dato.Id, original, Clave(original), "marca"));
+                valores.Add(
+                    new(
+                        dato.Nombre,
+                        dato.Id,
+                        original,
+                        DiccionarioDatosEnlazantes.ClaveDeEnlace(original),
+                        "marca",
+                        DatoDiccionarioId: dato.Id
+                    )
+                );
             }
         return valores;
     }

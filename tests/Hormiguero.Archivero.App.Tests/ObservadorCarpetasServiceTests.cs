@@ -304,6 +304,247 @@ public sealed class ObservadorCarpetasServiceTests : IDisposable
     }
 
     [Fact]
+    public async Task Cedible_se_ignora_si_hay_original_y_si_no_hay_se_publica_sin_imprimir()
+    {
+        string observada = Path.Combine(_raiz, "cedibles-por-numero");
+        Directory.CreateDirectory(observada);
+        int configuracionId = CrearConfiguracionConNumeroEnZona();
+        var zonaPropia = Zona(0, "Empresa Uno");
+        var zonaCedible = Zona(4, "CEDIBLE");
+        var carpetas = new CarpetasObservadasRepository();
+        var carpeta = new CarpetaObservadaExterna(
+            Guid.NewGuid(),
+            "Facturas",
+            observada,
+            false,
+            true,
+            DateTime.Now.AddHours(1),
+            ZonaIdentificacion: zonaPropia,
+            IdentificacionEsperada: "Empresa Uno",
+            TieneCedibles: true,
+            ZonaCedible: zonaCedible,
+            CedibleEsperado: "CEDIBLE",
+            ConfiguracionesDocumentoIds: [configuracionId]
+        );
+        carpetas.Guardar([carpeta]);
+        string originalExistente = CrearFactura(observada, "12345", false);
+        using (var servicio = new ObservadorCarpetasService(carpetas))
+            await servicio.RevisarAhoraAsync();
+        await (PublicadorDatosDocumentoService.UltimaRevisionEnlaces ?? Task.CompletedTask);
+
+        string cedibleConOriginal = CrearFactura(observada, "12345", true);
+        var configuracion = Assert.Single(
+            new ConfiguracionDocumentoRepository().ObtenerTodasConPatronesParaObservador(),
+            c => c.Id == configuracionId
+        );
+        Assert.NotNull(
+            CoincidenciaAutomaticaService.BuscarConfiguracionQueCoincide(
+                cedibleConOriginal,
+                [configuracion]
+            )
+        );
+        Assert.Contains(
+            PublicadorDatosDocumentoService.ExtraerValoresObservados(
+                cedibleConOriginal,
+                configuracion
+            ),
+            valor =>
+                valor.DatoDiccionarioId == "factura_proveedor" && valor.ValorOriginal == "12345"
+        );
+        using (var servicio = new ObservadorCarpetasService(carpetas))
+            await servicio.RevisarAhoraAsync();
+        await (PublicadorDatosDocumentoService.UltimaRevisionEnlaces ?? Task.CompletedTask);
+        Assert.DoesNotContain(carpetas.LeerActividad(), d => d.Ruta == cedibleConOriginal);
+        Assert.Equal(1, ContarPublicaciones());
+
+        string cedibleSinOriginal = CrearFactura(observada, "67890", true);
+        var impresion = new AccionQueCuenta();
+        carpetas.Guardar([carpeta with { Agregada = DateTime.Now.AddHours(1) }]);
+        using (
+            var servicio = new ObservadorCarpetasService(
+                carpetas,
+                new ImpresionAlArchivarService(impresion)
+            )
+        )
+            await servicio.RevisarAhoraAsync();
+        await (PublicadorDatosDocumentoService.UltimaRevisionEnlaces ?? Task.CompletedTask);
+        Assert.Equal("procesado", carpetas.ResultadoRevisado(cedibleSinOriginal));
+        Assert.DoesNotContain(carpetas.LeerActividad(), d => d.Ruta == cedibleSinOriginal);
+        Assert.Empty(impresion.Impresos);
+        Assert.Equal(2, ContarPublicaciones());
+
+        string originalPosterior = CrearFactura(observada, "67890", false);
+        carpetas.Guardar([
+            carpeta with
+            {
+                Agregada = DateTime.Now.AddMinutes(-1),
+                AccionAlLlegar = "ImprimirPrimeraPagina",
+            },
+        ]);
+        using (
+            var servicio = new ObservadorCarpetasService(
+                carpetas,
+                new ImpresionAlArchivarService(impresion)
+            )
+        )
+            await servicio.RevisarAhoraAsync();
+        await (PublicadorDatosDocumentoService.UltimaRevisionEnlaces ?? Task.CompletedTask);
+        Assert.Contains(carpetas.LeerActividad(), d => d.Ruta == originalPosterior);
+        Assert.Single(impresion.Impresos);
+        Assert.Equal(3, ContarPublicaciones());
+        Assert.True(File.Exists(originalExistente));
+    }
+
+    [Fact]
+    public async Task Solo_publica_los_documentos_de_la_empresa_y_sus_originales()
+    {
+        string observada = Path.Combine(_raiz, "solo-la-empresa");
+        Directory.CreateDirectory(observada);
+        int configuracionId = CrearConfiguracionConNumeroEnZona();
+        var carpeta = new CarpetaObservadaExterna(
+            Guid.NewGuid(),
+            "Facturas",
+            observada,
+            false,
+            true,
+            DateTime.Now.AddHours(1),
+            ZonaIdentificacion: Zona(0, "Empresa Uno"),
+            IdentificacionEsperada: "Empresa Uno",
+            TieneCedibles: true,
+            ZonaCedible: Zona(4, "CEDIBLE"),
+            CedibleEsperado: "CEDIBLE",
+            ConfiguracionesDocumentoIds: [configuracionId]
+        );
+        var carpetas = new CarpetasObservadasRepository();
+        carpetas.Guardar([carpeta]);
+        string[] propios = Enumerable
+            .Range(0, 3)
+            .Select(i =>
+                CrearFacturaConCliente(observada, "Empresa Uno", (100 + i).ToString(), false)
+            )
+            .ToArray();
+        string[] ajenos = Enumerable
+            .Range(0, 3)
+            .Select(i =>
+                CrearFacturaConCliente(observada, "Empresa Dos", (200 + i).ToString(), false)
+            )
+            .ToArray();
+        string cediblePropio = CrearFacturaConCliente(observada, "Empresa Uno", "100", true);
+        string cedibleAjeno = CrearFacturaConCliente(observada, "Empresa Dos", "200", true);
+
+        using (var servicio = new ObservadorCarpetasService(carpetas))
+            await servicio.RevisarAhoraAsync();
+        await (PublicadorDatosDocumentoService.UltimaRevisionEnlaces ?? Task.CompletedTask);
+
+        Assert.Equal(3, ContarPublicaciones());
+        Assert.Equal(3, carpetas.LeerActividad().Count);
+        Assert.All(propios, ruta => Assert.Contains(carpetas.LeerActividad(), d => d.Ruta == ruta));
+        Assert.All(
+            ajenos,
+            ruta => Assert.DoesNotContain(carpetas.LeerActividad(), d => d.Ruta == ruta)
+        );
+        Assert.DoesNotContain(carpetas.LeerActividad(), d => d.Ruta == cediblePropio);
+        Assert.DoesNotContain(carpetas.LeerActividad(), d => d.Ruta == cedibleAjeno);
+        Assert.Equal("cedible", carpetas.ResultadoRevisado(cediblePropio));
+        Assert.Equal("ajeno", carpetas.ResultadoRevisado(cedibleAjeno));
+    }
+
+    [Fact]
+    public async Task Revision_de_respaldo_y_servicio_recreado_no_abren_archivos_ya_vistos()
+    {
+        string observada = Path.Combine(_raiz, "sin-relectura");
+        Directory.CreateDirectory(observada);
+        string pdf = CreadorPdfDePrueba.CrearConLineas(observada, "Proveedor", "Factura");
+        new ConfiguracionDocumentoRepository().GuardarNueva(
+            "Proveedor",
+            "Factura",
+            _raiz,
+            FormatoCarpeta.Directo,
+            null,
+            false,
+            [Marca(CampoMarca.Emisor, 0), Marca(CampoMarca.Tipo, 1)]
+        );
+        var carpetas = new CarpetasObservadasRepository();
+        carpetas.Guardar([new(Guid.NewGuid(), "Facturas", observada, false, true)]);
+        int lecturasIniciales = 0;
+        using (var servicio = new ObservadorCarpetasService(carpetas))
+        {
+            servicio.PdfAbiertoParaProcesar += _ => lecturasIniciales++;
+            await servicio.RevisarAhoraAsync();
+            await servicio.RevisarAhoraAsync();
+        }
+
+        int lecturasTrasRecrear = 0;
+        using (var servicio = new ObservadorCarpetasService(carpetas))
+        {
+            servicio.PdfAbiertoParaProcesar += _ => lecturasTrasRecrear++;
+            await servicio.RevisarAhoraAsync();
+        }
+
+        Assert.Equal(1, lecturasIniciales);
+        Assert.Equal(0, lecturasTrasRecrear);
+        Assert.True(File.Exists(pdf));
+    }
+
+    [Fact]
+    public async Task Evento_nuevo_se_atiende_antes_del_siguiente_archivo_del_barrido()
+    {
+        string observada = Path.Combine(_raiz, "prioridad-nuevos");
+        Directory.CreateDirectory(observada);
+        string[] iniciales = Enumerable
+            .Range(0, 3)
+            .Select(_ => CreadorPdfDePrueba.CrearConLineas(observada, "Proveedor", "Factura"))
+            .ToArray();
+        new ConfiguracionDocumentoRepository().GuardarNueva(
+            "Proveedor",
+            "Factura",
+            _raiz,
+            FormatoCarpeta.Directo,
+            null,
+            false,
+            [Marca(CampoMarca.Emisor, 0), Marca(CampoMarca.Tipo, 1)]
+        );
+        var carpetas = new CarpetasObservadasRepository();
+        carpetas.Guardar([
+            new(Guid.NewGuid(), "Facturas", observada, false, true, DateTime.Now.AddHours(1)),
+        ]);
+        var orden = new System.Collections.Concurrent.ConcurrentQueue<string>();
+        var completos = new TaskCompletionSource(
+            TaskCreationOptions.RunContinuationsAsynchronously
+        );
+        int pausaInicial = 0;
+        int documentosActualizados = 0;
+        string? nuevo = null;
+
+        async Task Pausa(TimeSpan _)
+        {
+            if (Interlocked.Exchange(ref pausaInicial, 1) == 0)
+            {
+                nuevo = CreadorPdfDePrueba.CrearConLineas(observada, "Proveedor", "Factura");
+                await Task.Delay(300);
+            }
+        }
+
+        using var servicio = new ObservadorCarpetasService(carpetas, pausa: Pausa);
+        servicio.DocumentoActualizado += documento =>
+        {
+            if (documento.Tipo != "Factura")
+                return;
+            orden.Enqueue(documento.Ruta);
+            if (Interlocked.Increment(ref documentosActualizados) == 4)
+                completos.TrySetResult();
+        };
+        servicio.Iniciar();
+        await completos.Task.WaitAsync(TimeSpan.FromSeconds(25));
+
+        string[] procesados = orden.ToArray();
+        Assert.NotNull(nuevo);
+        int posicionNuevo = Array.IndexOf(procesados, nuevo);
+        Assert.True(posicionNuevo >= 0);
+        Assert.Equal(2, iniciales.Count(ruta => Array.IndexOf(procesados, ruta) > posicionNuevo));
+    }
+
+    [Fact]
     public void Periodo_no_incluye_el_mes_anterior_despues_del_dia_cinco()
     {
         string basePrueba = Path.Combine(_raiz, "periodos-dia-seis");
@@ -488,6 +729,92 @@ public sealed class ObservadorCarpetasServiceTests : IDisposable
             Impresos.Add(pdf);
 
         public void AbrirVisor(string rutaPdf) { }
+    }
+
+    private int CrearConfiguracionConNumeroEnZona()
+    {
+        int id = new ConfiguracionDocumentoRepository().GuardarNueva(
+            "Proveedor",
+            "Factura del proveedor",
+            _raiz,
+            FormatoCarpeta.Directo,
+            null,
+            false,
+            [Marca(CampoMarca.Emisor, 1), Marca(CampoMarca.Tipo, 2)]
+        );
+        var numero = Assert.Single(
+            DiccionarioDatosEnlazantes.Todos,
+            d => d.Id == "factura_proveedor"
+        );
+        var banda = CreadorPdfDePrueba.ObtenerBandaDeLinea(3);
+        DatosEnlazantesConfiguracionService.Guardar(
+            "Proveedor",
+            "Factura del proveedor",
+            "Recibido",
+            "Factura del proveedor · Proveedor",
+            id,
+            [
+                new(
+                    numero.Id,
+                    numero.Nombre,
+                    numero.Grupo,
+                    true,
+                    true,
+                    0,
+                    banda.X,
+                    banda.Y,
+                    banda.Ancho,
+                    banda.Alto,
+                    "12345",
+                    true,
+                    true
+                ),
+            ]
+        );
+        Assert.Contains(
+            DatosEnlazantesConfiguracionService.Leer("Proveedor", "Factura del proveedor", id),
+            dato => dato.Id == numero.Id && dato.DefineTipo && dato.Marcado
+        );
+        return id;
+    }
+
+    private static ZonaControlCarpeta Zona(int indice, string esperado)
+    {
+        var banda = CreadorPdfDePrueba.ObtenerBandaDeLinea(indice);
+        return new(1, banda.X, banda.Y, banda.Ancho, banda.Alto, esperado);
+    }
+
+    private static string CrearFactura(string carpeta, string numero, bool cedible) =>
+        CrearFacturaConCliente(carpeta, "Empresa Uno", numero, cedible);
+
+    private static string CrearFacturaConCliente(
+        string carpeta,
+        string cliente,
+        string numero,
+        bool cedible
+    )
+    {
+        string creado = CreadorPdfDePrueba.CrearConLineas(
+            carpeta,
+            cliente,
+            "Proveedor",
+            "Factura del proveedor",
+            numero,
+            cedible ? "CEDIBLE" : "ORIGINAL"
+        );
+        if (!cedible)
+            return creado;
+        string destino = Path.Combine(carpeta, $"factura_{numero}_CEDIBLE.pdf");
+        File.Move(creado, destino);
+        return destino;
+    }
+
+    private int ContarPublicaciones()
+    {
+        using var conexion = BaseComun.Abrir(DocumentosGuardados.RutaBaseComun);
+        using var comando = conexion.CreateCommand();
+        comando.CommandText = "SELECT COUNT(*) FROM auditoria WHERE accion='publicar_documento';";
+        return Convert.ToInt32(comando.ExecuteScalar());
     }
 
     private static Marca Marca(CampoMarca campo, int indice)
