@@ -3,10 +3,10 @@
   xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
   xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
   Title="Carpetas observadas"
-  Height="720"
-  Width="1000"
-  MinHeight="620"
-  MinWidth="820"
+  Height="620"
+  Width="900"
+  MinHeight="500"
+  MinWidth="700"
   WindowStartupLocation="CenterOwner"
 >
   <Grid Margin="16">
@@ -14,96 +14,49 @@
       <RowDefinition Height="*" />
       <RowDefinition Height="Auto" />
     </Grid.RowDefinitions>
-    <Grid Grid.Row="0">
-      <Grid.ColumnDefinitions>
-        <ColumnDefinition Width="2*" />
-        <ColumnDefinition Width="3*" />
-      </Grid.ColumnDefinitions>
-      <DockPanel Grid.Column="0" Margin="0,0,16,0">
-        <TextBlock
-          DockPanel.Dock="Top"
-          Text="Carpetas guardadas"
-          FontWeight="Bold"
-          Margin="0,0,0,8"
-        />
-        <ListBox
-          Name="ListaCarpetas"
-          DisplayMemberPath="Resumen"
-          SelectionChanged="ListaCarpetas_SelectionChanged"
-        />
-      </DockPanel>
-      <StackPanel Grid.Column="1">
-        <TextBlock Text="Nombre" />
-        <TextBox Name="TxtNombre" Margin="0,4,0,12" />
-        <TextBlock Text="Ruta" />
-        <DockPanel Margin="0,4,0,12">
-          <Button DockPanel.Dock="Right" Content="Examinar…" Click="Examinar_Click" Padding="8,3" />
-          <TextBox Name="TxtRuta" Margin="0,0,8,0" />
-        </DockPanel>
-        <CheckBox Name="ChkSubcarpetas" Content="Incluir subcarpetas" Margin="0,0,0,8" />
-        <CheckBox
-          Name="ChkSeguirPeriodo"
-          Content="Las subcarpetas cambian por período"
-          Margin="0,0,0,8"
-        />
-        <ComboBox Name="ComboFormatoPeriodo" Margin="0,0,0,12" SelectedIndex="0">
-          <ComboBoxItem Content="AAAA\AAAAMM" />
-          <ComboBoxItem Content="AAAA\MM" />
-          <ComboBoxItem Content="AAAAMM" />
-          <ComboBoxItem Content="AAAA" />
-        </ComboBox>
-        <TextBlock Text="¿Cómo se reconocen?" />
-        <ComboBox
-          Name="ComboReconocimiento"
-          Margin="0,4,0,8"
-          SelectionChanged="ComboReconocimiento_SelectionChanged"
-        >
-          <ComboBoxItem Content="Con las configuraciones de Archivero" />
-          <ComboBoxItem Content="Todos los PDF de esta carpeta son" />
-        </ComboBox>
-        <StackPanel Name="PanelTipoFijo" Visibility="Collapsed">
-          <TextBlock Text="Tipo de documento (del diccionario)" />
-          <ComboBox Name="ComboDato" Margin="0,4,0,8" />
-          <TextBlock Text="Emisor" />
-          <TextBox Name="TxtEmisor" Margin="0,4,0,12" />
-          <TextBlock
-            Text="Número: dígitos del nombre del archivo"
-            Foreground="{DynamicResource Hormiguero.TextoSecundario}"
-            Margin="0,0,0,12"
-          />
-        </StackPanel>
-        <TextBlock Text="Al llegar un documento nuevo" />
-        <ComboBox Name="ComboAccion" Margin="0,4,0,12">
-          <ComboBoxItem Content="Según la configuración del tipo" />
-          <ComboBoxItem Content="Solo registrar" />
-          <ComboBoxItem Content="Imprimir primera página" />
-          <ComboBoxItem Content="Imprimir todo" />
-          <ComboBoxItem Content="Avisarme" />
-          <ComboBoxItem Content="Avisarme e imprimir primera página" />
-        </ComboBox>
-        <CheckBox Name="ChkActiva" Content="Activa" IsChecked="True" Margin="0,0,0,16" />
-        <WrapPanel>
-          <Button Content="Agregar" Click="Agregar_Click" Padding="10,5" Margin="0,0,8,8" />
-          <Button Content="Guardar cambios" Click="Guardar_Click" Padding="10,5" Margin="0,0,8,8" />
-          <Button Content="Quitar" Click="Quitar_Click" Padding="10,5" Margin="0,0,8,8" />
-        </WrapPanel>
-        <TextBlock
-          Text="Archivero solo lee estas carpetas. Los PDF no se mueven, renombran ni eliminan."
-          TextWrapping="Wrap"
-          Foreground="{DynamicResource Hormiguero.TextoSecundario}"
-          Margin="0,16,0,0"
-        />
-      </StackPanel>
-    </Grid>
-    <Button
-      Grid.Row="1"
-      Content="Listo"
-      IsDefault="True"
-      HorizontalAlignment="Right"
-      MinWidth="90"
-      Padding="12,5"
-      Margin="0,12,0,0"
-      Click="Listo_Click"
-    />
+    <DockPanel>
+      <TextBlock
+        DockPanel.Dock="Top"
+        Text="Carpetas observadas"
+        FontSize="18"
+        FontWeight="Bold"
+        Margin="0,0,0,12"
+      />
+      <ListBox Name="ListaCarpetas" SelectionChanged="ListaCarpetas_SelectionChanged">
+        <ListBox.ItemTemplate>
+          <DataTemplate>
+            <DockPanel Margin="4">
+              <CheckBox
+                DockPanel.Dock="Right"
+                Content="Activa"
+                IsChecked="{Binding Activa}"
+                Checked="Activa_Changed"
+                Unchecked="Activa_Changed"
+                Margin="12,0,4,0"
+              />
+              <StackPanel>
+                <TextBlock Text="{Binding Nombre}" FontWeight="SemiBold" />
+                <TextBlock
+                  Text="{Binding Ruta}"
+                  TextWrapping="Wrap"
+                  Foreground="{DynamicResource Hormiguero.TextoSecundario}"
+                />
+                <TextBlock
+                  Text="{Binding Resumen}"
+                  TextWrapping="Wrap"
+                  Foreground="{DynamicResource Hormiguero.TextoSecundario}"
+                />
+              </StackPanel>
+            </DockPanel>
+          </DataTemplate>
+        </ListBox.ItemTemplate>
+      </ListBox>
+    </DockPanel>
+    <StackPanel Grid.Row="1" Orientation="Horizontal" HorizontalAlignment="Right" Margin="0,12,0,0">
+      <Button Content="Agregar carpeta…" Click="Agregar_Click" Padding="10,5" Margin="0,0,8,0" />
+      <Button Content="Editar…" Click="Editar_Click" Padding="10,5" Margin="0,0,8,0" />
+      <Button Content="Quitar" Click="Quitar_Click" Padding="10,5" Margin="0,0,8,0" />
+      <Button Content="Listo" Click="Listo_Click" IsDefault="True" Padding="12,5" MinWidth="90" />
+    </StackPanel>
   </Grid>
 </Window>

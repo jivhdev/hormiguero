@@ -128,6 +128,10 @@ public partial class IdentificarDocumentoWindow : Window
     private readonly ConfiguracionImpresionRepository _configuracionImpresion = new();
     private ConfiguracionDocumento? _configuracionExistente;
     private readonly (ConfiguracionDocumento Configuracion, int PatronId)? _edicion;
+    private readonly bool _modoObservador;
+    private readonly string? _carpetaObservada;
+
+    public int? ConfiguracionDocumentoId { get; private set; }
 
     // Precarga para ControlOrganizacion (edicion o borrador restaurado): se aplica una sola vez,
     // la primera vez que se llega al Paso.Organizacion (ver PrepararVistaOrganizacion).
@@ -135,7 +139,11 @@ public partial class IdentificarDocumentoWindow : Window
     private FormatoCarpeta? _tipoOrganizacionPrecargado;
     private string? _patronPrecargadoParaControl;
 
-    public IdentificarDocumentoWindow(string rutaArchivo)
+    public IdentificarDocumentoWindow(
+        string rutaArchivo,
+        bool modoObservador = false,
+        string? carpetaObservada = null
+    )
     {
         InitializeComponent();
         InicializarOpcionesImpresion();
@@ -150,6 +158,8 @@ public partial class IdentificarDocumentoWindow : Window
         CmbCategoriaDocumento.ItemsSource = AsistenteClasificacionService.Categorias;
         CmbCategoriaOtrosDatos.ItemsSource = AsistenteClasificacionService.Categorias;
         _rutaArchivo = rutaArchivo;
+        _modoObservador = modoObservador;
+        _carpetaObservada = carpetaObservada;
         CargarDatosEnlazantes(string.Empty, string.Empty, 0);
         ControlOrganizacion.ConfigurarProveedorDeFecha(LeerFechaPreview);
 
@@ -158,7 +168,7 @@ public partial class IdentificarDocumentoWindow : Window
 
         CmbEmisor.ItemsSource = _entidades.Buscar(CategoriaEntidad.Emisor, string.Empty);
 
-        var borrador = _borradores.Obtener(_rutaArchivo);
+        var borrador = _modoObservador ? null : _borradores.Obtener(_rutaArchivo);
         if (borrador is not null)
         {
             AplicarBorrador(borrador);
@@ -167,7 +177,16 @@ public partial class IdentificarDocumentoWindow : Window
         ActualizarEstadosDeMarca();
         ActualizarMarcasEnVisor();
         MostrarPaso(Paso.QueDocumento);
-        Closing += IdentificarDocumentoWindow_Closing;
+        if (!_modoObservador)
+            Closing += IdentificarDocumentoWindow_Closing;
+
+        if (_modoObservador)
+        {
+            BtnPosponer.Visibility = Visibility.Collapsed;
+            BtnCambiarGuardar.Visibility = Visibility.Collapsed;
+            RbGuardarDirecto.IsChecked = true;
+            TxtCarpetaDestino.Text = _carpetaObservada ?? string.Empty;
+        }
 
         if (borrador is not null)
         {
@@ -412,13 +431,17 @@ public partial class IdentificarDocumentoWindow : Window
         if (nuevoPaso == Paso.OtrosDatos)
             CollectionViewSource.GetDefaultView(_datosEnlazantes)?.Refresh();
         PanelCarpeta.Visibility =
-            nuevoPaso == Paso.Guardar ? Visibility.Visible : Visibility.Collapsed;
+            nuevoPaso == Paso.Guardar && !_modoObservador
+                ? Visibility.Visible
+                : Visibility.Collapsed;
         PanelOrganizacion.Visibility =
             nuevoPaso == Paso.Guardar && RbGuardarSubcarpetas.IsChecked == true
                 ? Visibility.Visible
                 : Visibility.Collapsed;
         PanelNombreArchivo.Visibility =
-            nuevoPaso == Paso.Guardar ? Visibility.Visible : Visibility.Collapsed;
+            nuevoPaso == Paso.Guardar && !_modoObservador
+                ? Visibility.Visible
+                : Visibility.Collapsed;
         PanelConfirmar.Visibility =
             nuevoPaso == Paso.Resumen ? Visibility.Visible : Visibility.Collapsed;
 
@@ -430,7 +453,7 @@ public partial class IdentificarDocumentoWindow : Window
         // Preview obligatorio de anterior/actual/futuro (Caso-1, punto 3): visible desde que hay
         // carpeta+organización elegidas hasta confirmar, para que sea imposible llegar a "Guardar y
         // clasificar" sin haberlo visto.
-        var mostrarPreview = nuevoPaso == Paso.Guardar;
+        var mostrarPreview = nuevoPaso == Paso.Guardar && !_modoObservador;
         PanelPreview.Visibility = mostrarPreview ? Visibility.Visible : Visibility.Collapsed;
         if (mostrarPreview)
         {
@@ -466,15 +489,21 @@ public partial class IdentificarDocumentoWindow : Window
                     : "Elige carpeta, organización, fecha y nombre del archivo."
             ),
             Paso.Resumen => (
-                "Paso 6 de 6 — Al llegar y resumen",
-                "Revisa las opciones antes de guardar y clasificar."
+                _modoObservador
+                    ? "Paso 5 de 5 — Revisa el diseño"
+                    : "Paso 6 de 6 — Al llegar y resumen",
+                _modoObservador
+                    ? "Se queda en la carpeta del proveedor; Archivero solo lo registra en Hormiguero."
+                    : "Revisa las opciones antes de guardar y clasificar."
             ),
             _ => (string.Empty, string.Empty),
         };
 
         BtnSiguiente.Content = nuevoPaso switch
         {
-            Paso.Resumen => _edicion is not null ? "Guardar cambios" : "Guardar y clasificar",
+            Paso.Resumen => _modoObservador ? "Guardar diseño"
+            : _edicion is not null ? "Guardar cambios"
+            : "Guardar y clasificar",
             Paso.OtrosDatos => "Saltar",
             _ => "Siguiente",
         };
@@ -1706,7 +1735,26 @@ public partial class IdentificarDocumentoWindow : Window
                     return;
                 }
 
-                if (_edicion is null)
+                if (_modoObservador)
+                {
+                    var configuracionObservadorExistente = _configuraciones
+                        .ObtenerTodasConPatronesParaObservador()
+                        .FirstOrDefault(c => c.Emisor == _emisor && c.Tipo == _tipo);
+                    var configuracionNormalExistente = _configuraciones.BuscarPorEmisorYTipo(
+                        _emisor,
+                        _tipo
+                    );
+                    if (configuracionNormalExistente is not null)
+                    {
+                        MostrarError(
+                            "Ya existe una configuración normal para este emisor y tipo. No se puede usar también como diseño de carpeta observada sin cambiar su uso en Archivero."
+                        );
+                        return;
+                    }
+                    _configuracionExistente = configuracionObservadorExistente;
+                }
+
+                if (_edicion is null && !_modoObservador)
                 {
                     var configuracionExistente = _configuraciones.BuscarPorEmisorYTipo(
                         _emisor,
@@ -1774,7 +1822,22 @@ public partial class IdentificarDocumentoWindow : Window
                     MostrarError($"Marca dónde aparece «{dato.Nombre}» o desmarca ese dato.");
                     return;
                 }
-                IrA(Paso.Guardar);
+                if (_modoObservador)
+                {
+                    _carpetaDestino = _carpetaObservada ?? string.Empty;
+                    _formato = FormatoCarpeta.Directo;
+                    _patronCarpeta = null;
+                    _renombrar = false;
+                    _preguntarNombre = false;
+                    MostrarResumen();
+                    TxtResumen.Text =
+                        $"Categoría: {CmbCategoriaDocumento.SelectedItem}\nEmisor: {_emisor}\nTipo: {_tipo}\nNúmero: {(_datosEnlazantes.FirstOrDefault(d => d.DefineTipo)?.ValorLeido is { Length: > 0 } numero ? numero : "no informado")}\nSe queda en la carpeta del proveedor; Archivero solo lo registra en Hormiguero.";
+                    IrA(Paso.Resumen);
+                }
+                else
+                {
+                    IrA(Paso.Guardar);
+                }
                 break;
 
             case Paso.Guardar:
@@ -1884,6 +1947,74 @@ public partial class IdentificarDocumentoWindow : Window
             var nombreEstandar = string.IsNullOrWhiteSpace(TxtNombreEstandar.Text)
                 ? $"{_tipo.Trim()} · {_emisor.Trim()}"
                 : TxtNombreEstandar.Text.Trim();
+
+            if (_modoObservador)
+            {
+                if (
+                    string.IsNullOrWhiteSpace(_carpetaObservada)
+                    || !Directory.Exists(_carpetaObservada)
+                )
+                {
+                    MostrarError("La carpeta observada ya no está disponible.");
+                    return;
+                }
+                int configuracionId;
+                int patronId;
+                if (_configuracionExistente is not null)
+                {
+                    configuracionId = _configuracionExistente.Id;
+                    _configuraciones.ActualizarDestino(
+                        configuracionId,
+                        _carpetaObservada,
+                        FormatoCarpeta.Directo,
+                        null,
+                        false,
+                        false,
+                        false
+                    );
+                    _configuraciones.AgregarPatronAConfiguracionExistente(configuracionId, marcas);
+                    var recargada = _configuraciones
+                        .ObtenerTodasConPatronesParaObservador()
+                        .Single(c => c.Id == configuracionId);
+                    patronId = recargada.Patrones.Last().Id;
+                }
+                else
+                {
+                    configuracionId = _configuraciones.GuardarNueva(
+                        _emisor,
+                        _tipo,
+                        _carpetaObservada,
+                        FormatoCarpeta.Directo,
+                        null,
+                        false,
+                        marcas
+                    );
+                    var guardada = _configuraciones
+                        .ObtenerTodasConPatronesParaObservador()
+                        .Single(c => c.Id == configuracionId);
+                    patronId = guardada.Patrones.Last().Id;
+                }
+                _configuraciones.ActualizarTipoDocumento(
+                    configuracionId,
+                    grupoDocumento,
+                    nombreEstandar
+                );
+                DatosEnlazantesConfiguracionService.Guardar(
+                    _emisor,
+                    _tipo,
+                    grupoDocumento,
+                    nombreEstandar,
+                    patronId,
+                    _datosEnlazantes.Select(d => d.AConfigurado()).ToList(),
+                    _datosInformativos.Where(d => d.Marcado).Select(d => d.ComoZona()).ToList()
+                );
+                _configuraciones.MarcarSoloObservador(configuracionId);
+                ConfiguracionDocumentoId = configuracionId;
+                _draftYaResuelto = true;
+                DialogResult = true;
+                Close();
+                return;
+            }
 
             DateTime? fecha = null;
             if (_marcas.TryGetValue(CampoMarca.Fecha, out var marcaFecha))
