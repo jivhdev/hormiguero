@@ -478,24 +478,26 @@
             <TextBox Name="TxtNombreEsteDocumento" />
           </StackPanel>
 
-          <TextBlock Text="Impresión" FontWeight="Bold" Margin="0,12,0,4" />
-          <TextBlock Text="Imprimir automáticamente al archivar" />
-          <ComboBox
-            Name="CmbModoImpresion"
-            Margin="0,3,0,8"
-            SelectionChanged="CmbModoImpresion_SelectionChanged"
-          >
-            <ComboBoxItem Content="No" Tag="No" />
-            <ComboBoxItem Content="Primera página" Tag="PrimeraPagina" />
-            <ComboBoxItem Content="Todo el documento" Tag="TodoElDocumento" />
-            <ComboBoxItem Content="Preguntar cada vez" Tag="PreguntarCadaVez" />
-          </ComboBox>
-          <TextBlock Text="Impresora" />
-          <ComboBox
-            Name="CmbImpresora"
-            Margin="0,3,0,0"
-            SelectionChanged="CmbImpresora_SelectionChanged"
-          />
+          <StackPanel Name="PanelImpresion">
+            <TextBlock Text="Impresión" FontWeight="Bold" Margin="0,12,0,4" />
+            <TextBlock Text="Imprimir automáticamente al archivar" />
+            <ComboBox
+              Name="CmbModoImpresion"
+              Margin="0,3,0,8"
+              SelectionChanged="CmbModoImpresion_SelectionChanged"
+            >
+              <ComboBoxItem Content="No" Tag="No" />
+              <ComboBoxItem Content="Primera página" Tag="PrimeraPagina" />
+              <ComboBoxItem Content="Todo el documento" Tag="TodoElDocumento" />
+              <ComboBoxItem Content="Preguntar cada vez" Tag="PreguntarCadaVez" />
+            </ComboBox>
+            <TextBlock Text="Impresora" />
+            <ComboBox
+              Name="CmbImpresora"
+              Margin="0,3,0,0"
+              SelectionChanged="CmbImpresora_SelectionChanged"
+            />
+          </StackPanel>
         </StackPanel>
 
         <!-- Preview obligatorio de anterior/actual/futuro (Caso-1, punto 3). Visible desde

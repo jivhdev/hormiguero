@@ -184,6 +184,8 @@ public partial class IdentificarDocumentoWindow : Window
         {
             BtnPosponer.Visibility = Visibility.Collapsed;
             BtnCambiarGuardar.Visibility = Visibility.Collapsed;
+            // En una carpeta observada, imprimir o avisar se elige en el paso "Al llegar" de la carpeta.
+            PanelImpresion.Visibility = Visibility.Collapsed;
             RbGuardarDirecto.IsChecked = true;
             TxtCarpetaDestino.Text = _carpetaObservada ?? string.Empty;
         }
