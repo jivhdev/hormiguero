@@ -58,6 +58,13 @@
         />
         <Button
           DockPanel.Dock="Right"
+          Content="Envío conjunto OCC"
+          Click="AbrirEnvioConjuntoOcc_Click"
+          Padding="14,5"
+          Margin="0,0,8,0"
+        />
+        <Button
+          DockPanel.Dock="Right"
           Content="🧾 Facturas"
           Click="AbrirFacturas_Click"
           Padding="14,5"

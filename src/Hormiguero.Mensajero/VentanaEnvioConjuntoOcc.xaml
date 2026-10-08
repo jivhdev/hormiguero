@@ -1,0 +1,91 @@
+<Window
+  x:Class="Hormiguero.Mensajero.App.VentanaEnvioConjuntoOcc"
+  xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+  xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+  Title="Envío conjunto de OCC"
+  Width="760"
+  Height="690"
+  MinWidth="600"
+  MinHeight="560"
+  WindowStartupLocation="CenterOwner"
+>
+  <Grid Margin="14">
+    <Grid.RowDefinitions>
+      <RowDefinition Height="Auto" />
+      <RowDefinition Height="Auto" />
+      <RowDefinition Height="Auto" />
+      <RowDefinition Height="Auto" />
+      <RowDefinition Height="*" />
+      <RowDefinition Height="Auto" />
+      <RowDefinition Height="Auto" />
+      <RowDefinition Height="Auto" />
+      <RowDefinition Height="Auto" />
+    </Grid.RowDefinitions>
+    <DockPanel Grid.Row="0" Margin="0,0,0,8">
+      <Button DockPanel.Dock="Left" Content="Último PDF" Click="UltimoPdf_Click" Margin="0,0,6,0" />
+      <Button DockPanel.Dock="Right" Content="Buscar" Click="Buscar_Click" Margin="6,0,0,0" />
+      <TextBox x:Name="CampoBuscar" ToolTip="Número de OCC" KeyDown="Buscar_KeyDown" />
+    </DockPanel>
+    <DockPanel Grid.Row="1" Margin="0,0,0,6">
+      <TextBlock
+        x:Name="TextoProveedor"
+        Text="Proveedor: —"
+        FontWeight="Bold"
+        VerticalAlignment="Center"
+      />
+      <StackPanel DockPanel.Dock="Right" Orientation="Horizontal">
+        <TextBlock Text="Destinatario:" VerticalAlignment="Center" Margin="0,0,5,0" />
+        <TextBox x:Name="CampoDestinatario" Width="230" ToolTip="Correo del proveedor" />
+      </StackPanel>
+    </DockPanel>
+    <DockPanel Grid.Row="2" Margin="0,0,0,4">
+      <TextBlock Text="OCC agregadas" FontWeight="Bold" VerticalAlignment="Center" />
+      <Button DockPanel.Dock="Right" Content="Limpiar" Click="Limpiar_Click" />
+    </DockPanel>
+    <ScrollViewer Grid.Row="3" MaxHeight="125" VerticalScrollBarVisibility="Auto" Margin="0,0,0,8">
+      <ItemsControl x:Name="ListaOrdenes">
+        <ItemsControl.ItemTemplate>
+          <DataTemplate>
+            <DockPanel Margin="0,1">
+              <Button
+                DockPanel.Dock="Right"
+                Content="Quitar"
+                Click="Quitar_Click"
+                Tag="{Binding}"
+              />
+              <TextBlock Text="{Binding Etiqueta}" VerticalAlignment="Center" />
+            </DockPanel>
+          </DataTemplate>
+        </ItemsControl.ItemTemplate>
+      </ItemsControl>
+    </ScrollViewer>
+    <Grid Grid.Row="4">
+      <Grid.RowDefinitions>
+        <RowDefinition Height="Auto" />
+        <RowDefinition Height="*" />
+      </Grid.RowDefinitions>
+      <TextBlock Text="Asunto" FontWeight="Bold" Margin="0,0,0,4" />
+      <TextBox x:Name="CampoAsunto" Grid.Row="1" IsReadOnly="True" TextWrapping="Wrap" />
+    </Grid>
+    <TextBlock Grid.Row="5" Text="Cuerpo del correo" FontWeight="Bold" Margin="0,8,0,4" />
+    <TextBox
+      x:Name="CampoCuerpo"
+      Grid.Row="6"
+      Height="165"
+      IsReadOnly="True"
+      TextWrapping="Wrap"
+      AcceptsReturn="True"
+      VerticalScrollBarVisibility="Auto"
+      FontFamily="Consolas"
+      Background="{DynamicResource Hormiguero.Superficie}"
+    />
+    <WrapPanel Grid.Row="7" Margin="0,9,0,0">
+      <Button Content="Copiar destinatario" Click="CopiarDestinatario_Click" Margin="0,0,6,0" />
+      <Button Content="Copiar asunto" Click="CopiarAsunto_Click" Margin="0,0,6,0" />
+      <Button Content="Copiar cuerpo" Click="CopiarCuerpo_Click" Margin="0,0,6,0" />
+      <Button Content="Copiar todos los PDF" Click="CopiarPdfs_Click" Margin="0,0,6,0" />
+      <Button Content="Abrir en Gmail" Click="AbrirEnGmail_Click" />
+    </WrapPanel>
+    <TextBlock x:Name="TextoAviso" Grid.Row="8" Margin="0,7,0,0" TextWrapping="Wrap" />
+  </Grid>
+</Window>
