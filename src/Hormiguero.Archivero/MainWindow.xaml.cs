@@ -61,6 +61,14 @@ public partial class MainWindow : Window
             new ImpresionAlArchivarService(new AccionImpresionWindows())
         );
         _observador.DocumentoActualizado += documento => Dispatcher.Invoke(CargarObservados);
+        _observador.ProgresoActualizado += (nombre, procesados, total) =>
+            Dispatcher.Invoke(() =>
+            {
+                TxtProgresoObservador.Text =
+                    procesados < total
+                        ? $"Poniéndose al día: {procesados} de {total} ({nombre})"
+                        : "Al día";
+            });
         _observador.DocumentoRequiereAtencion += documento =>
             Dispatcher.Invoke(() =>
             {

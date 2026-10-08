@@ -1,4 +1,4 @@
-using System.IO;
+﻿using System.IO;
 using System.Text.RegularExpressions;
 using Archivero.Datos;
 using Archivero.Servicios.Pdf;
@@ -23,6 +23,7 @@ public sealed class ObservadorCarpetasService : IDisposable
     private readonly List<FileSystemWatcher> _vigilantes = [];
     private readonly System.Threading.Timer _revision;
     private readonly ImpresionAlArchivarService? _impresion;
+    private readonly Func<TimeSpan, Task> _pausa;
 
     // Tamaño y fecha de lo ya revisado en esta sesión: evita leer y calcular la huella de cada
     // PDF cada 30 segundos. "Revisar ahora" lo vacía (p. ej. tras crear una configuración nueva).
@@ -39,17 +40,20 @@ public sealed class ObservadorCarpetasService : IDisposable
     /// <summary>Punto de enganche posterior a identificar, publicar y revisar el enlace automático.</summary>
     public event Action<string, ConfiguracionDocumento>? DocumentoIdentificadoYPublicado;
     public event Action<DocumentoPorAtender>? DocumentoRequiereAtencion;
+    public event Action<string, int, int>? ProgresoActualizado;
     private readonly Func<DateTime> _reloj;
 
     public ObservadorCarpetasService(
         CarpetasObservadasRepository? repositorio = null,
         ImpresionAlArchivarService? impresion = null,
-        Func<DateTime>? reloj = null
+        Func<DateTime>? reloj = null,
+        Func<TimeSpan, Task>? pausa = null
     )
     {
         _repositorio = repositorio ?? new();
         _impresion = impresion;
         _reloj = reloj ?? (() => DateTime.Now);
+        _pausa = pausa ?? Task.Delay;
         _revision = new System.Threading.Timer(
             _ => _ = RevisarAsync(),
             null,
@@ -156,19 +160,50 @@ public sealed class ObservadorCarpetasService : IDisposable
                     _avisados.RemoveWhere(aviso => aviso.Contains(carpeta.Ruta));
                 try
                 {
-                    foreach (
-                        string rutaCarpeta in PeriodosCarpetaObservada.Rutas(carpeta, _reloj())
-                    )
+                    var rutas = PeriodosCarpetaObservada.Rutas(carpeta, _reloj());
+                    var archivos = rutas
+                        .SelectMany(rutaCarpeta =>
+                        {
+                            var opciones =
+                                carpeta.SeguirPeriodo || carpeta.IncluirSubcarpetas
+                                    ? SearchOption.AllDirectories
+                                    : SearchOption.TopDirectoryOnly;
+                            return Directory.EnumerateFiles(rutaCarpeta, "*.pdf", opciones);
+                        })
+                        .Distinct(StringComparer.OrdinalIgnoreCase)
+                        .ToList();
+                    int pendientes = archivos.Count(ruta =>
                     {
-                        var opciones =
-                            carpeta.SeguirPeriodo || carpeta.IncluirSubcarpetas
-                                ? SearchOption.AllDirectories
-                                : SearchOption.TopDirectoryOnly;
-                        foreach (
-                            string ruta in Directory.EnumerateFiles(rutaCarpeta, "*.pdf", opciones)
-                        )
-                            await ProcesarAsync(ruta, carpeta);
+                        var archivo = new FileInfo(ruta);
+                        return archivo.Exists
+                            && !_repositorio.YaFueRevisado(
+                                ruta,
+                                archivo.Length,
+                                archivo.LastWriteTimeUtc
+                            );
+                    });
+                    int procesados = 0;
+                    ProgresoActualizado?.Invoke(carpeta.Nombre, 0, pendientes);
+                    foreach (string ruta in archivos)
+                    {
+                        var archivo = new FileInfo(ruta);
+                        bool eraNuevo =
+                            archivo.Exists
+                            && !_repositorio.YaFueRevisado(
+                                ruta,
+                                archivo.Length,
+                                archivo.LastWriteTimeUtc
+                            );
+                        await ProcesarAsync(ruta, carpeta);
+                        if (eraNuevo)
+                        {
+                            procesados++;
+                            ProgresoActualizado?.Invoke(carpeta.Nombre, procesados, pendientes);
+                            if (procesados < pendientes)
+                                await _pausa(TimeSpan.FromSeconds(5));
+                        }
                     }
+                    ProgresoActualizado?.Invoke(carpeta.Nombre, pendientes, pendientes);
                 }
                 catch (Exception ex) when (ex is IOException or UnauthorizedAccessException)
                 {

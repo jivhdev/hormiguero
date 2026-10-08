@@ -59,12 +59,17 @@
           Padding="8,2"
           Click="BtnCambiarCarpetaObservada_Click"
         />
-        <TextBlock
-          Name="TxtCarpetaObservada"
-          Foreground="{DynamicResource Hormiguero.TextoSecundario}"
-          VerticalAlignment="Center"
-          TextWrapping="Wrap"
-        />
+        <StackPanel VerticalAlignment="Center">
+          <TextBlock
+            Name="TxtCarpetaObservada"
+            Foreground="{DynamicResource Hormiguero.TextoSecundario}"
+            TextWrapping="Wrap"
+          />
+          <TextBlock
+            Name="TxtProgresoObservador"
+            Foreground="{DynamicResource Hormiguero.TextoSecundario}"
+          />
+        </StackPanel>
       </DockPanel>
       <Grid Grid.Column="1">
         <Grid.RowDefinitions>
