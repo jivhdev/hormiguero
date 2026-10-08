@@ -253,7 +253,7 @@
                 />
                 <Button Content="Copiar relleno a 55" Click="CopiarAjusteRelleno_Click" />
                 <Button
-                  Content="Copiar línea siguiente (Alt+L)"
+                  Content="Copiar línea siguiente (Alt+Q)"
                   Click="CopiarLineaSiguiente_Click"
                   Margin="6,0,0,0"
                 />

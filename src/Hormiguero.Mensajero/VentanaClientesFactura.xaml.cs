@@ -1,8 +1,8 @@
+using System.Collections.ObjectModel;
 using System.IO;
 using System.Windows;
 using System.Windows.Controls;
 using System.Windows.Input;
-using System.Windows.Media;
 using Hormiguero.Mensajero.Core;
 using Hormiguero.Mensajero.Core.ClickFactura;
 using Microsoft.Win32;
@@ -12,71 +12,196 @@ namespace Hormiguero.Mensajero.App;
 public partial class VentanaClientesFactura : Window
 {
     private readonly AlmacenMensajero almacen;
+    private readonly List<ClienteEdicion> clientes = [];
+    private readonly ObservableCollection<string> correos = [];
+    private ClienteEdicion? actual;
+    private bool cargando;
 
     public VentanaClientesFactura(AlmacenMensajero almacen)
     {
         InitializeComponent();
         this.almacen = almacen;
+        ListaCorreos.ItemsSource = correos;
         Width = Math.Min(Width, SystemParameters.WorkArea.Width);
         Height = Math.Min(Height, SystemParameters.WorkArea.Height);
-        CargarClientes();
+        Recargar();
     }
 
-    private void CargarClientes() =>
-        TablaClientes.ItemsSource = almacen.LeerClientesFactura().ToArray();
-
-    private void Guardar_Click(object sender, RoutedEventArgs e)
+    private void Recargar()
     {
-        string rut = RutFactura.NormalizarSeguro(CampoRut.Text);
-        string razon = CampoRazon.Text.Trim();
+        clientes.Clear();
+        clientes.AddRange(
+            almacen.LeerTodosClientesFactura().Select(cliente => new ClienteEdicion(cliente))
+        );
+        ActualizarLista();
+    }
+
+    private void ActualizarLista()
+    {
+        ClienteEdicion? seleccionado = actual;
+        cargando = true;
+        ListaClientes.ItemsSource = clientes
+            .Where(cliente =>
+                cliente.Rut.Contains(CampoBuscar.Text.Trim(), StringComparison.OrdinalIgnoreCase)
+                || cliente.RazonSocial.Contains(
+                    CampoBuscar.Text.Trim(),
+                    StringComparison.OrdinalIgnoreCase
+                )
+            )
+            .ToArray();
+        if (seleccionado is not null && ListaClientes.Items.Contains(seleccionado))
+            ListaClientes.SelectedItem = seleccionado;
+        cargando = false;
+    }
+
+    private void Buscar_TextChanged(object sender, TextChangedEventArgs e) => ActualizarLista();
+
+    private void Cliente_Seleccionado(object sender, SelectionChangedEventArgs e)
+    {
+        if (cargando)
+            return;
+        CapturarActual();
+        actual = ListaClientes.SelectedItem as ClienteEdicion;
+        MostrarActual();
+    }
+
+    private void MostrarActual()
+    {
+        cargando = true;
+        CampoRut.Text = actual?.Rut ?? "";
+        CampoRazon.Text = actual?.RazonSocial ?? "";
+        CampoActivo.IsChecked = actual?.Activo ?? true;
+        correos.Clear();
+        if (actual is not null)
+            foreach (string correo in CorreoFactura.Separar(actual.Correo))
+                correos.Add(correo);
+        CampoCorreo.Clear();
+        cargando = false;
+    }
+
+    private void CapturarActual()
+    {
+        if (actual is null || cargando)
+            return;
+        actual.Rut = RutFactura.NormalizarSeguro(CampoRut.Text);
+        actual.RazonSocial = CampoRazon.Text.Trim();
+        actual.Correo = string.Join("; ", correos);
+        actual.Activo = CampoActivo.IsChecked == true;
+        actual.Modificado = true;
+    }
+
+    private void AgregarCorreo_Click(object sender, RoutedEventArgs e)
+    {
         string correo = CampoCorreo.Text.Trim();
+        if (!CorreoFactura.EsValido(correo))
+        {
+            MostrarAviso("Correo no válido", "Ingresa un correo electrónico válido.", false);
+            return;
+        }
+        if (correos.Contains(correo, StringComparer.OrdinalIgnoreCase))
+        {
+            MostrarAviso("Correo repetido", "Ese correo ya está en la lista.", false);
+            return;
+        }
+        correos.Add(correo);
+        CampoCorreo.Clear();
+        CapturarActual();
+    }
+
+    private void QuitarCorreo_Click(object sender, RoutedEventArgs e)
+    {
+        if (ListaCorreos.SelectedItem is not string correo)
+            return;
+        correos.Remove(correo);
+        CapturarActual();
+    }
+
+    private void NuevoCliente_Click(object sender, RoutedEventArgs e)
+    {
+        CapturarActual();
+        actual = new ClienteEdicion
+        {
+            Activo = true,
+            EsNuevo = true,
+            Modificado = true,
+        };
+        clientes.Add(actual);
+        CampoBuscar.Clear();
+        ActualizarLista();
+        ListaClientes.SelectedItem = actual;
+        MostrarActual();
+        CampoRut.Focus();
+    }
+
+    private void EliminarCliente_Click(object sender, RoutedEventArgs e)
+    {
+        CapturarActual();
+        if (actual is null)
+            return;
         if (
-            string.IsNullOrWhiteSpace(rut)
-            || string.IsNullOrWhiteSpace(razon)
-            || string.IsNullOrWhiteSpace(correo)
+            MessageBox.Show(
+                this,
+                $"¿Eliminar al cliente {actual.RazonSocial} ({actual.Rut})?",
+                "Eliminar cliente",
+                MessageBoxButton.YesNo,
+                MessageBoxImage.Warning
+            ) != MessageBoxResult.Yes
         )
-        {
-            MostrarAviso("Error", "Todos los campos son obligatorios.", false);
             return;
-        }
-        if (!RutFactura.Validar(rut))
-        {
-            MostrarAviso("RUT no válido", "Revisa el RUT ingresado.", false);
-            return;
-        }
         try
         {
-            correo = CorreoFactura.NormalizarParaGuardar(correo);
-        }
-        catch (FormatException excepcion)
-        {
-            MostrarAviso("Correo no válido", excepcion.Message, false);
-            return;
-        }
-        try
-        {
-            almacen.GuardarClienteFactura(rut, razon, correo, DateTime.Now);
-            MostrarAviso("Éxito", $"Cliente {rut} guardado correctamente.", true);
-            CampoRut.Clear();
-            CampoRazon.Clear();
-            CampoCorreo.Clear();
-            CargarClientes();
+            if (!actual.EsNuevo)
+                almacen.EliminarClienteFactura(actual.Rut, DateTime.Now);
+            clientes.Remove(actual);
+            actual = null;
+            MostrarActual();
+            ActualizarLista();
+            TextoAviso.Text = "Cliente eliminado.";
         }
         catch (Exception excepcion)
         {
-            MensajeroLog.RegistrarError("Guardar cliente de facturas", excepcion);
-            MostrarAviso("Error", $"No se pudo guardar: {excepcion.Message}", false);
+            MostrarAviso("Error", $"No se pudo eliminar: {excepcion.Message}", false);
+        }
+    }
+
+    private void Guardar_Click(object sender, RoutedEventArgs e)
+    {
+        CapturarActual();
+        try
+        {
+            foreach (ClienteEdicion cliente in clientes.Where(cliente => cliente.Modificado))
+            {
+                almacen.GuardarClienteFacturaGestion(
+                    cliente.Rut,
+                    cliente.RazonSocial,
+                    CorreoFactura.Separar(cliente.Correo),
+                    cliente.Activo,
+                    DateTime.Now
+                );
+                cliente.Modificado = false;
+                cliente.EsNuevo = false;
+            }
+            TextoAviso.Text = "Cambios guardados.";
+            Recargar();
+        }
+        catch (Exception excepcion)
+        {
+            MensajeroLog.RegistrarError("Guardar clientes de Facturas", excepcion);
+            MostrarAviso(
+                "Error",
+                $"No se pudieron guardar los cambios: {excepcion.Message}",
+                false
+            );
         }
     }
 
     private void ImportarClientesFactura_Click(object sender, RoutedEventArgs e)
     {
-        if (almacen.LeerClientesFactura().Count > 0)
+        if (almacen.LeerTodosClientesFactura().Count > 0)
         {
             MostrarAviso("Importar de ClickFactura", "Solo se importa en una lista vacía.", false);
             return;
         }
-
         string carpetaInicial = Path.Combine(
             Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData),
             "ClickFactura",
@@ -92,16 +217,11 @@ public partial class VentanaClientesFactura : Window
             dialogo.InitialDirectory = carpetaInicial;
         if (dialogo.ShowDialog(this) != true)
             return;
-
         try
         {
             int cantidad = almacen.ImportarClientesFactura(dialogo.FileName);
-            CargarClientes();
-            MostrarAviso(
-                "Importar de ClickFactura",
-                $"Se importaron {cantidad} clientes de ClickFactura.",
-                true
-            );
+            Recargar();
+            MostrarAviso("Importar clientes", $"Se importaron {cantidad} clientes.", true);
         }
         catch (Exception excepcion)
         {
@@ -114,57 +234,40 @@ public partial class VentanaClientesFactura : Window
         }
     }
 
-    private void Cliente_DoubleClick(object sender, MouseButtonEventArgs e)
-    {
-        if (
-            TablaClientes.SelectedItem
-            is not Hormiguero.Mensajero.Core.ClickFactura.ClienteFactura cliente
-        )
-            return;
-        CampoRut.Text = cliente.Rut;
-        CampoRazon.Text = cliente.RazonSocial;
-        CampoCorreo.Text = cliente.Correo;
-    }
-
     private void Cerrar_Click(object sender, RoutedEventArgs e) => Close();
 
     private void MostrarAviso(string titulo, string mensaje, bool exito)
     {
         if (!exito)
             MensajeroLog.Registrar("AVISO_ERROR", titulo);
-        var ventana = new Window
-        {
-            Title = titulo,
-            Width = 420,
-            SizeToContent = SizeToContent.Height,
-            MinHeight = 150,
-            Owner = this,
-            WindowStartupLocation = WindowStartupLocation.CenterOwner,
-        };
-        ventana.SetResourceReference(BackgroundProperty, "Hormiguero.Superficie");
-        var panel = new StackPanel { Margin = new Thickness(16) };
-        var texto = new TextBlock
-        {
-            Text = mensaje,
-            TextWrapping = TextWrapping.Wrap,
-            Margin = new Thickness(0, 0, 0, 12),
-        };
-        texto.SetResourceReference(
-            TextBlock.ForegroundProperty,
-            exito ? "Hormiguero.Exito" : "Hormiguero.Error"
+        MessageBox.Show(
+            this,
+            mensaje,
+            titulo,
+            MessageBoxButton.OK,
+            exito ? MessageBoxImage.Information : MessageBoxImage.Error
         );
-        panel.Children.Add(texto);
-        var aceptar = new Button
+    }
+
+    private sealed class ClienteEdicion
+    {
+        public ClienteEdicion() { }
+
+        public ClienteEdicion(ClienteFacturaGestion cliente)
         {
-            Content = "Aceptar",
-            MinWidth = 80,
-            Padding = new Thickness(10, 5, 10, 5),
-            HorizontalAlignment = HorizontalAlignment.Right,
-            IsDefault = true,
-        };
-        aceptar.Click += (_, _) => ventana.Close();
-        panel.Children.Add(aceptar);
-        ventana.Content = panel;
-        ventana.ShowDialog();
+            Rut = cliente.Rut;
+            RazonSocial = cliente.RazonSocial;
+            Correo = cliente.Correo;
+            Activo = cliente.Activo;
+        }
+
+        public string Rut { get; set; } = "";
+        public string RazonSocial { get; set; } = "";
+        public string Correo { get; set; } = "";
+        public bool Activo { get; set; }
+        public bool Modificado { get; set; }
+        public bool EsNuevo { get; set; }
+
+        public override string ToString() => $"{RazonSocial} ({Rut})";
     }
 }

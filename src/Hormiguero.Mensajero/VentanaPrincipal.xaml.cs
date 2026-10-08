@@ -762,7 +762,7 @@ public partial class VentanaPrincipal : Window
                     CopiarUltimoPdf();
                     e.Handled = true;
                     break;
-                case Key.L:
+                case Key.Q:
                     CopiarLineaSiguiente_Click(this, new RoutedEventArgs());
                     e.Handled = true;
                     break;

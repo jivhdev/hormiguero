@@ -130,6 +130,67 @@ public sealed class AlmacenMensajero : IDisposable
             null
         );
 
+    public IReadOnlyList<ClickFactura.ClienteFacturaGestion> LeerTodosClientesFactura()
+    {
+        using var comando = conexion.CreateCommand();
+        comando.CommandText =
+            "SELECT rut, razon_social, correo, activo FROM clientes_factura ORDER BY razon_social;";
+        using var lector = comando.ExecuteReader();
+        var clientes = new List<ClickFactura.ClienteFacturaGestion>();
+        while (lector.Read())
+            clientes.Add(
+                new ClickFactura.ClienteFacturaGestion(
+                    lector.GetString(0),
+                    lector.GetString(1),
+                    lector.GetString(2),
+                    lector.GetInt32(3) != 0
+                )
+            );
+        return clientes;
+    }
+
+    public void GuardarClienteFacturaGestion(
+        string rut,
+        string razonSocial,
+        IEnumerable<string> correos,
+        bool activo,
+        DateTime ahora
+    )
+    {
+        rut = ClickFactura.RutFactura.NormalizarSeguro(rut);
+        if (!ClickFactura.RutFactura.Validar(rut))
+            throw new FormatException("El RUT no es válido.");
+        if (string.IsNullOrWhiteSpace(razonSocial))
+            throw new FormatException("Ingresa la razón social.");
+        string correo = ClickFactura.CorreoFactura.NormalizarParaGuardar(
+            string.Join("; ", correos)
+        );
+        string fecha = ahora.ToString("yyyy-MM-dd HH:mm:ss", CultureInfo.InvariantCulture);
+        using var comando = conexion.CreateCommand();
+        comando.CommandText =
+            "INSERT INTO clientes_factura(rut, razon_social, correo, activo, creado, actualizado) "
+            + "VALUES ($rut, $razon, $correo, $activo, $fecha, $fecha) "
+            + "ON CONFLICT(rut) DO UPDATE SET razon_social = excluded.razon_social, "
+            + "correo = excluded.correo, activo = excluded.activo, actualizado = excluded.actualizado;";
+        comando.Parameters.AddWithValue("$rut", rut);
+        comando.Parameters.AddWithValue("$razon", razonSocial.Trim());
+        comando.Parameters.AddWithValue("$correo", correo);
+        comando.Parameters.AddWithValue("$activo", activo ? 1 : 0);
+        comando.Parameters.AddWithValue("$fecha", fecha);
+        comando.ExecuteNonQuery();
+    }
+
+    public void EliminarClienteFactura(string rut, DateTime ahora)
+    {
+        string fecha = ahora.ToString("yyyy-MM-dd HH:mm:ss", CultureInfo.InvariantCulture);
+        using var comando = conexion.CreateCommand();
+        comando.CommandText =
+            "UPDATE clientes_factura SET activo = 0, actualizado = $fecha WHERE rut = $rut;";
+        comando.Parameters.AddWithValue("$rut", ClickFactura.RutFactura.NormalizarSeguro(rut));
+        comando.Parameters.AddWithValue("$fecha", fecha);
+        comando.ExecuteNonQuery();
+    }
+
     /// <summary>Cliente activo con ese RUT (ya normalizado), o null.</summary>
     public ClickFactura.ClienteFactura? BuscarClienteFactura(string rut) =>
         ConsultarClientesFactura(
