@@ -4,6 +4,7 @@ namespace Archivero.Datos;
 
 public class ConfiguracionDocumentoRepository
 {
+    private const string ClaveSoloObservador = "configuraciones.documento.solo_observador";
     private readonly EntidadRepository _entidades = new();
     private readonly ConfiguracionImpresionRepository _impresion = new();
 
@@ -31,6 +32,8 @@ public class ConfiguracionDocumentoRepository
         }
 
         var configuracionId = lector.GetInt32(0);
+        if (LeerIdsSoloObservador().Contains(configuracionId))
+            return null;
         var configuracion = LeerConfiguracion(lector);
         lector.Close();
 
@@ -60,7 +63,8 @@ public class ConfiguracionDocumentoRepository
             resultado.Add(LeerConfiguracion(lector));
         }
 
-        return resultado;
+        var soloObservador = LeerIdsSoloObservador();
+        return resultado.Where(c => !soloObservador.Contains(c.Id)).ToList();
     }
 
     public void ActualizarDestino(
@@ -125,6 +129,39 @@ public class ConfiguracionDocumentoRepository
     }
 
     public List<ConfiguracionDocumento> ObtenerTodasConPatrones()
+    {
+        var soloObservador = LeerIdsSoloObservador();
+        return ObtenerTodasConPatronesInterno().Where(c => !soloObservador.Contains(c.Id)).ToList();
+    }
+
+    public List<ConfiguracionDocumento> ObtenerTodasConPatronesParaObservador() =>
+        ObtenerTodasConPatronesInterno();
+
+    public void MarcarSoloObservador(int configuracionId)
+    {
+        var ids = LeerIdsSoloObservador();
+        ids.Add(configuracionId);
+        new ConfiguracionRepository().Guardar(
+            ClaveSoloObservador,
+            System.Text.Json.JsonSerializer.Serialize(ids)
+        );
+    }
+
+    private static HashSet<int> LeerIdsSoloObservador()
+    {
+        try
+        {
+            return System.Text.Json.JsonSerializer.Deserialize<HashSet<int>>(
+                    new ConfiguracionRepository().Obtener(ClaveSoloObservador) ?? "[]"
+                ) ?? [];
+        }
+        catch (System.Text.Json.JsonException)
+        {
+            return [];
+        }
+    }
+
+    private List<ConfiguracionDocumento> ObtenerTodasConPatronesInterno()
     {
         using var conexion = BaseDeDatos.CrearConexion();
         using var comando = conexion.CreateCommand();

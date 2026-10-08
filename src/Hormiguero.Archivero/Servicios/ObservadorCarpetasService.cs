@@ -98,7 +98,7 @@ public sealed class ObservadorCarpetasService : IDisposable
             }
         }
 
-        _revision.Change(TimeSpan.Zero, TimeSpan.FromSeconds(30));
+        _revision.Change(TimeSpan.Zero, TimeSpan.FromMinutes(5));
     }
 
     public void ActualizarCarpetas() => Iniciar();
@@ -121,6 +121,27 @@ public sealed class ObservadorCarpetasService : IDisposable
             return;
         try
         {
+            foreach (
+                var actividad in _repositorio
+                    .LeerActividad()
+                    .Where(a =>
+                        a.Motivo?.Contains("falta el original", StringComparison.OrdinalIgnoreCase)
+                            == true
+                        && File.Exists(a.Ruta)
+                        && ExisteOriginal(a.Ruta)
+                    )
+            )
+                Registrar(
+                    new(
+                        _reloj(),
+                        actividad.Ruta,
+                        null,
+                        null,
+                        null,
+                        "Solucionado: apareció el original"
+                    )
+                );
+
             foreach (var carpeta in _repositorio.Leer().Where(c => c.Activa))
             {
                 if (!Directory.Exists(carpeta.Ruta))
@@ -195,6 +216,11 @@ public sealed class ObservadorCarpetasService : IDisposable
     private async Task ProcesarAsync(string ruta, CarpetaObservadaExterna carpeta)
     {
         var info = new FileInfo(ruta);
+        if (info.Exists && _repositorio.YaFueRevisado(ruta, info.Length, info.LastWriteTimeUtc))
+        {
+            _revisados[ruta] = (info.Length, info.LastWriteTimeUtc);
+            return;
+        }
         if (
             info.Exists
             && _revisados.TryGetValue(ruta, out var revisado)
@@ -209,13 +235,37 @@ public sealed class ObservadorCarpetasService : IDisposable
         {
             string huella = Huella.Calcular(ruta);
             string? anterior = _repositorio.LeerHuella(ruta);
-            // Solo la primera página: muchos PDF traen la copia cedible como página 2.
-            bool cedible =
-                Path.GetFileName(ruta).Contains("CEDIBLE", StringComparison.OrdinalIgnoreCase)
-                || LectorPdf
-                    .ExtraerTextoPrimeraPagina(ruta)
-                    .Contains("CEDIBLE", StringComparison.OrdinalIgnoreCase);
-            var configuraciones = _configuraciones.ObtenerTodasConPatrones();
+            bool cedible = false;
+            if (carpeta.ZonaIdentificacion is { } zonaIdentificacion)
+            {
+                string identificacion = LeerZona(ruta, zonaIdentificacion);
+                if (!ContieneNormalizado(identificacion, carpeta.IdentificacionEsperada ?? ""))
+                {
+                    GuardarVisto(ruta, huella, estado, "ajeno");
+                    _revisados[ruta] = estado;
+                    return;
+                }
+                if (carpeta.TieneCedibles && carpeta.ZonaCedible is { } zonaCedible)
+                    cedible = ContieneNormalizado(
+                        LeerZona(ruta, zonaCedible),
+                        carpeta.CedibleEsperado ?? "CEDIBLE"
+                    );
+            }
+            else
+            {
+                // Compatibilidad con carpetas creadas antes del asistente guiado.
+                cedible =
+                    Path.GetFileName(ruta).Contains("CEDIBLE", StringComparison.OrdinalIgnoreCase)
+                    || LectorPdf
+                        .ExtraerTextoPrimeraPagina(ruta)
+                        .Contains("CEDIBLE", StringComparison.OrdinalIgnoreCase);
+            }
+            var configuraciones = carpeta.ConfiguracionesDocumentoIds is { Count: > 0 } ids
+                ? _configuraciones
+                    .ObtenerTodasConPatronesParaObservador()
+                    .Where(c => ids.Contains(c.Id))
+                    .ToList()
+                : _configuraciones.ObtenerTodasConPatrones();
             ConfiguracionDocumento? coincidencia = null;
             IReadOnlyList<Hormiguero.Nucleo.Datos.ValorDocumentoLeido> valores = [];
             DatoEnlazante? datoIdentificador = null;
@@ -228,7 +278,7 @@ public sealed class ObservadorCarpetasService : IDisposable
                 numeroNombre = NumeroDesdeNombre(ruta);
                 if (numeroNombre is null)
                 {
-                    _repositorio.GuardarHuella(ruta, huella);
+                    GuardarVisto(ruta, huella, estado, "sin-numero");
                     _revisados[ruta] = estado;
                     Registrar(new(_reloj(), ruta, null, null, null, "Sin número en el nombre"));
                     return;
@@ -270,6 +320,18 @@ public sealed class ObservadorCarpetasService : IDisposable
                 }
             }
 
+            bool documentoCedible = cedible;
+            if (cedible && carpeta.ZonaIdentificacion is not null)
+            {
+                if (ExisteOriginal(ruta))
+                {
+                    GuardarVisto(ruta, huella, estado, "cedible");
+                    _revisados[ruta] = estado;
+                    return;
+                }
+                cedible = false;
+            }
+
             if (cedible)
             {
                 bool originalExiste = ExisteOriginal(ruta);
@@ -309,7 +371,7 @@ public sealed class ObservadorCarpetasService : IDisposable
                         )
                     );
                 }
-                _repositorio.GuardarHuella(ruta, huella);
+                GuardarVisto(ruta, huella, estado, documentoCedible ? "cedible" : "ignorado");
                 return;
             }
 
@@ -329,7 +391,7 @@ public sealed class ObservadorCarpetasService : IDisposable
                     numeroNombre!
                 );
             await (PublicadorDatosDocumentoService.UltimaRevisionEnlaces ?? Task.CompletedTask);
-            _repositorio.GuardarHuella(ruta, huella);
+            GuardarVisto(ruta, huella, estado, "procesado");
             _revisados[ruta] = estado;
             DocumentoIdentificadoYPublicado?.Invoke(ruta, coincidencia);
             bool posteriorAAgregada =
@@ -349,6 +411,7 @@ public sealed class ObservadorCarpetasService : IDisposable
                     );
             if (
                 posteriorAAgregada
+                && !documentoCedible
                 && carpeta.AccionAlLlegar is "Avisar" or "AvisarImprimirPrimeraPagina"
             )
             {
@@ -370,7 +433,7 @@ public sealed class ObservadorCarpetasService : IDisposable
                 "Configuracion" => coincidencia.ModoImpresion,
                 _ => null,
             };
-            if (posteriorAAgregada && modo is ModoImpresion modoImpresion)
+            if (posteriorAAgregada && !documentoCedible && modo is ModoImpresion modoImpresion)
             {
                 string? avisoImpresion = _impresion?.Procesar(
                     ruta,
@@ -397,6 +460,30 @@ public sealed class ObservadorCarpetasService : IDisposable
         {
             Avisar($"No se pudo revisar {Path.GetFileName(ruta)}: {ex.Message}");
         }
+    }
+
+    private void GuardarVisto(
+        string ruta,
+        string huella,
+        (long Tamano, DateTime Modificado) estado,
+        string resultado
+    )
+    {
+        _repositorio.GuardarHuella(ruta, huella);
+        _repositorio.GuardarEstado(ruta, estado.Tamano, estado.Modificado, resultado);
+    }
+
+    private static string LeerZona(string ruta, ZonaControlCarpeta zona) =>
+        LectorPdf.ExtraerTexto(ruta, zona.Pagina - 1, new(zona.X, zona.Y, zona.Ancho, zona.Alto));
+
+    private static bool ContieneNormalizado(string texto, string esperado)
+    {
+        static string Normalizar(string valor) =>
+            System.Text.RegularExpressions.Regex.Replace(valor, @"\s+", " ").Trim();
+        string valorNormalizado = Normalizar(texto);
+        string esperadoNormalizado = Normalizar(esperado);
+        return esperadoNormalizado.Length > 0
+            && valorNormalizado.Contains(esperadoNormalizado, StringComparison.OrdinalIgnoreCase);
     }
 
     private static string? LeerCadena(string ruta)

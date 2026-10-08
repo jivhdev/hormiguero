@@ -39,7 +39,8 @@ public static class PeriodosCarpetaObservada
             carpeta.FormatoPeriodo == "AAAA"
                 ? new DateTime(ahora.Year - 1, 1, 1)
                 : actual.AddMonths(-1);
-        return new[] { actual, anterior }
+        var periodos = ahora.Day <= 5 ? new[] { actual, anterior } : [actual];
+        return periodos
             .Select(mes => Path.Combine(carpeta.Ruta, Formatear(mes, carpeta.FormatoPeriodo)))
             .Where(Directory.Exists)
             .ToArray();
@@ -77,7 +78,14 @@ public sealed record CarpetaObservadaExterna(
     string Emisor = "",
     bool SeguirPeriodo = false,
     string FormatoPeriodo = "AAAA_AAAAMM",
-    string AccionAlLlegar = "Configuracion"
+    string AccionAlLlegar = "Configuracion",
+    ZonaControlCarpeta? ZonaIdentificacion = null,
+    string? IdentificacionEsperada = null,
+    int? EntidadIdentificacionId = null,
+    bool TieneCedibles = false,
+    ZonaControlCarpeta? ZonaCedible = null,
+    string? CedibleEsperado = null,
+    IReadOnlyList<int>? ConfiguracionesDocumentoIds = null
 )
 {
     public string Resumen
@@ -106,6 +114,15 @@ public sealed record CarpetaObservadaExterna(
         }
     }
 }
+
+public sealed record ZonaControlCarpeta(
+    int Pagina,
+    double X,
+    double Y,
+    double Ancho,
+    double Alto,
+    string TextoEsperado
+);
 
 public sealed record DocumentoPorAtender(
     Guid Id,
@@ -141,6 +158,7 @@ public sealed class CarpetasObservadasRepository(ConfiguracionRepository? config
     private const string ClaveCarpetas = "carpetas.observadas";
     private const string ClaveActividad = "carpetas.observadas.actividad";
     private const string ClaveHuellas = "carpetas.observadas.huellas";
+    private const string ClaveEstados = "carpetas.observadas.estados";
     private const string ClavePorAtender = "carpetas.observadas.atender";
 
     public IReadOnlyList<CarpetaObservadaExterna> Leer()
@@ -198,6 +216,42 @@ public sealed class CarpetasObservadasRepository(ConfiguracionRepository? config
         {
             return null;
         }
+    }
+
+    public bool YaFueRevisado(string ruta, long tamano, DateTime modificado)
+    {
+        try
+        {
+            var estados =
+                JsonSerializer.Deserialize<Dictionary<string, EstadoArchivoObservado>>(
+                    _configuracion.Obtener(ClaveEstados) ?? "{}"
+                ) ?? [];
+            return estados.TryGetValue(Path.GetFullPath(ruta), out var estado)
+                && estado.Tamano == tamano
+                && estado.Modificado == modificado;
+        }
+        catch (JsonException)
+        {
+            return false;
+        }
+    }
+
+    public void GuardarEstado(string ruta, long tamano, DateTime modificado, string resultado)
+    {
+        Dictionary<string, EstadoArchivoObservado> estados;
+        try
+        {
+            estados =
+                JsonSerializer.Deserialize<Dictionary<string, EstadoArchivoObservado>>(
+                    _configuracion.Obtener(ClaveEstados) ?? "{}"
+                ) ?? [];
+        }
+        catch (JsonException)
+        {
+            estados = [];
+        }
+        estados[Path.GetFullPath(ruta)] = new(tamano, modificado, resultado);
+        _configuracion.Guardar(ClaveEstados, JsonSerializer.Serialize(estados));
     }
 
     public void GuardarHuella(string ruta, string huella)
@@ -264,3 +318,5 @@ public sealed class CarpetasObservadasRepository(ConfiguracionRepository? config
         );
     }
 }
+
+public sealed record EstadoArchivoObservado(long Tamano, DateTime Modificado, string Resultado);

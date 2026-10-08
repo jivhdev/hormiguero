@@ -95,7 +95,11 @@ public sealed class ObservadorCarpetasServiceTests : IDisposable
         await encontre.Task.WaitAsync(TimeSpan.FromSeconds(15));
 
         string original = Path.Combine(observada, "factura.pdf");
-        File.Copy(rutaCedible, original);
+        CreadorPdfDePrueba.CrearConLineas(observada, "Factura", "Proveedor");
+        string documentoNuevo = Directory
+            .GetFiles(observada, "*.pdf")
+            .Single(ruta => ruta != rutaCedible);
+        File.Move(documentoNuevo, original);
         await servicio.RevisarAhoraAsync();
 
         Assert.Contains(
@@ -210,7 +214,7 @@ public sealed class ObservadorCarpetasServiceTests : IDisposable
     public void Calcula_periodo_actual_y_anterior(string formato, string actual, string anterior)
     {
         string basePrueba = Path.Combine(_raiz, "periodos");
-        DateTime reloj = new(2026, 10, 7);
+        DateTime reloj = new(2026, 10, 2);
         var carpeta = new CarpetaObservadaExterna(
             Guid.NewGuid(),
             "Mes",
@@ -237,6 +241,87 @@ public sealed class ObservadorCarpetasServiceTests : IDisposable
         Assert.Equal(
             nuevoPeriodo,
             PeriodosCarpetaObservada.Rutas(carpeta, new DateTime(2026, 11, 2)).First()
+        );
+    }
+
+    [Fact]
+    public async Task ZonaDeIdentificacion_ignoraElPdfDeOtroClienteAntesDeReconocerlo()
+    {
+        string observada = Path.Combine(_raiz, "clientes");
+        Directory.CreateDirectory(observada);
+        string propio = CreadorPdfDePrueba.CrearConLineas(
+            observada,
+            "Empresa Uno",
+            "Proveedor",
+            "Factura"
+        );
+        string ajeno = CreadorPdfDePrueba.CrearConLineas(
+            observada,
+            "Empresa Dos",
+            "Proveedor",
+            "Factura"
+        );
+        File.Move(propio, Path.Combine(observada, "propio.pdf"));
+        File.Move(ajeno, Path.Combine(observada, "ajeno.pdf"));
+        var b0 = CreadorPdfDePrueba.ObtenerBandaDeLinea(0);
+        var marcaIdentidad = new ZonaControlCarpeta(
+            1,
+            b0.X,
+            b0.Y,
+            b0.Ancho,
+            b0.Alto,
+            "Empresa Uno"
+        );
+        var idDocumento = new ConfiguracionDocumentoRepository().GuardarNueva(
+            "Proveedor",
+            "Factura",
+            _raiz,
+            FormatoCarpeta.Directo,
+            null,
+            false,
+            [Marca(CampoMarca.Emisor, 1), Marca(CampoMarca.Tipo, 2)]
+        );
+        var carpetas = new CarpetasObservadasRepository();
+        carpetas.Guardar([
+            new(
+                Guid.NewGuid(),
+                "Documentos",
+                observada,
+                false,
+                true,
+                ZonaIdentificacion: marcaIdentidad,
+                IdentificacionEsperada: "Empresa Uno",
+                ConfiguracionesDocumentoIds: [idDocumento]
+            ),
+        ]);
+        using var servicio = new ObservadorCarpetasService(carpetas);
+
+        await servicio.RevisarAhoraAsync();
+        await (PublicadorDatosDocumentoService.UltimaRevisionEnlaces ?? Task.CompletedTask);
+
+        Assert.Single(carpetas.LeerActividad());
+        Assert.Equal(Path.Combine(observada, "propio.pdf"), carpetas.LeerActividad()[0].Ruta);
+    }
+
+    [Fact]
+    public void Periodo_no_incluye_el_mes_anterior_despues_del_dia_cinco()
+    {
+        string basePrueba = Path.Combine(_raiz, "periodos-dia-seis");
+        Directory.CreateDirectory(Path.Combine(basePrueba, "2026", "202610"));
+        Directory.CreateDirectory(Path.Combine(basePrueba, "2026", "202609"));
+        var carpeta = new CarpetaObservadaExterna(
+            Guid.NewGuid(),
+            "Mes",
+            basePrueba,
+            false,
+            true,
+            SeguirPeriodo: true,
+            FormatoPeriodo: "AAAA_AAAAMM"
+        );
+
+        Assert.Equal(
+            [Path.Combine(basePrueba, "2026", "202610")],
+            PeriodosCarpetaObservada.Rutas(carpeta, new DateTime(2026, 10, 6))
         );
     }
 
