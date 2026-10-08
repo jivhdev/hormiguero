@@ -62,7 +62,7 @@ public static class PublicadorDatosDocumentoService
                 datoIdentificador.Nombre,
                 datoIdentificador.Id,
                 valor,
-                DiccionarioDatosEnlazantes.ClaveDeEnlace(valor),
+                DiccionarioDatosEnlazantes.ClaveDeEnlace(datoIdentificador.Id, valor),
                 "observador"
             ),
         };
@@ -304,7 +304,7 @@ public static class PublicadorDatosDocumentoService
                         dato.Nombre,
                         dato.Id,
                         original,
-                        DiccionarioDatosEnlazantes.ClaveDeEnlace(original),
+                        DiccionarioDatosEnlazantes.ClaveDeEnlace(dato.Id, original),
                         "marca",
                         DatoDiccionarioId: dato.Id
                     )

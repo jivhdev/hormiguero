@@ -258,6 +258,15 @@ public sealed record CoincidenciasPorDato(
 
 public static class DiccionarioDatosEnlazantes
 {
+    public static bool EsParte(string datoId) =>
+        datoId
+            is "rut_proveedor"
+                or "nombre_proveedor"
+                or "rut_cliente"
+                or "nombre_cliente"
+                or "rut_propio"
+                or "nombre_propio";
+
     public static string NombreEstandar(string datoId, string emisor)
     {
         ArgumentException.ThrowIfNullOrWhiteSpace(emisor);
@@ -281,6 +290,29 @@ public static class DiccionarioDatosEnlazantes
             return digitos.TrimStart('0') is { Length: > 0 } sinCeros ? sinCeros : "0";
         return string.Concat(valor.Where(char.IsLetterOrDigit)).ToUpperInvariant();
     }
+
+    public static string ClaveDeEnlace(string datoId, string? valor)
+    {
+        if (datoId is "rut_proveedor" or "rut_cliente" or "rut_propio")
+        {
+            string rut = string.Concat((valor ?? "").Where(char.IsLetterOrDigit))
+                .ToUpperInvariant();
+            return rut.Length > 1 ? rut[..^1] + "-" + rut[^1] : rut;
+        }
+        if (datoId is "nombre_proveedor" or "nombre_cliente" or "nombre_propio")
+            return string.Join(
+                    ' ',
+                    (valor ?? "").Split((char[]?)null, StringSplitOptions.RemoveEmptyEntries)
+                )
+                .ToUpperInvariant();
+        return ClaveDeEnlace(valor);
+    }
+
+    public static string ValorComoSeLee(string? valor) => (valor ?? "").Trim();
+
+    public static string ValorLiteralNormalizado(string? valor) =>
+        string.Join(' ', (valor ?? "").Split((char[]?)null, StringSplitOptions.RemoveEmptyEntries))
+            .ToUpperInvariant();
 
     public static IReadOnlyList<DatoEnlazante> Todos { get; } =
         new ReadOnlyCollection<DatoEnlazante>([
@@ -406,6 +438,33 @@ public static class DiccionarioDatosEnlazantes
                 null,
                 "Comprobante de pago"
             ),
+            new("rut_proveedor", "RUT del proveedor", "Otros", 18, null, "RUT del proveedor"),
+            new(
+                "nombre_proveedor",
+                "Nombre o razón social del proveedor",
+                "Otros",
+                19,
+                null,
+                "Nombre del proveedor"
+            ),
+            new("rut_cliente", "RUT del cliente", "Otros", 20, null, "RUT del cliente"),
+            new(
+                "nombre_cliente",
+                "Nombre o razón social del cliente",
+                "Otros",
+                21,
+                null,
+                "Nombre del cliente"
+            ),
+            new("rut_propio", "RUT de mi empresa", "Otros", 22, null, "RUT propio"),
+            new(
+                "nombre_propio",
+                "Nombre o razón social de mi empresa",
+                "Otros",
+                23,
+                null,
+                "Nombre propio"
+            ),
         ]);
 }
 
@@ -417,7 +476,7 @@ public sealed class RepositorioDatosEnlazantes(SqliteConnection conexion)
         ArgumentException.ThrowIfNullOrWhiteSpace(valor);
         ArgumentException.ThrowIfNullOrWhiteSpace(emisor);
         ArgumentException.ThrowIfNullOrWhiteSpace(tipo);
-        string clave = DiccionarioDatosEnlazantes.ClaveDeEnlace(valor);
+        string clave = DiccionarioDatosEnlazantes.ClaveDeEnlace(datoId, valor);
         if (clave.Length == 0)
             return false;
         using var comando = conexion.CreateCommand();
@@ -429,7 +488,7 @@ public sealed class RepositorioDatosEnlazantes(SqliteConnection conexion)
             JOIN campos_documento campo ON campo.id=val.campo_id
             JOIN identificaciones ident ON ident.id=campo.identificacion_id
             WHERE val.dato_diccionario_id=$dato
-              AND val.valor_clave=$clave
+              AND (val.valor_clave=$clave OR UPPER(TRIM(val.valor_original))=UPPER(TRIM($literal)))
               AND val.estado='vigente'
               AND val.origen<>'cedible'
               AND ver.estado='vigente'
@@ -439,6 +498,7 @@ public sealed class RepositorioDatosEnlazantes(SqliteConnection conexion)
             """;
         comando.Parameters.AddWithValue("$dato", datoId);
         comando.Parameters.AddWithValue("$clave", clave);
+        comando.Parameters.AddWithValue("$literal", valor);
         comando.Parameters.AddWithValue("$emisor", emisor);
         comando.Parameters.AddWithValue("$tipo", tipo);
         return comando.ExecuteScalar() is not null;
@@ -458,7 +518,7 @@ public sealed class RepositorioDatosEnlazantes(SqliteConnection conexion)
     {
         using var cmd = conexion.CreateCommand();
         cmd.CommandText =
-            "SELECT DISTINCT x.dato_diccionario_id,x.valor_clave FROM valores_documento x JOIN campos_documento c ON c.id=x.campo_id WHERE x.version_id=$v AND x.estado='vigente' AND x.dato_diccionario_id IS NOT NULL AND x.valor_clave<>'' AND EXISTS(SELECT 1 FROM tipos_documento_datos t WHERE t.identificacion_id=c.identificacion_id AND t.dato_diccionario_id=x.dato_diccionario_id AND t.activo=1 AND t.enlazable=1) ORDER BY x.dato_diccionario_id;";
+            "SELECT DISTINCT x.dato_diccionario_id,x.valor_original FROM valores_documento x JOIN campos_documento c ON c.id=x.campo_id WHERE x.version_id=$v AND x.estado='vigente' AND x.dato_diccionario_id IS NOT NULL AND x.valor_clave<>'' AND EXISTS(SELECT 1 FROM tipos_documento_datos t WHERE t.identificacion_id=c.identificacion_id AND t.dato_diccionario_id=x.dato_diccionario_id AND t.activo=1 AND t.enlazable=1) ORDER BY x.dato_diccionario_id;";
         cmd.Parameters.AddWithValue("$v", versionId);
         var datos = new List<(string Id, string Valor)>();
         using (var r = cmd.ExecuteReader())
@@ -629,14 +689,15 @@ public sealed class RepositorioDatosEnlazantes(SqliteConnection conexion)
 
     public IReadOnlyList<DocumentoConDato> SugerirCalce(string datoId, string valor, int maximo = 3)
     {
-        string clave = DiccionarioDatosEnlazantes.ClaveDeEnlace(valor);
+        string clave = DiccionarioDatosEnlazantes.ClaveDeEnlace(datoId, valor);
         if (clave.Length == 0)
             return [];
         using var comando = conexion.CreateCommand();
         comando.CommandText =
-            "SELECT DISTINCT vd.id,ver.id,vd.ruta,val.valor_original,ident.nombre_estandar,vi.fecha_reconocida FROM valores_documento val JOIN versiones_documento ver ON ver.id=val.version_id JOIN documentos vd ON vd.id=ver.documento_id JOIN campos_documento c ON c.id=val.campo_id JOIN identificaciones ident ON ident.id=c.identificacion_id LEFT JOIN valores_informativos_documento vi ON vi.version_id=ver.id AND vi.dato='fecha_documento' WHERE val.dato_diccionario_id=$d AND val.valor_clave=$v AND val.estado='vigente' AND ver.estado='vigente' AND EXISTS(SELECT 1 FROM tipos_documento_datos t WHERE t.identificacion_id=c.identificacion_id AND t.dato_diccionario_id=val.dato_diccionario_id AND t.activo=1 AND t.enlazable=1) ORDER BY ver.id DESC LIMIT $maximo;";
+            "SELECT DISTINCT vd.id,ver.id,vd.ruta,val.valor_original,ident.nombre_estandar,vi.fecha_reconocida FROM valores_documento val JOIN versiones_documento ver ON ver.id=val.version_id JOIN documentos vd ON vd.id=ver.documento_id JOIN campos_documento c ON c.id=val.campo_id JOIN identificaciones ident ON ident.id=c.identificacion_id LEFT JOIN valores_informativos_documento vi ON vi.version_id=ver.id AND vi.dato='fecha_documento' WHERE val.dato_diccionario_id=$d AND (val.valor_clave=$v OR UPPER(TRIM(val.valor_original))=UPPER(TRIM($literal))) AND val.estado='vigente' AND ver.estado='vigente' AND EXISTS(SELECT 1 FROM tipos_documento_datos t WHERE t.identificacion_id=c.identificacion_id AND t.dato_diccionario_id=val.dato_diccionario_id AND t.activo=1 AND t.enlazable=1) ORDER BY ver.id DESC LIMIT $maximo;";
         comando.Parameters.AddWithValue("$d", datoId);
         comando.Parameters.AddWithValue("$v", clave);
+        comando.Parameters.AddWithValue("$literal", valor);
         comando.Parameters.AddWithValue("$maximo", maximo);
         using var lector = comando.ExecuteReader();
         var resultados = new List<DocumentoConDato>();
@@ -654,15 +715,17 @@ public sealed class RepositorioDatosEnlazantes(SqliteConnection conexion)
         return resultados;
     }
 
-    public IReadOnlyList<DocumentoConDato> BuscarDocumentos(string datoId, string valorClave)
+    public IReadOnlyList<DocumentoConDato> BuscarDocumentos(string datoId, string valor)
     {
         ArgumentException.ThrowIfNullOrWhiteSpace(datoId);
-        ArgumentNullException.ThrowIfNull(valorClave);
+        ArgumentNullException.ThrowIfNull(valor);
+        string clave = DiccionarioDatosEnlazantes.ClaveDeEnlace(datoId, valor);
         using var comando = conexion.CreateCommand();
         comando.CommandText =
-            "SELECT DISTINCT vd.id, val.version_id, vd.ruta, val.valor_original FROM valores_documento val JOIN versiones_documento ver ON ver.id=val.version_id JOIN documentos vd ON vd.id=ver.documento_id JOIN campos_documento c ON c.id=val.campo_id WHERE val.dato_diccionario_id=$d AND val.valor_clave=$v AND val.estado='vigente' AND ver.estado='vigente' AND EXISTS(SELECT 1 FROM tipos_documento_datos t WHERE t.identificacion_id=c.identificacion_id AND t.dato_diccionario_id=val.dato_diccionario_id AND t.activo=1 AND t.enlazable=1) ORDER BY vd.id,val.version_id;";
+            "SELECT DISTINCT vd.id, val.version_id, vd.ruta, val.valor_original FROM valores_documento val JOIN versiones_documento ver ON ver.id=val.version_id JOIN documentos vd ON vd.id=ver.documento_id JOIN campos_documento c ON c.id=val.campo_id WHERE val.dato_diccionario_id=$d AND (val.valor_clave=$v OR UPPER(TRIM(val.valor_original))=UPPER(TRIM($literal))) AND val.estado='vigente' AND ver.estado='vigente' AND EXISTS(SELECT 1 FROM tipos_documento_datos t WHERE t.identificacion_id=c.identificacion_id AND t.dato_diccionario_id=val.dato_diccionario_id AND t.activo=1 AND t.enlazable=1) ORDER BY vd.id,val.version_id;";
         comando.Parameters.AddWithValue("$d", datoId);
-        comando.Parameters.AddWithValue("$v", valorClave);
+        comando.Parameters.AddWithValue("$v", clave);
+        comando.Parameters.AddWithValue("$literal", valor);
         using var lector = comando.ExecuteReader();
         var resultados = new List<DocumentoConDato>();
         while (lector.Read())

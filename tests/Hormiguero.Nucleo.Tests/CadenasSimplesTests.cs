@@ -129,6 +129,20 @@ public sealed class CadenasSimplesTests : IDisposable
     }
 
     [Fact]
+    public void Coincidencia_solo_al_limpiar_crea_dudoso_con_los_dos_valores()
+    {
+        long baseVersion = CrearVersion("base.pdf", "base", "01-10-25");
+        long nuevaVersion = CrearVersion("nueva.pdf", "nueva", "11025");
+        CrearCadenaConDocumento(baseVersion);
+
+        Assert.Equal(0, new MotorCadenasSimples(_conexion).Procesar(nuevaVersion));
+        var dudoso = Assert.Single(
+            new RepositorioReglasYEnlaces(_conexion).ListarDudososCadenasSimples()
+        );
+        Assert.Contains("Calza solo al limpiar: «11025» ↔ «01-10-25»", dudoso.Motivo);
+    }
+
+    [Fact]
     public void Dudoso_asistido_se_enlaza_a_la_cadena_elegida()
     {
         long base1 = CrearVersion("uno.pdf", "uno", "789");
@@ -222,10 +236,14 @@ public sealed class CadenasSimplesTests : IDisposable
         );
         using var dato = _conexion.CreateCommand();
         dato.CommandText =
-            "INSERT INTO valores_documento(version_id,campo_id,valor_original,valor_clave,origen,fecha_creacion,dato_diccionario_id) VALUES($v,$c,$x,$x,'pdf','ahora','oc_cliente');";
+            "INSERT INTO valores_documento(version_id,campo_id,valor_original,valor_clave,origen,fecha_creacion,dato_diccionario_id) VALUES($v,$c,$x,$k,'pdf','ahora','oc_cliente');";
         dato.Parameters.AddWithValue("$v", versionId);
         dato.Parameters.AddWithValue("$c", campoId);
         dato.Parameters.AddWithValue("$x", valor);
+        dato.Parameters.AddWithValue(
+            "$k",
+            DiccionarioDatosEnlazantes.ClaveDeEnlace("oc_cliente", valor)
+        );
         dato.ExecuteNonQuery();
         return versionId;
     }

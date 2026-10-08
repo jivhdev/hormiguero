@@ -4,6 +4,9 @@ namespace Archivero.Servicios;
 
 public static class AsistenteClasificacionService
 {
+    public static string TextoBotonOtrosDatos(bool hayDatosMarcados) =>
+        hayDatosMarcados ? "Siguiente" : "Saltar";
+
     public static IReadOnlyList<string> Categorias =>
         DiccionarioDatosEnlazantes
             .Todos.Select(d => d.Grupo)
@@ -11,7 +14,9 @@ public static class AsistenteClasificacionService
             .ToList();
 
     public static IReadOnlyList<DatoEnlazante> DocumentosDeCategoria(string categoria) =>
-        DiccionarioDatosEnlazantes.Todos.Where(d => d.Grupo == categoria).ToList();
+        DiccionarioDatosEnlazantes
+            .Todos.Where(d => d.Grupo == categoria && !DiccionarioDatosEnlazantes.EsParte(d.Id))
+            .ToList();
 
     public static string NombreDocumento(string datoId) =>
         DiccionarioDatosEnlazantes.Todos.Single(d => d.Id == datoId).EtiquetaTipo;

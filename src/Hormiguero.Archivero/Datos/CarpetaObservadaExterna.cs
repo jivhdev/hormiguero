@@ -134,7 +134,7 @@ public sealed record DocumentoPorAtender(
 )
 {
     public string Resumen =>
-        $"{Llegada:dd-MM HH:mm} · {Tipo} N° {Hormiguero.Nucleo.Datos.DiccionarioDatosEnlazantes.ClaveDeEnlace(Numero)} · {Path.GetFileName(Ruta)}";
+        $"{Llegada:dd-MM HH:mm} · {Tipo} N° {Hormiguero.Nucleo.Datos.DiccionarioDatosEnlazantes.ValorComoSeLee(Numero)} · {Path.GetFileName(Ruta)}";
 }
 
 public sealed record DocumentoObservadoReciente(
