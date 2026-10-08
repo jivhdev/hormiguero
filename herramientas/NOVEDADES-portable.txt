@@ -2,22 +2,27 @@ HORMIGUERO - NOVEDADES PARA PROBAR (la versión exacta está en VERSION.txt)
 ===============================================================================
 
 LO MÁS NUEVO (07-10, tarde)
-- ARCHIVERO · CARPETAS DE COBELCAR ("Carpetas observadas", arriba). Por cada carpeta:
-  1) Nombre y Ruta: la carpeta del tipo, SIN el año y el mes (ej. ...\COBEL\2-FCV). Si con
-     "Examinar…" eliges la del mes (...\2-FCV\2026\202610), Archivero te ofrece usar la base.
-  2) Marca "Las subcarpetas cambian por período" (AAAA\AAAAMM): mira el mes actual y el anterior
-     y pasa solo al mes nuevo.
-  3) "¿Cómo se reconocen?" -> "Todos los PDF de esta carpeta son": eliges el tipo del diccionario
-     (ej. "Ventas propias · N° Factura propia") y escribes el emisor. El número sale del nombre del
-     archivo (FCV0000025378 -> 25378). No hace falta clasificar nada.
-  4) "Al llegar un documento nuevo": Solo registrar / Imprimir primera página / Imprimir todo /
-     Avisarme / Avisarme e imprimir primera página. Los cedibles nunca se imprimen.
-  5) "Agregar" y "Listo".
-  Lo que ya estaba en la carpeta al agregarla NO se imprime ni avisa (solo lo que llega después).
-  "Avisarme": notificación de Windows + lista "Por atender" en Archivero; cuando hagas el ingreso,
-  selecciónala y pulsa "Listo". Archivero debe quedar abierto (puede ir minimizado).
-  Para Cobelcar: 2-FCV imprimir 1.ª página · 3-GDV avisarme · 6-GDV RECIBIDAS solo registrar ·
-  5-NCV imprimir 1.ª página.
+- ARCHIVERO · CARPETAS OBSERVADAS (botón "Carpetas observadas", arriba) — para la carpeta de un
+  proveedor que trae documentos de TODOS sus clientes: Archivero toma solo los tuyos y los ingresa a
+  Hormiguero como si los hubieras archivado, SIN mover nada de esa carpeta.
+  "Agregar carpeta…" abre un asistente de 6 pasos:
+  1) Carpeta: elige la del tipo (ej. ...\COBEL\3-GDV) y marca "Las subcarpetas cambian por período"
+     (AAAA\AAAAMM). Si eliges la del mes, Archivero te ofrece usar la base.
+  2) Elige un PDF de ejemplo que SEA TUYO (ej. una guía de COMERCIAL JCV SPA).
+  3) "Marcar la zona en el PDF": dibuja un rectángulo sobre el recuadro del cliente; revisa
+     "Debe decir" (ej. COMERCIAL JCV SPA) y elige de quién es (escribe JCV). Lo que no diga eso en esa
+     zona se ignora por completo.
+  4) Cedibles: marca "Esta carpeta trae copias cedibles", elige un PDF cedible de ejemplo y marca
+     dónde dice CEDIBLE. Si el original ya está, el cedible se ignora; nunca se imprime.
+  5) "Configurar este documento": el asistente de Archivero (qué documento es, emisor, título,
+     número, otros datos) sin el paso de dónde guardar. "Guardar diseño".
+  6) Al llegar un documento nuevo tuyo: Solo registrar / Imprimir primera página / Imprimir todo /
+     Avisarme / Avisarme e imprimir primera página. "Guardar".
+  Lo que ya estaba en la carpeta solo se ingresa (de a uno, sin cargar el servidor: verás
+  "Poniéndose al día…" y luego "Al día"); imprimir y avisar es solo para lo que llegue después.
+  Archivero observa mientras está abierto (puede quedar minimizado). Los primeros 5 días del mes
+  mira también la carpeta del mes anterior. "Avisarme" = notificación + lista "Por atender"
+  (selecciona y "Listo" al hacer el ingreso).
 - ARCHIVERO · ASISTENTE NUEVO PARA CONFIGURAR (doble clic en un documento de "Pendientes por reconocer"):
   Paso 1 ¿Qué documento es? (categoría y documento, un clic) · Paso 2 ¿Quién lo emite? (escribe el
   emisor, marca dónde aparece y MARCA EL TÍTULO del documento, ej. "FACTURA ELECTRÓNICA": con eso
