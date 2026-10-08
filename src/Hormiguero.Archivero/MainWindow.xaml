@@ -86,7 +86,7 @@
           />
           <TextBlock
             Name="TxtPorAtender"
-            Text="Por atender (0)"
+            Text="Documentos pendientes de ingresar (0)"
             FontWeight="Bold"
             VerticalAlignment="Center"
           />

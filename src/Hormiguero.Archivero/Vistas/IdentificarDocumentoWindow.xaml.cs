@@ -506,9 +506,13 @@ public partial class IdentificarDocumentoWindow : Window
             Paso.Resumen => _modoObservador ? "Guardar diseño"
             : _edicion is not null ? "Guardar cambios"
             : "Guardar y clasificar",
-            Paso.OtrosDatos => "Saltar",
+            Paso.OtrosDatos => AsistenteClasificacionService.TextoBotonOtrosDatos(
+                TieneOtrosDatosMarcados()
+            ),
             _ => "Siguiente",
         };
+        if (nuevoPaso == Paso.OtrosDatos)
+            ActualizarBotonOtrosDatos();
 
         // Se puede retroceder un paso, pero nunca saltar hacia adelante -- sigue siendo
         // estrictamente paso a paso.
@@ -633,7 +637,7 @@ public partial class IdentificarDocumentoWindow : Window
             datoEnlazante.Estado = datoEnlazante.DefineTipo
                 ? string.IsNullOrWhiteSpace(texto)
                     ? "No se leyó ningún número. Prueba otra vez o indica que no trae número."
-                    : $"Leí: {texto} → se enlaza como {Hormiguero.Nucleo.Datos.DiccionarioDatosEnlazantes.ClaveDeEnlace(texto)} ✓"
+                    : $"Leí: {texto} → se enlaza también como {Hormiguero.Nucleo.Datos.DiccionarioDatosEnlazantes.ClaveDeEnlace(datoEnlazante.Id, texto)} ✓"
                 : string.IsNullOrWhiteSpace(texto)
                     ? $"Zona marcada en la página {pagina + 1}; no se pudo leer texto."
                     : $"Texto leído: {texto} (página {pagina + 1}).";
@@ -945,6 +949,19 @@ public partial class IdentificarDocumentoWindow : Window
             ActualizarNombreEstandarSugerido();
         }
         ActualizarMarcasEnVisor();
+        ActualizarBotonOtrosDatos();
+    }
+
+    private bool TieneOtrosDatosMarcados() =>
+        _datosEnlazantes.Any(d => d.Incluido && d.Marcado)
+        || _datosInformativos.Any(d => d.Marcado);
+
+    private void ActualizarBotonOtrosDatos()
+    {
+        if (_paso == Paso.OtrosDatos)
+            BtnSiguiente.Content = AsistenteClasificacionService.TextoBotonOtrosDatos(
+                TieneOtrosDatosMarcados()
+            );
     }
 
     private void CargarCamposPropios(IEnumerable<CampoPropio> campos)
@@ -1177,6 +1194,7 @@ public partial class IdentificarDocumentoWindow : Window
             dato.Estado = "No aparece en este diseño.";
         }
         ActualizarMarcasEnVisor();
+        ActualizarBotonOtrosDatos();
     }
 
     private void DatoEnlazable_Enlazable_Changed(object sender, RoutedEventArgs e)

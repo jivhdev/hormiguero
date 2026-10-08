@@ -19,12 +19,12 @@ public sealed class DatosEnlazantesTests : IDisposable
     public void Dispose() => conexion.Dispose();
 
     [Fact]
-    public void Diccionario_tiene_las_17_entradas_fijas_en_orden_y_la_base_impide_cambios()
+    public void Diccionario_tiene_las_23_entradas_fijas_en_orden_y_la_base_impide_cambios()
     {
         var diccionario = DiccionarioDatosEnlazantes.Todos;
-        Assert.Equal(17, diccionario.Count);
-        Assert.Equal(17, diccionario.Select(d => d.Id).Distinct().Count());
-        Assert.Equal(Enumerable.Range(1, 17), diccionario.Select(d => d.Orden));
+        Assert.Equal(23, diccionario.Count);
+        Assert.Equal(23, diccionario.Select(d => d.Id).Distinct().Count());
+        Assert.Equal(Enumerable.Range(1, 23), diccionario.Select(d => d.Orden));
         Assert.Equal(
             new[] { "Ventas propias", "Del cliente", "Compras propias", "Del proveedor", "Otros" },
             diccionario.Select(d => d.Grupo).Distinct()
@@ -36,6 +36,57 @@ public sealed class DatosEnlazantesTests : IDisposable
         Assert.Throws<SqliteException>(() =>
             Ejecutar("DELETE FROM diccionario_datos WHERE id='oc_cliente';")
         );
+    }
+
+    [Fact]
+    public void Partes_se_normalizan_y_la_migracion_reinstala_el_trigger()
+    {
+        Assert.Equal("0111-10-25", DiccionarioDatosEnlazantes.ValorComoSeLee(" 0111-10-25 "));
+        Assert.Equal(
+            "76123456-K",
+            DiccionarioDatosEnlazantes.ClaveDeEnlace("rut_proveedor", " 76.123.456-k ")
+        );
+        Assert.Equal(
+            "ACME SPA",
+            DiccionarioDatosEnlazantes.ClaveDeEnlace("nombre_propio", "  Acme   Spa ")
+        );
+        Assert.Equal(6, DiccionarioDatosEnlazantes.Todos.Count(d => d.Orden >= 18));
+        Assert.All(
+            DiccionarioDatosEnlazantes.Todos.Where(d => d.Orden >= 18),
+            d => Assert.Equal("Otros", d.Grupo)
+        );
+        Assert.Equal(23L, Escalar(conexion, "SELECT COUNT(*) FROM diccionario_datos;"));
+        Assert.Throws<SqliteException>(() =>
+            Ejecutar(
+                "INSERT INTO diccionario_datos(id,nombre,grupo,orden) VALUES('x','x','Otros',24);"
+            )
+        );
+    }
+
+    [Fact]
+    public void Regla_aditiva_permite_drop_trigger_y_sigue_rechazando_drop_table()
+    {
+        using var nueva = new SqliteConnection("Data Source=:memory:");
+        nueva.Open();
+        Assert.Throws<InvalidOperationException>(() =>
+            Migraciones.Aplicar(nueva, [(1, "DROP TABLE x;")])
+        );
+        Migraciones.Aplicar(
+            nueva,
+            [
+                (
+                    1,
+                    "CREATE TABLE x(id INTEGER); CREATE TRIGGER tx BEFORE INSERT ON x BEGIN SELECT RAISE(ABORT,'fijo'); END;"
+                ),
+                (
+                    2,
+                    "DROP TRIGGER tx; CREATE TRIGGER tx BEFORE INSERT ON x BEGIN SELECT RAISE(ABORT,'fijo'); END;"
+                ),
+            ]
+        );
+        using var insert = nueva.CreateCommand();
+        insert.CommandText = "INSERT INTO x VALUES(1);";
+        Assert.Throws<SqliteException>(() => insert.ExecuteNonQuery());
     }
 
     [Fact]
@@ -54,7 +105,7 @@ public sealed class DatosEnlazantesTests : IDisposable
         );
         Migraciones.Aplicar(v8, Migraciones.Todas);
         Migraciones.Aplicar(v8, Migraciones.Todas);
-        Assert.Equal(17L, Escalar(v8, "SELECT COUNT(*) FROM diccionario_datos;"));
+        Assert.Equal(23L, Escalar(v8, "SELECT COUNT(*) FROM diccionario_datos;"));
         Assert.Equal("Factura", EscalarTexto(v8, "SELECT tipo FROM identificaciones WHERE id=1;"));
         Assert.Equal(
             "Recibido",

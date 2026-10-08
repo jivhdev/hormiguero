@@ -69,12 +69,7 @@ public partial class MainWindow : Window
                         ? $"Poniéndose al día: {procesados} de {total} ({nombre})"
                         : "Al día";
             });
-        _observador.DocumentoRequiereAtencion += documento =>
-            Dispatcher.Invoke(() =>
-            {
-                CargarPorAtender();
-                _bandeja.NotificarLlegada(documento.Tipo, documento.Numero);
-            });
+        _observador.DocumentoRequiereAtencion += _ => Dispatcher.Invoke(CargarPorAtender);
         _observador.ErrorVisible += mensaje =>
             Dispatcher.BeginInvoke(() =>
                 System.Windows.MessageBox.Show(
@@ -615,7 +610,7 @@ public partial class MainWindow : Window
     {
         var documentos = _carpetasObservadas.LeerPorAtender();
         ListaPorAtender.ItemsSource = documentos;
-        TxtPorAtender.Text = $"Por atender ({documentos.Count})";
+        TxtPorAtender.Text = $"Documentos pendientes de ingresar ({documentos.Count})";
         BtnMarcarAtendido.IsEnabled = ListaPorAtender.SelectedItem is DocumentoPorAtender;
     }
 

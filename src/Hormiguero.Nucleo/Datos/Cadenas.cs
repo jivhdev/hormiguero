@@ -163,7 +163,7 @@ public sealed class RepositorioCadenas(SqliteConnection conexion)
         cmd.Parameters.AddWithValue("$n", nombre.Trim());
         cmd.Parameters.AddWithValue("$id", cadenaId);
         if (cmd.ExecuteNonQuery() == 0)
-            throw new InvalidOperationException("No existe la cadena simple.");
+            throw new InvalidOperationException("No existe la cadena.");
         AuditoriaDatos.Registrar(
             conexion,
             tx,
@@ -189,7 +189,7 @@ public sealed class RepositorioCadenas(SqliteConnection conexion)
                 "SELECT 1 FROM cadenas WHERE id=$c AND modelo_id IS NULL AND estado='activa';";
             validar.Parameters.AddWithValue("$c", cadenaId);
             if (validar.ExecuteScalar() is null)
-                throw new InvalidOperationException("No existe la cadena simple.");
+                throw new InvalidOperationException("No existe la cadena.");
             validar.CommandText =
                 "SELECT 1 FROM versiones_documento WHERE id=$v AND estado='vigente';";
             validar.Parameters.Clear();

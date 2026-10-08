@@ -13,6 +13,8 @@ public sealed class VentanasArchiveroSmokeTests
     [Fact]
     public void Diccionario_SeFiltraPorCategoriaYDerivaEmitidoRecibido()
     {
+        Assert.Equal("Siguiente", AsistenteClasificacionService.TextoBotonOtrosDatos(true));
+        Assert.Equal("Saltar", AsistenteClasificacionService.TextoBotonOtrosDatos(false));
         Assert.Contains("Ventas propias", AsistenteClasificacionService.Categorias);
         Assert.Contains("Del cliente", AsistenteClasificacionService.Categorias);
         Assert.Contains("Compras propias", AsistenteClasificacionService.Categorias);
@@ -21,6 +23,10 @@ public sealed class VentanasArchiveroSmokeTests
         Assert.Contains(
             AsistenteClasificacionService.DocumentosDeCategoria("Del proveedor"),
             dato => dato.EtiquetaTipo == "Factura del proveedor"
+        );
+        Assert.DoesNotContain(
+            AsistenteClasificacionService.DocumentosDeCategoria("Otros"),
+            dato => Hormiguero.Nucleo.Datos.DiccionarioDatosEnlazantes.EsParte(dato.Id)
         );
         Assert.Equal("Emitido", AsistenteClasificacionService.GrupoDocumento("Ventas propias"));
         Assert.Equal("Emitido", AsistenteClasificacionService.GrupoDocumento("Compras propias"));

@@ -245,6 +245,18 @@ public static class Migraciones
             13,
             "CREATE INDEX IF NOT EXISTS idx_valores_informativos_version_dato ON valores_informativos_documento(version_id,dato);"
         ),
+        (
+            14,
+            "DROP TRIGGER trg_diccionario_datos_no_insertar; "
+                + "INSERT INTO diccionario_datos(id,nombre,grupo,orden,codigo_referencia) VALUES"
+                + "('rut_proveedor','RUT del proveedor','Otros',18,NULL),"
+                + "('nombre_proveedor','Nombre o razón social del proveedor','Otros',19,NULL),"
+                + "('rut_cliente','RUT del cliente','Otros',20,NULL),"
+                + "('nombre_cliente','Nombre o razón social del cliente','Otros',21,NULL),"
+                + "('rut_propio','RUT de mi empresa','Otros',22,NULL),"
+                + "('nombre_propio','Nombre o razón social de mi empresa','Otros',23,NULL); "
+                + "CREATE TRIGGER trg_diccionario_datos_no_insertar BEFORE INSERT ON diccionario_datos BEGIN SELECT RAISE(ABORT,'El diccionario de datos es fijo.'); END;"
+        ),
     ];
 
     public static void Aplicar(
@@ -257,8 +269,11 @@ public static class Migraciones
         foreach (var (_, sql) in migraciones)
         {
             if (
-                sql.Contains("DROP ", StringComparison.OrdinalIgnoreCase)
-                || sql.Contains("RENAME", StringComparison.OrdinalIgnoreCase)
+                System.Text.RegularExpressions.Regex.IsMatch(
+                    sql,
+                    @"\bDROP\s+(?!TRIGGER\b)",
+                    System.Text.RegularExpressions.RegexOptions.IgnoreCase
+                ) || sql.Contains("RENAME", StringComparison.OrdinalIgnoreCase)
             )
             {
                 throw new InvalidOperationException(
