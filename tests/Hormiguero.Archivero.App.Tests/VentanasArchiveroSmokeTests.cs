@@ -75,6 +75,146 @@ public sealed class VentanasArchiveroSmokeTests
 
                 Tema.Aplicar(aplicacion, ModoTema.Claro);
 
+                var asistenteCarpeta = new AsistenteCarpetaObservadaWindow();
+                asistenteCarpeta.Width = 1366;
+                asistenteCarpeta.Height = 768;
+                asistenteCarpeta.Show();
+                var mostrarPasoCarpeta = typeof(AsistenteCarpetaObservadaWindow).GetMethod(
+                    "MostrarPaso",
+                    System.Reflection.BindingFlags.Instance
+                        | System.Reflection.BindingFlags.NonPublic
+                )!;
+                var tituloCarpeta = (System.Windows.Controls.TextBlock)
+                    asistenteCarpeta.FindName("TxtTitulo")!;
+                for (var paso = 1; paso <= 6; paso++)
+                {
+                    mostrarPasoCarpeta.Invoke(asistenteCarpeta, [paso]);
+                    asistenteCarpeta.UpdateLayout();
+                    if (
+                        !tituloCarpeta.Text.StartsWith(
+                            $"Paso {paso} de 6",
+                            StringComparison.Ordinal
+                        )
+                    )
+                        throw new InvalidOperationException(
+                            $"El asistente de carpeta no mostró el paso {paso}."
+                        );
+                }
+                asistenteCarpeta.Close();
+
+                var emisorDiseno = $"Emisor de prueba {Guid.NewGuid():N}";
+                var tipoDiseno = $"Tipo de prueba {Guid.NewGuid():N}";
+                var configuracionesObservador = new ConfiguracionDocumentoRepository();
+                int idDiseno = configuracionesObservador.GuardarNueva(
+                    emisorDiseno,
+                    tipoDiseno,
+                    raiz,
+                    Archivero.Datos.FormatoCarpeta.Directo,
+                    null,
+                    false,
+                    []
+                );
+                configuracionesObservador.MarcarSoloObservador(idDiseno);
+                var entidadTexto = $"Empresa de prueba {Guid.NewGuid():N}";
+                var entidadId = new EntidadRepository().ObtenerOCrear(
+                    CategoriaEntidad.Emisor,
+                    entidadTexto
+                );
+                var huellaAntes = System.Security.Cryptography.SHA256.HashData(
+                    File.ReadAllBytes(rutaPdf)
+                );
+                var asistenteGuardado = new AsistenteCarpetaObservadaWindow();
+                ((System.Windows.Controls.TextBox)asistenteGuardado.FindName("TxtNombre")!).Text =
+                    "Carpeta de prueba";
+                ((System.Windows.Controls.TextBox)asistenteGuardado.FindName("TxtRuta")!).Text =
+                    raiz;
+                (
+                    (System.Windows.Controls.TextBox)
+                        asistenteGuardado.FindName("TxtIdentificacion")!
+                ).Text = "EMPRESA PRUEBA";
+                (
+                    (System.Windows.Controls.ComboBox)asistenteGuardado.FindName("ComboEntidad")!
+                ).Text = entidadTexto;
+                (
+                    (System.Windows.Controls.CheckBox)asistenteGuardado.FindName("ChkCedibles")!
+                ).IsChecked = true;
+                (
+                    (System.Windows.Controls.TextBox)
+                        asistenteGuardado.FindName("TxtCedibleEsperado")!
+                ).Text = "CEDIBLE";
+                (
+                    (System.Windows.Controls.ComboBox)asistenteGuardado.FindName("ComboAccion")!
+                ).SelectedIndex = 4;
+                typeof(AsistenteCarpetaObservadaWindow)
+                    .GetField(
+                        "_rutaEjemplo",
+                        System.Reflection.BindingFlags.Instance
+                            | System.Reflection.BindingFlags.NonPublic
+                    )!
+                    .SetValue(asistenteGuardado, rutaPdf);
+                typeof(AsistenteCarpetaObservadaWindow)
+                    .GetField(
+                        "_zonaIdentificacion",
+                        System.Reflection.BindingFlags.Instance
+                            | System.Reflection.BindingFlags.NonPublic
+                    )!
+                    .SetValue(
+                        asistenteGuardado,
+                        new ZonaControlCarpeta(1, 0.1, 0.2, 0.3, 0.1, "EMPRESA PRUEBA")
+                    );
+                typeof(AsistenteCarpetaObservadaWindow)
+                    .GetField(
+                        "_zonaCedible",
+                        System.Reflection.BindingFlags.Instance
+                            | System.Reflection.BindingFlags.NonPublic
+                    )!
+                    .SetValue(
+                        asistenteGuardado,
+                        new ZonaControlCarpeta(1, 0.4, 0.2, 0.2, 0.1, "CEDIBLE")
+                    );
+                (
+                    (List<int>)
+                        typeof(AsistenteCarpetaObservadaWindow)
+                            .GetField(
+                                "_configuraciones",
+                                System.Reflection.BindingFlags.Instance
+                                    | System.Reflection.BindingFlags.NonPublic
+                            )!
+                            .GetValue(asistenteGuardado)!
+                ).Add(idDiseno);
+                asistenteGuardado.Loaded += (_, _) =>
+                    typeof(AsistenteCarpetaObservadaWindow)
+                        .GetMethod(
+                            "GuardarCarpeta",
+                            System.Reflection.BindingFlags.Instance
+                                | System.Reflection.BindingFlags.NonPublic
+                        )!
+                        .Invoke(asistenteGuardado, null);
+                if (asistenteGuardado.ShowDialog() != true)
+                    throw new InvalidOperationException(
+                        "El asistente no completó el guardado de prueba."
+                    );
+                var carpetaGuardada = asistenteGuardado.CarpetaGuardada!;
+                if (
+                    carpetaGuardada.ModoReconocimiento != "Configuraciones"
+                    || carpetaGuardada.ZonaIdentificacion?.TextoEsperado != "EMPRESA PRUEBA"
+                    || carpetaGuardada.EntidadIdentificacionId != entidadId
+                    || carpetaGuardada.ZonaCedible?.TextoEsperado != "CEDIBLE"
+                    || carpetaGuardada.ConfiguracionesDocumentoIds?.Single() != idDiseno
+                    || carpetaGuardada.AccionAlLlegar != "AvisarImprimirPrimeraPagina"
+                    || configuracionesObservador.ObtenerTodas().Any(c => c.Id == idDiseno)
+                    || !configuracionesObservador
+                        .ObtenerTodasConPatronesParaObservador()
+                        .Any(c => c.Id == idDiseno)
+                    || !huellaAntes.SequenceEqual(
+                        System.Security.Cryptography.SHA256.HashData(File.ReadAllBytes(rutaPdf))
+                    )
+                    || !File.Exists(rutaPdf)
+                )
+                    throw new InvalidOperationException(
+                        "El asistente no guardó todos los datos observados o alteró el PDF de ejemplo."
+                    );
+
                 var identificar = new IdentificarDocumentoWindow(rutaPdf);
                 identificar.Width = 1366;
                 identificar.Height = 768;
@@ -89,6 +229,25 @@ public sealed class VentanasArchiveroSmokeTests
                     System.Reflection.BindingFlags.Instance
                         | System.Reflection.BindingFlags.NonPublic
                 )!;
+                var identificarObservador = new IdentificarDocumentoWindow(rutaPdf, true, raiz);
+                identificarObservador.Show();
+                identificarObservador.UpdateLayout();
+                mostrarPaso.Invoke(identificarObservador, [Enum.Parse(tipoPaso, "Resumen")]);
+                identificarObservador.UpdateLayout();
+                if (
+                    (
+                        (System.Windows.Controls.StackPanel)
+                            identificarObservador.FindName("PanelCarpeta")!
+                    ).Visibility != Visibility.Collapsed
+                    || (
+                        (System.Windows.Controls.Button)
+                            identificarObservador.FindName("BtnCambiarGuardar")!
+                    ).Visibility != Visibility.Collapsed
+                )
+                    throw new InvalidOperationException(
+                        "El modo observador ofreció cambiar dónde se guarda."
+                    );
+                identificarObservador.Close();
                 var titulo = (System.Windows.Controls.TextBlock)
                     identificar.FindName("TxtTituloPaso")!;
                 var listaDocumentos = (System.Windows.Controls.ListBox)
