@@ -21,7 +21,7 @@
       <RowDefinition Height="Auto" />
     </Grid.RowDefinitions>
     <StackPanel Grid.ColumnSpan="2" Margin="0,0,0,12">
-      <TextBlock Text="Cadenas simples" FontSize="20" FontWeight="Bold" />
+      <TextBlock Text="Cadenas" FontSize="20" FontWeight="Bold" />
       <TextBlock
         Text="Busque documentos por número o por un dato reconocido. Las coincidencias son sugerencias; usted decide qué documentos agregar."
         TextWrapping="Wrap"

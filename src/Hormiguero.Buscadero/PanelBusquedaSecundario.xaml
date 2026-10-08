@@ -4,7 +4,10 @@
   xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
   MinWidth="360"
 >
-  <Grid>
+  <Grid
+    PreviewMouseLeftButtonUp="Panel_PreviewMouseLeftButtonUp"
+    PreviewKeyDown="Panel_PreviewKeyDown"
+  >
     <Grid.RowDefinitions>
       <RowDefinition Height="Auto" />
       <RowDefinition Height="Auto" />
@@ -114,6 +117,22 @@
           </ContextMenu>
         </Button.ContextMenu>
       </Button>
+      <Button
+        x:Name="BotonAbrirEnVisor"
+        Content="Abrir en el visor"
+        Padding="5,2"
+        Margin="0,0,4,0"
+        IsEnabled="False"
+        Click="BotonAbrirEnVisor_Click"
+      />
+      <Button
+        x:Name="BotonCopiarPdf"
+        Content="Copiar PDF"
+        Padding="5,2"
+        Margin="0,0,4,0"
+        IsEnabled="False"
+        Click="BotonCopiarPdf_Click"
+      />
       <Button Content="Anterior" Padding="5,2" Margin="0,0,4,0" Click="BotonPaginaAnterior_Click" />
       <TextBlock x:Name="TextoPagina" VerticalAlignment="Center" Margin="0,0,4,0" />
       <Button
@@ -122,7 +141,30 @@
         Margin="0,0,6,0"
         Click="BotonPaginaSiguiente_Click"
       />
-      <ToggleButton x:Name="BotonModoMarcas" Content="Marcas" Padding="5,2" Margin="0,0,4,0" />
+      <ToggleButton
+        x:Name="BotonModoMarcas"
+        Content="Marcas"
+        Padding="5,2"
+        Margin="0,0,4,0"
+        Checked="BotonModoMarcas_Checked"
+        Unchecked="BotonModoMarcas_Unchecked"
+      />
+      <ToggleButton
+        x:Name="BotonModoSeleccionarTexto"
+        Content="Seleccionar texto"
+        Padding="5,2"
+        Margin="0,0,4,0"
+        Checked="BotonModoSeleccionarTexto_Checked"
+        Unchecked="BotonModoSeleccionarTexto_Unchecked"
+      />
+      <Button
+        x:Name="BotonCopiarTextoSeleccionado"
+        Content="Copiar texto seleccionado"
+        Padding="5,2"
+        Margin="0,0,4,0"
+        IsEnabled="False"
+        Click="BotonCopiarTextoSeleccionado_Click"
+      />
       <ComboBox
         x:Name="ComboHerramienta"
         Width="75"
@@ -160,6 +202,7 @@
               x:Name="CanvasMarcas"
               Background="Transparent"
               MouseLeftButtonDown="CanvasMarcas_MouseLeftButtonDown"
+              MouseMove="CanvasMarcas_MouseMove"
             />
           </Grid>
         </ScrollViewer>

@@ -1,3 +1,4 @@
+using System.Collections.Specialized;
 using System.Diagnostics;
 using System.Windows;
 using System.Windows.Controls;
@@ -21,6 +22,12 @@ public partial class PanelBusquedaSecundario : UserControl
     private CancellationTokenSource? _cancelacionBusqueda;
     private SesionMarcas? _sesionMarcas;
     private string? _documentoActual;
+    private InfoPdf? _infoTextoActual;
+    private IReadOnlyList<PalabraPdf> _palabrasSeleccionadas = [];
+    private string _textoSeleccionado = string.Empty;
+    private Point _inicioSeleccionTexto;
+    private Point _finSeleccionTexto;
+    private bool _arrastrandoSeleccionTexto;
     private int _generacionDocumento;
     private int _paginaActual;
     private int _totalPaginas;
@@ -45,6 +52,12 @@ public partial class PanelBusquedaSecundario : UserControl
         _generacionDocumento++;
         _documentoActual = null;
         BotonImprimir.IsEnabled = false;
+        BotonAbrirEnVisor.IsEnabled = false;
+        BotonCopiarPdf.IsEnabled = false;
+        BotonCopiarTextoSeleccionado.IsEnabled = false;
+        _infoTextoActual = null;
+        _palabrasSeleccionadas = [];
+        _textoSeleccionado = string.Empty;
         _sesionMarcas = null;
         ImagenPdf.Source = null;
         CanvasMarcas.Children.Clear();
@@ -237,21 +250,30 @@ public partial class PanelBusquedaSecundario : UserControl
         var generacion = ++_generacionDocumento;
         _documentoActual = ruta;
         BotonImprimir.IsEnabled = false;
+        BotonAbrirEnVisor.IsEnabled = false;
+        BotonCopiarPdf.IsEnabled = false;
         TextoVisorVacio.Text = "Cargando documento...";
         try
         {
             var totalPaginas = await Task.Run(() => VisorPdf.ObtenerTotalPaginas(ruta));
+            var infoTexto = await Task.Run(() => LeerInfoTexto(ruta));
             if (generacion != _generacionDocumento)
                 return;
             var sesion = await Task.Run(() => new SesionMarcas(_repositorioMarcas!, ruta));
             if (generacion != _generacionDocumento)
                 return;
             _totalPaginas = totalPaginas;
+            _infoTextoActual = infoTexto;
+            _palabrasSeleccionadas = [];
+            _textoSeleccionado = string.Empty;
+            BotonCopiarTextoSeleccionado.IsEnabled = false;
             _paginaActual = 0;
             _zoom = 1;
             _sesionMarcas = sesion;
             TextoDocumento.Text = System.IO.Path.GetFileName(ruta);
             BotonImprimir.IsEnabled = true;
+            BotonAbrirEnVisor.IsEnabled = true;
+            BotonCopiarPdf.IsEnabled = true;
             BarraVisor.Visibility = Visibility.Visible;
             TextoVisorVacio.Visibility = Visibility.Collapsed;
             await RenderizarPaginaAsync(generacion);
@@ -262,6 +284,12 @@ public partial class PanelBusquedaSecundario : UserControl
                 return;
             _documentoActual = null;
             BotonImprimir.IsEnabled = false;
+            BotonAbrirEnVisor.IsEnabled = false;
+            BotonCopiarPdf.IsEnabled = false;
+            BotonCopiarTextoSeleccionado.IsEnabled = false;
+            _infoTextoActual = null;
+            _palabrasSeleccionadas = [];
+            _textoSeleccionado = string.Empty;
             _sesionMarcas = null;
             ImagenPdf.Source = null;
             CanvasMarcas.Children.Clear();
@@ -269,6 +297,17 @@ public partial class PanelBusquedaSecundario : UserControl
             TextoVisorVacio.Text = $"No se pudo abrir el PDF: {excepcion.Message}";
             TextoVisorVacio.Visibility = Visibility.Visible;
         }
+    }
+
+    private static InfoPdf LeerInfoTexto(string ruta)
+    {
+        using var archivo = new System.IO.FileStream(
+            ruta,
+            System.IO.FileMode.Open,
+            System.IO.FileAccess.Read,
+            System.IO.FileShare.ReadWrite | System.IO.FileShare.Delete
+        );
+        return LectorPdf.Leer(archivo);
     }
 
     private async Task RenderizarPaginaAsync(int generacion)
@@ -305,6 +344,9 @@ public partial class PanelBusquedaSecundario : UserControl
         CanvasMarcas.Children.Clear();
         CanvasMarcas.Width = mapa.PixelWidth;
         CanvasMarcas.Height = mapa.PixelHeight;
+        DibujarPalabrasSeleccionadas(mapa);
+        if (_arrastrandoSeleccionTexto)
+            DibujarRectanguloSeleccion(mapa);
         if (_sesionMarcas is null)
             return;
         var pincel = (Brush)FindResource("Hormiguero.Aviso");
@@ -363,6 +405,7 @@ public partial class PanelBusquedaSecundario : UserControl
     {
         if (_paginaActual > 0)
         {
+            LimpiarSeleccionTexto();
             _paginaActual--;
             await RenderizarPaginaAsync(_generacionDocumento);
         }
@@ -372,9 +415,17 @@ public partial class PanelBusquedaSecundario : UserControl
     {
         if (_paginaActual + 1 < _totalPaginas)
         {
+            LimpiarSeleccionTexto();
             _paginaActual++;
             await RenderizarPaginaAsync(_generacionDocumento);
         }
+    }
+
+    private void LimpiarSeleccionTexto()
+    {
+        _palabrasSeleccionadas = [];
+        _textoSeleccionado = string.Empty;
+        BotonCopiarTextoSeleccionado.IsEnabled = false;
     }
 
     private void BotonVerEnCarpeta_Click(object sender, RoutedEventArgs e)
@@ -402,6 +453,135 @@ public partial class PanelBusquedaSecundario : UserControl
         {
             boton.ContextMenu.PlacementTarget = boton;
             boton.ContextMenu.IsOpen = true;
+        }
+    }
+
+    private void BotonAbrirEnVisor_Click(object sender, RoutedEventArgs e)
+    {
+        if (_documentoActual is not string ruta)
+            return;
+        try
+        {
+            Process.Start(new ProcessStartInfo(ruta) { UseShellExecute = true });
+        }
+        catch (Exception error)
+        {
+            _ = MostrarAvisoImpresionAsync($"No se pudo abrir el PDF: {error.Message}");
+        }
+    }
+
+    private void DibujarPalabrasSeleccionadas(BitmapSource mapa)
+    {
+        if (_infoTextoActual is null || _palabrasSeleccionadas.Count == 0)
+            return;
+        var (anchoPagina, altoPagina) = _infoTextoActual.TamanosPagina[_paginaActual];
+        foreach (var palabra in _palabrasSeleccionadas)
+        {
+            var rectangulo = new Rectangle
+            {
+                Width = palabra.Ancho / anchoPagina * mapa.PixelWidth,
+                Height = palabra.Alto / altoPagina * mapa.PixelHeight,
+                Fill = (Brush)FindResource("Hormiguero.AvisoSuave"),
+                Stroke = (Brush)FindResource("Hormiguero.Aviso"),
+                StrokeThickness = 1,
+                IsHitTestVisible = false,
+            };
+            Canvas.SetLeft(rectangulo, palabra.X / anchoPagina * mapa.PixelWidth);
+            Canvas.SetTop(
+                rectangulo,
+                (altoPagina - palabra.Y - palabra.Alto) / altoPagina * mapa.PixelHeight
+            );
+            CanvasMarcas.Children.Add(rectangulo);
+        }
+    }
+
+    private void DibujarRectanguloSeleccion(BitmapSource mapa)
+    {
+        var rectangulo = new Rectangle
+        {
+            Width = Math.Abs(_finSeleccionTexto.X - _inicioSeleccionTexto.X) * mapa.PixelWidth,
+            Height = Math.Abs(_finSeleccionTexto.Y - _inicioSeleccionTexto.Y) * mapa.PixelHeight,
+            Fill = (Brush)FindResource("Hormiguero.AvisoSuave"),
+            Stroke = (Brush)FindResource("Hormiguero.Aviso"),
+            StrokeThickness = 1,
+            IsHitTestVisible = false,
+        };
+        Canvas.SetLeft(
+            rectangulo,
+            Math.Min(_inicioSeleccionTexto.X, _finSeleccionTexto.X) * mapa.PixelWidth
+        );
+        Canvas.SetTop(
+            rectangulo,
+            Math.Min(_inicioSeleccionTexto.Y, _finSeleccionTexto.Y) * mapa.PixelHeight
+        );
+        CanvasMarcas.Children.Add(rectangulo);
+    }
+
+    private void BotonCopiarPdf_Click(object sender, RoutedEventArgs e)
+    {
+        if (_documentoActual is not string ruta)
+            return;
+        try
+        {
+            var archivos = new StringCollection();
+            archivos.Add(ruta);
+            Clipboard.SetFileDropList(archivos);
+            _ = MostrarAvisoImpresionAsync("PDF copiado");
+        }
+        catch (Exception error)
+        {
+            _ = MostrarAvisoImpresionAsync($"No se pudo copiar el PDF: {error.Message}");
+        }
+    }
+
+    private void BotonCopiarTextoSeleccionado_Click(object sender, RoutedEventArgs e) =>
+        CopiarTextoSeleccionado();
+
+    public void CopiarTextoSeleccionado()
+    {
+        if (string.IsNullOrWhiteSpace(_textoSeleccionado))
+        {
+            string mensaje = _infoTextoActual is { Palabras.Count: > 0 }
+                ? "Seleccione texto primero."
+                : "Este PDF no tiene texto seleccionable (es una imagen)";
+            _ = MostrarAvisoImpresionAsync(mensaje);
+            return;
+        }
+
+        try
+        {
+            Clipboard.SetText(_textoSeleccionado);
+            _ = MostrarAvisoImpresionAsync("Texto copiado");
+        }
+        catch (Exception error)
+        {
+            _ = MostrarAvisoImpresionAsync($"No se pudo copiar el texto: {error.Message}");
+        }
+    }
+
+    public bool AtenderCtrlC()
+    {
+        if (BotonModoSeleccionarTexto.IsChecked != true && _palabrasSeleccionadas.Count == 0)
+            return false;
+        CopiarTextoSeleccionado();
+        return true;
+    }
+
+    private void BotonModoMarcas_Checked(object sender, RoutedEventArgs e) =>
+        BotonModoSeleccionarTexto.IsChecked = false;
+
+    private void BotonModoMarcas_Unchecked(object sender, RoutedEventArgs e) { }
+
+    private void BotonModoSeleccionarTexto_Checked(object sender, RoutedEventArgs e) =>
+        BotonModoMarcas.IsChecked = false;
+
+    private void BotonModoSeleccionarTexto_Unchecked(object sender, RoutedEventArgs e) { }
+
+    private void Panel_PreviewKeyDown(object sender, KeyEventArgs e)
+    {
+        if (Keyboard.Modifiers == ModifierKeys.Control && e.Key == Key.C && AtenderCtrlC())
+        {
+            e.Handled = true;
         }
     }
 
@@ -465,6 +645,20 @@ public partial class PanelBusquedaSecundario : UserControl
     private void CanvasMarcas_MouseLeftButtonDown(object sender, MouseButtonEventArgs e)
     {
         if (
+            BotonModoSeleccionarTexto.IsChecked == true
+            && ImagenPdf.Source is BitmapSource mapaTexto
+        )
+        {
+            _inicioSeleccionTexto = NormalizarSeleccion(e.GetPosition(CanvasMarcas), mapaTexto);
+            _finSeleccionTexto = _inicioSeleccionTexto;
+            _arrastrandoSeleccionTexto = true;
+            CanvasMarcas.CaptureMouse();
+            DibujarMarcas(mapaTexto);
+            e.Handled = true;
+            return;
+        }
+
+        if (
             !BotonModoMarcas.IsChecked.GetValueOrDefault()
             || _sesionMarcas is null
             || ImagenPdf.Source is not BitmapSource mapa
@@ -491,5 +685,55 @@ public partial class PanelBusquedaSecundario : UserControl
             tipo == TipoMarca.Texto ? "Texto" : null
         );
         DibujarMarcas(mapa);
+    }
+
+    private static Point NormalizarSeleccion(Point posicion, BitmapSource mapa) =>
+        new(
+            Math.Clamp(posicion.X / mapa.PixelWidth, 0, 1),
+            Math.Clamp(posicion.Y / mapa.PixelHeight, 0, 1)
+        );
+
+    private void CanvasMarcas_MouseMove(object sender, MouseEventArgs e)
+    {
+        if (!_arrastrandoSeleccionTexto || ImagenPdf.Source is not BitmapSource mapa)
+            return;
+        _finSeleccionTexto = NormalizarSeleccion(e.GetPosition(CanvasMarcas), mapa);
+        DibujarMarcas(mapa);
+    }
+
+    private void Panel_PreviewMouseLeftButtonUp(object sender, MouseButtonEventArgs e)
+    {
+        if (!_arrastrandoSeleccionTexto || ImagenPdf.Source is not BitmapSource mapa)
+            return;
+        _arrastrandoSeleccionTexto = false;
+        if (CanvasMarcas.IsMouseCaptured)
+            CanvasMarcas.ReleaseMouseCapture();
+        _finSeleccionTexto = NormalizarSeleccion(e.GetPosition(CanvasMarcas), mapa);
+        double x = Math.Min(_inicioSeleccionTexto.X, _finSeleccionTexto.X);
+        double y = Math.Min(_inicioSeleccionTexto.Y, _finSeleccionTexto.Y);
+        double ancho = Math.Abs(_finSeleccionTexto.X - _inicioSeleccionTexto.X);
+        double alto = Math.Abs(_finSeleccionTexto.Y - _inicioSeleccionTexto.Y);
+        if (ancho > 0 && alto > 0 && _infoTextoActual is not null)
+        {
+            var resultado = SeleccionTextoPdf.Seleccionar(
+                _infoTextoActual,
+                _paginaActual,
+                x,
+                y,
+                ancho,
+                alto
+            );
+            _palabrasSeleccionadas = resultado.Palabras;
+            _textoSeleccionado = resultado.Texto;
+        }
+        else
+        {
+            _palabrasSeleccionadas = [];
+            _textoSeleccionado = string.Empty;
+        }
+        BotonCopiarTextoSeleccionado.IsEnabled = _palabrasSeleccionadas.Count > 0;
+        DibujarMarcas(mapa);
+        if (_palabrasSeleccionadas.Count == 0 && _infoTextoActual is { Palabras.Count: 0 })
+            _ = MostrarAvisoImpresionAsync("Este PDF no tiene texto seleccionable (es una imagen)");
     }
 }
