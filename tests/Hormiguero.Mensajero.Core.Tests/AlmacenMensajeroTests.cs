@@ -242,6 +242,46 @@ public sealed class AlmacenMensajeroTests : IDisposable
     }
 
     [Fact]
+    public void Gestiona_correos_y_estado_de_cliente_con_validacion_y_persistencia()
+    {
+        using (var almacen = new AlmacenMensajero(RutaBase))
+        {
+            almacen.GuardarClienteFacturaGestion(
+                "76.000.000-8",
+                "Empresa",
+                ["uno@ejemplo.cl", "dos@ejemplo.cl"],
+                true,
+                new DateTime(2026, 10, 8, 10, 0, 0)
+            );
+            almacen.GuardarClienteFacturaGestion(
+                "76000000-8",
+                "Empresa Editada",
+                ["dos@ejemplo.cl"],
+                true,
+                new DateTime(2026, 10, 8, 11, 0, 0)
+            );
+            Assert.Throws<FormatException>(() =>
+                almacen.GuardarClienteFacturaGestion(
+                    "76000000-8",
+                    "Empresa",
+                    ["correo-invalido"],
+                    true,
+                    DateTime.Now
+                )
+            );
+        }
+
+        using var otra = new AlmacenMensajero(RutaBase);
+        Assert.Equal(
+            [new ClienteFacturaGestion("76000000-8", "Empresa Editada", "dos@ejemplo.cl", true)],
+            otra.LeerTodosClientesFactura()
+        );
+        otra.EliminarClienteFactura("76000000-8", DateTime.Now);
+        Assert.Empty(otra.LeerClientesFactura());
+        Assert.False(otra.LeerTodosClientesFactura().Single().Activo);
+    }
+
+    [Fact]
     public void Recuerda_estados_de_envio_por_periodo_y_rut()
     {
         using (var almacen = new AlmacenMensajero(RutaBase))

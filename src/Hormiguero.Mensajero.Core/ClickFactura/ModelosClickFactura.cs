@@ -4,6 +4,13 @@ public sealed record DocumentoFactura(string Tipo, string Numero, string Entidad
 
 public sealed record ClienteFactura(string Rut, string RazonSocial, string Correo);
 
+public sealed record ClienteFacturaGestion(
+    string Rut,
+    string RazonSocial,
+    string Correo,
+    bool Activo
+);
+
 public sealed record DocumentoAnalizado(
     string Tipo,
     string Numero,

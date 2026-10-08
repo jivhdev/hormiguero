@@ -41,6 +41,7 @@ public partial class VentanaFacturas : Window
     private string? rutaXls;
     private readonly DispatcherTimer temporizadorToast;
     private string descripcionSemana = "";
+    private string claveEstadoEnvio = "";
     private string? carpetaTemporalActual;
 
     public VentanaFacturas()
@@ -121,7 +122,145 @@ public partial class VentanaFacturas : Window
     private void SiguientePeriodo_Click(object sender, RoutedEventArgs e)
     {
         descripcionSemana = ConstruirDescripcion();
+        claveEstadoEnvio = descripcionSemana;
         MostrarPagina(PaginaCarga);
+    }
+
+    private void EnviarUnCliente_Click(object sender, RoutedEventArgs e)
+    {
+        ClienteFactura? cliente = ElegirClienteFactura();
+        if (cliente is null)
+            return;
+        var dialogo = new OpenFileDialog
+        {
+            Title = "Cargar archivo Excel de Facturas",
+            Filter = "Excel (*.xlsx;*.xls)|*.xlsx;*.xls",
+        };
+        if (dialogo.ShowDialog(this) != true)
+            return;
+        try
+        {
+            IReadOnlyList<DocumentoFactura> encontrados =
+                AnalizadorFactura.FiltrarDocumentosCliente(
+                    LectorExcelFactura.Leer(dialogo.FileName),
+                    cliente.Rut
+                );
+            if (encontrados.Count == 0)
+            {
+                MostrarAviso(
+                    "Sin documentos",
+                    $"El archivo no contiene documentos para {cliente.RazonSocial} ({cliente.Rut}).",
+                    "warning"
+                );
+                return;
+            }
+            descripcionSemana = "SEMANA DEL ARCHIVO";
+            claveEstadoEnvio = $"individual:{cliente.Rut}:{Path.GetFileName(dialogo.FileName)}";
+            var porRut = new Dictionary<string, ClienteFactura>(StringComparer.Ordinal)
+            {
+                [cliente.Rut] = cliente,
+            };
+            ResultadoAnalisis resultado = AnalizadorFactura.Analizar(
+                encontrados,
+                porRut,
+                descripcionSemana,
+                documento =>
+                    BuscadorPdfFactura.BuscarEnTodasLasCarpetas(
+                        baseDocumentos,
+                        documento.Tipo,
+                        documento.Numero
+                    )
+            );
+            clientes = resultado.ClientesProcesados;
+            clientesEnviados.Clear();
+            almacen.PrepararEstadosEnvioFactura(
+                claveEstadoEnvio,
+                clientes.Select(actual => actual.Rut)
+            );
+            clientesEnviados.UnionWith(almacen.LeerRutsEnviadosFactura(claveEstadoEnvio));
+            indiceCliente = 0;
+            RefrescarTablaAnalisis();
+            EstadoAnalisis.Text =
+                $"Envío individual: {Path.GetFileName(dialogo.FileName)}. Se revisaron todas las carpetas de PDF.";
+            BotonIrEnvios.IsEnabled = clientes.Count > 0;
+            MostrarPagina(PaginaAnalisis);
+        }
+        catch (Exception excepcion)
+        {
+            MensajeroLog.RegistrarError("Analizar envío individual de Facturas", excepcion);
+            MostrarAviso("Error", $"No se pudo analizar el archivo: {excepcion.Message}", "error");
+        }
+    }
+
+    private ClienteFactura? ElegirClienteFactura()
+    {
+        IReadOnlyList<ClienteFactura> disponibles = almacen.LeerClientesFactura();
+        if (disponibles.Count == 0)
+        {
+            MostrarAviso("Sin clientes", "Primero registra un cliente activo.", "warning");
+            return null;
+        }
+        var ventana = new Window
+        {
+            Title = "Elegir cliente",
+            Width = 480,
+            Height = 420,
+            MinWidth = 400,
+            MinHeight = 320,
+            Owner = this,
+            WindowStartupLocation = WindowStartupLocation.CenterOwner,
+        };
+        ventana.SetResourceReference(BackgroundProperty, "Hormiguero.Superficie");
+        var panel = new DockPanel { Margin = new Thickness(14) };
+        var buscar = new TextBox { Margin = new Thickness(0, 0, 0, 8) };
+        DockPanel.SetDock(buscar, Dock.Top);
+        panel.Children.Add(buscar);
+        var lista = new ListBox { DisplayMemberPath = "RazonSocial" };
+        panel.Children.Add(lista);
+        var botones = new StackPanel
+        {
+            Orientation = Orientation.Horizontal,
+            HorizontalAlignment = HorizontalAlignment.Right,
+            Margin = new Thickness(0, 8, 0, 0),
+        };
+        var aceptar = new Button
+        {
+            Content = "Elegir",
+            IsDefault = true,
+            Padding = new Thickness(14, 6, 14, 6),
+        };
+        var cancelar = new Button
+        {
+            Content = "Cancelar",
+            IsCancel = true,
+            Padding = new Thickness(14, 6, 14, 6),
+            Margin = new Thickness(8, 0, 0, 0),
+        };
+        aceptar.Click += (_, _) =>
+        {
+            if (lista.SelectedItem is ClienteFactura)
+                ventana.DialogResult = true;
+        };
+        botones.Children.Add(aceptar);
+        botones.Children.Add(cancelar);
+        DockPanel.SetDock(botones, Dock.Bottom);
+        panel.Children.Add(botones);
+        void Filtrar()
+        {
+            string texto = buscar.Text.Trim();
+            lista.ItemsSource = disponibles
+                .Where(actual =>
+                    actual.Rut.Contains(texto, StringComparison.OrdinalIgnoreCase)
+                    || actual.RazonSocial.Contains(texto, StringComparison.OrdinalIgnoreCase)
+                )
+                .ToArray();
+        }
+        buscar.TextChanged += (_, _) => Filtrar();
+        lista.MouseDoubleClick += (_, _) =>
+            aceptar.RaiseEvent(new RoutedEventArgs(Button.ClickEvent));
+        Filtrar();
+        ventana.Content = panel;
+        return ventana.ShowDialog() == true ? lista.SelectedItem as ClienteFactura : null;
     }
 
     private void AtrasPeriodo_Click(object sender, RoutedEventArgs e) =>
@@ -152,6 +291,7 @@ public partial class VentanaFacturas : Window
         {
             documentos = LectorExcelFactura.Leer(rutaXls);
             descripcionSemana = ConstruirDescripcion();
+            claveEstadoEnvio = descripcionSemana;
             var clientesPorRut = almacen
                 .LeerClientesFactura()
                 .ToDictionary(cliente => cliente.Rut, StringComparer.Ordinal);
@@ -209,10 +349,10 @@ public partial class VentanaFacturas : Window
             clientes = resultado.ClientesProcesados;
             clientesEnviados.Clear();
             almacen.PrepararEstadosEnvioFactura(
-                descripcionSemana,
+                claveEstadoEnvio,
                 clientes.Select(cliente => cliente.Rut)
             );
-            clientesEnviados.UnionWith(almacen.LeerRutsEnviadosFactura(descripcionSemana));
+            clientesEnviados.UnionWith(almacen.LeerRutsEnviadosFactura(claveEstadoEnvio));
             indiceCliente = 0;
             RefrescarTablaAnalisis();
             int erroresDocumento = clientes
@@ -448,18 +588,34 @@ public partial class VentanaFacturas : Window
             ))
             .ToArray();
         CampoAsunto.Text = cliente.Mensaje.Asunto;
-        CampoCuerpo.Text = PlantillasMensajero.GenerarCuerpoFactura(
-            almacen,
-            cliente.RazonSocial,
-            descripcionSemana,
-            cliente
-                .Documentos.Select(documento => new DocumentoFactura(
-                    documento.Tipo,
-                    documento.Numero,
-                    documento.Entidad
-                ))
-                .ToArray()
-        );
+        if (claveEstadoEnvio.StartsWith("individual:", StringComparison.Ordinal))
+        {
+            var individual = GeneradorCorreoFactura.GenerarIndividual(
+                cliente.RazonSocial,
+                cliente
+                    .Documentos.Select(documento => new DocumentoFactura(
+                        documento.Tipo,
+                        documento.Numero,
+                        documento.Entidad
+                    ))
+                    .ToArray()
+            );
+            CampoAsunto.Text = individual.Asunto;
+            CampoCuerpo.Text = individual.Cuerpo;
+        }
+        else
+            CampoCuerpo.Text = PlantillasMensajero.GenerarCuerpoFactura(
+                almacen,
+                cliente.RazonSocial,
+                descripcionSemana,
+                cliente
+                    .Documentos.Select(documento => new DocumentoFactura(
+                        documento.Tipo,
+                        documento.Numero,
+                        documento.Entidad
+                    ))
+                    .ToArray()
+            );
         BotonPreparar.IsEnabled = true;
         BotonGmail.IsEnabled = true;
         BotonPendiente.IsEnabled = true;
@@ -641,7 +797,7 @@ public partial class VentanaFacturas : Window
         )
             return;
         ClienteAnalizado cliente = clientes[indiceCliente];
-        almacen.GuardarEstadoEnvioFactura(descripcionSemana, cliente.Rut, false);
+        almacen.GuardarEstadoEnvioFactura(claveEstadoEnvio, cliente.Rut, false);
         clientesEnviados.Remove(cliente.Rut);
         RefrescarTablaAnalisis();
         LimpiarTemporalActual();
@@ -662,7 +818,7 @@ public partial class VentanaFacturas : Window
         )
             return;
         ClienteAnalizado cliente = clientes[indiceCliente];
-        almacen.GuardarEstadoEnvioFactura(descripcionSemana, cliente.Rut, true);
+        almacen.GuardarEstadoEnvioFactura(claveEstadoEnvio, cliente.Rut, true);
         clientesEnviados.Add(cliente.Rut);
         RefrescarTablaAnalisis();
         LimpiarTemporalActual();

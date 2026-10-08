@@ -4,6 +4,17 @@ namespace Hormiguero.Mensajero.Core.ClickFactura;
 
 public static class AnalizadorFactura
 {
+    public static IReadOnlyList<DocumentoFactura> FiltrarDocumentosCliente(
+        IReadOnlyList<DocumentoFactura> documentos,
+        string rut
+    )
+    {
+        string rutNormalizado = RutFactura.NormalizarSeguro(rut);
+        return documentos
+            .Where(documento => RutFactura.NormalizarSeguro(documento.Entidad) == rutNormalizado)
+            .ToArray();
+    }
+
     public static ResultadoAnalisis Analizar(
         IReadOnlyList<DocumentoFactura> documentos,
         IReadOnlyDictionary<string, ClienteFactura> clientesPorRut,

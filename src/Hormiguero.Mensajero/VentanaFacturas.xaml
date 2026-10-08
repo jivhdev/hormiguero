@@ -24,13 +24,18 @@
         <RowDefinition Height="Auto" />
         <RowDefinition Height="Auto" />
       </Grid.RowDefinitions>
-      <TextBlock
-        Text="📅 Configurar Período"
-        FontSize="22"
-        FontWeight="Bold"
-        HorizontalAlignment="Center"
-        Margin="0,8,0,18"
-      />
+      <DockPanel Margin="0,8,0,18">
+        <StackPanel DockPanel.Dock="Right" Orientation="Horizontal">
+          <Button Content="Clientes…" Click="GestionarClientes_Click" Margin="4,0" />
+          <Button Content="Enviar a un cliente…" Click="EnviarUnCliente_Click" Margin="4,0" />
+        </StackPanel>
+        <TextBlock
+          Text="Configurar período"
+          FontSize="22"
+          FontWeight="Bold"
+          HorizontalAlignment="Center"
+        />
+      </DockPanel>
       <StackPanel
         Grid.Row="1"
         VerticalAlignment="Center"
@@ -177,7 +182,7 @@
           Margin="0,0,0,16"
         />
         <Button
-          Content="📁 Seleccionar Archivo XLS"
+          Content="Cargar Excel (.xlsx o .xls)"
           Click="SeleccionarXls_Click"
           Padding="18,12"
           HorizontalAlignment="Center"
