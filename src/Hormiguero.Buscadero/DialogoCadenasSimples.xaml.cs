@@ -330,7 +330,7 @@ public partial class DialogoCadenasSimples : Window
     {
         var dialogo = new DialogoReglaAlerta { Owner = this };
         if (dialogo.ShowDialog() == true)
-            Estado.Text = "La regla quedó configurada para las cadenas simples.";
+            Estado.Text = "La regla quedó configurada para las cadenas.";
     }
 
     private void Recordarme_Click(object sender, RoutedEventArgs e)

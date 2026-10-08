@@ -264,6 +264,22 @@
                   Foreground="{DynamicResource Hormiguero.TextoSecundario}"
                 />
                 <Button
+                  x:Name="BotonAbrirEnVisor"
+                  Content="Abrir en el visor"
+                  Padding="8,4"
+                  Margin="0,0,6,0"
+                  IsEnabled="False"
+                  Click="BotonAbrirEnVisor_Click"
+                />
+                <Button
+                  x:Name="BotonCopiarPdf"
+                  Content="Copiar PDF"
+                  Padding="8,4"
+                  Margin="0,0,10,0"
+                  IsEnabled="False"
+                  Click="BotonCopiarPdf_Click"
+                />
+                <Button
                   x:Name="BotonPaginaAnterior"
                   Content="Anterior"
                   Padding="8,4"
@@ -323,7 +339,15 @@
                   Padding="8,4"
                   Margin="0,0,16,0"
                   Click="BotonModoSeleccionarTexto_Click"
-                  ToolTip="Ningún clic crea marcas mientras esté activo (selección/copia de texto no disponible aún para PDF escaneados/renderizados como imagen)"
+                  ToolTip="Arrastre sobre el PDF para seleccionar palabras y luego cópielas"
+                />
+                <Button
+                  x:Name="BotonCopiarTextoSeleccionado"
+                  Content="Copiar texto seleccionado"
+                  Padding="8,4"
+                  Margin="0,0,8,0"
+                  IsEnabled="False"
+                  Click="BotonCopiarTextoSeleccionado_Click"
                 />
                 <TextBlock
                   Text="Marcas:"
@@ -446,13 +470,13 @@
             Margin="0,0,0,8"
           />
           <Button
-            Content="Administrar cadenas simples"
+            Content="Administrar cadenas"
             Padding="14,10"
             HorizontalAlignment="Left"
             Click="BotonCadenasSimples_Click"
           />
           <TextBlock
-            Text="Las cadenas simples reúnen documentos relacionados y mantienen un historial de sus cambios."
+            Text="Las cadenas reúnen documentos relacionados y mantienen un historial de sus cambios."
             TextWrapping="Wrap"
             MaxWidth="560"
             Margin="0,0,0,12"

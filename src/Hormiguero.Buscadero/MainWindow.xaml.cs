@@ -1,3 +1,4 @@
+using System.Collections.Specialized;
 using System.Diagnostics;
 using System.Windows;
 using System.Windows.Controls;
@@ -58,6 +59,10 @@ public partial class MainWindow : Window
     private bool _buscando;
     private CancellationTokenSource? _cancelacionBusqueda;
     private string? _documentoActual;
+    private InfoPdf? _infoTextoActual;
+    private IReadOnlyList<PalabraPdf> _palabrasSeleccionadas = [];
+    private string _textoSeleccionado = string.Empty;
+    private bool _arrastrandoSeleccionTexto;
     private int _paginaActual;
     private int _totalPaginas;
     private double _zoom = 1.0;
@@ -454,12 +459,19 @@ public partial class MainWindow : Window
     private async Task AbrirDocumentoAsync(string ruta)
     {
         BotonImprimir.IsEnabled = false;
+        BotonAbrirEnVisor.IsEnabled = false;
+        BotonCopiarPdf.IsEnabled = false;
         try
         {
             var totalPaginas = await Task.Run(() => VisorPdf.ObtenerTotalPaginas(ruta));
+            var infoTexto = await Task.Run(() => LeerInfoTexto(ruta));
 
             _documentoActual = ruta;
             _totalPaginas = totalPaginas;
+            _infoTextoActual = infoTexto;
+            _palabrasSeleccionadas = [];
+            _textoSeleccionado = string.Empty;
+            BotonCopiarTextoSeleccionado.IsEnabled = false;
             _paginaActual = 0;
             _zoom = 1.0;
             var sesion = await Task.Run(() => new SesionMarcas(_repositorioMarcas, ruta));
@@ -477,6 +489,8 @@ public partial class MainWindow : Window
 
             TextoDocumentoAbierto.Text = System.IO.Path.GetFileName(ruta);
             BotonImprimir.IsEnabled = true;
+            BotonAbrirEnVisor.IsEnabled = true;
+            BotonCopiarPdf.IsEnabled = true;
             BarraVisor.Visibility = Visibility.Visible;
             BarraMarcas.Visibility = Visibility.Visible;
             TextoVisorVacio.Visibility = Visibility.Collapsed;
@@ -486,6 +500,12 @@ public partial class MainWindow : Window
         catch (Exception excepcion)
         {
             _documentoActual = null;
+            _infoTextoActual = null;
+            _palabrasSeleccionadas = [];
+            _textoSeleccionado = string.Empty;
+            BotonAbrirEnVisor.IsEnabled = false;
+            BotonCopiarPdf.IsEnabled = false;
+            BotonCopiarTextoSeleccionado.IsEnabled = false;
             _sesionMarcas = null;
             ImagenPdf.Source = null;
             CanvasMarcas.Children.Clear();
@@ -501,6 +521,17 @@ public partial class MainWindow : Window
                 MessageBoxImage.Warning
             );
         }
+    }
+
+    private static InfoPdf LeerInfoTexto(string ruta)
+    {
+        using var archivo = new System.IO.FileStream(
+            ruta,
+            System.IO.FileMode.Open,
+            System.IO.FileAccess.Read,
+            System.IO.FileShare.ReadWrite | System.IO.FileShare.Delete
+        );
+        return LectorPdf.Leer(archivo);
     }
 
     private async Task RenderizarPaginaActualAsync()
@@ -553,6 +584,7 @@ public partial class MainWindow : Window
     {
         if (_paginaActual > 0)
         {
+            LimpiarSeleccionTexto();
             _paginaActual--;
             await RenderizarPaginaActualAsync();
         }
@@ -562,9 +594,17 @@ public partial class MainWindow : Window
     {
         if (_paginaActual < _totalPaginas - 1)
         {
+            LimpiarSeleccionTexto();
             _paginaActual++;
             await RenderizarPaginaActualAsync();
         }
+    }
+
+    private void LimpiarSeleccionTexto()
+    {
+        _palabrasSeleccionadas = [];
+        _textoSeleccionado = string.Empty;
+        BotonCopiarTextoSeleccionado.IsEnabled = false;
     }
 
     private void BotonAcercar_Click(object sender, RoutedEventArgs e) =>
@@ -635,6 +675,62 @@ public partial class MainWindow : Window
         }
     }
 
+    private void BotonAbrirEnVisor_Click(object sender, RoutedEventArgs e)
+    {
+        if (_documentoActual is not string ruta)
+            return;
+        try
+        {
+            Process.Start(new ProcessStartInfo(ruta) { UseShellExecute = true });
+        }
+        catch (Exception error)
+        {
+            MostrarMensaje($"No se pudo abrir el PDF: {error.Message}");
+        }
+    }
+
+    private void BotonCopiarPdf_Click(object sender, RoutedEventArgs e)
+    {
+        if (_documentoActual is not string ruta)
+            return;
+        try
+        {
+            var archivos = new StringCollection();
+            archivos.Add(ruta);
+            Clipboard.SetFileDropList(archivos);
+            _ = MostrarAvisoImpresionAsync("PDF copiado");
+        }
+        catch (Exception error)
+        {
+            _ = MostrarAvisoImpresionAsync($"No se pudo copiar el PDF: {error.Message}");
+        }
+    }
+
+    private void BotonCopiarTextoSeleccionado_Click(object sender, RoutedEventArgs e) =>
+        CopiarTextoSeleccionado();
+
+    private void CopiarTextoSeleccionado()
+    {
+        if (string.IsNullOrWhiteSpace(_textoSeleccionado))
+        {
+            string mensaje = _infoTextoActual is { Palabras.Count: > 0 }
+                ? "Seleccione texto primero."
+                : "Este PDF no tiene texto seleccionable (es una imagen)";
+            _ = MostrarAvisoImpresionAsync(mensaje);
+            return;
+        }
+
+        try
+        {
+            Clipboard.SetText(_textoSeleccionado);
+            _ = MostrarAvisoImpresionAsync("Texto copiado");
+        }
+        catch (Exception error)
+        {
+            _ = MostrarAvisoImpresionAsync($"No se pudo copiar el texto: {error.Message}");
+        }
+    }
+
     private async void OpcionImprimir_Click(object sender, RoutedEventArgs e)
     {
         if (sender is not MenuItem { Tag: string etiqueta })
@@ -685,6 +781,25 @@ public partial class MainWindow : Window
 
     private void Ventana_PreviewKeyDown(object sender, KeyEventArgs e)
     {
+        if (Keyboard.Modifiers == ModifierKeys.Control && e.Key == Key.C)
+        {
+            if (PanelBusquedaSecundario.IsKeyboardFocusWithin)
+            {
+                if (PanelBusquedaSecundario.AtenderCtrlC())
+                    e.Handled = true;
+            }
+            else if (
+                _modoInteraccion == ModoInteraccionPdf.SeleccionarTexto
+                || _palabrasSeleccionadas.Count > 0
+            )
+            {
+                CopiarTextoSeleccionado();
+                e.Handled = true;
+            }
+            if (e.Handled)
+                return;
+        }
+
         if (Keyboard.Modifiers != ModifierKeys.Control || e.Key != Key.P)
         {
             return;
@@ -776,6 +891,9 @@ public partial class MainWindow : Window
     {
         CanvasMarcas.Children.Clear();
 
+        if (ImagenPdf.Source is BitmapSource mapaSeleccion)
+            DibujarSeleccionTexto(mapaSeleccion);
+
         if (_sesionMarcas is null || ImagenPdf.Source is not BitmapSource mapa)
         {
             return;
@@ -804,10 +922,55 @@ public partial class MainWindow : Window
             }
         }
 
-        if (_arrastrando)
+        if (_arrastrando && !_arrastrandoSeleccionTexto)
         {
             DibujarVistaPrevia(ancho, alto);
         }
+        else if (_arrastrandoSeleccionTexto)
+        {
+            DibujarRectanguloSeleccion(ancho, alto);
+        }
+    }
+
+    private void DibujarSeleccionTexto(BitmapSource mapa)
+    {
+        if (_infoTextoActual is null || _palabrasSeleccionadas.Count == 0)
+            return;
+        var (anchoPagina, altoPagina) = _infoTextoActual.TamanosPagina[_paginaActual];
+        foreach (var palabra in _palabrasSeleccionadas)
+        {
+            var rectangulo = new Rectangle
+            {
+                Width = palabra.Ancho / anchoPagina * mapa.PixelWidth,
+                Height = palabra.Alto / altoPagina * mapa.PixelHeight,
+                Fill = Pincel("Hormiguero.AvisoSuave"),
+                Stroke = Pincel("Hormiguero.Aviso"),
+                StrokeThickness = 1,
+                IsHitTestVisible = false,
+            };
+            Canvas.SetLeft(rectangulo, palabra.X / anchoPagina * mapa.PixelWidth);
+            Canvas.SetTop(
+                rectangulo,
+                (altoPagina - palabra.Y - palabra.Alto) / altoPagina * mapa.PixelHeight
+            );
+            CanvasMarcas.Children.Add(rectangulo);
+        }
+    }
+
+    private void DibujarRectanguloSeleccion(double ancho, double alto)
+    {
+        var rectangulo = new Rectangle
+        {
+            Width = Math.Abs(_finArrastre.X - _inicioArrastre.X) * ancho,
+            Height = Math.Abs(_finArrastre.Y - _inicioArrastre.Y) * alto,
+            Fill = Pincel("Hormiguero.AvisoSuave"),
+            Stroke = Pincel("Hormiguero.Aviso"),
+            StrokeThickness = 1,
+            IsHitTestVisible = false,
+        };
+        Canvas.SetLeft(rectangulo, Math.Min(_inicioArrastre.X, _finArrastre.X) * ancho);
+        Canvas.SetTop(rectangulo, Math.Min(_inicioArrastre.Y, _finArrastre.Y) * alto);
+        CanvasMarcas.Children.Add(rectangulo);
     }
 
     private void DibujarVistaPrevia(double ancho, double alto)
@@ -881,6 +1044,21 @@ public partial class MainWindow : Window
 
     private void CanvasMarcas_MouseLeftButtonDown(object sender, MouseButtonEventArgs e)
     {
+        if (_modoInteraccion == ModoInteraccionPdf.SeleccionarTexto)
+        {
+            if (ImagenPdf.Source is not BitmapSource mapaSeleccion)
+                return;
+            var posicion = Normalizar(e.GetPosition(CanvasMarcas), mapaSeleccion);
+            _inicioArrastre = new Point(posicion.X, posicion.Y);
+            _finArrastre = _inicioArrastre;
+            _arrastrando = true;
+            _arrastrandoSeleccionTexto = true;
+            CanvasMarcas.CaptureMouse();
+            RefrescarMarcas();
+            e.Handled = true;
+            return;
+        }
+
         // Caso-15: un clic solo coloca una marca si el modo "Marcas" está activo a
         // propósito — ninguno de los dos modos (marcas / seleccionar texto) es el
         // default implícito.
@@ -956,6 +1134,45 @@ public partial class MainWindow : Window
 
     private void Ventana_PreviewMouseLeftButtonUp(object sender, MouseButtonEventArgs e)
     {
+        if (_arrastrandoSeleccionTexto && ImagenPdf.Source is BitmapSource mapaSeleccion)
+        {
+            _arrastrando = false;
+            _arrastrandoSeleccionTexto = false;
+            if (CanvasMarcas.IsMouseCaptured)
+                CanvasMarcas.ReleaseMouseCapture();
+            var posicionFinal = Normalizar(e.GetPosition(CanvasMarcas), mapaSeleccion);
+            _finArrastre = new Point(posicionFinal.X, posicionFinal.Y);
+            double x = Math.Min(_inicioArrastre.X, _finArrastre.X);
+            double y = Math.Min(_inicioArrastre.Y, _finArrastre.Y);
+            double anchoSeleccion = Math.Abs(_finArrastre.X - _inicioArrastre.X);
+            double altoSeleccion = Math.Abs(_finArrastre.Y - _inicioArrastre.Y);
+            if (anchoSeleccion > 0 && altoSeleccion > 0 && _infoTextoActual is not null)
+            {
+                var resultado = SeleccionTextoPdf.Seleccionar(
+                    _infoTextoActual,
+                    _paginaActual,
+                    x,
+                    y,
+                    anchoSeleccion,
+                    altoSeleccion
+                );
+                _palabrasSeleccionadas = resultado.Palabras;
+                _textoSeleccionado = resultado.Texto;
+            }
+            else
+            {
+                _palabrasSeleccionadas = [];
+                _textoSeleccionado = string.Empty;
+            }
+            BotonCopiarTextoSeleccionado.IsEnabled = _palabrasSeleccionadas.Count > 0;
+            RefrescarMarcas();
+            if (_palabrasSeleccionadas.Count == 0 && _infoTextoActual is { Palabras.Count: 0 })
+                _ = MostrarAvisoImpresionAsync(
+                    "Este PDF no tiene texto seleccionable (es una imagen)"
+                );
+            return;
+        }
+
         if (_sesionMarcas is null || ImagenPdf.Source is not BitmapSource mapa)
         {
             return;
@@ -1312,7 +1529,7 @@ public partial class MainWindow : Window
     {
         var dialogo = new DialogoReglaAlerta { Owner = this };
         if (dialogo.ShowDialog() == true)
-            MostrarMensaje("La regla quedó configurada para las cadenas simples.");
+            MostrarMensaje("La regla quedó configurada para las cadenas.");
     }
 
     private void BotonComparar_Click(object sender, RoutedEventArgs e)
