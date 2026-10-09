@@ -74,6 +74,9 @@ public enum MotivoPendiente
 
     /// <summary>Coincidió con una configuración que pide confirmar el nombre cada vez (Caso-11, punto 1): la carpeta ya está resuelta, falta el nombre.</summary>
     NombrePorConfirmar,
+
+    /// <summary>Documento de compra sin proveedor legible: hay que indicarlo antes de guardarlo.</summary>
+    FaltaProveedor,
 }
 
 /// <summary>Texto legible para mostrarle al usuario por qué un documento quedó pendiente (Caso-9).</summary>
@@ -104,6 +107,8 @@ public static class MotivoPendienteExtensiones
             MotivoPendiente.NombreORutaDemasiadoLarga => "Nombre o ruta demasiado larga",
             MotivoPendiente.ArchivoDanado => "No se pudo leer este archivo (puede estar dañado).",
             MotivoPendiente.NombrePorConfirmar => "Falta confirmar el nombre con el que se guarda.",
+            MotivoPendiente.FaltaProveedor =>
+                "Falta el proveedor: ábrelo e indica a quién le compras.",
             _ => motivo.ToString(),
         };
 }
