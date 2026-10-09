@@ -15,10 +15,22 @@ public static class PublicadorDatosDocumentoService
     public static void PublicarGuardado(
         string ruta,
         ConfiguracionDocumento configuracion,
-        CamposExtraidos campos
+        CamposExtraidos campos,
+        string? proveedorManual = null
     )
     {
-        var valores = CrearValores(ruta, configuracion, campos);
+        var valores = CrearValores(ruta, configuracion, campos).ToList();
+        if (!string.IsNullOrWhiteSpace(proveedorManual))
+            valores.Add(
+                new(
+                    "Nombre o razón social del proveedor",
+                    "nombre_proveedor",
+                    proveedorManual.Trim(),
+                    DiccionarioDatosEnlazantes.ClaveDeEnlace("nombre_proveedor", proveedorManual),
+                    "manual",
+                    DatoDiccionarioId: "nombre_proveedor"
+                )
+            );
         Publicar(ruta, configuracion, valores, "marca");
     }
 

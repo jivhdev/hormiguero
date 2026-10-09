@@ -33,6 +33,25 @@ public sealed class VentanasArchiveroSmokeTests
         Assert.Equal("Recibido", AsistenteClasificacionService.GrupoDocumento("Del cliente"));
         Assert.Equal("Recibido", AsistenteClasificacionService.GrupoDocumento("Del proveedor"));
         Assert.Equal(string.Empty, AsistenteClasificacionService.GrupoDocumento("Otros"));
+        Assert.True(AsistenteClasificacionService.EsCompraPropia("oc_propia"));
+        Assert.True(AsistenteClasificacionService.EsCompraPropia("OC propia"));
+        Assert.False(AsistenteClasificacionService.EsCompraPropia("factura_proveedor"));
+        Assert.False(AsistenteClasificacionService.EsCompraPropia("Factura del proveedor"));
+        Assert.Contains(
+            AsistenteClasificacionService.DatosProveedor,
+            dato => dato.Id == "nombre_proveedor"
+        );
+        Assert.Contains(
+            AsistenteClasificacionService.DatosProveedor,
+            dato => dato.Id == "rut_proveedor"
+        );
+        Assert.NotNull(AsistenteClasificacionService.ValidarProveedorCompraPropia(false, false));
+        Assert.Null(AsistenteClasificacionService.ValidarProveedorCompraPropia(true, false));
+        Assert.Null(AsistenteClasificacionService.ValidarProveedorCompraPropia(false, true));
+        Assert.True(
+            AsistenteClasificacionService.TieneProveedorLegible([("nombre_proveedor", "Acme")])
+        );
+        Assert.False(AsistenteClasificacionService.TieneProveedorLegible([("rut_proveedor", " ")]));
     }
 
     [Fact]
