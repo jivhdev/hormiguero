@@ -209,7 +209,7 @@ public static class PublicadorDatosDocumentoService
     private static void RevisarEnlaces(long? versionId)
     {
         using var conexion = BaseComun.Abrir(DocumentosGuardados.RutaBaseComun);
-        var motor = new MotorCadenasSimples(conexion);
+        var motor = new MotorCadenas(conexion);
         try
         {
             motor.Procesar(versionId);

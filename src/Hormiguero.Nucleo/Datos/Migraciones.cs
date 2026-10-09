@@ -257,6 +257,25 @@ public static class Migraciones
                 + "('nombre_propio','Nombre o razón social de mi empresa','Otros',23,NULL); "
                 + "CREATE TRIGGER trg_diccionario_datos_no_insertar BEFORE INSERT ON diccionario_datos BEGIN SELECT RAISE(ABORT,'El diccionario de datos es fijo.'); END;"
         ),
+        (
+            15,
+            "ALTER TABLE cadenas ADD COLUMN proveedor TEXT NULL; "
+                + "ALTER TABLE cadenas ADD COLUMN cliente TEXT NULL; "
+                + "ALTER TABLE cadenas ADD COLUMN modo_id INTEGER NULL REFERENCES modos_esquema(id); "
+                + "ALTER TABLE cadenas ADD COLUMN esquema_id INTEGER NULL REFERENCES esquemas_cadena(id); "
+                + "ALTER TABLE vagones_cadena ADD COLUMN lugar_esquema_id INTEGER NULL REFERENCES lugares_esquema(id); "
+                + "ALTER TABLE vagones_cadena ADD COLUMN linea_id INTEGER NULL; "
+                + "ALTER TABLE vagones_cadena ADD COLUMN pareja_version_id INTEGER NULL REFERENCES versiones_documento(id); "
+                + "CREATE TABLE esquemas_cadena(id INTEGER PRIMARY KEY, proveedor TEXT NOT NULL COLLATE NOCASE UNIQUE, nombre TEXT NOT NULL, activo INTEGER NOT NULL DEFAULT 1 CHECK(activo IN (0,1)), creada_en TEXT NOT NULL, actualizada_en TEXT NOT NULL); "
+                + "CREATE TABLE lugares_esquema(id INTEGER PRIMARY KEY, esquema_id INTEGER NOT NULL REFERENCES esquemas_cadena(id), orden INTEGER NOT NULL, identificacion_id INTEGER NOT NULL REFERENCES identificaciones(id), inicia_cadena INTEGER NOT NULL DEFAULT 0 CHECK(inicia_cadena IN (0,1)), nombre TEXT NOT NULL, UNIQUE(esquema_id,identificacion_id), UNIQUE(esquema_id,orden)); "
+                + "CREATE INDEX idx_lugares_esquema_orden ON lugares_esquema(esquema_id,orden); "
+                + "CREATE TABLE parejas_esquema(id INTEGER PRIMARY KEY, lugar_a INTEGER NOT NULL REFERENCES lugares_esquema(id), lugar_b INTEGER NOT NULL REFERENCES lugares_esquema(id), dato_diccionario_id TEXT NOT NULL REFERENCES diccionario_datos(id), CHECK(lugar_a<>lugar_b), UNIQUE(lugar_a), UNIQUE(lugar_b)); "
+                + "CREATE TABLE modos_esquema(id INTEGER PRIMARY KEY, esquema_id INTEGER NOT NULL REFERENCES esquemas_cadena(id), nombre TEXT NOT NULL, UNIQUE(esquema_id,nombre)); "
+                + "ALTER TABLE esquemas_cadena ADD COLUMN lugar_decide_modo INTEGER NULL REFERENCES lugares_esquema(id); "
+                + "CREATE TABLE reglas_alerta_esquema(id INTEGER PRIMARY KEY, esquema_id INTEGER NOT NULL REFERENCES esquemas_cadena(id), lugar_id INTEGER NOT NULL REFERENCES lugares_esquema(id), modo_id INTEGER NULL REFERENCES modos_esquema(id), tipo TEXT NOT NULL, parametros_json TEXT NOT NULL DEFAULT '{}'); "
+                + "CREATE TABLE decisiones_pendientes_cadena(version_id INTEGER PRIMARY KEY REFERENCES versiones_documento(id), proveedor TEXT NOT NULL, numeros_json TEXT NOT NULL, motivo TEXT NOT NULL, creada_en TEXT NOT NULL, estado TEXT NOT NULL DEFAULT 'pendiente' CHECK(estado IN ('pendiente','resuelta'))); "
+                + "CREATE INDEX idx_cadenas_proveedor_cliente ON cadenas(proveedor,cliente,estado);"
+        ),
     ];
 
     public static void Aplicar(

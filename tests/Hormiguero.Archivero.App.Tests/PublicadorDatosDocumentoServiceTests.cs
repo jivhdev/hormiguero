@@ -122,7 +122,7 @@ public sealed class PublicadorDatosDocumentoServiceTests
     }
 
     [Fact]
-    public async Task Publicacion_desde_archivero_dispara_el_enlace_de_cadena_simple()
+    public async Task Publicacion_desde_archivero_inicia_la_cadena_del_esquema_del_proveedor()
     {
         string raiz = Path.Combine(
             Path.GetTempPath(),
@@ -130,86 +130,70 @@ public sealed class PublicadorDatosDocumentoServiceTests
             Guid.NewGuid().ToString("N")
         );
         Directory.CreateDirectory(raiz);
-        string basePath = Path.Combine(raiz, "base.pdf");
-        string nuevaPath = Path.Combine(raiz, "nueva.pdf");
-        File.WriteAllText(basePath, "base");
-        File.WriteAllText(nuevaPath, "nuevo");
+        string ruta = Path.Combine(raiz, "factura.pdf");
+        File.WriteAllText(ruta, "factura");
         string? carpetaAnterior = Environment.GetEnvironmentVariable("HORMIGUERO_DATOS");
         Environment.SetEnvironmentVariable("HORMIGUERO_DATOS", Path.Combine(raiz, "datos"));
         try
         {
             using var conexion = BaseComun.Abrir(DocumentosGuardados.RutaBaseComun);
             long identificacion = new Identificaciones(conexion).Guardar(
-                new(0, "Factura", "Emisor", "{}")
+                new(0, "Factura del proveedor", "Proveedor Uno", "{}")
             );
             var documentos = new RepositorioDocumentosDatos(conexion);
             long campo = documentos.GuardarCampo(
-                new(0, identificacion, "OC", "oc_cliente", "texto", true, "marca", "oc_cliente")
+                new(
+                    0,
+                    identificacion,
+                    "N° Factura del proveedor",
+                    "factura_proveedor",
+                    "texto",
+                    true,
+                    "marca",
+                    "factura_proveedor"
+                )
             );
             new RepositorioDatosEnlazantes(conexion).GuardarDatoTipo(
-                new(0, identificacion, "oc_cliente", "diseño", campo, 1, 0.1, 0.1, 0.2, 0.1, true)
+                new(
+                    0,
+                    identificacion,
+                    "factura_proveedor",
+                    "diseño",
+                    campo,
+                    1,
+                    0.1,
+                    0.1,
+                    0.2,
+                    0.1,
+                    true
+                )
             );
-            var info = new FileInfo(basePath);
-            var publicadoBase = documentos.PublicarDocumento(
-                basePath,
-                info.Length,
-                info.LastWriteTimeUtc,
-                Huella.Calcular(basePath),
-                "Emisor",
-                "Factura",
-                [new("OC", "oc_cliente", "123", "123", "marca")]
+            new RepositorioEsquemas(conexion).Guardar(
+                "Proveedor Uno",
+                "Compra para venta",
+                [new(1, identificacion, true, "Factura del proveedor")]
             );
-            long cadena = new RepositorioCadenas(conexion).CrearCadenaSimple(
-                "Cadena",
-                DateTime.Now
-            );
-            long vagon = new RepositorioCadenas(conexion).AgregarDocumentoCadena(
-                cadena,
-                publicadoBase.Version.Id,
-                "Base"
-            );
-            new RepositorioReglasYEnlaces(conexion).CrearEnlace(
-                vagon,
-                publicadoBase.Version.Id,
-                "manual"
-            );
-
             var configuracion = new ConfiguracionDocumento
             {
-                Emisor = "Emisor",
-                Tipo = "Factura",
+                Emisor = "Proveedor Uno",
+                Tipo = "Factura del proveedor",
                 CarpetaDestino = raiz,
                 FormatoCarpeta = FormatoCarpeta.Directo,
                 Renombrar = false,
                 Patrones = [],
             };
+
             PublicadorDatosDocumentoService.PublicarObservado(
-                nuevaPath,
+                ruta,
                 configuracion,
-                [new("OC", "oc_cliente", "123", "123", "observador")]
+                [new("N° Factura del proveedor", "factura_proveedor", "555", "555", "observador")]
             );
             await (PublicadorDatosDocumentoService.UltimaRevisionEnlaces ?? Task.CompletedTask);
 
-            Assert.Equal(
-                1L,
-                Convert.ToInt64(
-                    Escalar(
-                        conexion,
-                        "SELECT COUNT(*) FROM enlaces_cadena WHERE origen='automatico' AND estado='activo';"
-                    )
-                )
+            var cadena = Assert.Single(
+                new RepositorioCadenas(conexion).ListarPorProveedor("Proveedor Uno")
             );
-            Assert.Equal(
-                2L,
-                Convert.ToInt64(
-                    Escalar(
-                        conexion,
-                        "SELECT COUNT(*) FROM vagones_cadena WHERE cadena_id="
-                            + cadena
-                            + " AND estado='activo';"
-                    )
-                )
-            );
+            Assert.Single(new RepositorioCadenas(conexion).ArbolPorLugares(cadena.Id));
         }
         finally
         {

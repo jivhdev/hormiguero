@@ -37,8 +37,72 @@ public sealed record VersionDocumentoCadena(
     string Numero
 );
 
+public sealed record DocumentoLugarCadena(
+    long VagonId,
+    long VersionId,
+    long LugarId,
+    string Lugar,
+    int OrdenLugar,
+    long? LineaId,
+    long? ParejaVersionId,
+    string Nombre
+);
+
 public sealed class RepositorioCadenas(SqliteConnection conexion)
 {
+    public IReadOnlyList<Cadena> ListarPorProveedor(string proveedor)
+    {
+        string clave = ProveedorDeDocumento.NormalizarProveedor(proveedor);
+        using var comando = conexion.CreateCommand();
+        comando.CommandText =
+            "SELECT id,modelo_id,nombre_modelo_origen,nombre,fecha_creacion,estructura_json,cadena_madre_id,vagon_padre_id,estado FROM cadenas WHERE esquema_id IS NOT NULL AND estado='activa' AND proveedor=$p ORDER BY id;";
+        comando.Parameters.AddWithValue("$p", clave);
+        return LeerCadenas(comando);
+    }
+
+    public IReadOnlyList<Cadena> ListarPorCliente(string cliente)
+    {
+        ArgumentException.ThrowIfNullOrWhiteSpace(cliente);
+        using var comando = conexion.CreateCommand();
+        comando.CommandText =
+            "SELECT id,modelo_id,nombre_modelo_origen,nombre,fecha_creacion,estructura_json,cadena_madre_id,vagon_padre_id,estado FROM cadenas WHERE esquema_id IS NOT NULL AND estado='activa' AND cliente=$c COLLATE NOCASE ORDER BY id;";
+        comando.Parameters.AddWithValue("$c", cliente.Trim());
+        return LeerCadenas(comando);
+    }
+
+    public IReadOnlyList<DocumentoLugarCadena> ArbolPorLugares(long cadenaId)
+    {
+        using var comando = conexion.CreateCommand();
+        comando.CommandText =
+            "SELECT v.id,e.version_id,v.lugar_esquema_id,l.nombre,l.orden,v.linea_id,v.pareja_version_id,d.nombre FROM vagones_cadena v JOIN enlaces_cadena e ON e.vagon_cadena_id=v.id AND e.estado IN ('activo','dudoso') JOIN lugares_esquema l ON l.id=v.lugar_esquema_id JOIN versiones_documento ver ON ver.id=e.version_id JOIN documentos d ON d.id=ver.documento_id WHERE v.cadena_id=$c AND v.estado='activo' ORDER BY l.orden,v.linea_id,v.orden,v.id;";
+        comando.Parameters.AddWithValue("$c", cadenaId);
+        using var lector = comando.ExecuteReader();
+        var documentos = new List<DocumentoLugarCadena>();
+        while (lector.Read())
+            documentos.Add(
+                new(
+                    lector.GetInt64(0),
+                    lector.GetInt64(1),
+                    lector.GetInt64(2),
+                    lector.GetString(3),
+                    lector.GetInt32(4),
+                    lector.IsDBNull(5) ? null : lector.GetInt64(5),
+                    lector.IsDBNull(6) ? null : lector.GetInt64(6),
+                    lector.GetString(7)
+                )
+            );
+        return documentos;
+    }
+
+    private static IReadOnlyList<Cadena> LeerCadenas(SqliteCommand comando)
+    {
+        using var lector = comando.ExecuteReader();
+        var resultado = new List<Cadena>();
+        while (lector.Read())
+            resultado.Add(LeerCadena(lector));
+        return resultado;
+    }
+
     public long CrearCadenaSimple(string nombre, DateTime fechaCreacion)
     {
         ArgumentException.ThrowIfNullOrWhiteSpace(nombre);
