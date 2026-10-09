@@ -15,11 +15,11 @@
     <Grid.RowDefinitions>
       <RowDefinition Height="Auto" />
       <RowDefinition Height="Auto" />
-      <RowDefinition Height="180" />
-      <RowDefinition Height="*" />
-      <RowDefinition Height="100" />
-      <RowDefinition Height="100" />
-      <RowDefinition Height="100" />
+      <RowDefinition Height="*" MinHeight="130" />
+      <RowDefinition Height="Auto" />
+      <RowDefinition Height="90" />
+      <RowDefinition Height="90" />
+      <RowDefinition Height="90" />
       <RowDefinition Height="Auto" />
     </Grid.RowDefinitions>
 
@@ -105,10 +105,10 @@
       </Grid>
     </Grid>
 
-    <Grid Grid.Row="2" Margin="0,0,0,12">
+    <Grid Grid.Row="3" Name="SeccionDecisionesPendientes" Visibility="Collapsed" Margin="0,0,0,12">
       <Grid.RowDefinitions>
         <RowDefinition Height="Auto" />
-        <RowDefinition Height="*" />
+        <RowDefinition Height="Auto" />
       </Grid.RowDefinitions>
       <TextBlock
         Name="TxtDecisionesPendientes"
@@ -117,7 +117,7 @@
         FontWeight="Bold"
         Margin="0,0,0,6"
       />
-      <ListBox Grid.Row="1" Name="ListaDecisionesPendientes">
+      <ListBox Grid.Row="1" Name="ListaDecisionesPendientes" MaxHeight="150">
         <ListBox.ItemTemplate>
           <DataTemplate>
             <Grid Margin="2">
@@ -219,7 +219,7 @@
       </ListBox>
     </Grid>
 
-    <Grid Grid.Row="3" Margin="0,0,0,16">
+    <Grid Grid.Row="2" Margin="0,0,0,12">
       <Grid.RowDefinitions>
         <RowDefinition Height="Auto" />
         <RowDefinition Height="*" />

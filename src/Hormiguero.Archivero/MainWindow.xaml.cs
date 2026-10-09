@@ -280,6 +280,9 @@ public partial class MainWindow : Window
             .Select(d => new DecisionPendienteFila(d, modos.GetValueOrDefault(d.VersionId)))
             .ToList();
         TxtDecisionesPendientes.Text = $"Decisiones pendientes ({decisiones.Count})";
+        // Solo ocupa espacio cuando hay algo que decidir: "Pendientes por reconocer" es lo principal.
+        SeccionDecisionesPendientes.Visibility =
+            decisiones.Count > 0 ? Visibility.Visible : Visibility.Collapsed;
     }
 
     private static DecisionPendienteFila? FilaDecision(object sender) =>
