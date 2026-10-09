@@ -18,7 +18,9 @@ LO MÁS NUEVO (09-10)
    vencido, naranja = vence hoy o mañana. Cada cadena muestra "⚠ n".
 == ARCHIVERO ==
 - Paso 4 del asistente: el botón dice "Siguiente" (antes decía "Saltar": lo marcado SÍ se guardaba).
-- Diccionario: RUT y nombre de proveedor, cliente y de tu empresa (enlazables). En tus OC propias se
+- Diccionario: RUT y nombre de proveedor, cliente y de tu empresa. Sirven para saber de qué
+  proveedor y cliente es cada cadena (no unen documentos por sí solos: todos los negocios con un
+  mismo cliente comparten su nombre y se mezclarían). En tus OC propias se
   exige el proveedor; si no se puede leer, Archivero te lo pide (o queda en pendientes con
   "Falta el proveedor").
 - Al copiar un dato siempre sale COMO SE LEE en el PDF (ej. 0111-10-25), no limpio.
