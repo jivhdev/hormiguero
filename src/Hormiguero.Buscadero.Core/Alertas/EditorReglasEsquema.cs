@@ -5,6 +5,33 @@ namespace Buscadero.Core.Alertas;
 
 public static class EditorReglasEsquema
 {
+    public static IReadOnlyList<string> CamposPorTipo(string tipo) =>
+        tipo switch
+        {
+            "falta_dato" => ["dato", "texto"],
+            "plazo" =>
+            [
+                "desde",
+                "dias",
+                "tipoDias",
+                "calendario",
+                "hasta",
+                "condicion",
+                "porLinea",
+                "texto",
+            ],
+            "listo_para" => ["cuando", "hasta", "condicion", "lista"],
+            _ => [],
+        };
+
+    public static string TextoSugerido(string tipo, string lugarEsperado = "") =>
+        tipo switch
+        {
+            "falta_dato" => "Ingresar fecha de retiro",
+            "plazo" when !string.IsNullOrWhiteSpace(lugarEsperado) => $"Falta {lugarEsperado}",
+            _ => "",
+        };
+
     public static string? Validar(string tipo, object parametros)
     {
         try

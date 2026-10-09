@@ -6,6 +6,33 @@ namespace Hormiguero.Buscadero.Core.Tests;
 public sealed class EditorReglasEsquemaTests
 {
     [Fact]
+    public void ExponeSoloCamposDelTipoYTextoSugerido()
+    {
+        Assert.Equal(new[] { "dato", "texto" }, EditorReglasEsquema.CamposPorTipo("falta_dato"));
+        Assert.Equal(
+            new[]
+            {
+                "desde",
+                "dias",
+                "tipoDias",
+                "calendario",
+                "hasta",
+                "condicion",
+                "porLinea",
+                "texto",
+            },
+            EditorReglasEsquema.CamposPorTipo("plazo")
+        );
+        Assert.Equal(
+            new[] { "cuando", "hasta", "condicion", "lista" },
+            EditorReglasEsquema.CamposPorTipo("listo_para")
+        );
+        Assert.Equal("Ingresar fecha de retiro", EditorReglasEsquema.TextoSugerido("falta_dato"));
+        Assert.Equal("Falta Guía", EditorReglasEsquema.TextoSugerido("plazo", "Guía"));
+        Assert.Equal("", EditorReglasEsquema.TextoSugerido("listo_para", "Guía"));
+    }
+
+    [Fact]
     public void ArmaJsonConElFormatoDeLosTresTipos()
     {
         Assert.Equal(

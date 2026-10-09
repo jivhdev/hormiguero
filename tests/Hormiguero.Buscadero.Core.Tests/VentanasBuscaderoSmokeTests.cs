@@ -50,6 +50,7 @@ public sealed class VentanasBuscaderoSmokeTests
                 );
                 principal.Close();
                 ProbarAsistenteEsquema();
+                ProbarEditorReglasEsquema();
                 foreach (var tema in new[] { ModoTema.Claro, ModoTema.Oscuro })
                 {
                     Tema.Aplicar(aplicacion, tema);
@@ -253,6 +254,50 @@ public sealed class VentanasBuscaderoSmokeTests
             "INSERT INTO cadenas(modelo_id,nombre_modelo_origen,nombre,fecha_creacion,estructura_json,proveedor,cliente,esquema_id) VALUES(NULL,NULL,'Cadena sintética','2026-10-09','{}','PROVEEDOR DEMO SPA','Cliente de prueba',$esquema);";
         cadena.Parameters.AddWithValue("$esquema", esquema.Id);
         cadena.ExecuteNonQuery();
+    }
+
+    private static void ProbarEditorReglasEsquema()
+    {
+        var lugares = new[]
+        {
+            new LugarAlertaVm(0, "Orden de compra"),
+            new LugarAlertaVm(1, "Guía"),
+        };
+        foreach (int tipo in Enumerable.Range(0, 3))
+        {
+            var dialogo = new DialogoReglaEsquema(lugares, ["Retiro"], [])
+            {
+                Width = 760,
+                Height = 768,
+                WindowStartupLocation = WindowStartupLocation.CenterScreen,
+            };
+            dialogo.Show();
+            dialogo.UpdateLayout();
+            Assert.True(dialogo.ActualHeight <= 700);
+            if (tipo == 1)
+                Pulsar(dialogo, "TipoPlazo");
+            else if (tipo == 2)
+                Pulsar(dialogo, "TipoListo");
+            dialogo.UpdateLayout();
+
+            Assert.Equal(
+                tipo == 0 ? Visibility.Visible : Visibility.Collapsed,
+                Assert.IsType<StackPanel>(dialogo.FindName("FaltaCampos")).Visibility
+            );
+            Assert.Equal(
+                tipo == 1 ? Visibility.Visible : Visibility.Collapsed,
+                Assert.IsType<StackPanel>(dialogo.FindName("PlazoCampos")).Visibility
+            );
+            Assert.Equal(
+                tipo == 2 ? Visibility.Visible : Visibility.Collapsed,
+                Assert.IsType<StackPanel>(dialogo.FindName("ListoCampos")).Visibility
+            );
+            var guardar = Assert.IsType<Button>(dialogo.FindName("Guardar"));
+            Assert.True(guardar.IsVisible);
+            Point extremo = guardar.TranslatePoint(new Point(0, guardar.ActualHeight), dialogo);
+            Assert.True(extremo.Y <= dialogo.ActualHeight);
+            dialogo.Close();
+        }
     }
 
     private static string TextoTipo(object tipo) =>

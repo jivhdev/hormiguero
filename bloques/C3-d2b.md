@@ -29,3 +29,13 @@ Sigue en esta rama. Prueba en vivo con datos sintéticos:
 Pruebas: lógica de qué campos corresponden a cada tipo y del texto sugerido; datos comunes para pareja; STA que abre el editor con cada tipo y verifica que los campos de otros tipos están ocultos y que "Guardar aviso" es visible en 1366×768. `dotnet build` sin advertencias; `dotnet test` todo pasa; `dotnet csharpier check .` sin errores en tus archivos. Reporte al final, debajo del de C3-d2.
 
 ## Reporte del agente
+
+Implementé el editor de avisos con tarjetas para los tres tipos, campos exclusivos por tipo, modo inicial «Todos los modos» (oculto cuando no hay modos), textos sugeridos editables y frase de revisión actualizada al cambiar los campos. El contenido tiene desplazamiento y el pie con «Guardar aviso» y «Cancelar» permanece fijo; la ventana mide 680 px y admite hasta 700 px. Para plazo, unifiqué el origen en «Contar desde».
+
+En el asistente, etiqueté las tres listas de parejas y filtré los datos según los dos documentos elegidos. Los mensajes de éxito usan el color normal y los errores el color de error. Reubiqué Subir/Bajar bajo la lista de proceso y evité duplicar «del proveedor» en las pistas.
+
+Agregué pruebas de lógica para campos y sugerencias, datos comunes de pareja y una prueba STA que abre el editor para cada tipo, verifica los campos visibles y confirma que «Guardar aviso» queda dentro de la ventana.
+
+- `dotnet build`: correcto, 0 advertencias y 0 errores.
+- `dotnet test`: correcto, 811 pruebas aprobadas, 0 fallidas y 0 omitidas.
+- `dotnet csharpier check .`: correcto, 334 archivos revisados.

@@ -87,25 +87,36 @@
               Margin="0,3"
             />
           </StackPanel>
-          <DockPanel Grid.Column="2" Margin="8,0,0,0">
-            <TextBlock
-              Text="Documentos del proceso, en orden"
-              FontWeight="Bold"
-              DockPanel.Dock="Top"
-              Margin="0,0,0,5"
-            />
+          <Grid Grid.Column="2" Margin="8,0,0,0">
+            <Grid.RowDefinitions>
+              <RowDefinition Height="Auto" />
+              <RowDefinition Height="*" />
+              <RowDefinition Height="Auto" />
+            </Grid.RowDefinitions>
+            <TextBlock Text="Documentos del proceso, en orden" FontWeight="Bold" Margin="0,0,0,5" />
             <ListBox
+              Grid.Row="1"
               x:Name="TiposProceso"
               DisplayMemberPath="Texto"
               MouseDoubleClick="Proceso_DoubleClick"
             />
-          </DockPanel>
+            <StackPanel Grid.Row="2" Orientation="Horizontal" Margin="0,8,0,0">
+              <Button
+                x:Name="BotonSubirTipo"
+                Content="Subir"
+                Click="Subir_Click"
+                Margin="0,0,6,0"
+              />
+              <Button
+                x:Name="BotonBajarTipo"
+                Content="Bajar"
+                Click="Bajar_Click"
+                Margin="0,0,6,0"
+              />
+              <TextBlock Text="El orden de esta lista se guarda en el esquema." Margin="6,4" />
+            </StackPanel>
+          </Grid>
         </Grid>
-        <StackPanel Grid.Row="2" Orientation="Horizontal" Margin="0,8">
-          <Button x:Name="BotonSubirTipo" Content="Subir" Click="Subir_Click" Margin="0,0,6,0" />
-          <Button x:Name="BotonBajarTipo" Content="Bajar" Click="Bajar_Click" Margin="0,0,6,0" />
-          <TextBlock Text="El orden de esta lista se guarda en el esquema." Margin="6,4" />
-        </StackPanel>
       </Grid>
       <StackPanel x:Name="PasoInicio" Visibility="Collapsed">
         <TextBlock Text="Marque uno o varios documentos que puedan iniciar una cadena. El cambio queda visible en el resumen." />
@@ -126,9 +137,20 @@
           Text="Cada documento de un lugar tiene uno solo del otro (por ejemplo, cada guía su factura)."
           TextWrapping="Wrap"
         />
-        <ComboBox x:Name="LugarA" Margin="0,10,0,4" />
-        <ComboBox x:Name="LugarB" Margin="0,4" />
-        <ComboBox x:Name="DatoPareja" Margin="0,4" />
+        <TextBlock Text="Primer documento" Margin="0,10,0,2" />
+        <ComboBox
+          x:Name="LugarA"
+          Margin="0,2,0,4"
+          SelectionChanged="LugarPareja_SelectionChanged"
+        />
+        <TextBlock Text="Segundo documento" Margin="0,4,0,2" />
+        <ComboBox
+          x:Name="LugarB"
+          Margin="0,2,0,4"
+          SelectionChanged="LugarPareja_SelectionChanged"
+        />
+        <TextBlock Text="Dato que comparten" Margin="0,4,0,2" />
+        <ComboBox x:Name="DatoPareja" Margin="0,2,0,4" />
         <WrapPanel Margin="0,8">
           <Button Content="Agregar pareja 1 a 1" Click="AgregarPareja_Click" Margin="0,0,6,0" />
           <Button Content="Quitar pareja" Click="QuitarPareja_Click" />
@@ -182,7 +204,7 @@
       Grid.Row="2"
       TextWrapping="Wrap"
       Margin="0,8"
-      Foreground="{DynamicResource Hormiguero.Error}"
+      Foreground="{DynamicResource Hormiguero.Texto}"
     />
     <DockPanel Grid.Row="3">
       <TextBlock x:Name="NumeroPaso" VerticalAlignment="Center" />

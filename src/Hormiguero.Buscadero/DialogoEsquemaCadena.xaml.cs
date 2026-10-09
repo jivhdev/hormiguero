@@ -100,7 +100,7 @@ public partial class DialogoEsquemaCadena : Window
             );
         }
         RefrescarListas();
-        Estado.Text = "Se encontró un esquema; sus datos están listos para editar.";
+        MostrarEstado("Se encontró un esquema; sus datos están listos para editar.");
     }
 
     private static string FraseRegla(ReglaAlertaEsquema regla, EsquemaCadena esquema)
@@ -256,11 +256,7 @@ public partial class DialogoEsquemaCadena : Window
             .ToArray();
         LugarA.DisplayMemberPath = LugarB.DisplayMemberPath = "Texto";
         Parejas.ItemsSource = _nombresParejas.ToArray();
-        DatoPareja.ItemsSource = _compartidos
-            .Select(d => new DatoVm(d.DatoId, d.DatoNombre))
-            .DistinctBy(d => d.Id)
-            .ToArray();
-        DatoPareja.DisplayMemberPath = "Nombre";
+        ActualizarDatosPareja();
     }
 
     private string GenerarPistas()
@@ -284,8 +280,28 @@ public partial class DialogoEsquemaCadena : Window
     private string TipoPista(string tipo, string emisor) =>
         string.Equals(emisor, Proveedor.Text.Trim(), StringComparison.OrdinalIgnoreCase)
         && !tipo.Contains("propia", StringComparison.OrdinalIgnoreCase)
+        && !tipo.Contains("proveedor", StringComparison.OrdinalIgnoreCase)
             ? $"{tipo} del proveedor"
             : tipo;
+
+    private void LugarPareja_SelectionChanged(object sender, SelectionChangedEventArgs e) =>
+        ActualizarDatosPareja();
+
+    private void ActualizarDatosPareja()
+    {
+        if (LugarA.SelectedItem is not LugarVm a || LugarB.SelectedItem is not LugarVm b)
+        {
+            DatoPareja.ItemsSource = Array.Empty<DatoVm>();
+            return;
+        }
+        long identificacionA = _lugares[a.Orden].IdentificacionId;
+        long identificacionB = _lugares[b.Orden].IdentificacionId;
+        DatoPareja.ItemsSource = AsistenteEsquemaCadena
+            .DatosCompartidos(identificacionA, identificacionB, _compartidos)
+            .Select(d => new DatoVm(d.DatoId, d.DatoNombre))
+            .ToArray();
+        DatoPareja.DisplayMemberPath = "Nombre";
+    }
 
     private string TextoPareja(DefinicionParejaEsquema pareja)
     {
@@ -358,19 +374,19 @@ public partial class DialogoEsquemaCadena : Window
             || DatoPareja.SelectedItem is not DatoVm dato
         )
         {
-            Estado.Text = "Elija dos lugares y un dato compartido.";
+            MostrarEstado("Elija dos lugares y un dato compartido.", true);
             return;
         }
         if (a.Orden == b.Orden)
         {
-            Estado.Text = "Elija dos lugares distintos.";
+            MostrarEstado("Elija dos lugares distintos.", true);
             return;
         }
         _parejas.Add(new(a.Orden, b.Orden, dato.Id));
         _nombresParejas.Add($"{a.Texto} ↔ {b.Texto}: {dato.Nombre}");
         RefrescarListas();
         Parejas.SelectedIndex = Parejas.Items.Count - 1;
-        Estado.Text = "Pareja agregada a la lista.";
+        MostrarEstado("Pareja agregada a la lista.");
     }
 
     private void QuitarPareja_Click(object sender, RoutedEventArgs e)
@@ -378,26 +394,26 @@ public partial class DialogoEsquemaCadena : Window
         int indice = Parejas.SelectedIndex;
         if (indice < 0 || indice >= _parejas.Count)
         {
-            Estado.Text = "Seleccione una pareja de la lista para quitarla.";
+            MostrarEstado("Seleccione una pareja de la lista para quitarla.", true);
             return;
         }
         _parejas.RemoveAt(indice);
         _nombresParejas.RemoveAt(indice);
         RefrescarListas();
-        Estado.Text = "Pareja quitada de la lista.";
+        MostrarEstado("Pareja quitada de la lista.");
     }
 
     private void Siguiente_Click(object sender, RoutedEventArgs e)
     {
-        Estado.Text = "";
+        MostrarEstado("");
         if (_paso == 1 && string.IsNullOrWhiteSpace(Proveedor.Text))
         {
-            Estado.Text = "Escriba o seleccione un proveedor.";
+            MostrarEstado("Escriba o seleccione un proveedor.", true);
             return;
         }
         if (_paso == 2 && _lugares.Count == 0)
         {
-            Estado.Text = "Agregue al menos un documento del proceso.";
+            MostrarEstado("Agregue al menos un documento del proceso.", true);
             return;
         }
         if (_paso == 3)
@@ -409,7 +425,7 @@ public partial class DialogoEsquemaCadena : Window
                 .ToHashSet();
             if (marcados.Count == 0)
             {
-                Estado.Text = "Marque al menos un documento que inicie la cadena.";
+                MostrarEstado("Marque al menos un documento que inicie la cadena.", true);
                 return;
             }
             for (int i = 0; i < _lugares.Count; i++)
@@ -417,7 +433,7 @@ public partial class DialogoEsquemaCadena : Window
         }
         if (_paso == 5 && _modos.Count > 0 && LugarDecideModo.SelectedItem is not LugarAlertaVm)
         {
-            Estado.Text = "Elija qué documento decide el modo.";
+            MostrarEstado("Elija qué documento decide el modo.", true);
             return;
         }
         if (_paso == 5 && _modos.Count == 0)
@@ -432,17 +448,17 @@ public partial class DialogoEsquemaCadena : Window
         string modo = NuevoModo.Text.Trim();
         if (modo.Length == 0)
         {
-            Estado.Text = "Escriba el nombre del modo.";
+            MostrarEstado("Escriba el nombre del modo.", true);
             return;
         }
         if (_modos.Contains(modo, StringComparer.OrdinalIgnoreCase))
         {
-            Estado.Text = "Ese modo ya está en la lista.";
+            MostrarEstado("Ese modo ya está en la lista.", true);
             return;
         }
         _modos.Add(modo);
         NuevoModo.Clear();
-        Estado.Text = "Modo agregado.";
+        MostrarEstado("Modo agregado.");
         MostrarPaso();
     }
 
@@ -450,12 +466,12 @@ public partial class DialogoEsquemaCadena : Window
     {
         if (Modos.SelectedItem is not string modo)
         {
-            Estado.Text = "Seleccione un modo.";
+            MostrarEstado("Seleccione un modo.", true);
             return;
         }
         _modos.Remove(modo);
         _reglas.RemoveAll(r => r.Modo == modo);
-        Estado.Text = "Modo quitado. Sus avisos asociados también se quitaron.";
+        MostrarEstado("Modo quitado. Sus avisos asociados también se quitaron.");
         MostrarPaso();
     }
 
@@ -473,7 +489,7 @@ public partial class DialogoEsquemaCadena : Window
         if (dialogo.ShowDialog() == true && dialogo.Resultado is not null)
         {
             _reglas.Add(dialogo.Resultado);
-            Estado.Text = "Aviso agregado.";
+            MostrarEstado("Aviso agregado.");
             MostrarPaso();
         }
     }
@@ -482,7 +498,7 @@ public partial class DialogoEsquemaCadena : Window
     {
         if (Avisos.SelectedItem is not ReglaAlertaBorrador regla)
         {
-            Estado.Text = "Seleccione un aviso para editarlo.";
+            MostrarEstado("Seleccione un aviso para editarlo.", true);
             return;
         }
         var lugares = _lugares
@@ -512,7 +528,7 @@ public partial class DialogoEsquemaCadena : Window
     {
         if (Avisos.SelectedItem is not ReglaAlertaBorrador regla)
         {
-            Estado.Text = "Seleccione un aviso para quitarlo.";
+            MostrarEstado("Seleccione un aviso para quitarlo.", true);
             return;
         }
         _reglas.Remove(regla);
@@ -544,7 +560,7 @@ public partial class DialogoEsquemaCadena : Window
             _compartidos
         );
         Guardar.IsEnabled = error is null;
-        Estado.Text = error ?? "";
+        MostrarEstado(error ?? "", error is not null);
         Resumen.Text =
             $"Proveedor: {Proveedor.Text.Trim()}\nLa cadena puede iniciar con: {string.Join(", ", _lugares.Where(l => l.IniciaCadena).Select(l => l.Nombre))}\nLugares: {string.Join(" → ", _lugares.OrderBy(l => l.Orden).Select(l => l.Nombre))}\nParejas 1 a 1: {(_nombresParejas.Count == 0 ? "ninguna" : string.Join("; ", _nombresParejas))}";
         Resumen.Text +=
@@ -572,7 +588,7 @@ public partial class DialogoEsquemaCadena : Window
             );
             if (error is not null)
             {
-                Estado.Text = error;
+                MostrarEstado(error, true);
                 return;
             }
             int? decide =
@@ -603,8 +619,16 @@ public partial class DialogoEsquemaCadena : Window
         }
         catch (Exception error)
         {
-            Estado.Text = $"No se pudo guardar el esquema: {error.Message}";
+            MostrarEstado($"No se pudo guardar el esquema: {error.Message}", true);
         }
+    }
+
+    private void MostrarEstado(string texto, bool error = false)
+    {
+        Estado.Text = texto;
+        Estado.Foreground = (System.Windows.Media.Brush)FindResource(
+            error ? "Hormiguero.Error" : "Hormiguero.Texto"
+        );
     }
 
     private string ConvertirJson(

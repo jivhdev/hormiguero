@@ -22,6 +22,8 @@ public partial class DialogoReglaEsquema : Window
     private readonly IReadOnlyList<LugarAlertaVm> _lugares;
     private readonly IReadOnlyList<string> _modos;
     private readonly IReadOnlyList<CalendarioFeriados> _calendarios;
+    private int _tipoSeleccionado;
+    private string _textoSugeridoActual = "";
     public ReglaAlertaBorrador? Resultado { get; private set; }
 
     public DialogoReglaEsquema(
@@ -35,6 +37,7 @@ public partial class DialogoReglaEsquema : Window
         _lugares = lugares;
         _modos = modos;
         _calendarios = calendarios;
+        ModoPanel.Visibility = modos.Count == 0 ? Visibility.Collapsed : Visibility.Visible;
         var opcionesModo = new[] { new ModoAlertaVm(null, "Todos los modos") }
             .Concat(modos.Select(m => new ModoAlertaVm(m, m)))
             .ToArray();
@@ -44,6 +47,7 @@ public partial class DialogoReglaEsquema : Window
             DesdeLugar.ItemsSource =
             Hasta.ItemsSource =
             Cuando.ItemsSource =
+            HastaListo.ItemsSource =
                 lugares;
         Condicion.ItemsSource = new[] { new LugarAlertaVm(-1, "Ninguno") }
             .Concat(lugares)
@@ -59,6 +63,10 @@ public partial class DialogoReglaEsquema : Window
                     0;
         }
         Condicion.SelectedIndex = 0;
+        CondicionListo.ItemsSource = Condicion.ItemsSource;
+        CondicionListo.SelectedIndex = 0;
+        MostrarCampos();
+        ActualizarTextoSugerido();
         if (regla is not null)
             CargarRegla(regla);
         Actualizar();
@@ -66,13 +74,14 @@ public partial class DialogoReglaEsquema : Window
 
     private void CargarRegla(ReglaAlertaBorrador regla)
     {
-        Tipo.SelectedIndex = regla.Tipo switch
+        _tipoSeleccionado = regla.Tipo switch
         {
             "falta_dato" => 0,
             "plazo" => 1,
             "listo_para" => 2,
             _ => 0,
         };
+        MostrarCampos();
         LugarRegla.SelectedItem = _lugares.FirstOrDefault(l => l.Orden == regla.LugarOrden);
         Modo.SelectedItem = Modo
             .Items.Cast<ModoAlertaVm>()
@@ -91,7 +100,7 @@ public partial class DialogoReglaEsquema : Window
         if (regla.Tipo == "falta_dato")
         {
             Dato.Text = json.GetProperty("dato").GetString() ?? "";
-            Texto.Text = json.GetProperty("texto").GetString() ?? "";
+            TextoFalta.Text = json.GetProperty("texto").GetString() ?? "";
         }
         else if (regla.Tipo == "plazo")
         {
@@ -113,15 +122,15 @@ public partial class DialogoReglaEsquema : Window
                 Calendario.SelectedItem = _calendarios.FirstOrDefault(c => c.Id == calendarioId);
             if (json.TryGetProperty("porLinea", out var porLinea))
                 PorLinea.IsChecked = porLinea.GetBoolean();
-            Texto.Text = json.GetProperty("texto").GetString() ?? "";
+            TextoPlazo.Text = json.GetProperty("texto").GetString() ?? "";
             Condicion.SelectedItem = LugarCondicion();
         }
         else if (regla.Tipo == "listo_para")
         {
             Cuando.SelectedItem = Lugar("cuandoLugarId");
-            Hasta.SelectedItem = Lugar("hastaLugarId");
+            HastaListo.SelectedItem = Lugar("hastaLugarId");
             Lista.Text = json.GetProperty("lista").GetString() ?? "";
-            Condicion.SelectedItem = LugarCondicion();
+            CondicionListo.SelectedItem = LugarCondicion();
         }
     }
 
@@ -133,12 +142,7 @@ public partial class DialogoReglaEsquema : Window
 
     private object? Parametros(out string tipo, out int orden)
     {
-        tipo = Tipo.SelectedIndex switch
-        {
-            0 => "falta_dato",
-            1 => "plazo",
-            _ => "listo_para",
-        };
+        tipo = TipoActual();
         orden = LugarRegla.SelectedItem is LugarAlertaVm l ? l.Orden : 0;
         long Id(LugarAlertaVm? lugar) =>
             lugar is null ? 0
@@ -146,7 +150,7 @@ public partial class DialogoReglaEsquema : Window
             : lugar.Orden + 1;
         long? condicion = Condicion.SelectedItem is LugarAlertaVm c && c.Orden >= 0 ? Id(c) : null;
         if (tipo == "falta_dato")
-            return new ParametrosFaltaDato(Dato.Text.Trim(), Texto.Text.Trim());
+            return new ParametrosFaltaDato(Dato.Text.Trim(), TextoFalta.Text.Trim());
         if (tipo == "plazo")
         {
             if (!int.TryParse(Dias.Text, out int dias))
@@ -163,14 +167,18 @@ public partial class DialogoReglaEsquema : Window
                 diasTipo,
                 (Calendario.SelectedItem as CalendarioFeriados)?.Id,
                 condicion,
-                Texto.Text.Trim(),
+                TextoPlazo.Text.Trim(),
                 PorLinea.IsChecked == true
             );
         }
+        long? condicionListo =
+            CondicionListo.SelectedItem is LugarAlertaVm listoCondicion && listoCondicion.Orden >= 0
+                ? Id(listoCondicion)
+                : null;
         return new ParametrosListoPara(
             Id(Cuando.SelectedItem as LugarAlertaVm),
-            condicion,
-            Id(Hasta.SelectedItem as LugarAlertaVm),
+            condicionListo,
+            Id(HastaListo.SelectedItem as LugarAlertaVm),
             Lista.Text.Trim()
         );
     }
@@ -198,6 +206,52 @@ public partial class DialogoReglaEsquema : Window
         {
             Frase.Text = "Complete los datos del aviso.";
         }
+    }
+
+    private void MostrarCampos()
+    {
+        FaltaCampos.Visibility = _tipoSeleccionado == 0 ? Visibility.Visible : Visibility.Collapsed;
+        FaltaTexto.Visibility = _tipoSeleccionado == 0 ? Visibility.Visible : Visibility.Collapsed;
+        PlazoCampos.Visibility = _tipoSeleccionado == 1 ? Visibility.Visible : Visibility.Collapsed;
+        ListoCampos.Visibility = _tipoSeleccionado == 2 ? Visibility.Visible : Visibility.Collapsed;
+        ActualizarTextoSugerido();
+        Actualizar();
+    }
+
+    private string TipoActual() =>
+        _tipoSeleccionado switch
+        {
+            0 => "falta_dato",
+            1 => "plazo",
+            _ => "listo_para",
+        };
+
+    private void ActualizarTextoSugerido()
+    {
+        string lugar = (Hasta.SelectedItem as LugarAlertaVm)?.Nombre ?? "";
+        string sugerido = EditorReglasEsquema.TextoSugerido(TipoActual(), lugar);
+        var campo = _tipoSeleccionado == 0 ? TextoFalta : TextoPlazo;
+        if (string.IsNullOrWhiteSpace(campo.Text) || campo.Text == _textoSugeridoActual)
+            campo.Text = sugerido;
+        _textoSugeridoActual = sugerido;
+    }
+
+    private void TipoFalta_Click(object sender, RoutedEventArgs e) => CambiarTipo(0);
+
+    private void TipoPlazo_Click(object sender, RoutedEventArgs e) => CambiarTipo(1);
+
+    private void TipoListo_Click(object sender, RoutedEventArgs e) => CambiarTipo(2);
+
+    private void CambiarTipo(int tipo)
+    {
+        _tipoSeleccionado = tipo;
+        MostrarCampos();
+    }
+
+    private void LugarEsperado_SelectionChanged(object sender, RoutedEventArgs e)
+    {
+        ActualizarTextoSugerido();
+        Actualizar();
     }
 
     private void Guardar_Click(object sender, RoutedEventArgs e)
