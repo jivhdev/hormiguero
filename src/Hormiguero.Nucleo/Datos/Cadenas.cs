@@ -48,8 +48,64 @@ public sealed record DocumentoLugarCadena(
     string Nombre
 );
 
+public sealed record DecisionPendienteCadena(
+    long VersionId,
+    string Documento,
+    string Tipo,
+    string Proveedor,
+    string DatoMencionado,
+    string NumeroMencionado
+);
+
 public sealed class RepositorioCadenas(SqliteConnection conexion)
 {
+    public IReadOnlyList<DecisionPendienteCadena> ListarDecisionesPendientes()
+    {
+        using var comando = conexion.CreateCommand();
+        comando.CommandText =
+            "SELECT p.version_id,d.nombre,COALESCE(i.tipo,''),p.proveedor,p.numeros_json "
+            + "FROM decisiones_pendientes_cadena p "
+            + "JOIN versiones_documento ver ON ver.id=p.version_id "
+            + "JOIN documentos d ON d.id=ver.documento_id "
+            + "LEFT JOIN identificaciones i ON i.id=(SELECT f.identificacion_id FROM valores_documento x JOIN campos_documento f ON f.id=x.campo_id WHERE x.version_id=ver.id AND x.estado='vigente' ORDER BY x.id LIMIT 1) "
+            + "WHERE p.estado='pendiente' AND ver.estado='vigente' ORDER BY p.creada_en,p.version_id;";
+        using var lector = comando.ExecuteReader();
+        var resultado = new List<DecisionPendienteCadena>();
+        while (lector.Read())
+        {
+            var numeros =
+                System.Text.Json.JsonSerializer.Deserialize<Dictionary<string, string>>(
+                    lector.GetString(4)
+                ) ?? [];
+            (string Dato, string Numero) mencionado = numeros
+                .OrderByDescending(par => par.Key == "oc_propia")
+                .Select(par => (NombreDato(par.Key), par.Value))
+                .FirstOrDefault(par => !string.IsNullOrWhiteSpace(par.Value));
+            resultado.Add(
+                new(
+                    lector.GetInt64(0),
+                    lector.GetString(1),
+                    lector.GetString(2),
+                    lector.GetString(3),
+                    mencionado.Dato,
+                    mencionado.Numero
+                )
+            );
+        }
+        return resultado;
+    }
+
+    private static string NombreDato(string id) =>
+        id switch
+        {
+            "oc_propia" => "N° OC propia",
+            "nota_venta_propia" => "N° Nota de venta propia",
+            "guia_proveedor" => "N° Guía del proveedor",
+            "factura_proveedor" => "N° Factura del proveedor",
+            "oc_cliente" => "N° OC del cliente",
+            _ => id,
+        };
+
     public IReadOnlyList<Cadena> ListarPorProveedor(string proveedor)
     {
         string clave = ProveedorDeDocumento.NormalizarProveedor(proveedor);

@@ -10,6 +10,8 @@ public sealed record ResultadoMotorCadena(
 
 public sealed class MotorCadenas(SqliteConnection conexion)
 {
+    private readonly HashSet<long> _reprocesando = [];
+
     public IReadOnlyList<ResultadoMotorCadena> Procesar(long? versionId = null)
     {
         var versiones = LeerVersiones(versionId);
@@ -19,9 +21,12 @@ public sealed class MotorCadenas(SqliteConnection conexion)
         return resultados;
     }
 
-    public ResultadoMotorCadena ProcesarVersion(long versionId)
+    public ResultadoMotorCadena ProcesarVersion(long versionId) =>
+        ProcesarVersion(versionId, false);
+
+    private ResultadoMotorCadena ProcesarVersion(long versionId, bool reprocesarPendiente)
     {
-        if (TieneEnlace(versionId) || TienePendiente(versionId))
+        if (TieneEnlace(versionId) || (!reprocesarPendiente && TienePendiente(versionId)))
             return new("ya_procesado");
         ProveedorDocumento? proveedor = ProveedorDeDocumento.Determinar(conexion, versionId);
         if (proveedor is null)
@@ -78,11 +83,15 @@ public sealed class MotorCadenas(SqliteConnection conexion)
         if (cadenas.Length == 1)
         {
             Agregar(versionId, cadenas[0], esquema, lugar, "activo", null, proveedor.Clave);
+            ResolverDecision(versionId);
+            ReprocesarDecisionesMencionadas(versionId);
             return new("ubicado", cadenas[0]);
         }
         if (lugar.IniciaCadena)
         {
             long cadena = CrearCadena(versionId, proveedor, esquema, lugar);
+            ResolverDecision(versionId);
+            ReprocesarDecisionesMencionadas(versionId);
             return new("cadena_creada", cadena);
         }
         GuardarSinPiso(versionId, proveedor.Clave);
@@ -90,6 +99,39 @@ public sealed class MotorCadenas(SqliteConnection conexion)
             "sin_piso",
             Motivo: "El documento no coincide con una cadena y su lugar no inicia cadenas."
         );
+    }
+
+    public ResultadoMotorCadena CrearCadenaIgual(long versionId)
+    {
+        var decision = LeerDecision(versionId);
+        if (decision is null)
+            return new("sin_decision");
+        var proveedor = ProveedorDeDocumento.Determinar(conexion, versionId);
+        if (proveedor is null)
+            return new("sin_esquema", Motivo: "El documento no tiene proveedor determinado.");
+        var esquema = new RepositorioEsquemas(conexion).ObtenerPorProveedor(proveedor.Clave);
+        if (esquema is null || !esquema.Activo)
+            return new("sin_esquema", Motivo: "El proveedor no tiene esquema activo.");
+        long? identificacion = IdentificacionVersion(versionId);
+        var lugar = identificacion is null
+            ? null
+            : esquema.Lugares.FirstOrDefault(l => l.IdentificacionId == identificacion);
+        if (lugar is null)
+            return new("tipo_fuera_esquema");
+
+        long cadena = CrearCadena(versionId, proveedor, esquema, lugar);
+        ResolverDecision(versionId);
+        ReprocesarDecisionesMencionadas(versionId);
+        return new("cadena_creada", cadena);
+    }
+
+    public bool ArchivarSinCadena(long versionId)
+    {
+        using var comando = conexion.CreateCommand();
+        comando.CommandText =
+            "UPDATE decisiones_pendientes_cadena SET estado='resuelta' WHERE version_id=$v AND estado='pendiente';";
+        comando.Parameters.AddWithValue("$v", versionId);
+        return comando.ExecuteNonQuery() > 0;
     }
 
     public void RegistrarError(Exception error, long? versionId)
@@ -382,6 +424,71 @@ public sealed class MotorCadenas(SqliteConnection conexion)
             app: "Archivero"
         );
         tx.Commit();
+    }
+
+    private (string Proveedor, string Numeros)? LeerDecision(long version)
+    {
+        using var comando = conexion.CreateCommand();
+        comando.CommandText =
+            "SELECT proveedor,numeros_json FROM decisiones_pendientes_cadena WHERE version_id=$v AND estado='pendiente';";
+        comando.Parameters.AddWithValue("$v", version);
+        using var lector = comando.ExecuteReader();
+        return lector.Read() ? (lector.GetString(0), lector.GetString(1)) : null;
+    }
+
+    private void ResolverDecision(long version)
+    {
+        using var comando = conexion.CreateCommand();
+        comando.CommandText =
+            "UPDATE decisiones_pendientes_cadena SET estado='resuelta' WHERE version_id=$v AND estado='pendiente';";
+        comando.Parameters.AddWithValue("$v", version);
+        comando.ExecuteNonQuery();
+    }
+
+    private void ReprocesarDecisionesMencionadas(long origenVersion)
+    {
+        if (!_reprocesando.Add(origenVersion))
+            return;
+        try
+        {
+            var valores = LeerValoresEnlazables(origenVersion)
+                .Select(v => (v.Dato, Clave: v.Clave))
+                .ToHashSet();
+            if (valores.Count == 0)
+                return;
+            using var comando = conexion.CreateCommand();
+            comando.CommandText =
+                "SELECT version_id,numeros_json FROM decisiones_pendientes_cadena WHERE estado='pendiente' ORDER BY creada_en,version_id;";
+            using var lector = comando.ExecuteReader();
+            var candidatos = new List<(long Version, string Numeros)>();
+            while (lector.Read())
+                candidatos.Add((lector.GetInt64(0), lector.GetString(1)));
+            foreach (var candidato in candidatos)
+            {
+                if (candidato.Version == origenVersion || _reprocesando.Contains(candidato.Version))
+                    continue;
+                var numeros =
+                    System.Text.Json.JsonSerializer.Deserialize<Dictionary<string, string>>(
+                        candidato.Numeros
+                    ) ?? [];
+                bool mencionaOrigen = numeros.Any(par =>
+                    valores.Contains(
+                        (par.Key, DiccionarioDatosEnlazantes.ClaveDeEnlace(par.Key, par.Value))
+                    )
+                );
+                if (!mencionaOrigen)
+                    continue;
+                _reprocesando.Add(candidato.Version);
+                var resultado = ProcesarVersion(candidato.Version, true);
+                if (resultado.Estado is "ubicado" or "cadena_creada")
+                    ResolverDecision(candidato.Version);
+                _reprocesando.Remove(candidato.Version);
+            }
+        }
+        finally
+        {
+            _reprocesando.Remove(origenVersion);
+        }
     }
 
     private string LeerNumeros(long version)
