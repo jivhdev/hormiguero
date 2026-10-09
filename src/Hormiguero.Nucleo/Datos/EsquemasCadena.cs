@@ -291,8 +291,7 @@ public sealed class RepositorioEsquemas(SqliteConnection conexion)
         string parametrosJson
     )
     {
-        ArgumentException.ThrowIfNullOrWhiteSpace(tipo);
-        using var _ = System.Text.Json.JsonDocument.Parse(parametrosJson);
+        ValidarReglaAlerta(tipo, parametrosJson);
         using var tx = conexion.BeginTransaction();
         long lugarId;
         using (var consulta = conexion.CreateCommand())
@@ -340,6 +339,103 @@ public sealed class RepositorioEsquemas(SqliteConnection conexion)
         );
         tx.Commit();
         return id;
+    }
+
+    private static void ValidarReglaAlerta(string tipo, string json)
+    {
+        ArgumentException.ThrowIfNullOrWhiteSpace(tipo);
+        using var documento = System.Text.Json.JsonDocument.Parse(json);
+        var raiz = documento.RootElement;
+        if (raiz.ValueKind != System.Text.Json.JsonValueKind.Object)
+            throw new ArgumentException(
+                "Los parámetros de la regla deben ser un objeto JSON.",
+                nameof(json)
+            );
+        string Texto(string nombre)
+        {
+            if (
+                !raiz.TryGetProperty(nombre, out var valor)
+                || valor.ValueKind != System.Text.Json.JsonValueKind.String
+                || string.IsNullOrWhiteSpace(valor.GetString())
+            )
+                throw new ArgumentException(
+                    $"La regla requiere el texto «{nombre}».",
+                    nameof(json)
+                );
+            return valor.GetString()!;
+        }
+        long Entero(string nombre)
+        {
+            if (
+                !raiz.TryGetProperty(nombre, out var valor)
+                || !valor.TryGetInt64(out long numero)
+                || numero <= 0
+            )
+                throw new ArgumentException(
+                    $"La regla requiere el identificador «{nombre}».",
+                    nameof(json)
+                );
+            return numero;
+        }
+        switch (tipo)
+        {
+            case "falta_dato":
+                Texto("dato");
+                Texto("texto");
+                break;
+            case "plazo":
+                bool lugar =
+                    raiz.TryGetProperty("desdeLugarId", out var origen)
+                    && origen.TryGetInt64(out long origenId)
+                    && origenId > 0;
+                bool dato =
+                    raiz.TryGetProperty("desdeDato", out var desdeDato)
+                    && desdeDato.ValueKind == System.Text.Json.JsonValueKind.String
+                    && !string.IsNullOrWhiteSpace(desdeDato.GetString());
+                if (lugar == dato)
+                    throw new ArgumentException(
+                        "Indique un solo origen: desdeLugarId o desdeDato.",
+                        nameof(json)
+                    );
+                Entero("hastaLugarId");
+                Texto("texto");
+                if (
+                    !raiz.TryGetProperty("dias", out var dias)
+                    || !dias.TryGetInt32(out int cantidad)
+                    || cantidad
+                        is < 0
+                            or > Hormiguero.Nucleo.Utilidades.CalculoFechas.CantidadMaxima
+                )
+                    throw new ArgumentException("La cantidad de días no es válida.", nameof(json));
+                if (
+                    !raiz.TryGetProperty("tipoDias", out var tipoDias)
+                    || tipoDias.GetString() is not ("habiles" or "corridos")
+                )
+                    throw new ArgumentException(
+                        "tipoDias debe ser «habiles» o «corridos».",
+                        nameof(json)
+                    );
+                if (
+                    raiz.TryGetProperty("porLinea", out var porLinea)
+                    && porLinea.ValueKind
+                        is not (
+                            System.Text.Json.JsonValueKind.True
+                            or System.Text.Json.JsonValueKind.False
+                        )
+                )
+                    throw new ArgumentException("porLinea debe ser booleano.", nameof(json));
+                break;
+            case "listo_para":
+                Entero("cuandoLugarId");
+                Entero("hastaLugarId");
+                Texto("lista");
+                break;
+            default:
+                throw new ArgumentException(
+                    "El tipo de regla de alerta no es válido.",
+                    nameof(tipo)
+                );
+        }
     }
 
     private IReadOnlyList<long> LeerIds()

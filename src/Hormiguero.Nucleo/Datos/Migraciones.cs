@@ -276,6 +276,16 @@ public static class Migraciones
                 + "CREATE TABLE decisiones_pendientes_cadena(version_id INTEGER PRIMARY KEY REFERENCES versiones_documento(id), proveedor TEXT NOT NULL, numeros_json TEXT NOT NULL, motivo TEXT NOT NULL, creada_en TEXT NOT NULL, estado TEXT NOT NULL DEFAULT 'pendiente' CHECK(estado IN ('pendiente','resuelta'))); "
                 + "CREATE INDEX idx_cadenas_proveedor_cliente ON cadenas(proveedor,cliente,estado);"
         ),
+        (
+            16,
+            "ALTER TABLE decisiones_pendientes_cadena ADD COLUMN tipo TEXT NOT NULL DEFAULT 'sin_piso'; "
+                + "ALTER TABLE decisiones_pendientes_cadena ADD COLUMN opciones_json TEXT NULL; "
+                + "ALTER TABLE decisiones_pendientes_cadena ADD COLUMN cadena_id INTEGER NULL REFERENCES cadenas(id); "
+                + "CREATE TABLE historial_modos_cadena(id INTEGER PRIMARY KEY,cadena_id INTEGER NOT NULL REFERENCES cadenas(id),modo_anterior_id INTEGER NULL REFERENCES modos_esquema(id),modo_nuevo_id INTEGER NULL REFERENCES modos_esquema(id),fecha TEXT NOT NULL); "
+                + "CREATE TABLE datos_cadena(id INTEGER PRIMARY KEY,cadena_id INTEGER NOT NULL REFERENCES cadenas(id),nombre TEXT NOT NULL,valor TEXT NOT NULL,actualizado_en TEXT NOT NULL,UNIQUE(cadena_id,nombre)); "
+                + "CREATE TABLE alertas_esquema(id INTEGER PRIMARY KEY,regla_id INTEGER NOT NULL REFERENCES reglas_alerta_esquema(id),cadena_id INTEGER NOT NULL REFERENCES cadenas(id),alcance TEXT NOT NULL,texto TEXT NOT NULL,fecha_vencimiento TEXT NULL,urgencia TEXT NOT NULL CHECK(urgencia IN ('vencido','por_vencer','normal')),estado TEXT NOT NULL DEFAULT 'abierta' CHECK(estado IN ('abierta','cerrada','descartada')),motivo TEXT NULL,actualizada_en TEXT NOT NULL,UNIQUE(regla_id,cadena_id,alcance));"
+                + "CREATE INDEX idx_alertas_esquema_abiertas ON alertas_esquema(estado,urgencia,cadena_id);"
+        ),
     ];
 
     public static void Aplicar(

@@ -246,6 +246,406 @@ public sealed class EsquemasCadenaTests : IDisposable
         Assert.Empty(new RepositorioReglasYEnlaces(_conexion).ListarDudososCadenasSimples());
     }
 
+    [Fact]
+    public void Lugar_que_decide_modo_crea_decision_y_fijar_modo_guarda_historial()
+    {
+        var esquemas = new RepositorioEsquemas(_conexion);
+        long esquemaId = esquemas.Guardar(
+            "P-MODO",
+            "Proceso",
+            [new(0, _identificaciones["NVV"], true, "Inicio")],
+            modos: ["Retiro", "Despacho"],
+            lugarDecideModoOrden: 0
+        );
+        long version = CrearVersion(
+            "modo.pdf",
+            "NVV",
+            "Emitido",
+            ("rut_proveedor", "P-MODO", true),
+            ("nota_venta_propia", "77", true)
+        );
+        var resultado = new MotorCadenas(_conexion).ProcesarVersion(version);
+        var decision = Assert.Single(new RepositorioModosEsquema(_conexion).ListarPendientes());
+        Assert.Equal(resultado.CadenaId, decision.CadenaId);
+        Assert.Equal(new[] { "Despacho", "Retiro" }, decision.Opciones.OrderBy(nombre => nombre));
+
+        long modoId = esquemas
+            .ObtenerPorProveedor("P-MODO")!
+            .Modos.Single(m => m.Nombre == "Retiro")
+            .Id;
+        var modos = new RepositorioModosEsquema(_conexion);
+        modos.FijarModo(resultado.CadenaId!.Value, modoId);
+        Assert.Empty(modos.ListarPendientes());
+        Assert.Contains("Retiro", Assert.Single(modos.ListarHistorial(resultado.CadenaId.Value)));
+    }
+
+    [Fact]
+    public void Alerta_falta_dato_se_abre_se_cierra_al_ingresarlo_y_se_actualiza_sin_duplicar()
+    {
+        var esquemas = new RepositorioEsquemas(_conexion);
+        long esquemaId = esquemas.Guardar(
+            "P-ALERTA",
+            "Proceso",
+            [new(0, _identificaciones["NVV"], true, "Inicio")]
+        );
+        long version = CrearVersion(
+            "alerta.pdf",
+            "NVV",
+            "Emitido",
+            ("rut_proveedor", "P-ALERTA", true),
+            ("nota_venta_propia", "88", true)
+        );
+        long cadena = new MotorCadenas(_conexion).ProcesarVersion(version).CadenaId!.Value;
+        esquemas.GuardarReglaAlerta(
+            esquemaId,
+            0,
+            null,
+            "falta_dato",
+            "{\"dato\":\"Fecha de retiro\",\"texto\":\"Ingresar fecha de retiro\"}"
+        );
+        var evaluador = new EvaluadorAlertasEsquema(_conexion, () => new DateTime(2026, 10, 8));
+        evaluador.Evaluar(new DateOnly(2026, 10, 8));
+        evaluador.Evaluar(new DateOnly(2026, 10, 8));
+        Assert.Equal("normal", Assert.Single(evaluador.ListarAbiertas(cadenaId: cadena)).Urgencia);
+
+        Assert.Throws<ArgumentException>(() =>
+            new RepositorioDatosCadena(_conexion).Guardar(cadena, "Dato no configurado", "valor")
+        );
+        new RepositorioDatosCadena(_conexion).GuardarFecha(
+            cadena,
+            "Fecha de retiro",
+            new DateOnly(2026, 10, 8)
+        );
+        Assert.Empty(evaluador.ListarAbiertas(cadenaId: cadena));
+    }
+
+    [Fact]
+    public void Plazo_usa_fecha_de_emision_guarda_vencimiento_urgencia_y_se_cierra_al_llegar_destino()
+    {
+        var esquemas = new RepositorioEsquemas(_conexion);
+        long esquemaId = esquemas.Guardar(
+            "P-PLAZO",
+            "Proceso",
+            [
+                new(0, _identificaciones["NVV"], true, "Inicio"),
+                new(1, _identificaciones["OCC"], false, "Compra"),
+            ]
+        );
+        long version = CrearVersion(
+            "plazo.pdf",
+            "NVV",
+            "Emitido",
+            ("rut_proveedor", "P-PLAZO", true),
+            ("nota_venta_propia", "99", true)
+        );
+        using (var fecha = _conexion.CreateCommand())
+        {
+            fecha.CommandText =
+                "INSERT INTO valores_informativos_documento(version_id,dato,valor,fecha_reconocida,creada_en) VALUES($v,'fecha_documento','2026-10-01','2026-10-01','2026-10-01');";
+            fecha.Parameters.AddWithValue("$v", version);
+            fecha.ExecuteNonQuery();
+        }
+        long cadena = new MotorCadenas(_conexion).ProcesarVersion(version).CadenaId!.Value;
+        EsquemaCadena esquema = esquemas.ObtenerPorProveedor("P-PLAZO")!;
+        long origen = esquema.Lugares.Single(l => l.Orden == 0).Id;
+        long destino = esquema.Lugares.Single(l => l.Orden == 1).Id;
+        esquemas.GuardarReglaAlerta(
+            esquemaId,
+            0,
+            null,
+            "plazo",
+            $$"""{"desdeLugarId":{{origen}},"hastaLugarId":{{destino}},"dias":7,"tipoDias":"corridos","texto":"Falta la compra","porLinea":false}"""
+        );
+        var evaluador = new EvaluadorAlertasEsquema(_conexion, () => new DateTime(2026, 10, 9));
+        evaluador.Evaluar(new DateOnly(2026, 10, 9));
+        var abierta = Assert.Single(evaluador.ListarAbiertas(cadenaId: cadena));
+        Assert.Equal(new DateOnly(2026, 10, 8), abierta.FechaVencimiento);
+        Assert.Equal("vencido", abierta.Urgencia);
+
+        long compra = CrearVersion(
+            "compra.pdf",
+            "OCC",
+            "Emitido",
+            ("rut_proveedor", "P-PLAZO", true),
+            ("nota_venta_propia", "99", true),
+            ("oc_propia", "100", true)
+        );
+        Assert.Equal("ubicado", new MotorCadenas(_conexion).ProcesarVersion(compra).Estado);
+        evaluador.Evaluar(new DateOnly(2026, 10, 9));
+        Assert.Empty(evaluador.ListarAbiertas(cadenaId: cadena));
+    }
+
+    [Fact]
+    public void Regla_alerta_rechaza_tipo_y_parametros_incompletos()
+    {
+        long esquemaId = new RepositorioEsquemas(_conexion).Guardar(
+            "P-INVALIDA",
+            "Proceso",
+            [new(0, _identificaciones["NVV"], true, "Inicio")]
+        );
+        var repo = new RepositorioEsquemas(_conexion);
+        Assert.Throws<ArgumentException>(() =>
+            repo.GuardarReglaAlerta(esquemaId, 0, null, "otro", "{}")
+        );
+        Assert.Throws<ArgumentException>(() =>
+            repo.GuardarReglaAlerta(esquemaId, 0, null, "falta_dato", "{}")
+        );
+    }
+
+    [Fact]
+    public void Listo_para_aparece_en_lista_y_se_cierra_al_llegar_destino()
+    {
+        var esquemas = new RepositorioEsquemas(_conexion);
+        long esquemaId = esquemas.Guardar(
+            "P-LISTO",
+            "Proceso",
+            [
+                new(0, _identificaciones["NVV"], true, "Inicio"),
+                new(1, _identificaciones["OCC"], false, "Compra"),
+            ]
+        );
+        long inicio = CrearVersion(
+            "listo.pdf",
+            "NVV",
+            "Emitido",
+            ("rut_proveedor", "P-LISTO", true),
+            ("nota_venta_propia", "101", true)
+        );
+        long cadena = new MotorCadenas(_conexion).ProcesarVersion(inicio).CadenaId!.Value;
+        var esquema = esquemas.ObtenerPorProveedor("P-LISTO")!;
+        long origen = esquema.Lugares.Single(l => l.Orden == 0).Id;
+        long destino = esquema.Lugares.Single(l => l.Orden == 1).Id;
+        esquemas.GuardarReglaAlerta(
+            esquemaId,
+            0,
+            null,
+            "listo_para",
+            $$"""{"cuandoLugarId":{{origen}},"hastaLugarId":{{destino}},"lista":"Listos para facturar"}"""
+        );
+        var evaluador = new EvaluadorAlertasEsquema(_conexion);
+        evaluador.Evaluar();
+        Assert.Single(evaluador.ListarListos("Listos para facturar"));
+        long compra = CrearVersion(
+            "listo-compra.pdf",
+            "OCC",
+            "Emitido",
+            ("rut_proveedor", "P-LISTO", true),
+            ("nota_venta_propia", "101", true)
+        );
+        Assert.Equal("ubicado", new MotorCadenas(_conexion).ProcesarVersion(compra).Estado);
+        evaluador.Evaluar();
+        Assert.Empty(evaluador.ListarListos("Listos para facturar"));
+        Assert.Empty(evaluador.ListarAbiertas(cadenaId: cadena));
+    }
+
+    [Fact]
+    public void Regla_limitada_a_modo_no_se_aplica_a_los_demas_modos()
+    {
+        var esquemas = new RepositorioEsquemas(_conexion);
+        long esquemaId = esquemas.Guardar(
+            "P-MODO-REGLA",
+            "Proceso",
+            [new(0, _identificaciones["NVV"], true, "Inicio")],
+            modos: ["Retiro", "Despacho"],
+            lugarDecideModoOrden: 0
+        );
+        var esquema = esquemas.ObtenerPorProveedor("P-MODO-REGLA")!;
+        long retiro = esquema.Modos.Single(m => m.Nombre == "Retiro").Id;
+        long despacho = esquema.Modos.Single(m => m.Nombre == "Despacho").Id;
+        long versionRetiro = CrearVersion(
+            "modo-retiro.pdf",
+            "NVV",
+            "Emitido",
+            ("rut_proveedor", "P-MODO-REGLA", false),
+            ("nota_venta_propia", "201", true)
+        );
+        long cadenaRetiro = new MotorCadenas(_conexion)
+            .ProcesarVersion(versionRetiro)
+            .CadenaId!.Value;
+        long versionDespacho = CrearVersion(
+            "modo-despacho.pdf",
+            "NVV",
+            "Emitido",
+            ("rut_proveedor", "P-MODO-REGLA", false),
+            ("nota_venta_propia", "202", true)
+        );
+        long cadenaDespacho = new MotorCadenas(_conexion)
+            .ProcesarVersion(versionDespacho)
+            .CadenaId!.Value;
+        var modos = new RepositorioModosEsquema(_conexion);
+        modos.FijarModo(cadenaRetiro, retiro);
+        modos.FijarModo(cadenaDespacho, despacho);
+        using (var consulta = _conexion.CreateCommand())
+        {
+            consulta.CommandText =
+                "SELECT COUNT(*) FROM cadenas WHERE esquema_id=$e AND modo_id IN ($r,$d);";
+            consulta.Parameters.AddWithValue("$e", esquemaId);
+            consulta.Parameters.AddWithValue("$r", retiro);
+            consulta.Parameters.AddWithValue("$d", despacho);
+            Assert.Equal(2L, Convert.ToInt64(consulta.ExecuteScalar()));
+        }
+        using (var consulta = _conexion.CreateCommand())
+        {
+            consulta.CommandText = "SELECT modo_id FROM cadenas WHERE id=$c;";
+            consulta.Parameters.AddWithValue("$c", cadenaRetiro);
+            Assert.Equal(retiro, Convert.ToInt64(consulta.ExecuteScalar()));
+        }
+        esquemas.GuardarReglaAlerta(
+            esquemaId,
+            0,
+            "Retiro",
+            "falta_dato",
+            "{\"dato\":\"Fecha de retiro\",\"texto\":\"Ingresar fecha de retiro\"}"
+        );
+        var alertas = new EvaluadorAlertasEsquema(_conexion);
+        Assert.Equal(
+            retiro,
+            Assert.Single(esquemas.ObtenerPorProveedor("P-MODO-REGLA")!.ReglasAlerta).ModoId
+        );
+        alertas.Evaluar();
+        Assert.Equal(
+            cadenaRetiro,
+            Assert.Single(alertas.ListarAbiertas(tipo: "falta_dato")).CadenaId
+        );
+    }
+
+    [Fact]
+    public void Plazo_desde_dato_usa_feriado_y_espera_condicion()
+    {
+        var esquemas = new RepositorioEsquemas(_conexion);
+        long esquemaId = esquemas.Guardar(
+            "P-FERIADO",
+            "Proceso",
+            [
+                new(0, _identificaciones["NVV"], true, "Inicio"),
+                new(1, _identificaciones["OCC"], false, "Condición"),
+                new(2, _identificaciones["Guía"], false, "Destino"),
+            ]
+        );
+        long inicio = CrearVersion(
+            "feriado.pdf",
+            "NVV",
+            "Emitido",
+            ("rut_proveedor", "P-FERIADO", true),
+            ("nota_venta_propia", "301", true)
+        );
+        long cadena = new MotorCadenas(_conexion).ProcesarVersion(inicio).CadenaId!.Value;
+        var esquema = esquemas.ObtenerPorProveedor("P-FERIADO")!;
+        long condicion = esquema.Lugares.Single(l => l.Orden == 1).Id;
+        long destino = esquema.Lugares.Single(l => l.Orden == 2).Id;
+        var calendarioRepo = new RepositorioCalendariosFeriados(_conexion);
+        long calendario = calendarioRepo.CrearCalendario("Feriados de prueba", "CL");
+        calendarioRepo.AgregarFeriado(calendario, new DateOnly(2026, 10, 5), "Feriado de prueba");
+        esquemas.GuardarReglaAlerta(
+            esquemaId,
+            0,
+            null,
+            "plazo",
+            $$"""{"desdeDato":"Fecha de retiro","hastaLugarId":{{destino}},"dias":1,"tipoDias":"habiles","calendarioId":{{calendario}},"condicionLugarId":{{condicion}},"texto":"Falta guía","porLinea":false}"""
+        );
+        new RepositorioDatosCadena(_conexion).GuardarFecha(
+            cadena,
+            "Fecha de retiro",
+            new DateOnly(2026, 10, 2)
+        );
+        var evaluador = new EvaluadorAlertasEsquema(_conexion, () => new DateTime(2026, 10, 5));
+        evaluador.Evaluar(new DateOnly(2026, 10, 5));
+        Assert.Empty(evaluador.ListarAbiertas(cadenaId: cadena));
+        long compra = CrearVersion(
+            "feriado-compra.pdf",
+            "OCC",
+            "Emitido",
+            ("rut_proveedor", "P-FERIADO", true),
+            ("nota_venta_propia", "301", true)
+        );
+        Assert.Equal("ubicado", new MotorCadenas(_conexion).ProcesarVersion(compra).Estado);
+        evaluador.Evaluar(new DateOnly(2026, 10, 5));
+        var alerta = Assert.Single(evaluador.ListarAbiertas(cadenaId: cadena));
+        Assert.Equal(new DateOnly(2026, 10, 6), alerta.FechaVencimiento);
+        Assert.Equal("por_vencer", alerta.Urgencia);
+    }
+
+    [Fact]
+    public void Plazo_por_linea_deja_aviso_solo_en_la_guia_sin_factura()
+    {
+        var esquemas = new RepositorioEsquemas(_conexion);
+        long esquemaId = esquemas.Guardar(
+            "P-LINEA",
+            "Proceso",
+            [
+                new(0, _identificaciones["NVV"], true, "Inicio"),
+                new(1, _identificaciones["OCC"], false, "Compra"),
+                new(2, _identificaciones["Guía"], false, "Guía"),
+                new(3, _identificaciones["Factura"], false, "Factura"),
+            ],
+            [new(2, 3, "guia_proveedor")]
+        );
+        using (var tipo = _conexion.CreateCommand())
+        {
+            tipo.CommandText =
+                "UPDATE identificaciones SET emisor='P-LINEA' WHERE tipo IN ('Guía','Factura');";
+            tipo.ExecuteNonQuery();
+        }
+        var motor = new MotorCadenas(_conexion);
+        long inicio = CrearVersion(
+            "linea-inicio.pdf",
+            "NVV",
+            "Emitido",
+            ("rut_proveedor", "P-LINEA", true),
+            ("nota_venta_propia", "401", true)
+        );
+        long cadena = motor.ProcesarVersion(inicio).CadenaId!.Value;
+        long compra = CrearVersion(
+            "linea-compra.pdf",
+            "OCC",
+            "Emitido",
+            ("rut_proveedor", "P-LINEA", true),
+            ("nota_venta_propia", "401", true),
+            ("oc_propia", "402", true)
+        );
+        Assert.Equal("ubicado", motor.ProcesarVersion(compra).Estado);
+        long guiaUno = CrearVersion(
+            "linea-guia-1.pdf",
+            "Guía",
+            "Recibido",
+            ("oc_propia", "402", true),
+            ("guia_proveedor", "G-401", true)
+        );
+        long guiaDos = CrearVersion(
+            "linea-guia-2.pdf",
+            "Guía",
+            "Recibido",
+            ("oc_propia", "402", true),
+            ("guia_proveedor", "G-402", true)
+        );
+        Assert.Equal("ubicado", motor.ProcesarVersion(guiaUno).Estado);
+        Assert.Equal("ubicado", motor.ProcesarVersion(guiaDos).Estado);
+        long factura = CrearVersion(
+            "linea-factura.pdf",
+            "Factura",
+            "Recibido",
+            ("oc_propia", "402", true),
+            ("guia_proveedor", "G-401", true)
+        );
+        Assert.Equal("ubicado", motor.ProcesarVersion(factura).Estado);
+        var esquema = esquemas.ObtenerPorProveedor("P-LINEA")!;
+        long guia = esquema.Lugares.Single(l => l.Orden == 2).Id;
+        long facturaLugar = esquema.Lugares.Single(l => l.Orden == 3).Id;
+        esquemas.GuardarReglaAlerta(
+            esquemaId,
+            2,
+            null,
+            "plazo",
+            $$"""{"desdeLugarId":{{guia}},"hastaLugarId":{{facturaLugar}},"dias":0,"tipoDias":"corridos","texto":"Falta factura","porLinea":true}"""
+        );
+        var evaluador = new EvaluadorAlertasEsquema(_conexion, () => DateTime.Now);
+        evaluador.Evaluar(DateOnly.FromDateTime(DateTime.Now));
+        Assert.StartsWith(
+            "linea:",
+            Assert.Single(evaluador.ListarAbiertas(cadenaId: cadena)).Alcance
+        );
+    }
+
     private void CrearEsquema(string proveedor = "ACME")
     {
         var repo = new RepositorioEsquemas(_conexion);

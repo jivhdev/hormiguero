@@ -129,7 +129,7 @@ public sealed class MotorCadenas(SqliteConnection conexion)
     {
         using var comando = conexion.CreateCommand();
         comando.CommandText =
-            "UPDATE decisiones_pendientes_cadena SET estado='resuelta' WHERE version_id=$v AND estado='pendiente';";
+            "UPDATE decisiones_pendientes_cadena SET estado='resuelta' WHERE version_id=$v AND estado='pendiente' AND tipo='sin_piso';";
         comando.Parameters.AddWithValue("$v", versionId);
         return comando.ExecuteNonQuery() > 0;
     }
@@ -178,6 +178,7 @@ public sealed class MotorCadenas(SqliteConnection conexion)
             app: "Archivero"
         );
         tx.Commit();
+        RepositorioModosEsquema.RegistrarDecision(conexion, versionId, id, lugar.Id);
         return id;
     }
 
@@ -227,6 +228,7 @@ public sealed class MotorCadenas(SqliteConnection conexion)
             actualizar.ExecuteNonQuery();
         }
         tx.Commit();
+        RepositorioModosEsquema.RegistrarDecision(conexion, versionId, cadenaId, lugar.Id);
     }
 
     private void CrearUbicacion(
@@ -440,7 +442,7 @@ public sealed class MotorCadenas(SqliteConnection conexion)
     {
         using var comando = conexion.CreateCommand();
         comando.CommandText =
-            "UPDATE decisiones_pendientes_cadena SET estado='resuelta' WHERE version_id=$v AND estado='pendiente';";
+            "UPDATE decisiones_pendientes_cadena SET estado='resuelta' WHERE version_id=$v AND estado='pendiente' AND tipo='sin_piso';";
         comando.Parameters.AddWithValue("$v", version);
         comando.ExecuteNonQuery();
     }
