@@ -1,0 +1,172 @@
+<Window
+  x:Class="Buscadero.App.DialogoReglaEsquema"
+  xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+  xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+  Title="Configurar aviso"
+  Width="760"
+  Height="680"
+  MaxHeight="700"
+  MinWidth="640"
+  MinHeight="500"
+  Background="{DynamicResource Hormiguero.Fondo}"
+  Foreground="{DynamicResource Hormiguero.Texto}"
+>
+  <Grid Margin="16">
+    <Grid.RowDefinitions>
+      <RowDefinition Height="*" />
+      <RowDefinition Height="Auto" />
+    </Grid.RowDefinitions>
+    <ScrollViewer VerticalScrollBarVisibility="Auto">
+      <StackPanel>
+        <TextBlock Text="Tipo de aviso" FontWeight="Bold" />
+        <UniformGrid Columns="3" Margin="0,6,0,12">
+          <Button x:Name="TipoFalta" Click="TipoFalta_Click" Margin="0,0,4,0" Padding="8">
+            <StackPanel>
+              <TextBlock Text="Falta ingresar un dato" FontWeight="Bold" />
+              <TextBlock Text="Ej. fecha de retiro" TextWrapping="Wrap" />
+            </StackPanel>
+          </Button>
+          <Button x:Name="TipoPlazo" Click="TipoPlazo_Click" Margin="2,0" Padding="8">
+            <StackPanel>
+              <TextBlock Text="Plazo entre documentos" FontWeight="Bold" />
+              <TextBlock Text="Ej. 7 días sin guía firmada" TextWrapping="Wrap" />
+            </StackPanel>
+          </Button>
+          <Button x:Name="TipoListo" Click="TipoListo_Click" Margin="4,0,0,0" Padding="8">
+            <StackPanel>
+              <TextBlock Text="Listo para…" FontWeight="Bold" />
+              <TextBlock Text="Ej. listos para facturar" TextWrapping="Wrap" />
+            </StackPanel>
+          </Button>
+        </UniformGrid>
+        <StackPanel x:Name="ModoPanel">
+          <TextBlock Text="Este aviso aplica al modo" />
+          <ComboBox x:Name="Modo" DisplayMemberPath="Texto" Margin="0,4,0,8" />
+        </StackPanel>
+        <TextBlock Text="Lugar al que pertenece el aviso" />
+        <ComboBox
+          x:Name="LugarRegla"
+          DisplayMemberPath="Nombre"
+          Margin="0,4,0,8"
+          SelectionChanged="Actualizar_Click"
+        />
+        <StackPanel x:Name="FaltaCampos">
+          <TextBlock Text="Dato que falta ingresar" />
+          <TextBox
+            x:Name="Dato"
+            Text="Fecha de retiro"
+            Margin="0,4,0,8"
+            TextChanged="Actualizar_Click"
+          />
+        </StackPanel>
+        <StackPanel x:Name="PlazoCampos">
+          <TextBlock Text="Contar desde: lugar (fecha del documento) o dato ingresado" />
+          <ComboBox
+            x:Name="DesdeLugar"
+            DisplayMemberPath="Nombre"
+            Margin="0,4,0,8"
+            SelectionChanged="Actualizar_Click"
+          />
+          <TextBox
+            x:Name="DesdeDato"
+            ToolTip="Dato ingresado (déjelo vacío para contar desde el lugar)"
+            Margin="0,0,0,8"
+            TextChanged="Actualizar_Click"
+          />
+          <TextBlock Text="Esperar días" />
+          <TextBox x:Name="Dias" Text="7" Margin="0,4,0,8" TextChanged="Actualizar_Click" />
+          <ComboBox
+            x:Name="TipoDias"
+            SelectedIndex="1"
+            Margin="0,0,0,8"
+            SelectionChanged="Actualizar_Click"
+          >
+            <ComboBoxItem Content="Días hábiles" />
+            <ComboBoxItem Content="Días corridos" />
+          </ComboBox>
+          <TextBlock Text="Calendario de feriados (opcional)" />
+          <ComboBox
+            x:Name="Calendario"
+            DisplayMemberPath="Nombre"
+            Margin="0,4,0,8"
+            SelectionChanged="Actualizar_Click"
+          />
+          <TextBlock Text="Hasta que llegue el documento" />
+          <ComboBox
+            x:Name="Hasta"
+            DisplayMemberPath="Nombre"
+            Margin="0,4,0,8"
+            SelectionChanged="LugarEsperado_SelectionChanged"
+          />
+          <TextBlock Text="Solo si existe este documento (opcional)" />
+          <ComboBox
+            x:Name="Condicion"
+            DisplayMemberPath="Nombre"
+            Margin="0,4,0,8"
+            SelectionChanged="Actualizar_Click"
+          />
+          <CheckBox
+            x:Name="PorLinea"
+            Content="Evaluar por cada línea de una pareja"
+            Margin="0,4,0,8"
+          />
+          <TextBlock Text="Texto del aviso" />
+          <TextBox x:Name="TextoPlazo" Margin="0,4,0,8" TextChanged="Actualizar_Click" />
+        </StackPanel>
+        <StackPanel x:Name="ListoCampos">
+          <TextBlock Text="Cuando llegue" />
+          <ComboBox
+            x:Name="Cuando"
+            DisplayMemberPath="Nombre"
+            Margin="0,4,0,8"
+            SelectionChanged="Actualizar_Click"
+          />
+          <TextBlock Text="Hasta que llegue" />
+          <ComboBox
+            x:Name="HastaListo"
+            DisplayMemberPath="Nombre"
+            Margin="0,4,0,8"
+            SelectionChanged="Actualizar_Click"
+          />
+          <TextBlock Text="Solo si existe este documento (opcional)" />
+          <ComboBox
+            x:Name="CondicionListo"
+            DisplayMemberPath="Nombre"
+            Margin="0,4,0,8"
+            SelectionChanged="Actualizar_Click"
+          />
+          <TextBlock Text="Nombre de la lista" />
+          <TextBox x:Name="Lista" Margin="0,4,0,8" TextChanged="Actualizar_Click" />
+        </StackPanel>
+        <StackPanel x:Name="FaltaTexto">
+          <TextBlock Text="Texto del aviso" />
+          <TextBox x:Name="TextoFalta" Margin="0,4,0,8" TextChanged="Actualizar_Click" />
+        </StackPanel>
+      </StackPanel>
+    </ScrollViewer>
+    <StackPanel Grid.Row="1">
+      <TextBlock
+        x:Name="Frase"
+        TextWrapping="Wrap"
+        Margin="0,8"
+        Padding="10"
+        Background="{DynamicResource Hormiguero.Superficie}"
+      />
+      <TextBlock
+        x:Name="Estado"
+        TextWrapping="Wrap"
+        Foreground="{DynamicResource Hormiguero.Error}"
+      />
+      <WrapPanel HorizontalAlignment="Right">
+        <Button
+          x:Name="Guardar"
+          Content="Guardar aviso"
+          Click="Guardar_Click"
+          Padding="12,6"
+          Margin="0,6,6,0"
+        />
+        <Button Content="Cancelar" Click="Cancelar_Click" Padding="12,6" Margin="0,6,0,0" />
+      </WrapPanel>
+    </StackPanel>
+  </Grid>
+</Window>

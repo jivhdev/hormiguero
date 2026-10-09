@@ -49,6 +49,19 @@ public sealed record DocumentoArbolCadena(
 
 public static class AsistenteEsquemaCadena
 {
+    public static IReadOnlyList<TipoDatoCompartido> DatosCompartidos(
+        long identificacionA,
+        long identificacionB,
+        IReadOnlyList<TipoDatoCompartido> compartidos
+    ) =>
+        compartidos
+            .Where(d =>
+                (d.IdentificacionA == identificacionA && d.IdentificacionB == identificacionB)
+                || (d.IdentificacionA == identificacionB && d.IdentificacionB == identificacionA)
+            )
+            .DistinctBy(d => d.DatoId)
+            .ToArray();
+
     public static IReadOnlyList<DudosoCadenaVista> ListarDudosos(
         SqliteConnection conexion,
         long cadenaId

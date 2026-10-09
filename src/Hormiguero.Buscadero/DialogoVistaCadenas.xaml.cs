@@ -1,4 +1,5 @@
 using System.Diagnostics;
+using System.Text.Json;
 using System.Windows;
 using System.Windows.Controls;
 using Buscadero.Core.Lineas;
@@ -40,6 +41,9 @@ public partial class DialogoVistaCadenas : Window
                 .Where(c => proveedoresActivos.Contains(c.Proveedor))
                 .Select(c => new CadenaVm(c.Id, c.Proveedor, c.Nombre, c.Estado, c.Cliente))
                 .ToArray();
+            var evaluador = new EvaluadorAlertasEsquema(_conexion);
+            evaluador.Evaluar();
+            var conteos = evaluador.Conteos().ToDictionary(c => c.CadenaId);
             var filtradas = filas
                 .Where(f =>
                     f.Proveedor.Contains(FiltroProveedor.Text, StringComparison.OrdinalIgnoreCase)
@@ -60,7 +64,9 @@ public partial class DialogoVistaCadenas : Window
                     f,
                     Agrupar.SelectedIndex == 1
                         ? $"{f.Cliente ?? "Sin cliente"} · {f.Nombre}"
-                        : $"{f.Proveedor} · {f.Nombre}"
+                        : $"{f.Proveedor} · {f.Nombre}",
+                    conteos.GetValueOrDefault(f.Id)?.Cantidad ?? 0,
+                    conteos.GetValueOrDefault(f.Id)?.Urgencia
                 ))
                 .ToArray();
             if (cadenaInicial is long id)
@@ -103,6 +109,7 @@ public partial class DialogoVistaCadenas : Window
                 Estado.Text = "Este proveedor no tiene esquema de cadena.";
                 return;
             }
+            PrepararModoYDatos(fila.Cadena.Id, esquema);
             var docs = _cadenas.ArbolPorLugares(fila.Cadena.Id);
             var versiones = docs.Select(d => d.VersionId)
                 .Distinct()
@@ -110,7 +117,18 @@ public partial class DialogoVistaCadenas : Window
                 .Where(v => v is not null)
                 .ToDictionary(v => v!.VersionId, v => v!);
             _filas = AsistenteEsquemaCadena.ArmarArbol(esquema, docs, versiones);
-            TituloArbol.Text = fila.Cadena.Nombre;
+            var conteo = new EvaluadorAlertasEsquema(_conexion)
+                .Conteos()
+                .FirstOrDefault(c => c.CadenaId == fila.Cadena.Id);
+            TituloArbol.Text = conteo is null
+                ? fila.Cadena.Nombre
+                : $"{fila.Cadena.Nombre}   ⚠ {conteo.Cantidad}";
+            TituloArbol.Foreground = (System.Windows.Media.Brush)
+                Application.Current.FindResource(
+                    conteo?.Urgencia == "vencido" ? "Hormiguero.Error"
+                    : conteo?.Urgencia == "por_vencer" ? "Hormiguero.Aviso"
+                    : "Hormiguero.Texto"
+                );
             Arbol.ItemsSource = _filas
                 .SelectMany(f =>
                     new object[]
@@ -129,6 +147,109 @@ public partial class DialogoVistaCadenas : Window
         catch (Exception ex)
         {
             Estado.Text = $"No se pudo cargar el árbol de la cadena: {ex.Message}";
+        }
+    }
+
+    private void PrepararModoYDatos(long cadenaId, EsquemaCadena esquema)
+    {
+        PanelModo.Visibility = esquema.Modos.Count == 0 ? Visibility.Collapsed : Visibility.Visible;
+        ModoCadena.ItemsSource = esquema.Modos.Select(m => new ModoVm(m.Id, m.Nombre)).ToArray();
+        using (var q = _conexion.CreateCommand())
+        {
+            q.CommandText = "SELECT modo_id FROM cadenas WHERE id=$c";
+            q.Parameters.AddWithValue("$c", cadenaId);
+            var valor = q.ExecuteScalar();
+            if (valor is long modoId)
+                ModoCadena.SelectedValue = modoId;
+        }
+        var nombres = esquema
+            .ReglasAlerta.Select(r =>
+            {
+                using var json = JsonDocument.Parse(r.ParametrosJson);
+                string? dato = r.Tipo switch
+                {
+                    "falta_dato" => json.RootElement.GetProperty("dato").GetString(),
+                    "plazo" when json.RootElement.TryGetProperty("desdeDato", out var desde) =>
+                        desde.GetString(),
+                    _ => null,
+                };
+                return dato;
+            })
+            .Where(n => !string.IsNullOrWhiteSpace(n))
+            .Distinct(StringComparer.OrdinalIgnoreCase)
+            .ToArray();
+        var guardados = new RepositorioDatosCadena(_conexion)
+            .Listar(cadenaId)
+            .ToDictionary(d => d.Nombre, d => d.Valor, StringComparer.OrdinalIgnoreCase);
+        DatosCadena.Children.Clear();
+        foreach (string nombre in nombres!)
+        {
+            var fila = new StackPanel
+            {
+                Orientation = Orientation.Horizontal,
+                Margin = new Thickness(0, 3, 0, 3),
+            };
+            fila.Children.Add(
+                new TextBlock
+                {
+                    Text = nombre,
+                    Width = 150,
+                    VerticalAlignment = VerticalAlignment.Center,
+                }
+            );
+            var valor = new TextBox
+            {
+                Text = guardados.GetValueOrDefault(nombre) ?? "",
+                Width = 150,
+                Padding = new Thickness(5),
+                Tag = nombre,
+            };
+            fila.Children.Add(valor);
+            var guardar = new Button
+            {
+                Content = "Guardar",
+                Margin = new Thickness(6, 0, 0, 0),
+                Tag = valor,
+                Padding = new Thickness(8, 3, 8, 3),
+            };
+            guardar.Click += (_, _) =>
+            {
+                try
+                {
+                    var campo = (TextBox)guardar.Tag;
+                    new RepositorioDatosCadena(_conexion).Guardar(
+                        cadenaId,
+                        (string)campo.Tag,
+                        campo.Text
+                    );
+                    Estado.Text = "Dato de la cadena guardado; los avisos se actualizaron.";
+                }
+                catch (Exception error)
+                {
+                    Estado.Text = $"No se pudo guardar el dato: {error.Message}";
+                }
+            };
+            fila.Children.Add(guardar);
+            DatosCadena.Children.Add(fila);
+        }
+        DatosCadena.Visibility = nombres.Length == 0 ? Visibility.Collapsed : Visibility.Visible;
+    }
+
+    private void CambiarModo_Click(object sender, RoutedEventArgs e)
+    {
+        if (_seleccionado is not long cadenaId || ModoCadena.SelectedItem is not ModoVm modo)
+        {
+            Estado.Text = "Seleccione un modo.";
+            return;
+        }
+        try
+        {
+            new RepositorioModosEsquema(_conexion).FijarModo(cadenaId, modo.Id);
+            Estado.Text = "Modo actualizado.";
+        }
+        catch (Exception error)
+        {
+            Estado.Text = $"No se pudo cambiar el modo: {error.Message}";
         }
     }
 
@@ -261,5 +382,23 @@ public partial class DialogoVistaCadenas : Window
         string? Cliente
     );
 
-    private sealed record CadenaFila(CadenaVm Cadena, string Texto);
+    private sealed record ModoVm(long Id, string Nombre);
+
+    private sealed record CadenaFila(
+        CadenaVm Cadena,
+        string BaseTexto,
+        int CantidadAvisos,
+        string? Urgencia
+    )
+    {
+        public string Texto =>
+            CantidadAvisos == 0 ? BaseTexto : $"{BaseTexto}   ⚠ {CantidadAvisos}";
+        public System.Windows.Media.Brush ColorAviso =>
+            (System.Windows.Media.Brush)
+                Application.Current.FindResource(
+                    Urgencia == "vencido" ? "Hormiguero.Error"
+                    : Urgencia == "por_vencer" ? "Hormiguero.Aviso"
+                    : "Hormiguero.Texto"
+                );
+    }
 }

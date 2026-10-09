@@ -1,5 +1,8 @@
+using System.Text.Json;
+using System.Text.Json.Nodes;
 using System.Windows;
 using System.Windows.Controls;
+using Buscadero.Core.Alertas;
 using Buscadero.Core.Lineas;
 using Hormiguero.Nucleo.Datos;
 
@@ -14,6 +17,10 @@ public partial class DialogoEsquemaCadena : Window
     private List<DefinicionLugarEsquema> _lugares = [];
     private List<DefinicionParejaEsquema> _parejas = [];
     private readonly List<string> _nombresParejas = [];
+    private readonly List<string> _modos = [];
+    private readonly List<ReglaAlertaBorrador> _reglas = [];
+    private readonly Dictionary<int, long> _idsPorOrden = [];
+    private int? _lugarDecideModoOrden;
     private int _paso = 1;
 
     public DialogoEsquemaCadena(string? proveedorInicial = null)
@@ -61,6 +68,29 @@ public partial class DialogoEsquemaCadena : Window
         );
         _parejas.Clear();
         _nombresParejas.Clear();
+        _modos.Clear();
+        _modos.AddRange(esquema.Modos.Select(m => m.Nombre));
+        _reglas.Clear();
+        _idsPorOrden.Clear();
+        foreach (var lugar in esquema.Lugares)
+            _idsPorOrden[lugar.Orden] = lugar.Id;
+        _lugarDecideModoOrden = esquema.LugarDecideModo is long lugarModo
+            ? esquema.Lugares.FirstOrDefault(l => l.Id == lugarModo)?.Orden
+            : null;
+        var ordenPorId = esquema.Lugares.ToDictionary(l => l.Id, l => l.Orden);
+        _reglas.AddRange(
+            esquema
+                .ReglasAlerta.Where(r => ordenPorId.ContainsKey(r.LugarId))
+                .Select(r => new ReglaAlertaBorrador(
+                    ordenPorId[r.LugarId],
+                    r.ModoId is long modoId
+                        ? esquema.Modos.FirstOrDefault(m => m.Id == modoId)?.Nombre
+                        : null,
+                    r.Tipo,
+                    r.ParametrosJson,
+                    FraseRegla(r, esquema)
+                ))
+        );
         var byId = esquema.Lugares.ToDictionary(l => l.Id, l => l.Orden);
         foreach (var pareja in esquema.Parejas)
         {
@@ -70,7 +100,40 @@ public partial class DialogoEsquemaCadena : Window
             );
         }
         RefrescarListas();
-        Estado.Text = "Se encontró un esquema; sus datos están listos para editar.";
+        MostrarEstado("Se encontró un esquema; sus datos están listos para editar.");
+    }
+
+    private static string FraseRegla(ReglaAlertaEsquema regla, EsquemaCadena esquema)
+    {
+        var lugares = esquema.Lugares.ToDictionary(l => l.Id, l => l.Nombre);
+        return regla.Tipo switch
+        {
+            "falta_dato" => EditorReglasEsquema.CrearFrase(
+                regla.Tipo,
+                JsonSerializer.Deserialize<ParametrosFaltaDato>(
+                    regla.ParametrosJson,
+                    new JsonSerializerOptions(JsonSerializerDefaults.Web)
+                )!,
+                lugares
+            ),
+            "plazo" => EditorReglasEsquema.CrearFrase(
+                regla.Tipo,
+                JsonSerializer.Deserialize<ParametrosPlazo>(
+                    regla.ParametrosJson,
+                    new JsonSerializerOptions(JsonSerializerDefaults.Web)
+                )!,
+                lugares
+            ),
+            "listo_para" => EditorReglasEsquema.CrearFrase(
+                regla.Tipo,
+                JsonSerializer.Deserialize<ParametrosListoPara>(
+                    regla.ParametrosJson,
+                    new JsonSerializerOptions(JsonSerializerDefaults.Web)
+                )!,
+                lugares
+            ),
+            _ => regla.Tipo,
+        };
     }
 
     private void MostrarPaso()
@@ -79,13 +142,17 @@ public partial class DialogoEsquemaCadena : Window
         PasoDocumentos.Visibility = _paso == 2 ? Visibility.Visible : Visibility.Collapsed;
         PasoInicio.Visibility = _paso == 3 ? Visibility.Visible : Visibility.Collapsed;
         PasoParejas.Visibility = _paso == 4 ? Visibility.Visible : Visibility.Collapsed;
-        PasoResumen.Visibility = _paso == 5 ? Visibility.Visible : Visibility.Collapsed;
+        PasoModos.Visibility = _paso == 5 ? Visibility.Visible : Visibility.Collapsed;
+        PasoAvisos.Visibility = _paso == 6 ? Visibility.Visible : Visibility.Collapsed;
+        PasoResumen.Visibility = _paso == 7 ? Visibility.Visible : Visibility.Collapsed;
         string[] titulos =
         [
             "Proveedor",
             "Documentos del proceso",
             "¿Cuáles inician la cadena?",
             "Parejas 1 a 1",
+            "¿El proceso tiene modos?",
+            "Avisos",
             "Resumen",
         ];
         string[] ayudas =
@@ -94,16 +161,25 @@ public partial class DialogoEsquemaCadena : Window
             "Agregue los documentos a la lista derecha y ordene esa lista con Subir y Bajar.",
             "Marque los documentos que pueden iniciar la cadena. Debe marcar al menos uno.",
             "Elija dos documentos y un dato que compartan; Agregar pareja la añade a la lista.",
+            "Agregue modos opcionales y elija qué lugar decide el modo.",
+            "Agregue avisos que se aplican a todos los modos o a uno en particular.",
             "Revise proveedor, inicios, orden y parejas. Use Cambiar para corregir una sección y Guardar para conservar el esquema.",
         ];
         PasoTitulo.Text = titulos[_paso - 1];
         Ayuda.Text = ayudas[_paso - 1];
-        NumeroPaso.Text = $"Paso {_paso} de 5";
+        NumeroPaso.Text = $"Paso {_paso} de 7";
+        Modos.ItemsSource = _modos.ToArray();
+        LugarDecideModo.ItemsSource = _lugares
+            .Select(l => new LugarAlertaVm(l.Orden, l.Nombre))
+            .ToArray();
+        if (_lugarDecideModoOrden is int ordenModo)
+            LugarDecideModo.SelectedValue = ordenModo;
+        Avisos.ItemsSource = _reglas.ToArray();
         if (_paso == 2)
             Compartidos.Text = GenerarPistas();
-        Siguiente.Visibility = _paso == 5 ? Visibility.Collapsed : Visibility.Visible;
-        Guardar.Visibility = _paso == 5 ? Visibility.Visible : Visibility.Collapsed;
-        if (_paso == 5)
+        Siguiente.Visibility = _paso == 7 ? Visibility.Collapsed : Visibility.Visible;
+        Guardar.Visibility = _paso == 7 ? Visibility.Visible : Visibility.Collapsed;
+        if (_paso == 7)
             PrepararResumen();
     }
 
@@ -180,11 +256,7 @@ public partial class DialogoEsquemaCadena : Window
             .ToArray();
         LugarA.DisplayMemberPath = LugarB.DisplayMemberPath = "Texto";
         Parejas.ItemsSource = _nombresParejas.ToArray();
-        DatoPareja.ItemsSource = _compartidos
-            .Select(d => new DatoVm(d.DatoId, d.DatoNombre))
-            .DistinctBy(d => d.Id)
-            .ToArray();
-        DatoPareja.DisplayMemberPath = "Nombre";
+        ActualizarDatosPareja();
     }
 
     private string GenerarPistas()
@@ -208,8 +280,28 @@ public partial class DialogoEsquemaCadena : Window
     private string TipoPista(string tipo, string emisor) =>
         string.Equals(emisor, Proveedor.Text.Trim(), StringComparison.OrdinalIgnoreCase)
         && !tipo.Contains("propia", StringComparison.OrdinalIgnoreCase)
+        && !tipo.Contains("proveedor", StringComparison.OrdinalIgnoreCase)
             ? $"{tipo} del proveedor"
             : tipo;
+
+    private void LugarPareja_SelectionChanged(object sender, SelectionChangedEventArgs e) =>
+        ActualizarDatosPareja();
+
+    private void ActualizarDatosPareja()
+    {
+        if (LugarA.SelectedItem is not LugarVm a || LugarB.SelectedItem is not LugarVm b)
+        {
+            DatoPareja.ItemsSource = Array.Empty<DatoVm>();
+            return;
+        }
+        long identificacionA = _lugares[a.Orden].IdentificacionId;
+        long identificacionB = _lugares[b.Orden].IdentificacionId;
+        DatoPareja.ItemsSource = AsistenteEsquemaCadena
+            .DatosCompartidos(identificacionA, identificacionB, _compartidos)
+            .Select(d => new DatoVm(d.DatoId, d.DatoNombre))
+            .ToArray();
+        DatoPareja.DisplayMemberPath = "Nombre";
+    }
 
     private string TextoPareja(DefinicionParejaEsquema pareja)
     {
@@ -282,19 +374,19 @@ public partial class DialogoEsquemaCadena : Window
             || DatoPareja.SelectedItem is not DatoVm dato
         )
         {
-            Estado.Text = "Elija dos lugares y un dato compartido.";
+            MostrarEstado("Elija dos lugares y un dato compartido.", true);
             return;
         }
         if (a.Orden == b.Orden)
         {
-            Estado.Text = "Elija dos lugares distintos.";
+            MostrarEstado("Elija dos lugares distintos.", true);
             return;
         }
         _parejas.Add(new(a.Orden, b.Orden, dato.Id));
         _nombresParejas.Add($"{a.Texto} ↔ {b.Texto}: {dato.Nombre}");
         RefrescarListas();
         Parejas.SelectedIndex = Parejas.Items.Count - 1;
-        Estado.Text = "Pareja agregada a la lista.";
+        MostrarEstado("Pareja agregada a la lista.");
     }
 
     private void QuitarPareja_Click(object sender, RoutedEventArgs e)
@@ -302,26 +394,26 @@ public partial class DialogoEsquemaCadena : Window
         int indice = Parejas.SelectedIndex;
         if (indice < 0 || indice >= _parejas.Count)
         {
-            Estado.Text = "Seleccione una pareja de la lista para quitarla.";
+            MostrarEstado("Seleccione una pareja de la lista para quitarla.", true);
             return;
         }
         _parejas.RemoveAt(indice);
         _nombresParejas.RemoveAt(indice);
         RefrescarListas();
-        Estado.Text = "Pareja quitada de la lista.";
+        MostrarEstado("Pareja quitada de la lista.");
     }
 
     private void Siguiente_Click(object sender, RoutedEventArgs e)
     {
-        Estado.Text = "";
+        MostrarEstado("");
         if (_paso == 1 && string.IsNullOrWhiteSpace(Proveedor.Text))
         {
-            Estado.Text = "Escriba o seleccione un proveedor.";
+            MostrarEstado("Escriba o seleccione un proveedor.", true);
             return;
         }
         if (_paso == 2 && _lugares.Count == 0)
         {
-            Estado.Text = "Agregue al menos un documento del proceso.";
+            MostrarEstado("Agregue al menos un documento del proceso.", true);
             return;
         }
         if (_paso == 3)
@@ -333,14 +425,113 @@ public partial class DialogoEsquemaCadena : Window
                 .ToHashSet();
             if (marcados.Count == 0)
             {
-                Estado.Text = "Marque al menos un documento que inicie la cadena.";
+                MostrarEstado("Marque al menos un documento que inicie la cadena.", true);
                 return;
             }
             for (int i = 0; i < _lugares.Count; i++)
                 _lugares[i] = _lugares[i] with { IniciaCadena = marcados.Contains(i) };
         }
-        if (_paso < 5)
+        if (_paso == 5 && _modos.Count > 0 && LugarDecideModo.SelectedItem is not LugarAlertaVm)
+        {
+            MostrarEstado("Elija qué documento decide el modo.", true);
+            return;
+        }
+        if (_paso == 5 && _modos.Count == 0)
+            _paso = 6;
+        else if (_paso < 7)
             _paso++;
+        MostrarPaso();
+    }
+
+    private void AgregarModo_Click(object sender, RoutedEventArgs e)
+    {
+        string modo = NuevoModo.Text.Trim();
+        if (modo.Length == 0)
+        {
+            MostrarEstado("Escriba el nombre del modo.", true);
+            return;
+        }
+        if (_modos.Contains(modo, StringComparer.OrdinalIgnoreCase))
+        {
+            MostrarEstado("Ese modo ya está en la lista.", true);
+            return;
+        }
+        _modos.Add(modo);
+        NuevoModo.Clear();
+        MostrarEstado("Modo agregado.");
+        MostrarPaso();
+    }
+
+    private void QuitarModo_Click(object sender, RoutedEventArgs e)
+    {
+        if (Modos.SelectedItem is not string modo)
+        {
+            MostrarEstado("Seleccione un modo.", true);
+            return;
+        }
+        _modos.Remove(modo);
+        _reglas.RemoveAll(r => r.Modo == modo);
+        MostrarEstado("Modo quitado. Sus avisos asociados también se quitaron.");
+        MostrarPaso();
+    }
+
+    private void AgregarAviso_Click(object sender, RoutedEventArgs e)
+    {
+        var lugares = _lugares
+            .Select(l => new LugarAlertaVm(
+                l.Orden,
+                l.Nombre,
+                _idsPorOrden.GetValueOrDefault(l.Orden)
+            ))
+            .ToArray();
+        var calendarios = new RepositorioCalendariosFeriados(_conexion).ListarCalendarios();
+        var dialogo = new DialogoReglaEsquema(lugares, _modos, calendarios) { Owner = this };
+        if (dialogo.ShowDialog() == true && dialogo.Resultado is not null)
+        {
+            _reglas.Add(dialogo.Resultado);
+            MostrarEstado("Aviso agregado.");
+            MostrarPaso();
+        }
+    }
+
+    private void EditarAviso_Click(object sender, RoutedEventArgs e)
+    {
+        if (Avisos.SelectedItem is not ReglaAlertaBorrador regla)
+        {
+            MostrarEstado("Seleccione un aviso para editarlo.", true);
+            return;
+        }
+        var lugares = _lugares
+            .Select(l => new LugarAlertaVm(
+                l.Orden,
+                l.Nombre,
+                _idsPorOrden.GetValueOrDefault(l.Orden)
+            ))
+            .ToArray();
+        var dialogo = new DialogoReglaEsquema(
+            lugares,
+            _modos,
+            new RepositorioCalendariosFeriados(_conexion).ListarCalendarios(),
+            regla
+        )
+        {
+            Owner = this,
+        };
+        if (dialogo.ShowDialog() == true && dialogo.Resultado is not null)
+        {
+            _reglas[_reglas.IndexOf(regla)] = dialogo.Resultado;
+            MostrarPaso();
+        }
+    }
+
+    private void QuitarAviso_Click(object sender, RoutedEventArgs e)
+    {
+        if (Avisos.SelectedItem is not ReglaAlertaBorrador regla)
+        {
+            MostrarEstado("Seleccione un aviso para quitarlo.", true);
+            return;
+        }
+        _reglas.Remove(regla);
         MostrarPaso();
     }
 
@@ -369,9 +560,11 @@ public partial class DialogoEsquemaCadena : Window
             _compartidos
         );
         Guardar.IsEnabled = error is null;
-        Estado.Text = error ?? "";
+        MostrarEstado(error ?? "", error is not null);
         Resumen.Text =
             $"Proveedor: {Proveedor.Text.Trim()}\nLa cadena puede iniciar con: {string.Join(", ", _lugares.Where(l => l.IniciaCadena).Select(l => l.Nombre))}\nLugares: {string.Join(" → ", _lugares.OrderBy(l => l.Orden).Select(l => l.Nombre))}\nParejas 1 a 1: {(_nombresParejas.Count == 0 ? "ninguna" : string.Join("; ", _nombresParejas))}";
+        Resumen.Text +=
+            $"\nModos: {(_modos.Count == 0 ? "ninguno" : string.Join(", ", _modos))}\nDocumento que decide el modo: {(LugarDecideModo.SelectedItem as LugarAlertaVm)?.Nombre ?? "sin definir"}\nAvisos:\n{(_reglas.Count == 0 ? "ninguno" : string.Join("\n", _reglas.Select(r => r.Frase)))}";
         DibujoArbol.ItemsSource = _lugares
             .OrderBy(l => l.Orden)
             .Select(l => new TextBlock
@@ -395,16 +588,78 @@ public partial class DialogoEsquemaCadena : Window
             );
             if (error is not null)
             {
-                Estado.Text = error;
+                MostrarEstado(error, true);
                 return;
             }
-            _repositorio.Guardar(Proveedor.Text, Proveedor.Text.Trim(), _lugares, _parejas);
+            int? decide =
+                _modos.Count > 0 ? (LugarDecideModo.SelectedItem as LugarAlertaVm)?.Orden : null;
+            long esquemaId = _repositorio.Guardar(
+                Proveedor.Text,
+                Proveedor.Text.Trim(),
+                _lugares,
+                _parejas,
+                _modos,
+                decide
+            );
+            var esquema =
+                _repositorio.ObtenerPorProveedor(Proveedor.Text.Trim())
+                ?? throw new InvalidOperationException(
+                    "No se pudo volver a leer el esquema guardado."
+                );
+            var idsPorOrden = esquema.Lugares.ToDictionary(l => l.Orden, l => l.Id);
+            foreach (var regla in _reglas)
+                _repositorio.GuardarReglaAlerta(
+                    esquemaId,
+                    regla.LugarOrden,
+                    regla.Modo,
+                    regla.Tipo,
+                    ConvertirJson(regla, esquema, idsPorOrden)
+                );
             DialogResult = true;
         }
         catch (Exception error)
         {
-            Estado.Text = $"No se pudo guardar el esquema: {error.Message}";
+            MostrarEstado($"No se pudo guardar el esquema: {error.Message}", true);
         }
+    }
+
+    private void MostrarEstado(string texto, bool error = false)
+    {
+        Estado.Text = texto;
+        Estado.Foreground = (System.Windows.Media.Brush)FindResource(
+            error ? "Hormiguero.Error" : "Hormiguero.Texto"
+        );
+    }
+
+    private string ConvertirJson(
+        ReglaAlertaBorrador regla,
+        EsquemaCadena esquema,
+        IReadOnlyDictionary<int, long> idsPorOrden
+    )
+    {
+        var nodo = JsonNode.Parse(regla.Json)!.AsObject();
+        var mapa = new Dictionary<long, long>();
+        foreach (var lugar in esquema.Lugares)
+        {
+            mapa[lugar.Orden + 1] = lugar.Id;
+            mapa[lugar.Id] = lugar.Id;
+        }
+        foreach (
+            string clave in new[]
+            {
+                "desdeLugarId",
+                "hastaLugarId",
+                "condicionLugarId",
+                "cuandoLugarId",
+            }
+        )
+            if (
+                nodo[clave] is JsonValue valor
+                && valor.TryGetValue<long>(out long viejo)
+                && mapa.TryGetValue(viejo, out long nuevo)
+            )
+                nodo[clave] = nuevo;
+        return nodo.ToJsonString();
     }
 
     protected override void OnClosed(EventArgs e)

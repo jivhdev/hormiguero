@@ -87,25 +87,36 @@
               Margin="0,3"
             />
           </StackPanel>
-          <DockPanel Grid.Column="2" Margin="8,0,0,0">
-            <TextBlock
-              Text="Documentos del proceso, en orden"
-              FontWeight="Bold"
-              DockPanel.Dock="Top"
-              Margin="0,0,0,5"
-            />
+          <Grid Grid.Column="2" Margin="8,0,0,0">
+            <Grid.RowDefinitions>
+              <RowDefinition Height="Auto" />
+              <RowDefinition Height="*" />
+              <RowDefinition Height="Auto" />
+            </Grid.RowDefinitions>
+            <TextBlock Text="Documentos del proceso, en orden" FontWeight="Bold" Margin="0,0,0,5" />
             <ListBox
+              Grid.Row="1"
               x:Name="TiposProceso"
               DisplayMemberPath="Texto"
               MouseDoubleClick="Proceso_DoubleClick"
             />
-          </DockPanel>
+            <StackPanel Grid.Row="2" Orientation="Horizontal" Margin="0,8,0,0">
+              <Button
+                x:Name="BotonSubirTipo"
+                Content="Subir"
+                Click="Subir_Click"
+                Margin="0,0,6,0"
+              />
+              <Button
+                x:Name="BotonBajarTipo"
+                Content="Bajar"
+                Click="Bajar_Click"
+                Margin="0,0,6,0"
+              />
+              <TextBlock Text="El orden de esta lista se guarda en el esquema." Margin="6,4" />
+            </StackPanel>
+          </Grid>
         </Grid>
-        <StackPanel Grid.Row="2" Orientation="Horizontal" Margin="0,8">
-          <Button x:Name="BotonSubirTipo" Content="Subir" Click="Subir_Click" Margin="0,0,6,0" />
-          <Button x:Name="BotonBajarTipo" Content="Bajar" Click="Bajar_Click" Margin="0,0,6,0" />
-          <TextBlock Text="El orden de esta lista se guarda en el esquema." Margin="6,4" />
-        </StackPanel>
       </Grid>
       <StackPanel x:Name="PasoInicio" Visibility="Collapsed">
         <TextBlock Text="Marque uno o varios documentos que puedan iniciar una cadena. El cambio queda visible en el resumen." />
@@ -126,14 +137,51 @@
           Text="Cada documento de un lugar tiene uno solo del otro (por ejemplo, cada guía su factura)."
           TextWrapping="Wrap"
         />
-        <ComboBox x:Name="LugarA" Margin="0,10,0,4" />
-        <ComboBox x:Name="LugarB" Margin="0,4" />
-        <ComboBox x:Name="DatoPareja" Margin="0,4" />
+        <TextBlock Text="Primer documento" Margin="0,10,0,2" />
+        <ComboBox
+          x:Name="LugarA"
+          Margin="0,2,0,4"
+          SelectionChanged="LugarPareja_SelectionChanged"
+        />
+        <TextBlock Text="Segundo documento" Margin="0,4,0,2" />
+        <ComboBox
+          x:Name="LugarB"
+          Margin="0,2,0,4"
+          SelectionChanged="LugarPareja_SelectionChanged"
+        />
+        <TextBlock Text="Dato que comparten" Margin="0,4,0,2" />
+        <ComboBox x:Name="DatoPareja" Margin="0,2,0,4" />
         <WrapPanel Margin="0,8">
           <Button Content="Agregar pareja 1 a 1" Click="AgregarPareja_Click" Margin="0,0,6,0" />
           <Button Content="Quitar pareja" Click="QuitarPareja_Click" />
         </WrapPanel>
         <ListBox x:Name="Parejas" />
+      </StackPanel>
+      <StackPanel x:Name="PasoModos" Visibility="Collapsed">
+        <TextBlock
+          Text="Por ejemplo Retiro o Despacho: cada modo puede tener avisos distintos."
+          TextWrapping="Wrap"
+        />
+        <WrapPanel Margin="0,8">
+          <TextBox x:Name="NuevoModo" Width="220" />
+          <Button Content="Agregar" Click="AgregarModo_Click" Margin="6,0" />
+          <Button Content="Quitar" Click="QuitarModo_Click" />
+        </WrapPanel>
+        <ListBox x:Name="Modos" Height="150" DisplayMemberPath="." />
+        <TextBlock Text="¿Qué documento decide el modo?" Margin="0,12,0,4" />
+        <ComboBox x:Name="LugarDecideModo" DisplayMemberPath="Nombre" SelectedValuePath="Orden" />
+      </StackPanel>
+      <StackPanel x:Name="PasoAvisos" Visibility="Collapsed">
+        <TextBlock
+          Text="Configure avisos por lugar y modo. La frase completa se guarda para revisar."
+          TextWrapping="Wrap"
+        />
+        <WrapPanel Margin="0,8">
+          <Button Content="Agregar aviso…" Click="AgregarAviso_Click" Margin="0,0,6,0" />
+          <Button Content="Editar" Click="EditarAviso_Click" Margin="0,0,6,0" />
+          <Button Content="Quitar" Click="QuitarAviso_Click" />
+        </WrapPanel>
+        <ListBox x:Name="Avisos" Height="300" DisplayMemberPath="Frase" />
       </StackPanel>
       <ScrollViewer x:Name="PasoResumen" Visibility="Collapsed" VerticalScrollBarVisibility="Auto">
         <StackPanel>
@@ -143,6 +191,8 @@
             <Button Content="Cambiar documentos" Tag="2" Click="Cambiar_Click" Margin="0,0,6,4" />
             <Button Content="Cambiar inicios" Tag="3" Click="Cambiar_Click" Margin="0,0,6,4" />
             <Button Content="Cambiar parejas" Tag="4" Click="Cambiar_Click" Margin="0,0,6,4" />
+            <Button Content="Cambiar modos" Tag="5" Click="Cambiar_Click" Margin="0,0,6,4" />
+            <Button Content="Cambiar avisos" Tag="6" Click="Cambiar_Click" Margin="0,0,6,4" />
           </WrapPanel>
           <TextBlock Text="Ejemplo del árbol" FontWeight="Bold" Margin="0,12,0,5" />
           <ItemsControl x:Name="DibujoArbol" />
@@ -154,7 +204,7 @@
       Grid.Row="2"
       TextWrapping="Wrap"
       Margin="0,8"
-      Foreground="{DynamicResource Hormiguero.Error}"
+      Foreground="{DynamicResource Hormiguero.Texto}"
     />
     <DockPanel Grid.Row="3">
       <TextBlock x:Name="NumeroPaso" VerticalAlignment="Center" />

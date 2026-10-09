@@ -6,6 +6,22 @@ namespace Hormiguero.Core.Tests;
 public sealed class EsquemasCadenaUiTests
 {
     [Fact]
+    public void ListaSoloDatosCompartidosPorLosDosDocumentosElegidos()
+    {
+        var compartidos = new[]
+        {
+            new TipoDatoCompartido(1, 2, "Guía", "P", "Factura", "P", "guia", "N.º de guía"),
+            new TipoDatoCompartido(1, 2, "Guía", "P", "Factura", "P", "orden", "N.º de orden"),
+            new TipoDatoCompartido(1, 3, "Guía", "P", "OC", "P", "guia", "N.º de guía"),
+        };
+
+        var datos = AsistenteEsquemaCadena.DatosCompartidos(2, 1, compartidos);
+
+        Assert.Equal(new[] { "guia", "orden" }, datos.Select(d => d.DatoId));
+        Assert.Empty(AsistenteEsquemaCadena.DatosCompartidos(2, 3, compartidos));
+    }
+
+    [Fact]
     public void ValidaProveedorLugaresInicioYPareja()
     {
         var compartidos = new[]
