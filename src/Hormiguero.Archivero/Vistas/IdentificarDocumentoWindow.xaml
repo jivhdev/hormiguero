@@ -91,6 +91,7 @@
             />
             <TextBlock Text="2. ¿Cómo se reconoce?" FontWeight="Bold" />
             <TextBlock
+              Name="TxtAyudaEmisor"
               Text="Marca el título fijo que dice qué documento es (por ejemplo «FACTURA ELECTRÓNICA» o «GUÍA DE DESPACHO»). Con el emisor y el título, Archivero reconocerá solo los próximos documentos iguales."
               TextWrapping="Wrap"
               Foreground="{DynamicResource Hormiguero.TextoSecundario}"
@@ -154,6 +155,50 @@
             IsExpanded="False"
           >
             <StackPanel Margin="0,6,0,0">
+              <Border
+                Name="PanelProveedorObligatorio"
+                BorderBrush="{DynamicResource Hormiguero.Borde}"
+                BorderThickness="2"
+                Padding="8"
+                Margin="0,0,0,10"
+                Visibility="Collapsed"
+              >
+                <StackPanel>
+                  <TextBlock
+                    Text="Obligatorio: ¿a quién le compras? Incluye el nombre o el RUT del proveedor y marca su zona."
+                    FontWeight="Bold"
+                    TextWrapping="Wrap"
+                    Margin="0,0,0,6"
+                  />
+                  <ItemsControl Name="ListaDatosProveedor">
+                    <ItemsControl.ItemTemplate>
+                      <DataTemplate>
+                        <StackPanel Margin="0,4,0,4">
+                          <CheckBox
+                            Content="{Binding Nombre}"
+                            IsChecked="{Binding Incluido, UpdateSourceTrigger=PropertyChanged}"
+                            Checked="DatoIncluido_Changed"
+                            Unchecked="DatoIncluido_Changed"
+                            FontWeight="Bold"
+                          />
+                          <TextBlock
+                            Text="{Binding Estado}"
+                            TextWrapping="Wrap"
+                            Foreground="{DynamicResource Hormiguero.TextoSecundario}"
+                            Margin="18,2,0,4"
+                          />
+                          <Button
+                            Content="Marcar zona del proveedor"
+                            Padding="5,3"
+                            HorizontalAlignment="Left"
+                            Click="BtnMarcarDatoEnlazante_Click"
+                          />
+                        </StackPanel>
+                      </DataTemplate>
+                    </ItemsControl.ItemTemplate>
+                  </ItemsControl>
+                </StackPanel>
+              </Border>
               <TextBlock Text="Filtrar por categoría" FontWeight="Bold" Margin="0,0,0,3" />
               <ComboBox
                 Name="CmbCategoriaOtrosDatos"

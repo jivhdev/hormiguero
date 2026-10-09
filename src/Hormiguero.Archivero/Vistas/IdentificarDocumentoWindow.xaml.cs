@@ -112,6 +112,7 @@ public partial class IdentificarDocumentoWindow : Window
     private bool _draftYaResuelto;
     private bool _nombreEstandarEditado;
     private bool _actualizandoNombreEstandar;
+    private string? _proveedorManual;
 
     private string _emisor = string.Empty;
     private string _tipo = string.Empty;
@@ -420,6 +421,10 @@ public partial class IdentificarDocumentoWindow : Window
         PanelNumeroDato.Visibility =
             nuevoPaso == Paso.Numero ? Visibility.Visible : Visibility.Collapsed;
         PanelDatosDiccionario.IsExpanded = nuevoPaso == Paso.OtrosDatos;
+        PanelProveedorObligatorio.Visibility =
+            nuevoPaso == Paso.OtrosDatos && AsistenteClasificacionService.EsCompraPropia(_tipo)
+                ? Visibility.Visible
+                : Visibility.Collapsed;
         PanelInformativos.Visibility =
             nuevoPaso == Paso.OtrosDatos ? Visibility.Visible : Visibility.Collapsed;
         PanelDatosAnteriores.Visibility =
@@ -777,6 +782,9 @@ public partial class IdentificarDocumentoWindow : Window
         else if (CmbCategoriaDocumento.SelectedIndex < 0 && CmbCategoriaDocumento.Items.Count > 0)
             CmbCategoriaDocumento.SelectedIndex = 0;
         CargarDatosInformativos(emisor, tipo, patronId);
+        ListaDatosProveedor.ItemsSource = _datosEnlazantes
+            .Where(d => AsistenteClasificacionService.EsDatoProveedor(d.Id))
+            .ToList();
         CollectionViewSource.GetDefaultView(_datosEnlazantes)?.Refresh();
     }
 
@@ -792,6 +800,10 @@ public partial class IdentificarDocumentoWindow : Window
             {
                 Paso.Numero => dato.DefineTipo,
                 Paso.OtrosDatos => !dato.DefineTipo
+                    && !(
+                        AsistenteClasificacionService.EsCompraPropia(_tipo)
+                        && AsistenteClasificacionService.EsDatoProveedor(dato.Id)
+                    )
                     && dato.Grupo == CmbCategoriaOtrosDatos.SelectedItem as string,
                 _ => false,
             };
@@ -835,6 +847,20 @@ public partial class IdentificarDocumentoWindow : Window
                 dato.Incluido = true;
         }
         TxtDocumentoElegido.Text = $"Elegiste: {documento.EtiquetaTipo}";
+        if (AsistenteClasificacionService.EsCompraPropia(documento.Id))
+        {
+            CmbCategoriaOtrosDatos.SelectedItem = "Otros";
+            foreach (
+                var proveedor in _datosEnlazantes.Where(d =>
+                    AsistenteClasificacionService.EsDatoProveedor(d.Id)
+                )
+            )
+                proveedor.Incluido = true;
+        }
+        TxtAyudaEmisor.Text =
+            documento.Grupo == "Del proveedor"
+                ? "Para este documento, el emisor es tu proveedor."
+                : "Marca el título fijo que dice qué documento es (por ejemplo «FACTURA ELECTRÓNICA» o «GUÍA DE DESPACHO»). Con el emisor y el título, Archivero reconocerá solo los próximos documentos iguales.";
         _tipo = TipoDerivado();
         ActualizarVistaNumero();
         ActualizarNombreEstandarSugerido();
@@ -1842,6 +1868,22 @@ public partial class IdentificarDocumentoWindow : Window
                     MostrarError($"Marca dónde aparece «{dato.Nombre}» o desmarca ese dato.");
                     return;
                 }
+                if (AsistenteClasificacionService.EsCompraPropia(_tipo))
+                {
+                    var errorProveedor = AsistenteClasificacionService.ValidarProveedorCompraPropia(
+                        _datosEnlazantes.Any(d =>
+                            d.Id == "nombre_proveedor" && d.Incluido && d.Marcado
+                        ),
+                        _datosEnlazantes.Any(d =>
+                            d.Id == "rut_proveedor" && d.Incluido && d.Marcado
+                        )
+                    );
+                    if (errorProveedor is not null)
+                    {
+                        MostrarError(errorProveedor);
+                        return;
+                    }
+                }
                 if (_modoObservador)
                 {
                     _carpetaDestino = _carpetaObservada ?? string.Empty;
@@ -2180,6 +2222,34 @@ public partial class IdentificarDocumentoWindow : Window
                 nombreExtraido = nombreEscrito;
             }
 
+            _proveedorManual = null;
+            if (
+                !_modoObservador
+                && AsistenteClasificacionService.EsCompraPropia(_tipo)
+                && !AsistenteClasificacionService.TieneProveedorLegible(
+                    _datosEnlazantes
+                        .Where(d =>
+                            d.Marcado && AsistenteClasificacionService.EsDatoProveedor(d.Id)
+                        )
+                        .Select(d =>
+                            (
+                                d.Id,
+                                LectorPdf.ExtraerTexto(
+                                    _rutaArchivo,
+                                    d.Pagina,
+                                    new RectanguloFraccion(d.X, d.Y, d.Ancho, d.Alto)
+                                )
+                            )
+                        )
+                )
+            )
+            {
+                var pedirProveedor = new ProveedorManualWindow { Owner = this };
+                if (pedirProveedor.ShowDialog() != true)
+                    return;
+                _proveedorManual = pedirProveedor.Proveedor;
+            }
+
             string rutaFinal;
             try
             {
@@ -2335,7 +2405,12 @@ public partial class IdentificarDocumentoWindow : Window
                 );
                 if (campos is null)
                     throw new InvalidOperationException(error);
-                PublicadorDatosDocumentoService.PublicarGuardado(rutaFinal, configuracion, campos);
+                PublicadorDatosDocumentoService.PublicarGuardado(
+                    rutaFinal,
+                    configuracion,
+                    campos,
+                    _proveedorManual
+                );
             }
             catch (Exception error)
             {
