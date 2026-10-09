@@ -9,6 +9,7 @@ using System.Windows.Shapes;
 using System.Windows.Threading;
 using Buscadero.App.Marcas;
 using Buscadero.App.Pdf;
+using Buscadero.Core.Alertas;
 using Buscadero.Core.Busqueda;
 using Buscadero.Core.Carpetas;
 using Buscadero.Core.Indexado;
@@ -1469,27 +1470,25 @@ public partial class MainWindow : Window
         try
         {
             using var conexion = BaseComun.Abrir(DocumentosGuardados.RutaBaseComun);
-            var cadenasSimples = new RepositorioCadenas(conexion)
-                .ListarCadenasSimples()
-                .Select(c => c.Id)
-                .ToHashSet();
-            var alertas = new RepositorioAlertas(conexion)
-                .Listar(limite: 10000)
-                .Alertas.Where(a =>
-                    a.ReglaId is null
-                    && (a.CadenaId is null || cadenasSimples.Contains(a.CadenaId.Value))
-                )
-                .ToArray();
-            int abiertas = alertas.Count(a => a.Estado is "pendiente" or "vencida");
-            int vencidas = alertas.Count(a => a.Estado == "vencida");
-            BotonAlertas.Content = $"{abiertas} alertas";
+            new EvaluadorAlertasEsquema(conexion).Evaluar();
+            var conteos = new EvaluadorAlertasEsquema(conexion).Conteos();
+            int abiertas = conteos.Sum(c => c.Cantidad);
+            string? urgencia = conteos
+                .OrderBy(c => EditorReglasEsquema.OrdenUrgencia(c.Urgencia))
+                .FirstOrDefault()
+                ?.Urgencia;
+            BotonAlertas.Content = $"{abiertas} avisos";
             BotonAlertas.Background = (Brush)
                 Application.Current.FindResource(
-                    vencidas > 0 ? "Hormiguero.AvisoSuave" : "Hormiguero.Superficie"
+                    urgencia == "vencido" ? "Hormiguero.Error"
+                    : urgencia == "por_vencer" ? "Hormiguero.AvisoSuave"
+                    : "Hormiguero.Superficie"
                 );
             BotonAlertas.BorderBrush = (Brush)
                 Application.Current.FindResource(
-                    vencidas > 0 ? "Hormiguero.Aviso" : "Hormiguero.Borde"
+                    urgencia == "vencido" ? "Hormiguero.Error"
+                    : urgencia == "por_vencer" ? "Hormiguero.Aviso"
+                    : "Hormiguero.Borde"
                 );
         }
         catch (Exception error)
@@ -1504,9 +1503,10 @@ public partial class MainWindow : Window
         try
         {
             string ruta = DocumentosGuardados.RutaBaseComun;
-            using (var conexion = BaseComun.Abrir(ruta))
-                new EvaluadorAlertas(conexion).Evaluar();
-            new DialogoAlertas(ruta, _ => { }) { Owner = this }.ShowDialog();
+            new DialogoAvisos(ruta, id => new DialogoVistaCadenas(id) { Owner = this }.ShowDialog())
+            {
+                Owner = this,
+            }.ShowDialog();
         }
         catch (Exception error)
         {

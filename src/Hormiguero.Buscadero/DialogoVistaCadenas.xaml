@@ -85,7 +85,13 @@
           x:Name="Cadenas"
           DisplayMemberPath="Texto"
           SelectionChanged="Cadena_SelectionChanged"
-        />
+        >
+          <ListBox.ItemContainerStyle>
+            <Style TargetType="ListBoxItem">
+              <Setter Property="Foreground" Value="{Binding ColorAviso}" />
+            </Style>
+          </ListBox.ItemContainerStyle>
+        </ListBox>
       </DockPanel>
       <DockPanel Grid.Column="1">
         <StackPanel DockPanel.Dock="Top" Orientation="Horizontal" Margin="0,0,0,6">
@@ -105,7 +111,25 @@
           <Button Content="Dudosos" Click="Dudosos_Click" Margin="6,0,0,0" Padding="8,4" />
         </StackPanel>
         <ScrollViewer VerticalScrollBarVisibility="Auto">
-          <ItemsControl x:Name="Arbol" />
+          <StackPanel>
+            <WrapPanel x:Name="PanelModo" Visibility="Collapsed" Margin="0,0,0,8">
+              <TextBlock Text="Modo actual:" VerticalAlignment="Center" Margin="0,0,6,0" />
+              <ComboBox
+                x:Name="ModoCadena"
+                Width="180"
+                DisplayMemberPath="Nombre"
+                SelectedValuePath="Id"
+              />
+              <Button
+                Content="Cambiar modo"
+                Click="CambiarModo_Click"
+                Margin="6,0,0,0"
+                Padding="8,4"
+              />
+            </WrapPanel>
+            <ItemsControl x:Name="Arbol" />
+            <StackPanel x:Name="DatosCadena" Margin="16,12,0,8" />
+          </StackPanel>
         </ScrollViewer>
       </DockPanel>
       <TextBlock
