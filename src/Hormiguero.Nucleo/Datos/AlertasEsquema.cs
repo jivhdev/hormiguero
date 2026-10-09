@@ -505,7 +505,7 @@ public sealed class EvaluadorAlertasEsquema(SqliteConnection conexion, Func<Date
     {
         using var q = conexion.CreateCommand();
         q.CommandText =
-            "SELECT EXISTS(SELECT 1 FROM vagones_cadena v JOIN enlaces_cadena e ON e.vagon_cadena_id=v.id AND e.estado='activo' WHERE v.cadena_id=$c AND v.lugar_esquema_id=$l AND v.estado='activo' AND ($linea IS NULL OR v.linea_id=$linea));";
+            "SELECT EXISTS(SELECT 1 FROM vagones_cadena v JOIN enlaces_cadena e ON e.vagon_cadena_id=v.id AND e.estado='activo' WHERE v.cadena_id=$c AND v.lugar_esquema_id=$l AND v.estado='activo' AND ($linea IS NULL OR v.linea_id=$linea OR v.linea_id IS NULL));";
         q.Parameters.AddWithValue("$c", cadena);
         q.Parameters.AddWithValue("$l", lugar);
         q.Parameters.AddWithValue("$linea", (object?)linea ?? DBNull.Value);

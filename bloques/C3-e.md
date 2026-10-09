@@ -22,3 +22,19 @@ Escenario (datos sintéticos; reloj inyectable donde haga falta):
 `dotnet build` sin advertencias; `dotnet test` todo pasa; `dotnet csharpier check .` sin errores en tus archivos. Reporte al final: qué errores de integración encontraste y cómo los corregiste.
 
 ## Reporte del agente
+
+Terminé la prueba integral en `tests/Hormiguero.Archivero.App.Tests/C3ePuntaAPuntaTests.cs`. La configuración de datos se guarda mediante `DatosEnlazantesConfiguracionService` y `RepositorioDatosEnlazantes.GuardarDatoTipo`; los documentos se publican por `PublicadorDatosDocumentoService` con valores del diccionario y `dato_diccionario_id`.
+
+La prueba encontró y permitió corregir estos errores de integración:
+
+- Una nota de venta sin dato de proveedor no podía iniciar cadena. El Núcleo ahora determina el proveedor desde el único esquema activo que declara ese tipo como inicio; si hay más de un candidato, no lo infiere. Para documentos no iniciales sin dato de proveedor, puede determinarlo mediante una coincidencia enlazable exacta con una cadena activa única.
+- Una OC propia con `nombre_proveedor` se atribuía al emisor de la OC. Ahora, para documentos emitidos que son compras, se usa el proveedor contenido en ese dato.
+- `nombre_proveedor`, datos de cliente y datos propios se usaban como claves para unir documentos, lo que conectaba cadenas distintas y llevaba documentos a dudosos. Se conservan para identificar proveedor/cliente, pero no se usan como claves de enlace.
+- Una factura propia vinculada a la cadena sin línea no cerraba los avisos y listas por línea. La evaluación ahora cuenta un documento sin línea en cada alcance por línea del lugar correspondiente.
+
+Verificación:
+
+- `dotnet build`: correcto, 0 advertencias y 0 errores.
+- `dotnet test`: correcto, 807 pruebas aprobadas.
+- `dotnet csharpier check` sobre los cuatro archivos C# del bloque: correcto.
+- `dotnet csharpier check .`: informa diferencias de finales de línea en `src/Hormiguero.Archivero/Vistas/AsistenteCarpetaObservadaWindow.xaml`, `src/Hormiguero.Archivero/Vistas/IdentificarDocumentoWindow.xaml`, `src/Hormiguero.Archivero/Servicios/GuardadoAutomaticoService.cs` y `src/Hormiguero.Nucleo/Datos/MotorCadenasSimples.cs`. No los modifiqué porque no forman parte de este cambio; las dos vistas además están prohibidas por el bloque.

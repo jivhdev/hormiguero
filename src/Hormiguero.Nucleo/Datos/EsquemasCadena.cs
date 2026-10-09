@@ -80,12 +80,46 @@ public static class ProveedorDeDocumento
         string? nombre = lector.IsDBNull(4) ? null : lector.GetString(4);
         bool esDelProveedor = lector.GetInt64(5) != 0;
         string? proveedor =
-            esDelProveedor ? emisor
-            : esPropio && esCompra ? rut ?? nombre
+            esPropio && esCompra ? rut ?? nombre
+            : esDelProveedor ? emisor
             : rut ?? nombre;
         if (string.IsNullOrWhiteSpace(proveedor))
-            return null;
+        {
+            lector.Close();
+            using var esquema = conexion.CreateCommand();
+            esquema.CommandText =
+                "SELECT e.proveedor FROM versiones_documento v JOIN valores_documento x ON x.version_id=v.id AND x.estado='vigente' JOIN campos_documento f ON f.id=x.campo_id JOIN lugares_esquema l ON l.identificacion_id=f.identificacion_id AND l.inicia_cadena=1 JOIN esquemas_cadena e ON e.id=l.esquema_id AND e.activo=1 WHERE v.id=$v GROUP BY e.id,e.proveedor;";
+            esquema.Parameters.AddWithValue("$v", versionId);
+            using var candidatos = esquema.ExecuteReader();
+            if (!candidatos.Read())
+            {
+                candidatos.Close();
+                return DeterminarPorCadena(conexion, versionId);
+            }
+            string clave = candidatos.GetString(0);
+            if (candidatos.Read())
+                return null;
+            return new(clave, clave);
+        }
         return new(NormalizarProveedor(proveedor), proveedor.Trim());
+    }
+
+    private static ProveedorDocumento? DeterminarPorCadena(
+        SqliteConnection conexion,
+        long versionId
+    )
+    {
+        using var comando = conexion.CreateCommand();
+        comando.CommandText =
+            "SELECT DISTINCT c.proveedor FROM valores_documento actual JOIN campos_documento campo ON campo.id=actual.campo_id JOIN tipos_documento_datos tipo ON tipo.identificacion_id=campo.identificacion_id AND tipo.dato_diccionario_id=actual.dato_diccionario_id AND tipo.activo=1 AND tipo.enlazable=1 JOIN valores_documento anterior ON anterior.dato_diccionario_id=actual.dato_diccionario_id AND anterior.valor_clave=actual.valor_clave AND anterior.estado='vigente' JOIN campos_documento campo_anterior ON campo_anterior.id=anterior.campo_id JOIN tipos_documento_datos tipo_anterior ON tipo_anterior.identificacion_id=campo_anterior.identificacion_id AND tipo_anterior.dato_diccionario_id=anterior.dato_diccionario_id AND tipo_anterior.activo=1 AND tipo_anterior.enlazable=1 JOIN enlaces_cadena enlace ON enlace.version_id=anterior.version_id AND enlace.estado='activo' JOIN vagones_cadena vagon ON vagon.id=enlace.vagon_cadena_id AND vagon.estado='activo' JOIN cadenas c ON c.id=vagon.cadena_id AND c.estado='activa' JOIN esquemas_cadena esquema ON esquema.id=c.esquema_id AND esquema.activo=1 WHERE actual.version_id=$v AND actual.estado='vigente' AND actual.dato_diccionario_id IS NOT NULL AND actual.valor_clave<>'';";
+        comando.Parameters.AddWithValue("$v", versionId);
+        using var lector = comando.ExecuteReader();
+        if (!lector.Read())
+            return null;
+        string proveedor = lector.GetString(0);
+        if (lector.Read())
+            return null;
+        return new(proveedor, proveedor);
     }
 }
 
