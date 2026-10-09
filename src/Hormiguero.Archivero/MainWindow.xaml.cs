@@ -1,5 +1,6 @@
 using System.ComponentModel;
 using System.IO;
+using System.Text.Json;
 using System.Windows;
 using System.Windows.Input;
 using Archivero.Datos;
@@ -38,13 +39,70 @@ public record PendienteReconocerFila(ArchivoPendiente Pendiente)
         };
 }
 
-public record DecisionPendienteFila(DecisionPendienteCadena Decision)
+public sealed class DecisionPendienteFila : INotifyPropertyChanged
 {
+    private Queue<string> _datosPendientes = new();
+    private DateTime? _fechaDato;
+
+    public DecisionPendienteFila(DecisionPendienteCadena decision, DecisionModoPendiente? modo)
+    {
+        Decision = decision;
+        Modo = modo;
+    }
+
+    public DecisionPendienteCadena Decision { get; }
+    public DecisionModoPendiente? Modo { get; }
     public long VersionId => Decision.VersionId;
     public string Documento => Decision.Documento;
     public string TipoProveedor => $"{Decision.Tipo} · {Decision.Proveedor}";
+    public string Etiqueta => Modo is null ? "Sin origen" : "Modo";
+    public string Pregunta =>
+        Modo is null
+            ? string.Empty
+            : $"{Decision.Documento} · {Decision.Proveedor} · ¿Qué modo tiene este proceso?";
+    public IReadOnlyList<string> OpcionesModo => Modo?.Opciones ?? [];
+    public bool EsModo => Modo is not null;
+    public bool MostrarAccionesOrigen => Modo is null;
+    public bool MostrarOpcionesModo => EsModo && !ModoElegido;
+    public bool ModoElegido { get; private set; }
+    public string? DatoPendiente { get; private set; }
+    public bool MostrarCapturaDato => ModoElegido && DatoPendiente is not null;
+    public DateTime? FechaDato
+    {
+        get => _fechaDato;
+        set
+        {
+            if (_fechaDato == value)
+                return;
+            _fechaDato = value;
+            PropertyChanged?.Invoke(this, new(nameof(FechaDato)));
+        }
+    }
     public string Explicacion =>
-        $"Pertenece al esquema de {Decision.Proveedor} pero no se encontró su documento de origen (menciona {Decision.DatoMencionado} {Decision.NumeroMencionado}).";
+        Modo is null
+            ? $"Pertenece al esquema de {Decision.Proveedor} pero no se encontró su documento de origen (menciona {Decision.DatoMencionado} {Decision.NumeroMencionado})."
+            : string.Empty;
+
+    public event PropertyChangedEventHandler? PropertyChanged;
+
+    public void MarcarModoElegido(IEnumerable<string> datosPendientes)
+    {
+        ModoElegido = true;
+        _datosPendientes = new Queue<string>(datosPendientes);
+        DatoPendiente = _datosPendientes.TryDequeue(out var dato) ? dato : null;
+        PropertyChanged?.Invoke(this, new(nameof(ModoElegido)));
+        PropertyChanged?.Invoke(this, new(nameof(DatoPendiente)));
+        PropertyChanged?.Invoke(this, new(nameof(MostrarCapturaDato)));
+        PropertyChanged?.Invoke(this, new(nameof(MostrarOpcionesModo)));
+    }
+
+    public void AvanzarDatoPendiente()
+    {
+        DatoPendiente = _datosPendientes.TryDequeue(out var dato) ? dato : null;
+        FechaDato = null;
+        PropertyChanged?.Invoke(this, new(nameof(DatoPendiente)));
+        PropertyChanged?.Invoke(this, new(nameof(MostrarCapturaDato)));
+    }
 }
 
 public partial class MainWindow : Window
@@ -215,14 +273,115 @@ public partial class MainWindow : Window
     {
         using var conexion = BaseComun.Abrir(DocumentosGuardados.RutaBaseComun);
         var decisiones = new RepositorioCadenas(conexion).ListarDecisionesPendientes();
+        var modos = new RepositorioModosEsquema(conexion)
+            .ListarPendientes()
+            .ToDictionary(m => m.VersionId);
         ListaDecisionesPendientes.ItemsSource = decisiones
-            .Select(d => new DecisionPendienteFila(d))
+            .Select(d => new DecisionPendienteFila(d, modos.GetValueOrDefault(d.VersionId)))
             .ToList();
         TxtDecisionesPendientes.Text = $"Decisiones pendientes ({decisiones.Count})";
     }
 
     private static DecisionPendienteFila? FilaDecision(object sender) =>
         (sender as FrameworkElement)?.DataContext as DecisionPendienteFila;
+
+    private void BtnFijarModo_Click(object sender, RoutedEventArgs e)
+    {
+        var fila = FilaDecision(sender);
+        if (fila?.Modo is not { } decisionModo || sender is not FrameworkElement elemento)
+            return;
+        string nombreModo = elemento.Tag as string ?? string.Empty;
+        try
+        {
+            using var conexion = BaseComun.Abrir(DocumentosGuardados.RutaBaseComun);
+            var esquema =
+                new RepositorioEsquemas(conexion).ObtenerPorProveedor(decisionModo.Proveedor)
+                ?? throw new InvalidOperationException("No se encontró el esquema del proveedor.");
+            var modo =
+                esquema.Modos.SingleOrDefault(m => m.Nombre == nombreModo)
+                ?? throw new InvalidOperationException("El modo ya no está disponible.");
+            new RepositorioModosEsquema(conexion).FijarModo(decisionModo.CadenaId, modo.Id);
+            new EvaluadorAlertas(conexion).Evaluar();
+            var datos = ObtenerDatosPendientes(conexion, esquema, decisionModo.CadenaId, modo.Id);
+            fila.MarcarModoElegido(datos);
+            if (datos.Count == 0)
+                CargarDecisionesPendientes();
+        }
+        catch (Exception ex)
+        {
+            System.Windows.MessageBox.Show(
+                this,
+                ex.Message,
+                "Decisiones pendientes",
+                MessageBoxButton.OK,
+                MessageBoxImage.Warning
+            );
+        }
+    }
+
+    private static IReadOnlyList<string> ObtenerDatosPendientes(
+        Microsoft.Data.Sqlite.SqliteConnection conexion,
+        EsquemaCadena esquema,
+        long cadenaId,
+        long modoId
+    )
+    {
+        var ingresados = new RepositorioDatosCadena(conexion)
+            .Listar(cadenaId)
+            .Select(d => d.Nombre)
+            .ToHashSet(StringComparer.OrdinalIgnoreCase);
+        var datos = new List<string>();
+        foreach (
+            var regla in esquema
+                .ReglasAlerta.Where(r =>
+                    r.Tipo == "falta_dato" && (r.ModoId == modoId || r.ModoId is null)
+                )
+                .OrderBy(r => r.ModoId is null)
+        )
+        {
+            var parametros = JsonSerializer.Deserialize<ParametrosFaltaDato>(regla.ParametrosJson);
+            if (
+                !string.IsNullOrWhiteSpace(parametros?.Dato)
+                && !ingresados.Contains(parametros.Dato)
+                && !datos.Contains(parametros.Dato, StringComparer.OrdinalIgnoreCase)
+            )
+                datos.Add(parametros.Dato);
+        }
+        return datos;
+    }
+
+    private void BtnGuardarDatoCadena_Click(object sender, RoutedEventArgs e)
+    {
+        var fila = FilaDecision(sender);
+        if (
+            fila?.Modo is not { } modo
+            || fila.DatoPendiente is not { } nombre
+            || fila.FechaDato is not { } fecha
+        )
+            return;
+        try
+        {
+            using var conexion = BaseComun.Abrir(DocumentosGuardados.RutaBaseComun);
+            new RepositorioDatosCadena(conexion).GuardarFecha(
+                modo.CadenaId,
+                nombre,
+                DateOnly.FromDateTime(fecha)
+            );
+            fila.AvanzarDatoPendiente();
+            if (!fila.MostrarCapturaDato)
+                CargarDecisionesPendientes();
+        }
+        catch (Exception ex)
+        {
+            System.Windows.MessageBox.Show(
+                this,
+                ex.Message,
+                "Decisiones pendientes",
+                MessageBoxButton.OK,
+                MessageBoxImage.Warning
+            );
+        }
+    }
 
     private void BtnBuscarOrigen_Click(object sender, RoutedEventArgs e)
     {
