@@ -13,6 +13,7 @@ public sealed class EvaluadorAlertas(SqliteConnection conexion)
         {
             var alertas = new RepositorioAlertas(conexion);
             EvaluarReglasCadenasSimples(alertas, fechaHoy);
+            new EvaluadorAlertasEsquema(conexion).Evaluar(fechaHoy);
             EvaluarManuales(alertas, fechaHoy);
         }
         catch (Exception error)
