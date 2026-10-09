@@ -43,6 +43,29 @@ public sealed class AlmacenMensajeroTests : IDisposable
     }
 
     [Fact]
+    public void Guarda_y_busca_correos_del_proveedor_normalizado_y_actualiza_el_destinatario()
+    {
+        using var almacen = new AlmacenMensajero(RutaBase);
+
+        almacen.GuardarCorreosProveedor(
+            "  Proveedor   de Prueba ",
+            "uno@ejemplo.cl, dos@ejemplo.cl"
+        );
+        string destinatarioAutollenado = almacen.BuscarCorreosProveedor("PROVEEDOR DE PRUEBA");
+        Assert.Equal("uno@ejemplo.cl; dos@ejemplo.cl", destinatarioAutollenado);
+
+        almacen.GuardarCorreosProveedor("proveedor de prueba", "nuevo@ejemplo.cl");
+
+        Assert.Equal("nuevo@ejemplo.cl", almacen.BuscarCorreosProveedor("Proveedor de Prueba"));
+        Assert.Equal(
+            [new CorreoProveedor("PROVEEDOR DE PRUEBA", "nuevo@ejemplo.cl")],
+            almacen.LeerCorreosProveedores()
+        );
+        almacen.EliminarCorreosProveedor(" proveedor   de prueba ");
+        Assert.Empty(almacen.LeerCorreosProveedores());
+    }
+
+    [Fact]
     public void Importa_los_clientes_de_ofisuiza_sin_tocar_el_original()
     {
         string txt = ClientesTxt(

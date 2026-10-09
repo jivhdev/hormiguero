@@ -1,7 +1,45 @@
 HORMIGUERO - NOVEDADES PARA PROBAR (la versión exacta está en VERSION.txt)
 ===============================================================================
 
-LO MÁS NUEVO (07-10, tarde)
+LO MÁS NUEVO (09-10)
+== CADENAS POR PROVEEDOR (Buscadero → pestaña "Cadenas documentales") ==
+1) "Esquemas…" → "Nuevo": armas UNA VEZ el esquema de cada proveedor, paso a paso:
+   proveedor → documentos del proceso en orden (te muestra pistas de qué tipos ya comparten datos)
+   → cuáles INICIAN la cadena (uno o varios, ej. tu Nota de venta) → parejas 1 a 1 (ej. Guía ↔
+   Factura del proveedor por N° de guía) → modos (ej. Retiro / Despacho, opcional) → avisos → resumen.
+2) Desde ahí, cuando Archivero ingresa un documento de inicio, LA CADENA NACE SOLA; los demás
+   documentos que comparten un número entran solos a su lugar. "Ver cadenas" muestra el árbol:
+   documentos por lugar y las líneas guía ↔ factura; lo que falta se ve en gris.
+3) Si un número calza solo "limpio" (ej. 0111-10-25 vs 11025) va a "Dudosos" para que confirmes;
+   si calza tal como se lee, entra solo.
+4) AVISOS (botón en la misma pestaña): se configuran en el esquema. Tres tipos: "Falta ingresar un
+   dato" (ej. fecha de retiro), "Plazo entre documentos" (N días hábiles o corridos; desde la fecha
+   del documento o desde la fecha de retiro) y "Listo para…" (ej. listos para facturar). Rojo =
+   vencido, naranja = vence hoy o mañana. Cada cadena muestra "⚠ n".
+== ARCHIVERO ==
+- Paso 4 del asistente: el botón dice "Siguiente" (antes decía "Saltar": lo marcado SÍ se guardaba).
+- Diccionario: RUT y nombre de proveedor, cliente y de tu empresa (enlazables). En tus OC propias se
+  exige el proveedor; si no se puede leer, Archivero te lo pide (o queda en pendientes con
+  "Falta el proveedor").
+- Al copiar un dato siempre sale COMO SE LEE en el PDF (ej. 0111-10-25), no limpio.
+- "Decisiones pendientes" (sección nueva): documentos sin su origen ("Buscar el origen" / "Crear la
+  cadena igual" / "Solo archivar") y la pregunta del MODO ("¿Retiro o Despacho?") con un clic y la
+  fecha de retiro si corresponde.
+- Carpetas observadas: ya no hay globo de Windows; lo que llega queda en "Documentos pendientes de
+  ingresar".
+== BUSCADERO ==
+- "Seleccionar texto" ahora funciona (arrastra, Ctrl+C). Botones "Abrir en el visor" y "Copiar PDF".
+== MENSAJERO ==
+- Facturas: "Clientes…" para agregar/quitar correos y clientes; "Enviar a un cliente…" sin elegir
+  semana (cargas el Excel y listo; el asunto nombra los números de factura).
+- Copiar línea por línea: ahora Alt+Q.
+- "Envío conjunto de OCC": varias OCC del mismo proveedor en un correo. Asunto "OCC 1 2 3 NVV 1 2 3
+  OCL 1" y abajo el detalle de cada OCC; "Copiar todos los PDF". Recuerda el correo de cada
+  proveedor ("Correos de proveedores…").
+- OJO: "Reiniciar Hormiguero" conserva solo los clientes de Facturas; los correos de proveedores se
+  borran con el reinicio.
+
+ANTERIOR (07-10, tarde)
 - ARCHIVERO · CARPETAS OBSERVADAS (botón "Carpetas observadas", arriba) — para la carpeta de un
   proveedor que trae documentos de TODOS sus clientes: Archivero toma solo los tuyos y los ingresa a
   Hormiguero como si los hubieras archivado, SIN mover nada de esa carpeta.
@@ -30,7 +68,7 @@ LO MÁS NUEVO (07-10, tarde)
   Paso 4 otros datos (opcional, "Saltar") · Paso 5 dónde se guarda, con la vista previa abajo ·
   Paso 6 resumen e impresión. Arreglado: antes ninguna configuración nueva reconocía sola los
   documentos (faltaba la marca del título).
-- MENSAJERO: ajustador a 4 × 55; Alt+L copia la línea 1, luego la 2, la 3 y la 4 y vuelve a la 1
+- MENSAJERO: ajustador a 4 × 55; Alt+Q copia la línea 1, luego la 2, la 3 y la 4 y vuelve a la 1
   (avisa qué línea copió); mini calculadora (escribe "1.250.430 - 1.198.200" y ve el resultado).
 - BUSCADERO: "Carpeta específica" ahora muestra todas tus carpetas y sus subcarpetas (aunque el
   índice no haya terminado).

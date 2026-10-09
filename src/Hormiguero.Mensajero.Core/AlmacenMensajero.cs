@@ -31,7 +31,8 @@ public sealed class AlmacenMensajero : IDisposable
                 + "CREATE TABLE IF NOT EXISTS clientes_factura(rut TEXT PRIMARY KEY, razon_social TEXT NOT NULL, "
                 + "correo TEXT NOT NULL, activo INTEGER NOT NULL DEFAULT 1, creado TEXT NOT NULL, actualizado TEXT NOT NULL); "
                 + "CREATE TABLE IF NOT EXISTS estados_envio_factura(periodo TEXT NOT NULL, rut TEXT NOT NULL, "
-                + "enviado INTEGER NOT NULL DEFAULT 0, actualizado TEXT NOT NULL, PRIMARY KEY(periodo, rut));"
+                + "enviado INTEGER NOT NULL DEFAULT 0, actualizado TEXT NOT NULL, PRIMARY KEY(periodo, rut)); "
+                + "CREATE TABLE IF NOT EXISTS correos_proveedores(proveedor TEXT PRIMARY KEY, correos TEXT NOT NULL);"
         );
     }
 
@@ -62,6 +63,61 @@ public sealed class AlmacenMensajero : IDisposable
         comando.Parameters.AddWithValue("$clave", clave);
         comando.Parameters.AddWithValue("$valor", valor);
         comando.ExecuteNonQuery();
+    }
+
+    public IReadOnlyList<CorreoProveedor> LeerCorreosProveedores()
+    {
+        using var comando = conexion.CreateCommand();
+        comando.CommandText =
+            "SELECT proveedor, correos FROM correos_proveedores ORDER BY proveedor;";
+        using var lector = comando.ExecuteReader();
+        var lista = new List<CorreoProveedor>();
+        while (lector.Read())
+            lista.Add(new(lector.GetString(0), lector.GetString(1)));
+        return lista;
+    }
+
+    public string BuscarCorreosProveedor(string proveedor)
+    {
+        string clave = NormalizarProveedor(proveedor);
+        using var comando = conexion.CreateCommand();
+        comando.CommandText =
+            "SELECT correos FROM correos_proveedores WHERE proveedor = $proveedor;";
+        comando.Parameters.AddWithValue("$proveedor", clave);
+        return comando.ExecuteScalar() as string ?? "";
+    }
+
+    public void GuardarCorreosProveedor(string proveedor, string correos)
+    {
+        string clave = NormalizarProveedor(proveedor);
+        if (clave.Length == 0)
+            throw new FormatException("Ingresa el nombre del proveedor.");
+        string valor = ClickFactura.CorreoFactura.NormalizarParaGuardar(correos);
+        using var comando = conexion.CreateCommand();
+        comando.CommandText =
+            "INSERT INTO correos_proveedores(proveedor, correos) VALUES ($proveedor, $correos) "
+            + "ON CONFLICT(proveedor) DO UPDATE SET correos = excluded.correos;";
+        comando.Parameters.AddWithValue("$proveedor", clave);
+        comando.Parameters.AddWithValue("$correos", valor);
+        comando.ExecuteNonQuery();
+    }
+
+    public void EliminarCorreosProveedor(string proveedor)
+    {
+        using var comando = conexion.CreateCommand();
+        comando.CommandText = "DELETE FROM correos_proveedores WHERE proveedor = $proveedor;";
+        comando.Parameters.AddWithValue("$proveedor", NormalizarProveedor(proveedor));
+        comando.ExecuteNonQuery();
+    }
+
+    public static string NormalizarProveedor(string proveedor)
+    {
+        ArgumentNullException.ThrowIfNull(proveedor);
+        return string.Join(
+                ' ',
+                proveedor.Trim().Split((char[]?)null, StringSplitOptions.RemoveEmptyEntries)
+            )
+            .ToUpperInvariant();
     }
 
     /// <summary>Clientes NVV en su orden. Vacío si todavía no hay ninguno guardado.</summary>

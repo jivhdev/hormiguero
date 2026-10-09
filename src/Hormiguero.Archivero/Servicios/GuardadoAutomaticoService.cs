@@ -104,8 +104,9 @@ public static class GuardadoAutomaticoService
 
         if (FaltaProveedorLegible(rutaArchivo, configuracionConPatronCoincidente))
             return new ResultadoProcesamiento(
-                ResultadoGuardadoAutomatico.ValorInvalido,
-                Detalle: "Falta el proveedor"
+                ResultadoGuardadoAutomatico.ValidacionFallida,
+                Detalle: "Falta el proveedor",
+                MotivoValidacion: MotivoPendiente.FaltaProveedor
             );
 
         // Caso-11, punto 1: se pregunta antes que el período nuevo, para que el nombre confirmado
@@ -146,8 +147,9 @@ public static class GuardadoAutomaticoService
         }
         if (FaltaProveedorLegible(rutaArchivo, configuracionConPatronCoincidente))
             return new ResultadoProcesamiento(
-                ResultadoGuardadoAutomatico.ValorInvalido,
-                Detalle: "Falta el proveedor"
+                ResultadoGuardadoAutomatico.ValidacionFallida,
+                Detalle: "Falta el proveedor",
+                MotivoValidacion: MotivoPendiente.FaltaProveedor
             );
 
         var configuracionConNombre = configuracionConPatronCoincidente with
