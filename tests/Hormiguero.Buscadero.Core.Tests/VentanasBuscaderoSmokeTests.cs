@@ -61,6 +61,10 @@ public sealed class VentanasBuscaderoSmokeTests
                         new DialogoFeriados(),
                         new DialogoReglaAlerta(),
                         new DialogoCadenasSimples(),
+                        new DialogoVistaCadenas(),
+                        new DialogoEsquemaCadena(),
+                        new DialogoListaEsquemas(),
+                        new DialogoDudososCadena(1, "Prueba"),
                         new DialogoDudosos(),
                     ];
                     foreach (var ventana in ventanas)

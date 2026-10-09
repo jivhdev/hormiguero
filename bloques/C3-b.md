@@ -27,3 +27,13 @@ Lee **completo** `definicion/DISENO-C3-ESQUEMAS-Y-ALERTAS.md` (§3 pasos 1-4 y 7
 Reglas: eventos XAML en `InitializeComponent`; tema claro/oscuro; 1366×768 (scroll dentro, botones visibles); español neutro; errores visibles sin cerrar la app. Pruebas: lógica en Buscadero.Core (pares de tipos que comparten datos; validaciones del asistente: proveedor, al menos un lugar, al menos un inicio, pareja con dato común; armado del modelo de árbol con líneas para la vista); prueba STA que abre el asistente y la vista con datos sintéticos. `dotnet build` sin advertencias; `dotnet test` todo pasa; `dotnet csharpier check .` sin errores en tus archivos. Si algo no está definido, elige lo más simple para un oficinista, anótalo y sigue. Reporte al final con la lista de pantallas.
 
 ## Reporte del agente
+
+Implementé el asistente de esquema y la vista de cadenas dentro de Buscadero. El asistente tiene cinco pantallas: proveedor; documentos del proceso y datos enlazables compartidos; tipos que inician; parejas 1 a 1; y resumen con ejemplo de árbol y acciones para cambiar cada paso. Permite crear y editar el esquema por proveedor. La lista de esquemas ofrece Nuevo, Editar y Desactivar.
+
+La vista de cadenas filtra por proveedor, cliente y estado, y agrupa por proveedor o cliente. Muestra el árbol por lugar, documentos con tipo, número y fecha disponible, lugares vacíos como “Falta” y la línea de las parejas. Al seleccionar una tarjeta se abre en el visor de Buscadero; con doble clic se abre con la aplicación predeterminada. Quitar de la cadena pide confirmación. Dudosos muestra las propuestas de la cadena seleccionada y permite aceptar o rechazar cada una. El buscador maestro conserva los filtros de proveedor y cliente y “Ver cadena” lleva a la cadena seleccionada.
+
+Añadí a Buscadero.Core las consultas necesarias para mostrar tipos que comparten datos enlazables y para filtrar cadenas por cliente, más validaciones del asistente y armado del modelo de árbol. Añadí pruebas de validación, lugares vacíos y parejas, y extendí la prueba STA para abrir la vista, el asistente y la lista de esquemas con datos temporales.
+
+Pantallas incluidas: cadenas y árbol; lista de esquemas; asistente de cinco pasos; buscador maestro con acceso a la cadena.
+
+Verificación: `dotnet test` pasó todas las suites, incluida Buscadero Core (120/120). `dotnet csharpier check .` pasó (322 archivos). `dotnet build` de la solución pasó con 0 advertencias y 0 errores; el proyecto Buscadero también pasó su compilación dirigida. No se modificaron archivos fuera del alcance.
