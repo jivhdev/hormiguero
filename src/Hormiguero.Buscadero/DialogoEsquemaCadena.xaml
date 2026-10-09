@@ -135,6 +135,32 @@
         </WrapPanel>
         <ListBox x:Name="Parejas" />
       </StackPanel>
+      <StackPanel x:Name="PasoModos" Visibility="Collapsed">
+        <TextBlock
+          Text="Por ejemplo Retiro o Despacho: cada modo puede tener avisos distintos."
+          TextWrapping="Wrap"
+        />
+        <WrapPanel Margin="0,8">
+          <TextBox x:Name="NuevoModo" Width="220" />
+          <Button Content="Agregar" Click="AgregarModo_Click" Margin="6,0" />
+          <Button Content="Quitar" Click="QuitarModo_Click" />
+        </WrapPanel>
+        <ListBox x:Name="Modos" Height="150" DisplayMemberPath="." />
+        <TextBlock Text="¿Qué documento decide el modo?" Margin="0,12,0,4" />
+        <ComboBox x:Name="LugarDecideModo" DisplayMemberPath="Nombre" SelectedValuePath="Orden" />
+      </StackPanel>
+      <StackPanel x:Name="PasoAvisos" Visibility="Collapsed">
+        <TextBlock
+          Text="Configure avisos por lugar y modo. La frase completa se guarda para revisar."
+          TextWrapping="Wrap"
+        />
+        <WrapPanel Margin="0,8">
+          <Button Content="Agregar aviso…" Click="AgregarAviso_Click" Margin="0,0,6,0" />
+          <Button Content="Editar" Click="EditarAviso_Click" Margin="0,0,6,0" />
+          <Button Content="Quitar" Click="QuitarAviso_Click" />
+        </WrapPanel>
+        <ListBox x:Name="Avisos" Height="300" DisplayMemberPath="Frase" />
+      </StackPanel>
       <ScrollViewer x:Name="PasoResumen" Visibility="Collapsed" VerticalScrollBarVisibility="Auto">
         <StackPanel>
           <TextBlock x:Name="Resumen" TextWrapping="Wrap" />
@@ -143,6 +169,8 @@
             <Button Content="Cambiar documentos" Tag="2" Click="Cambiar_Click" Margin="0,0,6,4" />
             <Button Content="Cambiar inicios" Tag="3" Click="Cambiar_Click" Margin="0,0,6,4" />
             <Button Content="Cambiar parejas" Tag="4" Click="Cambiar_Click" Margin="0,0,6,4" />
+            <Button Content="Cambiar modos" Tag="5" Click="Cambiar_Click" Margin="0,0,6,4" />
+            <Button Content="Cambiar avisos" Tag="6" Click="Cambiar_Click" Margin="0,0,6,4" />
           </WrapPanel>
           <TextBlock Text="Ejemplo del árbol" FontWeight="Bold" Margin="0,12,0,5" />
           <ItemsControl x:Name="DibujoArbol" />

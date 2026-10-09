@@ -59,6 +59,10 @@ public sealed class VentanasBuscaderoSmokeTests
                             Hormiguero.Nucleo.Datos.DocumentosGuardados.RutaBaseComun,
                             _ => { }
                         ),
+                        new DialogoAvisos(
+                            Hormiguero.Nucleo.Datos.DocumentosGuardados.RutaBaseComun,
+                            _ => { }
+                        ),
                         new DialogoCalculadoraFechas(),
                         new DialogoFeriados(),
                         new DialogoReglaAlerta(),
@@ -196,6 +200,21 @@ public sealed class VentanasBuscaderoSmokeTests
                         .SetValue(inicios.Items[0], true);
                     Pulsar(dialogo, "Siguiente");
                     Pulsar(dialogo, "Siguiente");
+                    Assert.Equal(
+                        "Paso 5 de 7",
+                        Assert.IsType<TextBlock>(dialogo.FindName("NumeroPaso")).Text
+                    );
+                    Pulsar(dialogo, "Siguiente");
+                    Assert.Equal(
+                        "Paso 6 de 7",
+                        Assert.IsType<TextBlock>(dialogo.FindName("NumeroPaso")).Text
+                    );
+                    Assert.IsType<ListBox>(dialogo.FindName("Avisos"));
+                    Pulsar(dialogo, "Siguiente");
+                    Assert.Equal(
+                        "Paso 7 de 7",
+                        Assert.IsType<TextBlock>(dialogo.FindName("NumeroPaso")).Text
+                    );
                     Pulsar(dialogo, "Guardar");
                 }
                 catch (Exception excepcion)
@@ -221,6 +240,19 @@ public sealed class VentanasBuscaderoSmokeTests
             new[] { ordenId, facturaId },
             esquema.Lugares.OrderBy(l => l.Orden).Select(l => l.IdentificacionId)
         );
+        var esquemas = new Hormiguero.Nucleo.Datos.RepositorioEsquemas(conexionFinal);
+        esquemas.GuardarReglaAlerta(
+            esquema.Id,
+            0,
+            null,
+            "falta_dato",
+            "{\"dato\":\"Fecha de retiro\",\"texto\":\"Ingresar fecha de retiro\"}"
+        );
+        using var cadena = conexionFinal.CreateCommand();
+        cadena.CommandText =
+            "INSERT INTO cadenas(modelo_id,nombre_modelo_origen,nombre,fecha_creacion,estructura_json,proveedor,cliente,esquema_id) VALUES(NULL,NULL,'Cadena sintética','2026-10-09','{}','PROVEEDOR DEMO SPA','Cliente de prueba',$esquema);";
+        cadena.Parameters.AddWithValue("$esquema", esquema.Id);
+        cadena.ExecuteNonQuery();
     }
 
     private static string TextoTipo(object tipo) =>

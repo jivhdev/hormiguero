@@ -1,0 +1,96 @@
+<Window
+  x:Class="Buscadero.App.DialogoAvisos"
+  xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+  xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+  Title="Avisos"
+  Width="1100"
+  Height="680"
+  MinWidth="850"
+  MinHeight="560"
+  Background="{DynamicResource Hormiguero.Fondo}"
+  Foreground="{DynamicResource Hormiguero.Texto}"
+>
+  <Grid Margin="16">
+    <Grid.RowDefinitions>
+      <RowDefinition Height="Auto" />
+      <RowDefinition Height="*" />
+      <RowDefinition Height="Auto" />
+    </Grid.RowDefinitions>
+    <WrapPanel Grid.Row="0" Margin="0,0,0,8">
+      <TextBox
+        x:Name="Proveedor"
+        Width="150"
+        Margin="0,0,6,0"
+        ToolTip="Proveedor"
+        TextChanged="Filtro_Changed"
+      />
+      <TextBox
+        x:Name="Cliente"
+        Width="150"
+        Margin="0,0,6,0"
+        ToolTip="Cliente"
+        TextChanged="Filtro_Changed"
+      />
+      <TextBox
+        x:Name="Cadena"
+        Width="170"
+        Margin="0,0,6,0"
+        ToolTip="Cadena"
+        TextChanged="Filtro_Changed"
+      />
+      <ComboBox x:Name="Tipo" Width="180" SelectedIndex="0" SelectionChanged="Filtro_Changed">
+        <ComboBoxItem Content="Todos los tipos" />
+        <ComboBoxItem Content="Falta ingresar un dato" />
+        <ComboBoxItem Content="Plazo entre documentos" />
+        <ComboBoxItem Content="Listo para…" />
+      </ComboBox>
+      <Button Content="Actualizar" Click="Actualizar_Click" Margin="8,0,0,0" Padding="12,5" />
+    </WrapPanel>
+    <TabControl Grid.Row="1">
+      <TabItem Header="Avisos">
+        <DataGrid
+          x:Name="Lista"
+          AutoGenerateColumns="False"
+          IsReadOnly="True"
+          CanUserAddRows="False"
+          MouseDoubleClick="Lista_DoubleClick"
+        >
+          <DataGrid.RowStyle>
+            <Style TargetType="DataGridRow">
+              <Setter Property="Foreground" Value="{Binding ColorUrgencia}" />
+            </Style>
+          </DataGrid.RowStyle>
+          <DataGrid.Columns>
+            <DataGridTextColumn Header="Urgencia" Binding="{Binding UrgenciaTexto}" Width="110" />
+            <DataGridTextColumn Header="Aviso" Binding="{Binding Texto}" Width="2*" />
+            <DataGridTextColumn Header="Proveedor" Binding="{Binding Proveedor}" Width="*" />
+            <DataGridTextColumn Header="Cliente" Binding="{Binding Cliente}" Width="*" />
+            <DataGridTextColumn Header="Cadena" Binding="{Binding CadenaTexto}" Width="*" />
+            <DataGridTextColumn Header="Vencimiento" Binding="{Binding Vence}" Width="*" />
+          </DataGrid.Columns>
+        </DataGrid>
+      </TabItem>
+      <TabItem Header="Listos para…">
+        <DataGrid
+          x:Name="Listos"
+          AutoGenerateColumns="False"
+          IsReadOnly="True"
+          CanUserAddRows="False"
+          MouseDoubleClick="Listos_DoubleClick"
+        >
+          <DataGrid.Columns>
+            <DataGridTextColumn Header="Lista" Binding="{Binding Lista}" Width="2*" />
+            <DataGridTextColumn Header="Proveedor" Binding="{Binding Proveedor}" Width="*" />
+            <DataGridTextColumn Header="Cliente" Binding="{Binding Cliente}" Width="*" />
+            <DataGridTextColumn Header="Cadena" Binding="{Binding CadenaTexto}" Width="*" />
+            <DataGridTextColumn Header="Línea" Binding="{Binding Alcance}" Width="*" />
+          </DataGrid.Columns>
+        </DataGrid>
+      </TabItem>
+    </TabControl>
+    <DockPanel Grid.Row="2" Margin="0,8,0,0">
+      <TextBlock x:Name="Estado" VerticalAlignment="Center" TextWrapping="Wrap" />
+      <Button Content="Descartar" Click="Descartar_Click" DockPanel.Dock="Right" Padding="12,6" />
+    </DockPanel>
+  </Grid>
+</Window>
