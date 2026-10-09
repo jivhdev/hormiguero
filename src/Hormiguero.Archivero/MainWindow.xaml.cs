@@ -38,6 +38,15 @@ public record PendienteReconocerFila(ArchivoPendiente Pendiente)
         };
 }
 
+public record DecisionPendienteFila(DecisionPendienteCadena Decision)
+{
+    public long VersionId => Decision.VersionId;
+    public string Documento => Decision.Documento;
+    public string TipoProveedor => $"{Decision.Tipo} · {Decision.Proveedor}";
+    public string Explicacion =>
+        $"Pertenece al esquema de {Decision.Proveedor} pero no se encontró su documento de origen (menciona {Decision.DatoMencionado} {Decision.NumeroMencionado}).";
+}
+
 public partial class MainWindow : Window
 {
     private readonly PendienteRepository _pendientes = new();
@@ -109,6 +118,7 @@ public partial class MainWindow : Window
         _bandeja.SalirSolicitado += () => Dispatcher.Invoke(SalirDeVerdad);
 
         CargarPendientes();
+        CargarDecisionesPendientes();
         CargarGuardadosRecientes();
         CargarObservados();
         CargarPorAtender();
@@ -201,6 +211,117 @@ public partial class MainWindow : Window
         _bandeja.ActualizarPendientes(pendientes.Count > 0);
     }
 
+    private void CargarDecisionesPendientes()
+    {
+        using var conexion = BaseComun.Abrir(DocumentosGuardados.RutaBaseComun);
+        var decisiones = new RepositorioCadenas(conexion).ListarDecisionesPendientes();
+        ListaDecisionesPendientes.ItemsSource = decisiones
+            .Select(d => new DecisionPendienteFila(d))
+            .ToList();
+        TxtDecisionesPendientes.Text = $"Decisiones pendientes ({decisiones.Count})";
+    }
+
+    private static DecisionPendienteFila? FilaDecision(object sender) =>
+        (sender as FrameworkElement)?.DataContext as DecisionPendienteFila;
+
+    private void BtnBuscarOrigen_Click(object sender, RoutedEventArgs e)
+    {
+        var fila = FilaDecision(sender);
+        if (fila is null || string.IsNullOrWhiteSpace(fila.Decision.NumeroMencionado))
+            return;
+        string numero = fila.Decision.NumeroMencionado;
+        string buscadero = Path.Combine(AppContext.BaseDirectory, "Buscadero.exe");
+        try
+        {
+            if (File.Exists(buscadero))
+            {
+                var inicio = new System.Diagnostics.ProcessStartInfo(buscadero)
+                {
+                    UseShellExecute = true,
+                };
+                inicio.ArgumentList.Add(numero);
+                System.Diagnostics.Process.Start(inicio);
+                return;
+            }
+        }
+        catch
+        {
+            // Si Buscadero no puede abrirse, se facilita la búsqueda manual con el mismo número.
+        }
+
+        try
+        {
+            System.Windows.Clipboard.SetText(numero);
+            System.Windows.MessageBox.Show(
+                this,
+                $"No se pudo abrir Buscadero. Se copió {fila.Decision.DatoMencionado} {numero}; búscalo en Buscadero. La decisión seguirá pendiente hasta que se resuelva.",
+                "Decisiones pendientes",
+                MessageBoxButton.OK,
+                MessageBoxImage.Information
+            );
+        }
+        catch (Exception ex)
+        {
+            System.Windows.MessageBox.Show(
+                this,
+                $"No se pudo abrir Buscadero ni copiar el número {numero}: {ex.Message}",
+                "Decisiones pendientes",
+                MessageBoxButton.OK,
+                MessageBoxImage.Warning
+            );
+        }
+    }
+
+    private void BtnCrearCadenaIgual_Click(object sender, RoutedEventArgs e)
+    {
+        var fila = FilaDecision(sender);
+        if (fila is null)
+            return;
+        try
+        {
+            using var conexion = BaseComun.Abrir(DocumentosGuardados.RutaBaseComun);
+            var resultado = new MotorCadenas(conexion).CrearCadenaIgual(fila.VersionId);
+            if (resultado.Estado != "cadena_creada")
+                throw new InvalidOperationException(
+                    resultado.Motivo ?? "No se pudo crear la cadena."
+                );
+            CargarDecisionesPendientes();
+        }
+        catch (Exception ex)
+        {
+            System.Windows.MessageBox.Show(
+                this,
+                ex.Message,
+                "Decisiones pendientes",
+                MessageBoxButton.OK,
+                MessageBoxImage.Warning
+            );
+        }
+    }
+
+    private void BtnArchivarSinCadena_Click(object sender, RoutedEventArgs e)
+    {
+        var fila = FilaDecision(sender);
+        if (fila is null)
+            return;
+        try
+        {
+            using var conexion = BaseComun.Abrir(DocumentosGuardados.RutaBaseComun);
+            new MotorCadenas(conexion).ArchivarSinCadena(fila.VersionId);
+            CargarDecisionesPendientes();
+        }
+        catch (Exception ex)
+        {
+            System.Windows.MessageBox.Show(
+                this,
+                ex.Message,
+                "Decisiones pendientes",
+                MessageBoxButton.OK,
+                MessageBoxImage.Warning
+            );
+        }
+    }
+
     private void AgregarAGuardadosRecientes(string rutaFinal)
     {
         _guardadosRecientes.Agregar(rutaFinal);
@@ -210,6 +331,18 @@ public partial class MainWindow : Window
         TiempoAhorradoService.RegistrarDocumentoArchivado(_configuracion);
         CargarGuardadosRecientes();
         CargarTiempoAhorrado();
+        _ = Task.Run(async () =>
+        {
+            try
+            {
+                await (PublicadorDatosDocumentoService.UltimaRevisionEnlaces ?? Task.CompletedTask);
+                Dispatcher.Invoke(CargarDecisionesPendientes);
+            }
+            catch
+            {
+                // La lista se volverá a cargar al abrir Archivero o resolver otra decisión.
+            }
+        });
     }
 
     private void CargarGuardadosRecientes()
@@ -285,6 +418,7 @@ public partial class MainWindow : Window
         {
             BtnReprocesarPendientes.IsEnabled = true;
             CargarPendientes();
+            CargarDecisionesPendientes();
         }
     }
 

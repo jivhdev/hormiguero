@@ -129,6 +129,82 @@ public sealed class EsquemasCadenaTests : IDisposable
     }
 
     [Fact]
+    public void Decision_sin_piso_se_puede_crear_como_cadena_igual()
+    {
+        CrearEsquema("P-1");
+        long version = CrearVersion(
+            "igual.pdf",
+            "Documento P1",
+            "Recibido",
+            ("rut_proveedor", "P-1", true),
+            ("oc_propia", "20417", true)
+        );
+        var motor = new MotorCadenas(_conexion);
+        Assert.Equal("sin_piso", motor.ProcesarVersion(version).Estado);
+        var decision = Assert.Single(
+            new RepositorioCadenas(_conexion).ListarDecisionesPendientes()
+        );
+        Assert.Equal("20417", decision.NumeroMencionado);
+        Assert.Equal("Documento P1", decision.Tipo);
+
+        var resultado = motor.CrearCadenaIgual(version);
+        Assert.Equal("cadena_creada", resultado.Estado);
+        Assert.Empty(new RepositorioCadenas(_conexion).ListarDecisionesPendientes());
+        Assert.Single(new RepositorioCadenas(_conexion).ArbolPorLugares(resultado.CadenaId!.Value));
+    }
+
+    [Fact]
+    public void Solo_archivar_resuelve_decision_sin_crear_cadena()
+    {
+        CrearEsquema("P-1");
+        long version = CrearVersion(
+            "archivar.pdf",
+            "Documento P1",
+            "Recibido",
+            ("rut_proveedor", "P-1", true),
+            ("oc_propia", "20418", true)
+        );
+        var motor = new MotorCadenas(_conexion);
+        Assert.Equal("sin_piso", motor.ProcesarVersion(version).Estado);
+
+        Assert.True(motor.ArchivarSinCadena(version));
+        Assert.Empty(new RepositorioCadenas(_conexion).ListarDecisionesPendientes());
+        Assert.Empty(new RepositorioCadenas(_conexion).ListarPorProveedor("P-1"));
+    }
+
+    [Fact]
+    public void Al_llegar_origen_reprocesa_version_pendiente_y_cierra_decision()
+    {
+        CrearEsquema("P-1");
+        long pendiente = CrearVersion(
+            "pendiente.pdf",
+            "Documento P1",
+            "Recibido",
+            ("rut_proveedor", "P-1", true),
+            ("oc_propia", "20419", true)
+        );
+        var motor = new MotorCadenas(_conexion);
+        Assert.Equal("sin_piso", motor.ProcesarVersion(pendiente).Estado);
+
+        long origen = CrearVersion(
+            "origen.pdf",
+            "NVV",
+            "Emitido",
+            ("rut_proveedor", "P-1", true),
+            ("nota_venta_propia", "NV-20419", true),
+            ("oc_propia", "20419", true)
+        );
+        var resultado = motor.ProcesarVersion(origen);
+
+        Assert.Equal("cadena_creada", resultado.Estado);
+        Assert.Empty(new RepositorioCadenas(_conexion).ListarDecisionesPendientes());
+        Assert.Contains(
+            new RepositorioCadenas(_conexion).ArbolPorLugares(resultado.CadenaId!.Value),
+            documento => documento.VersionId == pendiente
+        );
+    }
+
+    [Fact]
     public void Proveedor_sin_esquema_no_crea_cadena_y_hay_un_esquema_por_proveedor()
     {
         long version = CrearVersion(
