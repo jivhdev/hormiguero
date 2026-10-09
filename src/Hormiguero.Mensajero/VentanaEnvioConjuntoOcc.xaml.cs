@@ -14,12 +14,15 @@ namespace Hormiguero.Mensajero.App;
 public partial class VentanaEnvioConjuntoOcc : Window
 {
     private readonly string carpetaOcc;
+    private readonly AlmacenMensajero almacen;
     private readonly ObservableCollection<OccEnvioConjunto> ordenes = [];
+    private string? proveedorDestinatarioActual;
 
-    public VentanaEnvioConjuntoOcc(string carpetaOcc)
+    public VentanaEnvioConjuntoOcc(string carpetaOcc, AlmacenMensajero almacen)
     {
         InitializeComponent();
         this.carpetaOcc = carpetaOcc;
+        this.almacen = almacen;
         ListaOrdenes.ItemsSource = ordenes;
         ordenes.CollectionChanged += Ordenes_CollectionChanged;
         ActualizarVista();
@@ -102,6 +105,15 @@ public partial class VentanaEnvioConjuntoOcc : Window
                 return;
             }
 
+            if (ordenes.Count == 0)
+            {
+                string clave = AlmacenMensajero.NormalizarProveedor(proveedor);
+                if (proveedorDestinatarioActual != clave)
+                {
+                    CampoDestinatario.Text = almacen.BuscarCorreosProveedor(proveedor);
+                    proveedorDestinatarioActual = clave;
+                }
+            }
             ordenes.Add(nueva);
             MostrarAviso($"OCC {datos.Occ} agregada.");
         }
@@ -156,7 +168,16 @@ public partial class VentanaEnvioConjuntoOcc : Window
             return;
         }
 
-        CopiarTexto(CampoDestinatario.Text.Trim(), "Destinatario copiado.");
+        try
+        {
+            string correos = CorreoFactura.NormalizarParaGuardar(CampoDestinatario.Text);
+            CopiarTexto(correos, "Destinatario copiado.");
+            RecordarCorreoProveedor(correos);
+        }
+        catch (FormatException excepcion)
+        {
+            MostrarAviso(excepcion.Message);
+        }
     }
 
     private void CopiarAsunto_Click(object sender, RoutedEventArgs e) =>
@@ -179,12 +200,14 @@ public partial class VentanaEnvioConjuntoOcc : Window
 
         try
         {
+            string correos = CorreoFactura.NormalizarParaGuardar(CampoDestinatario.Text);
             UrlGmailFactura resultado = GeneradorUrlGmailFactura.Generar(
-                [CampoDestinatario.Text.Trim()],
+                CorreoFactura.Separar(correos),
                 CampoAsunto.Text,
                 PrepararCuerpoCorreo(CampoCuerpo.Text)
             );
             Process.Start(new ProcessStartInfo(resultado.Url) { UseShellExecute = true });
+            RecordarCorreoProveedor(correos);
             MostrarAviso(
                 resultado.OmitioCuerpo
                     ? "Gmail abierto. Copia el cuerpo y los PDF antes de enviar."
@@ -230,6 +253,14 @@ public partial class VentanaEnvioConjuntoOcc : Window
 
     private static string PrepararCuerpoCorreo(string texto) =>
         string.IsNullOrEmpty(texto) ? string.Empty : texto.TrimEnd() + "\r\n\r\n";
+
+    private void RecordarCorreoProveedor(string correos)
+    {
+        if (ordenes.Count == 0 || string.IsNullOrWhiteSpace(CampoDestinatario.Text))
+            return;
+        almacen.GuardarCorreosProveedor(ordenes[0].Proveedor, correos);
+        proveedorDestinatarioActual = AlmacenMensajero.NormalizarProveedor(ordenes[0].Proveedor);
+    }
 
     private void CopiarTexto(string texto, string aviso)
     {
