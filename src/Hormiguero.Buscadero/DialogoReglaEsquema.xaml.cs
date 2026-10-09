@@ -1,5 +1,7 @@
 using System.Text.Json;
 using System.Windows;
+using System.Windows.Controls;
+using System.Windows.Media;
 using Buscadero.Core.Alertas;
 using Hormiguero.Nucleo.Datos;
 
@@ -56,11 +58,8 @@ public partial class DialogoReglaEsquema : Window
         Calendario.SelectedItem = calendarios.FirstOrDefault(c => c.Predeterminado);
         if (lugares.Count > 0)
         {
-            LugarRegla.SelectedIndex =
-                DesdeLugar.SelectedIndex =
-                Hasta.SelectedIndex =
-                Cuando.SelectedIndex =
-                    0;
+            LugarRegla.SelectedIndex = DesdeLugar.SelectedIndex = Cuando.SelectedIndex = 0;
+            Hasta.SelectedIndex = Hasta.Items.Count > 1 ? 1 : 0;
         }
         Condicion.SelectedIndex = 0;
         CondicionListo.ItemsSource = Condicion.ItemsSource;
@@ -214,8 +213,39 @@ public partial class DialogoReglaEsquema : Window
         FaltaTexto.Visibility = _tipoSeleccionado == 0 ? Visibility.Visible : Visibility.Collapsed;
         PlazoCampos.Visibility = _tipoSeleccionado == 1 ? Visibility.Visible : Visibility.Collapsed;
         ListoCampos.Visibility = _tipoSeleccionado == 2 ? Visibility.Visible : Visibility.Collapsed;
+        LugarPanel.Visibility = _tipoSeleccionado == 0 ? Visibility.Visible : Visibility.Collapsed;
+        ResaltarTarjetas();
         ActualizarTextoSugerido();
         Actualizar();
+    }
+
+    private static Brush BordeActivo() =>
+        Application.Current?.TryFindResource("Hormiguero.Acento") as Brush ?? Brushes.Transparent;
+
+    private void ResaltarTarjetas()
+    {
+        var bordeActivo = BordeActivo();
+        var tarjetas = new (Button boton, int indice)[]
+        {
+            (TipoFalta, 0),
+            (TipoPlazo, 1),
+            (TipoListo, 2),
+        };
+        foreach (var (boton, indice) in tarjetas)
+        {
+            if (indice == _tipoSeleccionado)
+            {
+                boton.BorderBrush = bordeActivo;
+                boton.BorderThickness = new Thickness(2);
+                boton.FontWeight = FontWeights.Bold;
+            }
+            else
+            {
+                boton.ClearValue(Button.BorderBrushProperty);
+                boton.ClearValue(Button.BorderThicknessProperty);
+                boton.ClearValue(Button.FontWeightProperty);
+            }
+        }
     }
 
     private string TipoActual() =>
