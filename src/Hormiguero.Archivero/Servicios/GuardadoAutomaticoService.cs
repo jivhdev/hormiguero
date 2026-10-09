@@ -102,6 +102,12 @@ public static class GuardadoAutomaticoService
             );
         }
 
+        if (FaltaProveedorLegible(rutaArchivo, configuracionConPatronCoincidente))
+            return new ResultadoProcesamiento(
+                ResultadoGuardadoAutomatico.ValorInvalido,
+                Detalle: "Falta el proveedor"
+            );
+
         // Caso-11, punto 1: se pregunta antes que el período nuevo, para que el nombre confirmado
         // llegue también a la pantalla de crear período (si no, guardaría con el nombre original).
         if (configuracionConPatronCoincidente.PreguntarNombre)
@@ -138,6 +144,11 @@ public static class GuardadoAutomaticoService
                 Detalle: error
             );
         }
+        if (FaltaProveedorLegible(rutaArchivo, configuracionConPatronCoincidente))
+            return new ResultadoProcesamiento(
+                ResultadoGuardadoAutomatico.ValorInvalido,
+                Detalle: "Falta el proveedor"
+            );
 
         var configuracionConNombre = configuracionConPatronCoincidente with
         {
@@ -274,6 +285,34 @@ public static class GuardadoAutomaticoService
 
     private static RectanguloFraccion ARect(Marca marca) =>
         new(marca.X, marca.Y, marca.Ancho, marca.Alto);
+
+    private static bool FaltaProveedorLegible(
+        string rutaArchivo,
+        ConfiguracionDocumento configuracion
+    )
+    {
+        if (!AsistenteClasificacionService.EsCompraPropiaPorTipo(configuracion.Tipo))
+            return false;
+        var patron = configuracion.Patrones.FirstOrDefault();
+        if (patron is null)
+            return true;
+        var datos = DatosEnlazantesConfiguracionService
+            .Leer(configuracion.Emisor, configuracion.Tipo, patron.Id)
+            .Where(d =>
+                d.Incluido && d.Marcado && AsistenteClasificacionService.EsDatoProveedor(d.Id)
+            )
+            .Select(d =>
+                (
+                    d.Id,
+                    LectorPdf.ExtraerTexto(
+                        rutaArchivo,
+                        d.Pagina,
+                        new RectanguloFraccion(d.X, d.Y, d.Ancho, d.Alto)
+                    )
+                )
+            );
+        return !AsistenteClasificacionService.TieneProveedorLegible(datos);
+    }
 
     /// <summary>
     /// Caso-1, punto 5: reemplaza la apertura automática que hacía PDFCreator antes de que

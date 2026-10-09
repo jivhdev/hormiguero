@@ -297,6 +297,17 @@ public sealed class DatosEnlazantesConfiguracionServiceTests
             comando.CommandText =
                 "SELECT dato_diccionario_id FROM valores_documento WHERE valor_original='45001';";
             Assert.Equal(diccionario.Id, comando.ExecuteScalar());
+
+            PublicadorDatosDocumentoService.PublicarGuardado(
+                archivo,
+                config,
+                new CamposExtraidos(null, null),
+                "Proveedor manual"
+            );
+            await (PublicadorDatosDocumentoService.UltimaRevisionEnlaces ?? Task.CompletedTask);
+            comando.CommandText =
+                "SELECT origen FROM valores_documento WHERE dato_diccionario_id='nombre_proveedor' AND valor_original='Proveedor manual';";
+            Assert.Equal("manual", comando.ExecuteScalar());
         }
         finally
         {
