@@ -1,4 +1,5 @@
 using System.Collections.ObjectModel;
+using System.Diagnostics;
 using System.IO;
 using System.Runtime.InteropServices;
 using System.Windows;
@@ -7,6 +8,7 @@ using System.Windows.Input;
 using System.Windows.Threading;
 using Hormiguero.Diseno;
 using Hormiguero.Mensajero.Core;
+using Hormiguero.Mensajero.Core.ClickFactura;
 using Hormiguero.Nucleo.Datos;
 using Microsoft.Win32;
 
@@ -21,6 +23,7 @@ public partial class VentanaPrincipal : Window
     private string carpetaOcc;
     private string? rutaUltimoPdf;
     private string? rutaEncontradaExtractor;
+    private string? proveedorDestinatarioActual;
     private string? rutaPdfGuia;
     private readonly ObservableCollection<OrdenRetiro> ordenesRetiro = [];
     private bool editorAbierto;
@@ -28,6 +31,7 @@ public partial class VentanaPrincipal : Window
     private VentanaEnvioConjuntoOcc? ventanaEnvioConjuntoOcc;
     private VentanaPlantillas? ventanaPlantillas;
     private VentanaCodigosExcel? ventanaCodigosExcel;
+    private VentanaCorreosProveedores? ventanaCorreosProveedores;
     private int lineasAjustador;
     private int anchoAjustador;
     private int indiceLineaAjustador;
@@ -176,7 +180,10 @@ public partial class VentanaPrincipal : Window
     {
         if (ventanaEnvioConjuntoOcc is null)
         {
-            ventanaEnvioConjuntoOcc = new VentanaEnvioConjuntoOcc(carpetaOcc) { Owner = this };
+            ventanaEnvioConjuntoOcc = new VentanaEnvioConjuntoOcc(carpetaOcc, almacen)
+            {
+                Owner = this,
+            };
             ventanaEnvioConjuntoOcc.Closed += (_, _) => ventanaEnvioConjuntoOcc = null;
             ventanaEnvioConjuntoOcc.Show();
             return;
@@ -185,6 +192,74 @@ public partial class VentanaPrincipal : Window
         if (ventanaEnvioConjuntoOcc.WindowState == WindowState.Minimized)
             ventanaEnvioConjuntoOcc.WindowState = WindowState.Normal;
         ventanaEnvioConjuntoOcc.Activate();
+    }
+
+    private void CorreosProveedores_Click(object sender, RoutedEventArgs e)
+    {
+        if (ventanaCorreosProveedores is null)
+        {
+            ventanaCorreosProveedores = new VentanaCorreosProveedores(almacen) { Owner = this };
+            ventanaCorreosProveedores.Closed += (_, _) => ventanaCorreosProveedores = null;
+            ventanaCorreosProveedores.Show();
+            return;
+        }
+        if (ventanaCorreosProveedores.WindowState == WindowState.Minimized)
+            ventanaCorreosProveedores.WindowState = WindowState.Normal;
+        ventanaCorreosProveedores.Activate();
+    }
+
+    private void AbrirOccEnGmail_Click(object sender, RoutedEventArgs e)
+    {
+        string? ruta = rutaEncontradaExtractor ?? rutaUltimoPdf;
+        if (string.IsNullOrWhiteSpace(ruta) || string.IsNullOrWhiteSpace(CampoDestinatarioOcc.Text))
+        {
+            MostrarToast("Selecciona una OCC e ingresa el correo del proveedor", "warning");
+            return;
+        }
+        try
+        {
+            CargarCorreoProveedor(ruta);
+            string correos = CorreoFactura.NormalizarParaGuardar(CampoDestinatarioOcc.Text);
+            var datos = ExtractorOcc.ExtraerOccNvvOcl(ruta);
+            string asunto = ExtractorOcc.FormatearAsunto(datos.Occ, datos.Nvv, datos.Ocl);
+            string cuerpo = PrepararCuerpoCorreo(ExtractorOcc.ExtraerDespacho(ruta));
+            UrlGmailFactura resultado = GeneradorUrlGmailFactura.Generar(
+                CorreoFactura.Separar(correos),
+                asunto,
+                cuerpo
+            );
+            Process.Start(new ProcessStartInfo(resultado.Url) { UseShellExecute = true });
+            RecordarCorreoProveedor(ruta);
+            CopiarPdfArchivo(ruta);
+            MostrarToast("Gmail abierto. El PDF de la OCC está listo para pegar", "success");
+        }
+        catch (Exception excepcion)
+        {
+            MensajeroLog.RegistrarError("Abrir OCC en Gmail", excepcion);
+            MostrarToast($"No se pudo abrir Gmail: {excepcion.Message}", "error");
+        }
+    }
+
+    private void CopiarDestinatarioOcc_Click(object sender, RoutedEventArgs e)
+    {
+        string? ruta = rutaEncontradaExtractor ?? rutaUltimoPdf;
+        if (string.IsNullOrWhiteSpace(ruta) || string.IsNullOrWhiteSpace(CampoDestinatarioOcc.Text))
+        {
+            MostrarToast("Selecciona una OCC e ingresa el correo del proveedor", "warning");
+            return;
+        }
+        try
+        {
+            string correos = CorreoFactura.NormalizarParaGuardar(CampoDestinatarioOcc.Text);
+            Copiar(correos, "Destinatario copiado");
+            string proveedor = ExtractorOcc.ExtraerProveedor(ruta);
+            almacen.GuardarCorreosProveedor(proveedor, correos);
+            proveedorDestinatarioActual = AlmacenMensajero.NormalizarProveedor(proveedor);
+        }
+        catch (Exception excepcion)
+        {
+            MostrarToast(excepcion.Message, "error");
+        }
     }
 
     private void AbrirPlantillas_Click(object sender, RoutedEventArgs e)
@@ -318,6 +393,7 @@ public partial class VentanaPrincipal : Window
         }
         try
         {
+            CargarCorreoProveedor(ruta);
             var datos = ExtractorOcc.ExtraerOccNvvOcl(ruta);
             string asunto = ExtractorOcc.FormatearAsunto(datos.Occ, datos.Nvv, datos.Ocl);
             if (asunto.Length == 0)
@@ -344,6 +420,7 @@ public partial class VentanaPrincipal : Window
         }
         try
         {
+            CargarCorreoProveedor(ruta);
             string despacho = ExtractorOcc.ExtraerDespacho(ruta);
             if (despacho.Length == 0)
                 MostrarToast($"❌ No se encontró despacho: {Path.GetFileName(ruta)}", "error");
@@ -389,6 +466,7 @@ public partial class VentanaPrincipal : Window
         else if (resultados.Count == 1)
         {
             rutaEncontradaExtractor = resultados[0];
+            CargarCorreoProveedor(rutaEncontradaExtractor);
             string nombre = Path.GetFileName(rutaEncontradaExtractor);
             TextoArchivoEncontrado.Text = $"✅ {nombre}";
             BotonAsuntoEncontrado.IsEnabled =
@@ -808,6 +886,24 @@ public partial class VentanaPrincipal : Window
                 );
             }
         });
+    }
+
+    private void CargarCorreoProveedor(string ruta)
+    {
+        string proveedor = ExtractorOcc.ExtraerProveedor(ruta);
+        string clave = AlmacenMensajero.NormalizarProveedor(proveedor);
+        if (proveedorDestinatarioActual != clave)
+        {
+            CampoDestinatarioOcc.Text = almacen.BuscarCorreosProveedor(proveedor);
+            proveedorDestinatarioActual = clave;
+        }
+    }
+
+    private void RecordarCorreoProveedor(string ruta)
+    {
+        string proveedor = ExtractorOcc.ExtraerProveedor(ruta);
+        almacen.GuardarCorreosProveedor(proveedor, CampoDestinatarioOcc.Text);
+        proveedorDestinatarioActual = AlmacenMensajero.NormalizarProveedor(proveedor);
     }
 
     private void CopiarMayusculas_Click(object sender, RoutedEventArgs e)

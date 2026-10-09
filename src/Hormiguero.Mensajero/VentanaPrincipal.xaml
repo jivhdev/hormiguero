@@ -161,7 +161,25 @@
                 Margin="0,5,0,3"
                 TextWrapping="Wrap"
               />
+              <DockPanel Margin="0,0,0,6">
+                <Button
+                  DockPanel.Dock="Right"
+                  Content="Correos de proveedores…"
+                  Click="CorreosProveedores_Click"
+                  Margin="6,0,0,0"
+                />
+                <TextBox
+                  x:Name="CampoDestinatarioOcc"
+                  ToolTip="Correo del proveedor; varios separados por punto y coma"
+                />
+              </DockPanel>
               <WrapPanel>
+                <Button Content="Abrir en Gmail" Click="AbrirOccEnGmail_Click" Margin="0,0,6,0" />
+                <Button
+                  Content="Copiar destinatario"
+                  Click="CopiarDestinatarioOcc_Click"
+                  Margin="0,0,6,0"
+                />
                 <Button
                   x:Name="BotonAsuntoEncontrado"
                   Content="Asunto"
