@@ -464,23 +464,26 @@
         <StackPanel Margin="8" VerticalAlignment="Top">
           <TextBlock Text="Cadenas documentales" FontSize="16" FontWeight="Bold" Margin="0,0,0,8" />
           <TextBlock
-            Text="Cree cadenas con documentos guardados y consulte las coincidencias sugeridas."
+            Text="Las cadenas se crean solas cuando llega un documento de inicio, según el esquema de cada proveedor. Aquí ves las cadenas y armas los esquemas."
             TextWrapping="Wrap"
             MaxWidth="600"
             Margin="0,0,0,8"
           />
-          <Button
-            Content="Administrar cadenas"
-            Padding="14,10"
-            HorizontalAlignment="Left"
-            Click="BotonCadenasSimples_Click"
-          />
-          <TextBlock
-            Text="Las cadenas reúnen documentos relacionados y mantienen un historial de sus cambios."
-            TextWrapping="Wrap"
-            MaxWidth="560"
-            Margin="0,0,0,12"
-          />
+          <WrapPanel>
+            <Button
+              Content="Ver cadenas"
+              Padding="14,10"
+              HorizontalAlignment="Left"
+              Click="BotonCadenasSimples_Click"
+            />
+            <Button
+              Content="Esquemas…"
+              Padding="14,10"
+              Margin="8,0,0,0"
+              HorizontalAlignment="Left"
+              Click="BotonEsquemasCadena_Click"
+            />
+          </WrapPanel>
           <Button
             x:Name="BotonDudosos"
             Content="0 dudosos"

@@ -1,0 +1,126 @@
+<Window
+  x:Class="Buscadero.App.DialogoVistaCadenas"
+  xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+  xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+  Title="Cadenas"
+  Width="1180"
+  Height="680"
+  MaxHeight="720"
+  MinWidth="850"
+  MinHeight="560"
+  Background="{DynamicResource Hormiguero.Fondo}"
+  Foreground="{DynamicResource Hormiguero.Texto}"
+>
+  <Grid Margin="16">
+    <Grid.RowDefinitions>
+      <RowDefinition Height="Auto" />
+      <RowDefinition Height="*" />
+      <RowDefinition Height="Auto" />
+    </Grid.RowDefinitions>
+    <DockPanel Grid.Row="0" Margin="0,0,0,10">
+      <StackPanel>
+        <TextBlock Text="Cadenas" FontSize="21" FontWeight="Bold" />
+        <TextBlock
+          Text="Consulte los documentos agrupados según el esquema de cada proveedor."
+          Margin="0,4,0,0"
+        />
+      </StackPanel>
+      <Button
+        x:Name="BotonEsquemas"
+        Content="Esquemas…"
+        DockPanel.Dock="Right"
+        Padding="12,7"
+        Click="Esquemas_Click"
+      />
+    </DockPanel>
+    <Grid Grid.Row="1">
+      <Grid.ColumnDefinitions>
+        <ColumnDefinition Width="2*" />
+        <ColumnDefinition Width="3*" />
+      </Grid.ColumnDefinitions>
+      <DockPanel Margin="0,0,10,0">
+        <StackPanel DockPanel.Dock="Top">
+          <TextBlock Text="Proveedor" FontWeight="Bold" Margin="0,0,0,3" />
+          <Grid Margin="0,0,0,5">
+            <TextBox x:Name="FiltroProveedor" TextChanged="Filtro_TextChanged" />
+            <TextBlock
+              x:Name="AyudaFiltroProveedor"
+              Text="Filtrar por proveedor"
+              Margin="6,3"
+              Foreground="Gray"
+              IsHitTestVisible="False"
+            />
+          </Grid>
+          <TextBlock Text="Cliente" FontWeight="Bold" Margin="0,0,0,3" />
+          <Grid Margin="0,0,0,5">
+            <TextBox x:Name="FiltroCliente" TextChanged="Filtro_TextChanged" />
+            <TextBlock
+              x:Name="AyudaFiltroCliente"
+              Text="Filtrar por cliente"
+              Margin="6,3"
+              Foreground="Gray"
+              IsHitTestVisible="False"
+            />
+          </Grid>
+          <ComboBox
+            x:Name="Agrupar"
+            SelectedIndex="0"
+            SelectionChanged="Filtro_TextChanged"
+            Margin="0,0,0,6"
+          >
+            <ComboBoxItem Content="Agrupar por proveedor" />
+            <ComboBoxItem Content="Agrupar por cliente" />
+          </ComboBox>
+          <ComboBox
+            x:Name="FiltroEstado"
+            SelectedIndex="0"
+            SelectionChanged="Filtro_TextChanged"
+            Margin="0,0,0,6"
+          >
+            <ComboBoxItem Content="Activas" />
+            <ComboBoxItem Content="Todas" />
+          </ComboBox>
+        </StackPanel>
+        <ListBox
+          x:Name="Cadenas"
+          DisplayMemberPath="Texto"
+          SelectionChanged="Cadena_SelectionChanged"
+        />
+      </DockPanel>
+      <DockPanel Grid.Column="1">
+        <StackPanel DockPanel.Dock="Top" Orientation="Horizontal" Margin="0,0,0,6">
+          <TextBlock
+            x:Name="TituloArbol"
+            Text="Seleccione una cadena"
+            FontWeight="Bold"
+            FontSize="16"
+            VerticalAlignment="Center"
+          />
+          <Button
+            Content="Quitar de la cadena"
+            Click="Quitar_Click"
+            Margin="12,0,0,0"
+            Padding="8,4"
+          />
+          <Button Content="Dudosos" Click="Dudosos_Click" Margin="6,0,0,0" Padding="8,4" />
+        </StackPanel>
+        <ScrollViewer VerticalScrollBarVisibility="Auto">
+          <ItemsControl x:Name="Arbol" />
+        </ScrollViewer>
+      </DockPanel>
+      <TextBlock
+        x:Name="EstadoSinEsquemas"
+        Text="Aún no hay esquemas. Crea el de un proveedor con «Esquemas…»."
+        TextWrapping="Wrap"
+        HorizontalAlignment="Center"
+        VerticalAlignment="Center"
+        MaxWidth="460"
+        FontSize="18"
+        Visibility="Collapsed"
+        Grid.ColumnSpan="2"
+        IsHitTestVisible="False"
+      />
+    </Grid>
+    <TextBlock x:Name="Estado" Grid.Row="2" TextWrapping="Wrap" Margin="0,8,0,0" />
+  </Grid>
+</Window>

@@ -1417,30 +1417,26 @@ public partial class MainWindow : Window
 
     private void BotonCadenasSimples_Click(object sender, RoutedEventArgs e)
     {
-        string ruta = Hormiguero.Nucleo.Datos.DocumentosGuardados.RutaBaseComun;
         try
         {
-            using (var conexion = Hormiguero.Nucleo.Datos.BaseComun.Abrir(ruta))
-            {
-                var repositorioCadenas = new RepositorioCadenas(conexion);
-                if (!repositorioCadenas.TransicionCadenasSimplesAceptada())
-                {
-                    MessageBox.Show(
-                        this,
-                        "Las cadenas ahora se crean de otra forma. Los modelos anteriores dejan de usarse; los documentos no se tocan.",
-                        "Cadenas documentales",
-                        MessageBoxButton.OK,
-                        MessageBoxImage.Information
-                    );
-                    repositorioCadenas.AceptarTransicionCadenasSimples();
-                }
-            }
-            new DialogoCadenasSimples { Owner = this }.ShowDialog();
+            new DialogoVistaCadenas { Owner = this }.ShowDialog();
             ActualizarContadorAlertas();
         }
         catch (Exception error)
         {
             MostrarMensaje($"No se pudieron abrir las cadenas: {error.Message}");
+        }
+    }
+
+    private void BotonEsquemasCadena_Click(object sender, RoutedEventArgs e)
+    {
+        try
+        {
+            new DialogoListaEsquemas { Owner = this }.ShowDialog();
+        }
+        catch (Exception error)
+        {
+            MostrarMensaje($"No se pudieron administrar los esquemas: {error.Message}");
         }
     }
 
@@ -1694,8 +1690,13 @@ public partial class MainWindow : Window
         }
     }
 
-    private void MaestroVerCadena_Click(object sender, RoutedEventArgs e) =>
-        new DialogoCadenasSimples { Owner = this }.ShowDialog();
+    private void MaestroVerCadena_Click(object sender, RoutedEventArgs e)
+    {
+        if (_documentoMaestroSeleccionado?.CadenaId is long cadenaId)
+            new DialogoVistaCadenas(cadenaId) { Owner = this }.ShowDialog();
+    }
+
+    public Task MostrarDocumentoCadenaAsync(string ruta) => AbrirDocumentoAsync(ruta);
 
     private void MaestroCopiar_Click(object sender, RoutedEventArgs e)
     {
