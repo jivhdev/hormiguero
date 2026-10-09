@@ -1428,6 +1428,18 @@ public partial class MainWindow : Window
         }
     }
 
+    private void BotonEsquemasCadena_Click(object sender, RoutedEventArgs e)
+    {
+        try
+        {
+            new DialogoListaEsquemas { Owner = this }.ShowDialog();
+        }
+        catch (Exception error)
+        {
+            MostrarMensaje($"No se pudieron administrar los esquemas: {error.Message}");
+        }
+    }
+
     private void ActualizarContadorDudosos()
     {
         try

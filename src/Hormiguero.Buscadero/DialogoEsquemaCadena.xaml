@@ -41,26 +41,74 @@
           <RowDefinition Height="*" />
           <RowDefinition Height="Auto" />
         </Grid.RowDefinitions>
-        <TextBlock
-          x:Name="Compartidos"
-          TextWrapping="Wrap"
-          Padding="10"
+        <ScrollViewer
+          MaxHeight="105"
+          VerticalScrollBarVisibility="Auto"
           Margin="0,0,0,8"
           Background="{DynamicResource Hormiguero.Superficie}"
-        />
-        <ListBox x:Name="Tipos" Grid.Row="1" SelectionMode="Extended" />
-        <StackPanel Grid.Row="2" Orientation="Horizontal" Margin="0,8">
-          <Button Content="Agregar al esquema" Click="AgregarTipo_Click" Margin="0,0,6,0" />
-          <Button Content="Subir" Click="Subir_Click" Margin="0,0,6,0" />
-          <Button Content="Bajar" Click="Bajar_Click" />
+        >
           <TextBlock
-            Text="Los documentos elegidos quedan ordenados según esta lista."
-            Margin="12,4"
+            x:Name="Compartidos"
+            Text="Pistas: estos tipos ya comparten datos (pueden ir en la misma cadena)"
+            TextWrapping="Wrap"
+            Padding="10"
           />
+        </ScrollViewer>
+        <Grid Grid.Row="1">
+          <Grid.ColumnDefinitions>
+            <ColumnDefinition Width="*" />
+            <ColumnDefinition Width="Auto" />
+            <ColumnDefinition Width="*" />
+          </Grid.ColumnDefinitions>
+          <DockPanel Margin="0,0,8,0">
+            <TextBlock
+              Text="Documentos disponibles"
+              FontWeight="Bold"
+              DockPanel.Dock="Top"
+              Margin="0,0,0,5"
+            />
+            <ListBox
+              x:Name="TiposDisponibles"
+              DisplayMemberPath="Texto"
+              MouseDoubleClick="Disponible_DoubleClick"
+            />
+          </DockPanel>
+          <StackPanel Grid.Column="1" VerticalAlignment="Center" Margin="4">
+            <Button
+              x:Name="BotonAgregarTipo"
+              Content="Agregar →"
+              Click="AgregarTipo_Click"
+              Margin="0,3"
+            />
+            <Button
+              x:Name="BotonQuitarTipo"
+              Content="← Quitar"
+              Click="QuitarTipo_Click"
+              Margin="0,3"
+            />
+          </StackPanel>
+          <DockPanel Grid.Column="2" Margin="8,0,0,0">
+            <TextBlock
+              Text="Documentos del proceso, en orden"
+              FontWeight="Bold"
+              DockPanel.Dock="Top"
+              Margin="0,0,0,5"
+            />
+            <ListBox
+              x:Name="TiposProceso"
+              DisplayMemberPath="Texto"
+              MouseDoubleClick="Proceso_DoubleClick"
+            />
+          </DockPanel>
+        </Grid>
+        <StackPanel Grid.Row="2" Orientation="Horizontal" Margin="0,8">
+          <Button x:Name="BotonSubirTipo" Content="Subir" Click="Subir_Click" Margin="0,0,6,0" />
+          <Button x:Name="BotonBajarTipo" Content="Bajar" Click="Bajar_Click" Margin="0,0,6,0" />
+          <TextBlock Text="El orden de esta lista se guarda en el esquema." Margin="6,4" />
         </StackPanel>
       </Grid>
       <StackPanel x:Name="PasoInicio" Visibility="Collapsed">
-        <TextBlock Text="Marque uno o varios lugares que puedan iniciar una cadena." />
+        <TextBlock Text="Marque uno o varios documentos que puedan iniciar una cadena. El cambio queda visible en el resumen." />
         <ListBox x:Name="Inicios" Margin="0,8">
           <ListBox.ItemTemplate>
             <DataTemplate>
@@ -81,13 +129,11 @@
         <ComboBox x:Name="LugarA" Margin="0,10,0,4" />
         <ComboBox x:Name="LugarB" Margin="0,4" />
         <ComboBox x:Name="DatoPareja" Margin="0,4" />
-        <Button
-          Content="Agregar pareja 1 a 1"
-          Click="AgregarPareja_Click"
-          HorizontalAlignment="Left"
-          Margin="0,8"
-        />
-        <ListBox x:Name="Parejas" DisplayMemberPath="Texto" />
+        <WrapPanel Margin="0,8">
+          <Button Content="Agregar pareja 1 a 1" Click="AgregarPareja_Click" Margin="0,0,6,0" />
+          <Button Content="Quitar pareja" Click="QuitarPareja_Click" />
+        </WrapPanel>
+        <ListBox x:Name="Parejas" />
       </StackPanel>
       <ScrollViewer x:Name="PasoResumen" Visibility="Collapsed" VerticalScrollBarVisibility="Auto">
         <StackPanel>

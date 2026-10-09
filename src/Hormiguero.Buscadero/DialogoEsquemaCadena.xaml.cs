@@ -11,8 +11,8 @@ public partial class DialogoEsquemaCadena : Window
     private readonly RepositorioEsquemas _repositorio;
     private readonly IReadOnlyList<Identificacion> _identificaciones;
     private readonly IReadOnlyList<TipoDatoCompartido> _compartidos;
-    private readonly List<DefinicionLugarEsquema> _lugares = [];
-    private readonly List<DefinicionParejaEsquema> _parejas = [];
+    private List<DefinicionLugarEsquema> _lugares = [];
+    private List<DefinicionParejaEsquema> _parejas = [];
     private readonly List<string> _nombresParejas = [];
     private int _paso = 1;
 
@@ -28,19 +28,8 @@ public partial class DialogoEsquemaCadena : Window
             .Distinct(StringComparer.OrdinalIgnoreCase)
             .Order()
             .ToArray();
-        Tipos.ItemsSource = _identificaciones.Select(i => new TipoVm(i)).ToArray();
-        Compartidos.Text =
-            _compartidos.Count == 0
-                ? "Estos documentos ya comparten datos: todavía no hay pares configurados."
-                : "Estos documentos ya comparten datos:\n"
-                    + string.Join(
-                        "\n",
-                        _compartidos
-                            .Select(d =>
-                                $"{d.TipoA} de {d.EmisorA} ↔ {d.TipoB} de {d.EmisorB}: {d.DatoNombre}"
-                            )
-                            .Distinct()
-                    );
+        RefrescarListas();
+        Compartidos.Text = GenerarPistas();
         Proveedor.LostFocus += Proveedor_LostFocus;
         if (!string.IsNullOrWhiteSpace(proveedorInicial))
         {
@@ -77,7 +66,7 @@ public partial class DialogoEsquemaCadena : Window
         {
             _parejas.Add(new(byId[pareja.LugarA], byId[pareja.LugarB], pareja.DatoDiccionarioId));
             _nombresParejas.Add(
-                $"{esquema.Lugares.First(l => l.Id == pareja.LugarA).Nombre} ↔ {esquema.Lugares.First(l => l.Id == pareja.LugarB).Nombre}: {pareja.DatoDiccionarioId}"
+                TextoPareja(new(byId[pareja.LugarA], byId[pareja.LugarB], pareja.DatoDiccionarioId))
             );
         }
         RefrescarListas();
@@ -102,14 +91,16 @@ public partial class DialogoEsquemaCadena : Window
         string[] ayudas =
         [
             "Elija un emisor conocido o escriba el nombre del proveedor.",
-            "Elija tipos configurados. Puede agregarlos y cambiar su orden.",
-            "Marque al menos un documento que pueda iniciar el proceso.",
-            "Una pareja representa documentos que se corresponden uno a uno.",
-            "Revise el esquema y guarde los cambios.",
+            "Agregue los documentos a la lista derecha y ordene esa lista con Subir y Bajar.",
+            "Marque los documentos que pueden iniciar la cadena. Debe marcar al menos uno.",
+            "Elija dos documentos y un dato que compartan; Agregar pareja la añade a la lista.",
+            "Revise proveedor, inicios, orden y parejas. Use Cambiar para corregir una sección y Guardar para conservar el esquema.",
         ];
         PasoTitulo.Text = titulos[_paso - 1];
         Ayuda.Text = ayudas[_paso - 1];
         NumeroPaso.Text = $"Paso {_paso} de 5";
+        if (_paso == 2)
+            Compartidos.Text = GenerarPistas();
         Siguiente.Visibility = _paso == 5 ? Visibility.Collapsed : Visibility.Visible;
         Guardar.Visibility = _paso == 5 ? Visibility.Visible : Visibility.Collapsed;
         if (_paso == 5)
@@ -118,19 +109,69 @@ public partial class DialogoEsquemaCadena : Window
 
     private void AgregarTipo_Click(object sender, RoutedEventArgs e)
     {
-        if (
-            Tipos.SelectedItem is not TipoVm tipo
-            || _lugares.Any(l => l.IdentificacionId == tipo.Identificacion.Id)
-        )
+        if (TiposDisponibles.SelectedItem is not TipoVm tipo)
+            return;
+        AgregarTipo(tipo);
+    }
+
+    private void AgregarTipo(TipoVm tipo)
+    {
+        if (_lugares.Any(l => l.IdentificacionId == tipo.Identificacion.Id))
             return;
         _lugares.Add(
             new(_lugares.Count, tipo.Identificacion.Id, false, tipo.Identificacion.NombreEstandar)
         );
         RefrescarListas();
+        TiposProceso.SelectedItem = TiposProceso
+            .Items.Cast<TipoVm>()
+            .FirstOrDefault(t => t.Identificacion.Id == tipo.Identificacion.Id);
+    }
+
+    private void Disponible_DoubleClick(object sender, System.Windows.Input.MouseButtonEventArgs e)
+    {
+        if (TiposDisponibles.SelectedItem is TipoVm tipo)
+            AgregarTipo(tipo);
+    }
+
+    private void QuitarTipo_Click(object sender, RoutedEventArgs e) => QuitarTipoSeleccionado();
+
+    private void Proceso_DoubleClick(object sender, System.Windows.Input.MouseButtonEventArgs e) =>
+        QuitarTipoSeleccionado();
+
+    private void QuitarTipoSeleccionado()
+    {
+        if (TiposProceso.SelectedItem is not TipoVm tipo)
+            return;
+        int orden = _lugares.FindIndex(l => l.IdentificacionId == tipo.Identificacion.Id);
+        if (orden < 0)
+            return;
+        _lugares.RemoveAt(orden);
+        _lugares = _lugares.Select((l, i) => l with { Orden = i }).ToList();
+        var quitadas = _parejas.Where(p => p.OrdenA == orden || p.OrdenB == orden).ToHashSet();
+        _parejas.RemoveAll(p => quitadas.Contains(p));
+        _parejas = _parejas
+            .Select(p => new DefinicionParejaEsquema(
+                p.OrdenA > orden ? p.OrdenA - 1 : p.OrdenA,
+                p.OrdenB > orden ? p.OrdenB - 1 : p.OrdenB,
+                p.DatoDiccionarioId
+            ))
+            .ToList();
+        _nombresParejas.Clear();
+        _nombresParejas.AddRange(_parejas.Select(TextoPareja));
+        RefrescarListas();
     }
 
     private void RefrescarListas()
     {
+        var seleccionados = _lugares.OrderBy(l => l.Orden).ToArray();
+        TiposDisponibles.ItemsSource = _identificaciones
+            .Where(i => seleccionados.All(l => l.IdentificacionId != i.Id))
+            .Select(i => new TipoVm(i))
+            .ToArray();
+        TiposProceso.ItemsSource = seleccionados
+            .Select(l => _identificaciones.First(i => i.Id == l.IdentificacionId))
+            .Select(i => new TipoVm(i))
+            .ToArray();
         Inicios.ItemsSource = _lugares
             .Select((l, i) => new InicioVm(i, l.Nombre, l.IniciaCadena))
             .ToArray();
@@ -146,13 +187,61 @@ public partial class DialogoEsquemaCadena : Window
         DatoPareja.DisplayMemberPath = "Nombre";
     }
 
+    private string GenerarPistas()
+    {
+        var grupos = _compartidos
+            .GroupBy(d => (d.IdentificacionA, d.IdentificacionB))
+            .Select(g =>
+            {
+                var primero = g.First();
+                string tipoA = TipoPista(primero.TipoA, primero.EmisorA);
+                string tipoB = TipoPista(primero.TipoB, primero.EmisorB);
+                return $"{tipoA} ↔ {tipoB} · {string.Join(", ", g.Select(d => d.DatoNombre).Distinct())}";
+            })
+            .ToArray();
+        return grupos.Length == 0
+            ? "Pistas: estos tipos ya comparten datos (pueden ir en la misma cadena). Aún no hay datos compartidos configurados."
+            : "Pistas: estos tipos ya comparten datos (pueden ir en la misma cadena)\n"
+                + string.Join("\n", grupos);
+    }
+
+    private string TipoPista(string tipo, string emisor) =>
+        string.Equals(emisor, Proveedor.Text.Trim(), StringComparison.OrdinalIgnoreCase)
+        && !tipo.Contains("propia", StringComparison.OrdinalIgnoreCase)
+            ? $"{tipo} del proveedor"
+            : tipo;
+
+    private string TextoPareja(DefinicionParejaEsquema pareja)
+    {
+        long identificacionA = _lugares[pareja.OrdenA].IdentificacionId;
+        long identificacionB = _lugares[pareja.OrdenB].IdentificacionId;
+        string nombreDato =
+            _compartidos
+                .FirstOrDefault(d =>
+                    d.DatoId == pareja.DatoDiccionarioId
+                    && (
+                        (
+                            d.IdentificacionA == identificacionA
+                            && d.IdentificacionB == identificacionB
+                        )
+                        || (
+                            d.IdentificacionA == identificacionB
+                            && d.IdentificacionB == identificacionA
+                        )
+                    )
+                )
+                ?.DatoNombre
+            ?? "Dato compartido";
+        return $"{_lugares[pareja.OrdenA].Nombre} ↔ {_lugares[pareja.OrdenB].Nombre} · {nombreDato}";
+    }
+
     private void Subir_Click(object sender, RoutedEventArgs e) => Mover(-1);
 
     private void Bajar_Click(object sender, RoutedEventArgs e) => Mover(1);
 
     private void Mover(int delta)
     {
-        if (Tipos.SelectedItem is not TipoVm tipo)
+        if (TiposProceso.SelectedItem is not TipoVm tipo)
             return;
         int actual = _lugares.FindIndex(l => l.IdentificacionId == tipo.Identificacion.Id),
             destino = actual + delta;
@@ -179,12 +268,10 @@ public partial class DialogoEsquemaCadena : Window
                 p.DatoDiccionarioId
             ))
         );
-        _nombresParejas.Clear();
-        foreach (var pareja in _parejas)
-            _nombresParejas.Add(
-                $"{_lugares[pareja.OrdenA].Nombre} ↔ {_lugares[pareja.OrdenB].Nombre}: {pareja.DatoDiccionarioId}"
-            );
         RefrescarListas();
+        TiposProceso.SelectedItem = TiposProceso
+            .Items.Cast<TipoVm>()
+            .FirstOrDefault(t => t.Identificacion.Id == tipo.Identificacion.Id);
     }
 
     private void AgregarPareja_Click(object sender, RoutedEventArgs e)
@@ -206,7 +293,22 @@ public partial class DialogoEsquemaCadena : Window
         _parejas.Add(new(a.Orden, b.Orden, dato.Id));
         _nombresParejas.Add($"{a.Texto} ↔ {b.Texto}: {dato.Nombre}");
         RefrescarListas();
-        Estado.Text = "Pareja agregada.";
+        Parejas.SelectedIndex = Parejas.Items.Count - 1;
+        Estado.Text = "Pareja agregada a la lista.";
+    }
+
+    private void QuitarPareja_Click(object sender, RoutedEventArgs e)
+    {
+        int indice = Parejas.SelectedIndex;
+        if (indice < 0 || indice >= _parejas.Count)
+        {
+            Estado.Text = "Seleccione una pareja de la lista para quitarla.";
+            return;
+        }
+        _parejas.RemoveAt(indice);
+        _nombresParejas.RemoveAt(indice);
+        RefrescarListas();
+        Estado.Text = "Pareja quitada de la lista.";
     }
 
     private void Siguiente_Click(object sender, RoutedEventArgs e)

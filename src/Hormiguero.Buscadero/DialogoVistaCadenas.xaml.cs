@@ -33,7 +33,8 @@ public partial class DialogoVistaCadenas : Window
                 .Where(e => e.Activo)
                 .Select(e => e.Proveedor)
                 .ToHashSet(StringComparer.OrdinalIgnoreCase);
-            BotonEsquemas.Content = proveedoresActivos.Count == 0 ? "Crear esquema" : "Esquemas…";
+            EstadoSinEsquemas.Visibility =
+                proveedoresActivos.Count == 0 ? Visibility.Visible : Visibility.Collapsed;
             var filas = AsistenteEsquemaCadena
                 .ListarCadenas(_conexion)
                 .Where(c => proveedoresActivos.Contains(c.Proveedor))
@@ -68,7 +69,7 @@ public partial class DialogoVistaCadenas : Window
                     .FirstOrDefault(x => x.Cadena.Id == id);
             Estado.Text =
                 filas.Length == 0
-                    ? "No hay cadenas configuradas. Use Esquemas… para crear el esquema de un proveedor."
+                    ? "Aún no hay cadenas. Aparecerán cuando llegue un documento que inicie un proceso configurado."
                     : "";
         }
         catch (Exception ex)
@@ -79,6 +80,12 @@ public partial class DialogoVistaCadenas : Window
 
     private void Filtro_TextChanged(object sender, RoutedEventArgs e)
     {
+        AyudaFiltroProveedor.Visibility = string.IsNullOrEmpty(FiltroProveedor.Text)
+            ? Visibility.Visible
+            : Visibility.Collapsed;
+        AyudaFiltroCliente.Visibility = string.IsNullOrEmpty(FiltroCliente.Text)
+            ? Visibility.Visible
+            : Visibility.Collapsed;
         if (IsInitialized)
             CargarCadenas(_seleccionado);
     }

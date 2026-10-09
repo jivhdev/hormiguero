@@ -4,7 +4,8 @@
   xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
   Title="Cadenas"
   Width="1180"
-  Height="720"
+  Height="680"
+  MaxHeight="720"
   MinWidth="850"
   MinHeight="560"
   Background="{DynamicResource Hormiguero.Fondo}"
@@ -39,18 +40,28 @@
       </Grid.ColumnDefinitions>
       <DockPanel Margin="0,0,10,0">
         <StackPanel DockPanel.Dock="Top">
-          <TextBox
-            x:Name="FiltroProveedor"
-            ToolTip="Proveedor"
-            Margin="0,0,0,5"
-            TextChanged="Filtro_TextChanged"
-          />
-          <TextBox
-            x:Name="FiltroCliente"
-            ToolTip="Cliente"
-            Margin="0,0,0,5"
-            TextChanged="Filtro_TextChanged"
-          />
+          <TextBlock Text="Proveedor" FontWeight="Bold" Margin="0,0,0,3" />
+          <Grid Margin="0,0,0,5">
+            <TextBox x:Name="FiltroProveedor" TextChanged="Filtro_TextChanged" />
+            <TextBlock
+              x:Name="AyudaFiltroProveedor"
+              Text="Filtrar por proveedor"
+              Margin="6,3"
+              Foreground="Gray"
+              IsHitTestVisible="False"
+            />
+          </Grid>
+          <TextBlock Text="Cliente" FontWeight="Bold" Margin="0,0,0,3" />
+          <Grid Margin="0,0,0,5">
+            <TextBox x:Name="FiltroCliente" TextChanged="Filtro_TextChanged" />
+            <TextBlock
+              x:Name="AyudaFiltroCliente"
+              Text="Filtrar por cliente"
+              Margin="6,3"
+              Foreground="Gray"
+              IsHitTestVisible="False"
+            />
+          </Grid>
           <ComboBox
             x:Name="Agrupar"
             SelectedIndex="0"
@@ -97,13 +108,19 @@
           <ItemsControl x:Name="Arbol" />
         </ScrollViewer>
       </DockPanel>
+      <TextBlock
+        x:Name="EstadoSinEsquemas"
+        Text="Aún no hay esquemas. Crea el de un proveedor con «Esquemas…»."
+        TextWrapping="Wrap"
+        HorizontalAlignment="Center"
+        VerticalAlignment="Center"
+        MaxWidth="460"
+        FontSize="18"
+        Visibility="Collapsed"
+        Grid.ColumnSpan="2"
+        IsHitTestVisible="False"
+      />
     </Grid>
-    <TextBlock
-      x:Name="Estado"
-      Grid.Row="2"
-      TextWrapping="Wrap"
-      Margin="0,8,0,0"
-      Foreground="{DynamicResource Hormiguero.Error}"
-    />
+    <TextBlock x:Name="Estado" Grid.Row="2" TextWrapping="Wrap" Margin="0,8,0,0" />
   </Grid>
 </Window>
