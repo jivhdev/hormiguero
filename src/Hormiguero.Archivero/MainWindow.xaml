@@ -9,10 +9,13 @@
   WindowStartupLocation="CenterScreen"
 >
   <Grid Margin="16">
+    <Grid.Resources>
+      <BooleanToVisibilityConverter x:Key="BooleanToVisibilityConverter" />
+    </Grid.Resources>
     <Grid.RowDefinitions>
       <RowDefinition Height="Auto" />
       <RowDefinition Height="Auto" />
-      <RowDefinition Height="130" />
+      <RowDefinition Height="180" />
       <RowDefinition Height="*" />
       <RowDefinition Height="100" />
       <RowDefinition Height="100" />
@@ -123,15 +126,44 @@
                 <ColumnDefinition Width="Auto" />
               </Grid.ColumnDefinitions>
               <StackPanel Grid.Column="0" Margin="0,0,8,0">
+                <TextBlock
+                  Text="{Binding Etiqueta}"
+                  FontSize="12"
+                  FontWeight="Bold"
+                  Foreground="{DynamicResource Hormiguero.TextoSecundario}"
+                />
                 <TextBlock Text="{Binding Documento}" FontWeight="SemiBold" />
                 <TextBlock Text="{Binding TipoProveedor}" TextWrapping="Wrap" />
+                <TextBlock Text="{Binding Pregunta}" TextWrapping="Wrap" FontWeight="SemiBold" />
                 <TextBlock
                   Text="{Binding Explicacion}"
                   TextWrapping="Wrap"
                   Foreground="{DynamicResource Hormiguero.TextoSecundario}"
                 />
+                <StackPanel
+                  Orientation="Horizontal"
+                  Visibility="{Binding MostrarCapturaDato, Converter={StaticResource BooleanToVisibilityConverter}}"
+                >
+                  <TextBlock Text="{Binding DatoPendiente}" VerticalAlignment="Center" />
+                  <TextBlock Text=":" VerticalAlignment="Center" Margin="0,0,6,0" />
+                  <DatePicker
+                    SelectedDate="{Binding FechaDato, UpdateSourceTrigger=PropertyChanged}"
+                    Width="130"
+                  />
+                  <Button
+                    Content="Guardar"
+                    Padding="8,3"
+                    Margin="6,0,0,0"
+                    Click="BtnGuardarDatoCadena_Click"
+                  />
+                </StackPanel>
               </StackPanel>
-              <StackPanel Grid.Column="1" Orientation="Horizontal" VerticalAlignment="Center">
+              <StackPanel
+                Grid.Column="1"
+                Orientation="Horizontal"
+                VerticalAlignment="Center"
+                Visibility="{Binding MostrarAccionesOrigen, Converter={StaticResource BooleanToVisibilityConverter}}"
+              >
                 <Button
                   Content="Buscar el origen"
                   Padding="6,3"
@@ -154,6 +186,33 @@
                   ToolTip="Cierra esta decisión y deja el documento archivado sin cadena."
                 />
               </StackPanel>
+              <ItemsControl
+                Grid.Column="1"
+                ItemsSource="{Binding OpcionesModo}"
+                VerticalAlignment="Center"
+                Visibility="{Binding MostrarOpcionesModo, Converter={StaticResource BooleanToVisibilityConverter}}"
+              >
+                <ItemsControl.ItemsPanel>
+                  <ItemsPanelTemplate>
+                    <StackPanel Orientation="Horizontal" />
+                  </ItemsPanelTemplate>
+                </ItemsControl.ItemsPanel>
+                <ItemsControl.ItemTemplate>
+                  <DataTemplate>
+                    <Button
+                      Content="{Binding}"
+                      Tag="{Binding}"
+                      FontSize="16"
+                      FontWeight="Bold"
+                      MinWidth="110"
+                      MinHeight="44"
+                      Padding="12,8"
+                      Margin="4"
+                      Click="BtnFijarModo_Click"
+                    />
+                  </DataTemplate>
+                </ItemsControl.ItemTemplate>
+              </ItemsControl>
             </Grid>
           </DataTemplate>
         </ListBox.ItemTemplate>
