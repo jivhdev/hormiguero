@@ -318,7 +318,7 @@ public sealed class MotorCadenas(SqliteConnection conexion)
     {
         using var comando = conexion.CreateCommand();
         comando.CommandText =
-            "SELECT DISTINCT x.dato_diccionario_id,x.valor_original,x.valor_clave FROM valores_documento x JOIN campos_documento f ON f.id=x.campo_id WHERE x.version_id=$v AND x.estado='vigente' AND x.dato_diccionario_id IS NOT NULL AND x.valor_clave<>'' AND EXISTS(SELECT 1 FROM tipos_documento_datos t WHERE t.identificacion_id=f.identificacion_id AND t.dato_diccionario_id=x.dato_diccionario_id AND t.activo=1 AND t.enlazable=1);";
+            "SELECT DISTINCT x.dato_diccionario_id,x.valor_original,x.valor_clave FROM valores_documento x JOIN campos_documento f ON f.id=x.campo_id WHERE x.version_id=$v AND x.estado='vigente' AND x.dato_diccionario_id IS NOT NULL AND x.dato_diccionario_id NOT IN ('rut_proveedor','nombre_proveedor','rut_cliente','nombre_cliente','rut_propio','nombre_propio') AND x.valor_clave<>'' AND EXISTS(SELECT 1 FROM tipos_documento_datos t WHERE t.identificacion_id=f.identificacion_id AND t.dato_diccionario_id=x.dato_diccionario_id AND t.activo=1 AND t.enlazable=1);";
         comando.Parameters.AddWithValue("$v", version);
         using var lector = comando.ExecuteReader();
         var lista = new List<(string, string, string)>();
@@ -465,6 +465,7 @@ public sealed class MotorCadenas(SqliteConnection conexion)
             var candidatos = new List<(long Version, string Numeros)>();
             while (lector.Read())
                 candidatos.Add((lector.GetInt64(0), lector.GetString(1)));
+            lector.Close();
             foreach (var candidato in candidatos)
             {
                 if (candidato.Version == origenVersion || _reprocesando.Contains(candidato.Version))
