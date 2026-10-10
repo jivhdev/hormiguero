@@ -1934,19 +1934,15 @@ public partial class IdentificarDocumentoWindow : Window
                         _formato = FormatoCarpeta.Directo;
                         _patronCarpeta = null;
                     }
-                }
-                if (_configuracionExistente is null)
-                {
-                    if (
-                        _formato != FormatoCarpeta.Directo
-                        && !ControlOrganizacion.Validar(out var errorOrganizacion)
-                    )
+                    else
                     {
-                        MostrarError(errorOrganizacion!);
-                        return;
-                    }
-                    if (_formato != FormatoCarpeta.Directo)
-                    {
+                        // Con todo en una pantalla, la elección de subcarpetas se lee aquí: antes se
+                        // tomaba _formato, que seguía en Directo, y todo se guardaba sin subcarpetas.
+                        if (!ControlOrganizacion.Validar(out var errorOrganizacion))
+                        {
+                            MostrarError(errorOrganizacion!);
+                            return;
+                        }
                         _formato = ControlOrganizacion.FormatoElegido!.Value;
                         _patronCarpeta = ControlOrganizacion.PatronElegido;
                     }
