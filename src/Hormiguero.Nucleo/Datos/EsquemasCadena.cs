@@ -67,7 +67,7 @@ public static class ProveedorDeDocumento
             + "EXISTS(SELECT 1 FROM valores_documento x WHERE x.version_id=$v AND x.estado='vigente' AND x.dato_diccionario_id='oc_propia'), "
             + "(SELECT x.valor_original FROM valores_documento x WHERE x.version_id=$v AND x.estado='vigente' AND x.dato_diccionario_id='rut_proveedor' ORDER BY x.id LIMIT 1), "
             + "(SELECT x.valor_original FROM valores_documento x WHERE x.version_id=$v AND x.estado='vigente' AND x.dato_diccionario_id='nombre_proveedor' ORDER BY x.id LIMIT 1), "
-            + "EXISTS(SELECT 1 FROM valores_documento x JOIN diccionario_datos d ON d.id=x.dato_diccionario_id WHERE x.version_id=$v AND x.estado='vigente' AND d.grupo='Del proveedor') "
+            + "EXISTS(SELECT 1 FROM valores_documento x JOIN diccionario_datos d ON d.id=x.dato_diccionario_id WHERE x.version_id=$v AND x.estado='vigente' AND d.grupo='Del proveedor' AND d.id NOT IN ('rut_proveedor','nombre_proveedor')) "
             + "FROM versiones_documento ver JOIN campos_documento c ON c.id=(SELECT campo_id FROM valores_documento WHERE version_id=ver.id AND estado='vigente' ORDER BY id LIMIT 1) JOIN identificaciones i ON i.id=c.identificacion_id WHERE ver.id=$v;";
         comando.Parameters.AddWithValue("$v", versionId);
         using var lector = comando.ExecuteReader();
