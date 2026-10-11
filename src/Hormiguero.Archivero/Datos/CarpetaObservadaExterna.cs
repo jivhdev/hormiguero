@@ -85,7 +85,8 @@ public sealed record CarpetaObservadaExterna(
     bool TieneCedibles = false,
     ZonaControlCarpeta? ZonaCedible = null,
     string? CedibleEsperado = null,
-    IReadOnlyList<int>? ConfiguracionesDocumentoIds = null
+    IReadOnlyList<int>? ConfiguracionesDocumentoIds = null,
+    string? Impresora = null
 )
 {
     public string Resumen

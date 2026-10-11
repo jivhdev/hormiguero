@@ -135,13 +135,22 @@
         </StackPanel>
         <StackPanel Name="PasoAccion" Visibility="Collapsed">
           <TextBlock Text="Al llegar un documento nuevo tuyo" FontWeight="SemiBold" />
-          <ComboBox Name="ComboAccion" SelectedIndex="0" Margin="0,6,0,12">
+          <ComboBox
+            Name="ComboAccion"
+            SelectedIndex="0"
+            Margin="0,6,0,12"
+            SelectionChanged="ComboAccion_SelectionChanged"
+          >
             <ComboBoxItem Content="Solo registrar" />
             <ComboBoxItem Content="Imprimir primera página" />
             <ComboBoxItem Content="Imprimir todo" />
             <ComboBoxItem Content="Dejar en pendientes de ingresar" />
             <ComboBoxItem Content="Dejar en pendientes e imprimir primera página" />
           </ComboBox>
+          <StackPanel Name="PanelImpresora" Visibility="Collapsed" Margin="0,0,0,12">
+            <TextBlock Text="Impresora" FontWeight="SemiBold" />
+            <ComboBox Name="ComboImpresora" Margin="0,4,0,0" />
+          </StackPanel>
           <TextBlock
             Text="Lo que ya está en la carpeta solo se ingresa a Hormiguero; imprimir o avisar es solo para lo que llegue desde hoy."
             TextWrapping="Wrap"

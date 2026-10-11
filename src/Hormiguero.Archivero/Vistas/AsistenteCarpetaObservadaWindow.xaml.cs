@@ -25,6 +25,7 @@ public partial class AsistenteCarpetaObservadaWindow : Window
     public AsistenteCarpetaObservadaWindow(CarpetaObservadaExterna? existente = null)
     {
         InitializeComponent();
+        CargarImpresoras(existente?.Impresora);
         ComboEntidad.AddHandler(
             System.Windows.Controls.TextBox.TextChangedEvent,
             new TextChangedEventHandler(Entidad_TextChanged)
@@ -71,8 +72,51 @@ public partial class AsistenteCarpetaObservadaWindow : Window
             };
         }
         Cedibles_Changed(this, new RoutedEventArgs());
+        ActualizarVisibilidadImpresora();
         ActualizarDisenos();
         MostrarPaso(1);
+    }
+
+    private void CargarImpresoras(string? impresoraGuardada)
+    {
+        string predeterminada = new System.Drawing.Printing.PrinterSettings().PrinterName;
+        ComboImpresora.Items.Add(
+            new ComboBoxItem
+            {
+                Content = string.IsNullOrWhiteSpace(predeterminada)
+                    ? "Predeterminada de Windows"
+                    : $"Predeterminada de Windows ({predeterminada})",
+                Tag = "",
+            }
+        );
+        foreach (string nombre in System.Drawing.Printing.PrinterSettings.InstalledPrinters)
+            ComboImpresora.Items.Add(new ComboBoxItem { Content = nombre, Tag = nombre });
+        ComboImpresora.SelectedIndex = 0;
+        if (!string.IsNullOrWhiteSpace(impresoraGuardada))
+        {
+            var guardada = ComboImpresora
+                .Items.Cast<ComboBoxItem>()
+                .FirstOrDefault(item =>
+                    string.Equals(
+                        (string)item.Tag,
+                        impresoraGuardada,
+                        StringComparison.OrdinalIgnoreCase
+                    )
+                );
+            if (guardada is not null)
+                ComboImpresora.SelectedItem = guardada;
+        }
+    }
+
+    private void ComboAccion_SelectionChanged(object sender, SelectionChangedEventArgs e) =>
+        ActualizarVisibilidadImpresora();
+
+    private void ActualizarVisibilidadImpresora()
+    {
+        if (ComboAccion is null || PanelImpresora is null)
+            return;
+        bool imprime = ComboAccion.SelectedIndex is 1 or 2 or 4;
+        PanelImpresora.Visibility = imprime ? Visibility.Visible : Visibility.Collapsed;
     }
 
     private void MostrarPaso(int paso)
@@ -399,7 +443,12 @@ public partial class AsistenteCarpetaObservadaWindow : Window
             + $"Identificación: {TxtIdentificacion.Text.Trim()} — {ComboEntidad.Text.Trim()}\n"
             + $"Cedibles: {(ChkCedibles.IsChecked == true ? TxtCedibleEsperado.Text.Trim() : "No")}\n"
             + $"Diseños: {_configuraciones.Count}\n"
-            + $"Acción: {(ComboAccion.SelectedItem as ComboBoxItem)?.Content}";
+            + $"Acción: {(ComboAccion.SelectedItem as ComboBoxItem)?.Content}"
+            + (
+                ComboAccion.SelectedIndex is 1 or 2 or 4
+                    ? $"\nImpresora: {(ComboImpresora.SelectedItem as ComboBoxItem)?.Content}"
+                    : string.Empty
+            );
 
     private void GuardarCarpeta()
     {
@@ -436,7 +485,11 @@ public partial class AsistenteCarpetaObservadaWindow : Window
             ChkCedibles.IsChecked == true,
             ChkCedibles.IsChecked == true ? _zonaCedible : null,
             ChkCedibles.IsChecked == true ? TxtCedibleEsperado.Text.Trim() : null,
-            _configuraciones.ToList()
+            _configuraciones.ToList(),
+            ComboImpresora.SelectedItem is ComboBoxItem impresora
+            && !string.IsNullOrWhiteSpace((string?)impresora.Tag)
+                ? (string)impresora.Tag
+                : null
         );
         DialogResult = true;
     }
