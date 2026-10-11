@@ -26,9 +26,16 @@ public partial class DialogoAvisos : Window
         try
         {
             using var conexion = BaseComun.Abrir(_ruta);
-            var evaluador = new EvaluadorAlertasEsquema(conexion);
+            var evaluador = new EvaluadorAlertasEsquemaDiccionario(conexion);
             evaluador.Evaluar();
-            var cadenas = AsistenteEsquemaCadena.ListarCadenas(conexion).ToDictionary(c => c.Id);
+            var cadenas = new Dictionary<long, string>();
+            using (var q = conexion.CreateCommand())
+            {
+                q.CommandText = "SELECT id,nombre FROM cadenas_diccionario WHERE estado='activa';";
+                using var r = q.ExecuteReader();
+                while (r.Read())
+                    cadenas[r.GetInt64(0)] = r.GetString(1);
+            }
             _avisos = evaluador
                 .ListarAbiertas()
                 .Where(a =>
@@ -49,10 +56,7 @@ public partial class DialogoAvisos : Window
                         || (
                             cadenas
                                 .GetValueOrDefault(a.CadenaId)
-                                ?.Nombre.Contains(
-                                    Cadena.Text.Trim(),
-                                    StringComparison.OrdinalIgnoreCase
-                                )
+                                ?.Contains(Cadena.Text.Trim(), StringComparison.OrdinalIgnoreCase)
                             ?? false
                         )
                     )
@@ -67,7 +71,7 @@ public partial class DialogoAvisos : Window
                 )
                 .Select(a => new AvisoVm(
                     a,
-                    cadenas.GetValueOrDefault(a.CadenaId)?.Nombre ?? $"Cadena {a.CadenaId}",
+                    cadenas.GetValueOrDefault(a.CadenaId) ?? $"Cadena {a.CadenaId}",
                     FormatoVencimiento(conexion, a)
                 ))
                 .ToArray();
@@ -92,7 +96,7 @@ public partial class DialogoAvisos : Window
                     a.CadenaId,
                     a.Proveedor,
                     a.Cliente,
-                    cadenas.GetValueOrDefault(a.CadenaId)?.Nombre ?? $"Cadena {a.CadenaId}",
+                    cadenas.GetValueOrDefault(a.CadenaId) ?? $"Cadena {a.CadenaId}",
                     a.Alcance
                 ))
                 .ToArray();
@@ -123,7 +127,8 @@ public partial class DialogoAvisos : Window
         long? calendarioId = null;
         using (var q = conexion.CreateCommand())
         {
-            q.CommandText = "SELECT parametros_json FROM reglas_alerta_esquema WHERE id=$id";
+            q.CommandText =
+                "SELECT parametros_json FROM reglas_alerta_esquema_diccionario WHERE id=$id";
             q.Parameters.AddWithValue("$id", alerta.ReglaId);
             if (q.ExecuteScalar() is string json)
             {
@@ -174,7 +179,7 @@ public partial class DialogoAvisos : Window
         try
         {
             using var conexion = BaseComun.Abrir(_ruta);
-            new EvaluadorAlertasEsquema(conexion).Descartar(vm.Alerta.Id, motivo);
+            new EvaluadorAlertasEsquemaDiccionario(conexion).Descartar(vm.Alerta.Id, motivo);
             Cargar();
         }
         catch (Exception error)

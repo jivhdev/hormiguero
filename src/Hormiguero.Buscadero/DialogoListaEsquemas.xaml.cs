@@ -6,7 +6,7 @@ namespace Buscadero.App;
 public partial class DialogoListaEsquemas : Window
 {
     private readonly Microsoft.Data.Sqlite.SqliteConnection _conexion;
-    private readonly RepositorioEsquemas _repositorio;
+    private readonly RepositorioEsquemasDiccionario _repositorio;
 
     public DialogoListaEsquemas()
     {
@@ -20,22 +20,22 @@ public partial class DialogoListaEsquemas : Window
         Esquemas.ItemsSource = _repositorio.Listar().Where(e => e.Activo).ToArray();
 
     private void Nuevo_Click(object sender, RoutedEventArgs e) =>
-        new DialogoEsquemaCadena { Owner = this }.ShowDialog();
+        new DialogoEsquemaDiccionario { Owner = this }.ShowDialog();
 
     private void Editar_Click(object sender, RoutedEventArgs e)
     {
-        if (Esquemas.SelectedItem is not EsquemaCadena esquema)
+        if (Esquemas.SelectedItem is not EsquemaDiccionario esquema)
         {
             Estado.Text = "Seleccione un esquema para editar.";
             return;
         }
-        new DialogoEsquemaCadena(esquema.Proveedor) { Owner = this }.ShowDialog();
+        new DialogoEsquemaDiccionario(esquema.Proveedor) { Owner = this }.ShowDialog();
         Recargar();
     }
 
     private void Desactivar_Click(object sender, RoutedEventArgs e)
     {
-        if (Esquemas.SelectedItem is not EsquemaCadena esquema)
+        if (Esquemas.SelectedItem is not EsquemaDiccionario esquema)
         {
             Estado.Text = "Seleccione un esquema para desactivar.";
             return;
@@ -52,26 +52,7 @@ public partial class DialogoListaEsquemas : Window
             return;
         try
         {
-            _repositorio.Guardar(
-                esquema.Proveedor,
-                esquema.Nombre,
-                esquema
-                    .Lugares.Select(l => new DefinicionLugarEsquema(
-                        l.Orden,
-                        l.IdentificacionId,
-                        l.IniciaCadena,
-                        l.Nombre
-                    ))
-                    .ToArray(),
-                esquema
-                    .Parejas.Select(p => new DefinicionParejaEsquema(
-                        esquema.Lugares.First(l => l.Id == p.LugarA).Orden,
-                        esquema.Lugares.First(l => l.Id == p.LugarB).Orden,
-                        p.DatoDiccionarioId
-                    ))
-                    .ToArray(),
-                activo: false
-            );
+            _repositorio.Desactivar(esquema.Id);
             Estado.Text = "Esquema desactivado.";
             Recargar();
         }

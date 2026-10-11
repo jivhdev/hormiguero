@@ -22,7 +22,10 @@ public sealed class MotorCadenas(SqliteConnection conexion)
     }
 
     public ResultadoMotorCadena ProcesarVersion(long versionId) =>
-        ProcesarVersion(versionId, false);
+        new MotorCadenasDiccionario(conexion).ProcesarVersion(versionId);
+
+    public ResultadoMotorCadena ProcesarVersionDiccionario(long versionId) =>
+        new MotorCadenasDiccionario(conexion).ProcesarVersion(versionId);
 
     private ResultadoMotorCadena ProcesarVersion(long versionId, bool reprocesarPendiente)
     {
@@ -101,35 +104,14 @@ public sealed class MotorCadenas(SqliteConnection conexion)
         );
     }
 
-    public ResultadoMotorCadena CrearCadenaIgual(long versionId)
-    {
-        var decision = LeerDecision(versionId);
-        if (decision is null)
-            return new("sin_decision");
-        var proveedor = ProveedorDeDocumento.Determinar(conexion, versionId);
-        if (proveedor is null)
-            return new("sin_esquema", Motivo: "El documento no tiene proveedor determinado.");
-        var esquema = new RepositorioEsquemas(conexion).ObtenerPorProveedor(proveedor.Clave);
-        if (esquema is null || !esquema.Activo)
-            return new("sin_esquema", Motivo: "El proveedor no tiene esquema activo.");
-        long? identificacion = IdentificacionVersion(versionId);
-        var lugar = identificacion is null
-            ? null
-            : esquema.Lugares.FirstOrDefault(l => l.IdentificacionId == identificacion);
-        if (lugar is null)
-            return new("tipo_fuera_esquema");
-
-        long cadena = CrearCadena(versionId, proveedor, esquema, lugar);
-        ResolverDecision(versionId);
-        ReprocesarDecisionesMencionadas(versionId);
-        return new("cadena_creada", cadena);
-    }
+    public ResultadoMotorCadena CrearCadenaIgual(long versionId) =>
+        new MotorCadenasDiccionario(conexion).CrearCadenaManual(versionId);
 
     public bool ArchivarSinCadena(long versionId)
     {
         using var comando = conexion.CreateCommand();
         comando.CommandText =
-            "UPDATE decisiones_pendientes_cadena SET estado='resuelta' WHERE version_id=$v AND estado='pendiente' AND tipo='sin_piso';";
+            "UPDATE decisiones_esquema_diccionario SET estado='resuelta' WHERE version_id=$v AND estado='pendiente' AND tipo='sin_piso';";
         comando.Parameters.AddWithValue("$v", versionId);
         return comando.ExecuteNonQuery() > 0;
     }
