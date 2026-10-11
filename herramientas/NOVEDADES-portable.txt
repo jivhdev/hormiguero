@@ -1,12 +1,35 @@
-HORMIGUERO - NOVEDADES PARA PROBAR (la versión exacta está en VERSION.txt)
+﻿HORMIGUERO - NOVEDADES PARA PROBAR (la versión exacta está en VERSION.txt)
 ===============================================================================
 
-LO MÁS NUEVO (09-10)
+LO MÁS NUEVO (11-10)  -- ojo: conviene partir con los datos en blanco (Reiniciar)
+== CADENAS: ESQUEMA NUEVO (Buscadero → "Cadenas documentales" → "Esquemas…" → "Nuevo") ==
+7 pasos, todos con botones visibles abajo:
+ 1) Proveedor (autocompleta; el nombre del esquema se llena solo, se puede cambiar).
+ 2) Documentos del proceso: a la izquierda TODO el diccionario por categoría (Ventas propias,
+    Compras propias, Del cliente, Del proveedor, Otros); "Agregar →" los pasa a la derecha, en
+    orden (Subir/Bajar). Cada proveedor puede tener su propia lista.
+ 3) Inicios de cadena (ej. Nota de venta propia).
+ 4) ENLACES: tú dices qué documento se une con cuál y POR QUÉ DATO, y si es "Uno a uno" o
+    "Uno a varios". Ej.: "Una OC propia puede tener varias Guía del proveedor (por N° OC propia)"
+    y "Cada Guía del proveedor se enlaza con Factura del proveedor (por N° Guía)". Ya no son solo
+    parejas: la cadena es toda la lista enlazada.
+ 5) Modos (opcional)  6) Avisos  7) Resumen → Guardar.
+ PARA PROBAR Y COMENTAR: cómo te resulta armar los enlaces y qué le falta a Modos y Avisos.
+== ARCHIVERO ==
+- ARREGLADO: las subcarpetas elegidas (ej. FCV6610) no se guardaban y todo quedaba en
+  la carpeta base. Ahora la ruta completa se ve destacada en el paso 5.
+- Paso 6 "Al guardar este tipo de documento": vuelve "Abrir después de guardar", impresión y
+  ELEGIR IMPRESORA. También en Carpetas observadas (paso 6) se elige la impresora.
+- RUT y razón social: los del proveedor van en "Del proveedor", los del cliente en "Del cliente";
+  los de tu empresa siguen en "Otros".
+- Vuelven los campos propios (agregar/marcar/quitar) en el paso 4.
+== BUSCADERO ==
+- Botones "← Atrás" y "Adelante →" (Alt+← / Alt+→) para volver a la búsqueda anterior, con su
+  lista y el documento que tenías abierto, sin volver a buscar.
+
+ANTES (09-10)
 == CADENAS POR PROVEEDOR (Buscadero → pestaña "Cadenas documentales") ==
-1) "Esquemas…" → "Nuevo": armas UNA VEZ el esquema de cada proveedor, paso a paso:
-   proveedor → documentos del proceso en orden (te muestra pistas de qué tipos ya comparten datos)
-   → cuáles INICIAN la cadena (uno o varios, ej. tu Nota de venta) → parejas 1 a 1 (ej. Guía ↔
-   Factura del proveedor por N° de guía) → modos (ej. Retiro / Despacho, opcional) → avisos → resumen.
+1) El esquema de cada proveedor se arma UNA VEZ (ver arriba, versión nueva).
 2) Desde ahí, cuando Archivero ingresa un documento de inicio, LA CADENA NACE SOLA; los demás
    documentos que comparten un número entran solos a su lugar. "Ver cadenas" muestra el árbol:
    documentos por lugar y las líneas guía ↔ factura; lo que falta se ve en gris.
