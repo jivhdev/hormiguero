@@ -70,6 +70,7 @@ public sealed class VentanasBuscaderoSmokeTests
                         new DialogoCadenasSimples(),
                         new DialogoVistaCadenas(),
                         new DialogoEsquemaCadena(),
+                        new DialogoEsquemaDiccionario(),
                         new DialogoListaEsquemas(),
                         new DialogoDudososCadena(1, "Prueba"),
                         new DialogoDudosos(),

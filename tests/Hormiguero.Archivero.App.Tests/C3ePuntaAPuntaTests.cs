@@ -8,6 +8,93 @@ namespace Archivero.Tests;
 public sealed class C3ePuntaAPuntaTests
 {
     [Fact]
+    public async Task Publicacion_usa_lugares_del_diccionario_y_enlaces_declarados()
+    {
+        string raiz = Path.Combine(
+            Path.GetTempPath(),
+            "ArchiveroTests",
+            Guid.NewGuid().ToString("N")
+        );
+        Directory.CreateDirectory(raiz);
+        string? datosAnterior = Environment.GetEnvironmentVariable("HORMIGUERO_DATOS");
+        Environment.SetEnvironmentVariable("HORMIGUERO_DATOS", Path.Combine(raiz, "datos"));
+        try
+        {
+            ConfigurarTipo("Empresa", "oc_propia", "Emitido", ["oc_propia", "rut_proveedor"]);
+            ConfigurarTipo(
+                "PROVEEDOR Q2",
+                "guia_proveedor",
+                "Recibido",
+                ["guia_proveedor", "oc_propia"]
+            );
+            using var conexion = BaseComun.Abrir(DocumentosGuardados.RutaBaseComun);
+            var esquema = new RepositorioEsquemasDiccionario(conexion);
+            esquema.Guardar(
+                "PROVEEDOR Q2",
+                "Compra",
+                [
+                    new(0, "oc_propia", true, "OC propia"),
+                    new(1, "guia_proveedor", false, "Guía del proveedor"),
+                ],
+                [new(0, 1, "oc_propia", "uno_a_varios")]
+            );
+            long oc = await Publicar(
+                "q2-oc.pdf",
+                "Empresa",
+                DiccionarioDatosEnlazantes.Todos.Single(d => d.Id == "oc_propia").EtiquetaTipo,
+                "Emitido",
+                ("oc_propia", "Q2-900"),
+                ("rut_proveedor", "PROVEEDOR Q2")
+            );
+            long guia1 = await Publicar(
+                "q2-guia-1.pdf",
+                "PROVEEDOR Q2",
+                DiccionarioDatosEnlazantes.Todos.Single(d => d.Id == "guia_proveedor").EtiquetaTipo,
+                "Recibido",
+                ("guia_proveedor", "Q2-G1"),
+                ("oc_propia", "Q2-900")
+            );
+            long guia2 = await Publicar(
+                "q2-guia-2.pdf",
+                "PROVEEDOR Q2",
+                DiccionarioDatosEnlazantes.Todos.Single(d => d.Id == "guia_proveedor").EtiquetaTipo,
+                "Recibido",
+                ("guia_proveedor", "Q2-G2"),
+                ("oc_propia", "Q2-900")
+            );
+            Assert.Equal(
+                3,
+                new MotorCadenas(conexion).Procesar().Count(r => r.Estado == "ya_procesado")
+            );
+            using var consulta = conexion.CreateCommand();
+            consulta.CommandText =
+                "SELECT COUNT(*) FROM ubicaciones_cadena_diccionario WHERE cadena_id=(SELECT cadena_id FROM ubicaciones_cadena_diccionario WHERE version_id=$v) AND version_id IN ($g1,$g2) AND padre_id IS NOT NULL;";
+            consulta.Parameters.AddWithValue("$v", oc);
+            consulta.Parameters.AddWithValue("$g1", guia1);
+            consulta.Parameters.AddWithValue("$g2", guia2);
+            Assert.Equal(2L, Convert.ToInt64(consulta.ExecuteScalar()));
+            Assert.Equal(
+                2L,
+                Convert.ToInt64(
+                    EsquemaCount(
+                        conexion,
+                        "SELECT COUNT(DISTINCT linea_id) FROM ubicaciones_cadena_diccionario WHERE version_id IN ($g1,$g2);",
+                        guia1,
+                        guia2
+                    )
+                )
+            );
+        }
+        finally
+        {
+            Environment.SetEnvironmentVariable("HORMIGUERO_DATOS", datosAnterior);
+            SqliteConnection.ClearAllPools();
+            if (Directory.Exists(raiz))
+                Directory.Delete(raiz, recursive: true);
+        }
+    }
+
+    [Fact]
     public async Task Publicacion_de_archivero_recorrre_cadena_alertas_y_decisiones()
     {
         string raiz = Path.Combine(
@@ -494,6 +581,15 @@ public sealed class C3ePuntaAPuntaTests
         comando.Parameters.AddWithValue("$d", dato);
         comando.Parameters.AddWithValue("$k", clave);
         return Convert.ToInt64(comando.ExecuteScalar()) == 1;
+    }
+
+    private static long EsquemaCount(SqliteConnection conexion, string sql, long guia1, long guia2)
+    {
+        using var comando = conexion.CreateCommand();
+        comando.CommandText = sql;
+        comando.Parameters.AddWithValue("$g1", guia1);
+        comando.Parameters.AddWithValue("$g2", guia2);
+        return Convert.ToInt64(comando.ExecuteScalar());
     }
 
     private static string? LeerEstadoEnlace(SqliteConnection conexion, long versionId)

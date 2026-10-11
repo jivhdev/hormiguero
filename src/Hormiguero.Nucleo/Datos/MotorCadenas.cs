@@ -21,8 +21,20 @@ public sealed class MotorCadenas(SqliteConnection conexion)
         return resultados;
     }
 
-    public ResultadoMotorCadena ProcesarVersion(long versionId) =>
-        ProcesarVersion(versionId, false);
+    public ResultadoMotorCadena ProcesarVersion(long versionId)
+    {
+        ProveedorDocumento? proveedor = ProveedorDeDocumento.Determinar(conexion, versionId);
+        if (
+            proveedor is not null
+            && new RepositorioEsquemasDiccionario(conexion).ObtenerPorProveedor(proveedor.Clave)
+                is not null
+        )
+            return new MotorCadenasDiccionario(conexion).ProcesarVersion(versionId);
+        return ProcesarVersion(versionId, false);
+    }
+
+    public ResultadoMotorCadena ProcesarVersionDiccionario(long versionId) =>
+        new MotorCadenasDiccionario(conexion).ProcesarVersion(versionId);
 
     private ResultadoMotorCadena ProcesarVersion(long versionId, bool reprocesarPendiente)
     {

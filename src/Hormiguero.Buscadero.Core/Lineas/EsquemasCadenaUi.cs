@@ -14,12 +14,17 @@ public sealed record TipoDatoCompartido(
     string DatoNombre
 );
 
+public sealed record TipoDocumentoDiccionario(string Id, string Nombre, string Grupo);
+
+public sealed record DatoEnlaceDiccionario(string Id, string Nombre, string Grupo, bool Sugerido);
+
 public sealed record CadenaVista(
     long Id,
     string Proveedor,
     string Nombre,
     string Estado,
-    string? Cliente
+    string? Cliente,
+    bool EsDiccionario = false
 );
 
 public sealed record DudosoCadenaVista(
@@ -49,6 +54,24 @@ public sealed record DocumentoArbolCadena(
 
 public static class AsistenteEsquemaCadena
 {
+    public static IReadOnlyList<TipoDocumentoDiccionario> ListarTiposDiccionario(
+        SqliteConnection conexion
+    ) =>
+        RepositorioEsquemasDiccionario
+            .ListarTiposDocumento(conexion)
+            .Select(d => new TipoDocumentoDiccionario(d.Id, d.Nombre, d.Grupo))
+            .ToArray();
+
+    public static IReadOnlyList<DatoEnlaceDiccionario> ListarDatosDiccionario(
+        SqliteConnection conexion,
+        string tipoA,
+        string tipoB
+    ) =>
+        RepositorioEsquemasDiccionario
+            .ListarDatos(conexion, tipoA, tipoB)
+            .Select(d => new DatoEnlaceDiccionario(d.Id, d.Nombre, d.Grupo, d.Sugerido))
+            .ToArray();
+
     public static IReadOnlyList<TipoDatoCompartido> DatosCompartidos(
         long identificacionA,
         long identificacionB,
@@ -90,7 +113,7 @@ public static class AsistenteEsquemaCadena
     {
         using var comando = conexion.CreateCommand();
         comando.CommandText =
-            "SELECT id,proveedor,nombre,estado,cliente FROM cadenas WHERE esquema_id IS NOT NULL ORDER BY proveedor,cliente,nombre,id;";
+            "SELECT id,proveedor,nombre,estado,cliente,0 FROM cadenas WHERE esquema_id IS NOT NULL UNION ALL SELECT c.id,e.proveedor,c.nombre,c.estado,c.cliente,1 FROM cadenas_diccionario c JOIN esquemas_diccionario e ON e.id=c.esquema_id ORDER BY 2,5,3,1;";
         using var lector = comando.ExecuteReader();
         var resultados = new List<CadenaVista>();
         while (lector.Read())
@@ -100,7 +123,8 @@ public static class AsistenteEsquemaCadena
                     lector.GetString(1),
                     lector.GetString(2),
                     lector.GetString(3),
-                    lector.IsDBNull(4) ? null : lector.GetString(4)
+                    lector.IsDBNull(4) ? null : lector.GetString(4),
+                    lector.GetInt64(5) != 0
                 )
             );
         return resultados;
@@ -224,5 +248,58 @@ public static class AsistenteEsquemaCadena
             );
         }
         return filas;
+    }
+
+    public static IReadOnlyList<FilaArbolCadena> ArmarArbol(
+        EsquemaDiccionario esquema,
+        IReadOnlyList<DocumentoLugarCadena> documentos,
+        IReadOnlyDictionary<long, VersionDocumentoCadena> versiones
+    )
+    {
+        var padrePorVersion = documentos
+            .Where(d => d.ParejaVersionId is not null)
+            .ToDictionary(
+                d => d.VersionId,
+                d => documentos.First(p => p.VersionId == d.ParejaVersionId).Lugar
+            );
+        return esquema
+            .Lugares.OrderBy(l => l.Orden)
+            .Select(lugar =>
+            {
+                var asociados = documentos.Where(d => d.LugarId == lugar.Id).ToArray();
+                if (asociados.Length == 0)
+                    return new FilaArbolCadena(
+                        lugar.Nombre,
+                        lugar.Orden,
+                        [new(null, "Falta", null, null, null, null, true)],
+                        esquema.Enlaces.Any(e => e.LugarA == lugar.Id || e.LugarB == lugar.Id)
+                    );
+                string? padre = asociados
+                    .Select(d => padrePorVersion.GetValueOrDefault(d.VersionId))
+                    .FirstOrDefault(n => n is not null);
+                string etiqueta = padre is null ? lugar.Nombre : $"{padre} → {lugar.Nombre}";
+                return new FilaArbolCadena(
+                    etiqueta,
+                    lugar.Orden,
+                    asociados
+                        .Select(d =>
+                        {
+                            versiones.TryGetValue(d.VersionId, out var version);
+                            string linea = d.LineaId is long id ? $"Línea {id} · " : "";
+                            return new DocumentoArbolCadena(
+                                d.VersionId,
+                                $"{linea}{version?.Tipo ?? d.Lugar} · {version?.Numero ?? ""} · {version?.Fecha:yyyy-MM-dd}",
+                                version?.Ruta,
+                                version?.Numero,
+                                version?.Fecha,
+                                d.LineaId,
+                                false
+                            );
+                        })
+                        .ToArray(),
+                    esquema.Enlaces.Any(e => e.LugarA == lugar.Id || e.LugarB == lugar.Id)
+                );
+            })
+            .ToArray();
     }
 }
