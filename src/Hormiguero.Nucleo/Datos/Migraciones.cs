@@ -286,6 +286,13 @@ public static class Migraciones
                 + "CREATE TABLE alertas_esquema(id INTEGER PRIMARY KEY,regla_id INTEGER NOT NULL REFERENCES reglas_alerta_esquema(id),cadena_id INTEGER NOT NULL REFERENCES cadenas(id),alcance TEXT NOT NULL,texto TEXT NOT NULL,fecha_vencimiento TEXT NULL,urgencia TEXT NOT NULL CHECK(urgencia IN ('vencido','por_vencer','normal')),estado TEXT NOT NULL DEFAULT 'abierta' CHECK(estado IN ('abierta','cerrada','descartada')),motivo TEXT NULL,actualizada_en TEXT NOT NULL,UNIQUE(regla_id,cadena_id,alcance));"
                 + "CREATE INDEX idx_alertas_esquema_abiertas ON alertas_esquema(estado,urgencia,cadena_id);"
         ),
+        (
+            17,
+            "DROP TRIGGER trg_diccionario_datos_no_editar; "
+                + "UPDATE diccionario_datos SET grupo='Del proveedor' WHERE id IN ('rut_proveedor','nombre_proveedor'); "
+                + "UPDATE diccionario_datos SET grupo='Del cliente' WHERE id IN ('rut_cliente','nombre_cliente'); "
+                + "CREATE TRIGGER trg_diccionario_datos_no_editar BEFORE UPDATE ON diccionario_datos BEGIN SELECT RAISE(ABORT,'El diccionario de datos es fijo.'); END;"
+        ),
     ];
 
     public static void Aplicar(

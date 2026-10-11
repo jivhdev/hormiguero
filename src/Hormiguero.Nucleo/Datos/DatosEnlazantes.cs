@@ -438,20 +438,27 @@ public static class DiccionarioDatosEnlazantes
                 null,
                 "Comprobante de pago"
             ),
-            new("rut_proveedor", "RUT del proveedor", "Otros", 18, null, "RUT del proveedor"),
+            new(
+                "rut_proveedor",
+                "RUT del proveedor",
+                "Del proveedor",
+                18,
+                null,
+                "RUT del proveedor"
+            ),
             new(
                 "nombre_proveedor",
                 "Nombre o razón social del proveedor",
-                "Otros",
+                "Del proveedor",
                 19,
                 null,
                 "Nombre del proveedor"
             ),
-            new("rut_cliente", "RUT del cliente", "Otros", 20, null, "RUT del cliente"),
+            new("rut_cliente", "RUT del cliente", "Del cliente", 20, null, "RUT del cliente"),
             new(
                 "nombre_cliente",
                 "Nombre o razón social del cliente",
-                "Otros",
+                "Del cliente",
                 21,
                 null,
                 "Nombre del cliente"

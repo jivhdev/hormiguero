@@ -167,9 +167,19 @@ public sealed class ObservadorCarpetasServiceTests : IDisposable
         new ConfiguracionImpresionRepository().Guardar(id, ModoImpresion.PrimeraPagina, null);
         var carpetas = new CarpetasObservadasRepository();
         carpetas.Guardar([
-            new(Guid.NewGuid(), "Facturas", observada, false, true, DateTime.Now.AddHours(-1)),
+            new(
+                Guid.NewGuid(),
+                "Facturas",
+                observada,
+                false,
+                true,
+                DateTime.Now.AddHours(-1),
+                AccionAlLlegar: "ImprimirPrimeraPagina",
+                Impresora: "Impresora de prueba"
+            ),
         ]);
         var accion = new AccionQueCuenta();
+        accion.ImpresorasDisponibles.Add("Impresora de prueba");
         using var servicio = new ObservadorCarpetasService(
             carpetas,
             new ImpresionAlArchivarService(accion)
@@ -180,6 +190,7 @@ public sealed class ObservadorCarpetasServiceTests : IDisposable
 
         Assert.Equal(2, carpetas.LeerActividad().Count(a => a.Tipo == "Factura"));
         Assert.Equal(File.ReadAllBytes(nuevo), Assert.Single(accion.Impresos));
+        Assert.Equal("Impresora de prueba", Assert.Single(accion.ImpresorasUsadas));
     }
 
     [Fact]
@@ -722,11 +733,16 @@ public sealed class ObservadorCarpetasServiceTests : IDisposable
     private sealed class AccionQueCuenta : IAccionImpresion
     {
         public List<byte[]> Impresos { get; } = [];
+        public List<string?> ImpresorasUsadas { get; } = [];
+        public List<string> ImpresorasDisponibles { get; } = [];
         public string ImpresoraPredeterminada => "Predeterminada";
-        public IReadOnlyList<string> ImpresorasInstaladas => [];
+        public IReadOnlyList<string> ImpresorasInstaladas => ImpresorasDisponibles;
 
-        public void Imprimir(byte[] pdf, bool soloPrimeraPagina, string? impresora) =>
+        public void Imprimir(byte[] pdf, bool soloPrimeraPagina, string? impresora)
+        {
             Impresos.Add(pdf);
+            ImpresorasUsadas.Add(impresora);
+        }
 
         public void AbrirVisor(string rutaPdf) { }
     }
