@@ -306,6 +306,15 @@ public static class Migraciones
                 + "CREATE TABLE ubicaciones_cadena_diccionario(id INTEGER PRIMARY KEY, cadena_id INTEGER NOT NULL REFERENCES cadenas_diccionario(id), version_id INTEGER NOT NULL UNIQUE REFERENCES versiones_documento(id), lugar_id INTEGER NOT NULL REFERENCES lugares_esquema_diccionario(id), padre_id INTEGER NULL REFERENCES ubicaciones_cadena_diccionario(id), linea_id INTEGER NULL, estado TEXT NOT NULL DEFAULT 'activo' CHECK(estado IN ('activo','dudoso')), motivo TEXT NULL, orden INTEGER NOT NULL); "
                 + "CREATE TABLE alertas_esquema_diccionario(id INTEGER PRIMARY KEY, regla_id INTEGER NOT NULL REFERENCES reglas_alerta_esquema_diccionario(id), cadena_id INTEGER NOT NULL REFERENCES cadenas_diccionario(id), alcance TEXT NOT NULL, texto TEXT NOT NULL, fecha_vencimiento TEXT NULL, urgencia TEXT NOT NULL CHECK(urgencia IN ('vencido','por_vencer','normal')), estado TEXT NOT NULL DEFAULT 'abierta' CHECK(estado IN ('abierta','cerrada','descartada')), motivo TEXT NULL, actualizada_en TEXT NOT NULL, UNIQUE(regla_id,cadena_id,alcance));"
         ),
+        (
+            19,
+            "CREATE TABLE datos_cadena_diccionario(id INTEGER PRIMARY KEY,cadena_id INTEGER NOT NULL REFERENCES cadenas_diccionario(id),nombre TEXT NOT NULL,valor TEXT NOT NULL,actualizado_en TEXT NOT NULL,UNIQUE(cadena_id,nombre)); "
+                + "CREATE TABLE historial_modos_cadena_diccionario(id INTEGER PRIMARY KEY,cadena_id INTEGER NOT NULL REFERENCES cadenas_diccionario(id),modo_anterior_id INTEGER NULL REFERENCES modos_esquema_diccionario(id),modo_nuevo_id INTEGER NULL REFERENCES modos_esquema_diccionario(id),fecha TEXT NOT NULL); "
+                + "ALTER TABLE esquemas_diccionario ADD COLUMN lugar_decide_modo_id INTEGER NULL REFERENCES lugares_esquema_diccionario(id); "
+                + "ALTER TABLE decisiones_esquema_diccionario ADD COLUMN tipo TEXT NOT NULL DEFAULT 'sin_piso'; "
+                + "ALTER TABLE decisiones_esquema_diccionario ADD COLUMN cadena_id INTEGER NULL REFERENCES cadenas_diccionario(id); "
+                + "ALTER TABLE decisiones_esquema_diccionario ADD COLUMN opciones_json TEXT NOT NULL DEFAULT '[]';"
+        ),
     ];
 
     public static void Aplicar(

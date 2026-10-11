@@ -1615,8 +1615,8 @@ public partial class MainWindow : Window
         try
         {
             using var conexion = BaseComun.Abrir(DocumentosGuardados.RutaBaseComun);
-            new EvaluadorAlertasEsquema(conexion).Evaluar();
-            var conteos = new EvaluadorAlertasEsquema(conexion).Conteos();
+            new EvaluadorAlertasEsquemaDiccionario(conexion).Evaluar();
+            var conteos = new EvaluadorAlertasEsquemaDiccionario(conexion).Conteos();
             int abiertas = conteos.Sum(c => c.Cantidad);
             string? urgencia = conteos
                 .OrderBy(c => EditorReglasEsquema.OrdenUrgencia(c.Urgencia))

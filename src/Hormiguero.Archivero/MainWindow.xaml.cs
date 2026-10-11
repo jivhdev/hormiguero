@@ -272,8 +272,25 @@ public partial class MainWindow : Window
     private void CargarDecisionesPendientes()
     {
         using var conexion = BaseComun.Abrir(DocumentosGuardados.RutaBaseComun);
-        var decisiones = new RepositorioCadenas(conexion).ListarDecisionesPendientes();
-        var modos = new RepositorioModosEsquema(conexion)
+        var decisiones = new List<DecisionPendienteCadena>();
+        using (var q = conexion.CreateCommand())
+        {
+            q.CommandText =
+                "SELECT p.version_id,d.nombre,COALESCE(i.tipo,''),p.proveedor,p.motivo FROM decisiones_esquema_diccionario p JOIN versiones_documento v ON v.id=p.version_id JOIN documentos d ON d.id=v.documento_id LEFT JOIN identificaciones i ON i.id=(SELECT f.identificacion_id FROM valores_documento x JOIN campos_documento f ON f.id=x.campo_id WHERE x.version_id=v.id AND x.estado='vigente' ORDER BY x.id LIMIT 1) WHERE p.estado='pendiente' ORDER BY p.creada_en;";
+            using var r = q.ExecuteReader();
+            while (r.Read())
+                decisiones.Add(
+                    new(
+                        r.GetInt64(0),
+                        r.GetString(1),
+                        r.GetString(2),
+                        r.GetString(3),
+                        r.GetString(4),
+                        ""
+                    )
+                );
+        }
+        var modos = new RepositorioModosEsquemaDiccionario(conexion)
             .ListarPendientes()
             .ToDictionary(m => m.VersionId);
         ListaDecisionesPendientes.ItemsSource = decisiones
@@ -297,6 +314,29 @@ public partial class MainWindow : Window
         try
         {
             using var conexion = BaseComun.Abrir(DocumentosGuardados.RutaBaseComun);
+            using (var consulta = conexion.CreateCommand())
+            {
+                consulta.CommandText =
+                    "SELECT EXISTS(SELECT 1 FROM decisiones_esquema_diccionario WHERE version_id=$v AND tipo='modo' AND estado='pendiente');";
+                consulta.Parameters.AddWithValue("$v", fila.VersionId);
+                if (Convert.ToInt64(consulta.ExecuteScalar()) != 0)
+                {
+                    using var modoConsulta = conexion.CreateCommand();
+                    modoConsulta.CommandText =
+                        "SELECT m.id FROM cadenas_diccionario c JOIN modos_esquema_diccionario m ON m.esquema_id=c.esquema_id WHERE c.id=$c AND m.nombre=$n COLLATE NOCASE;";
+                    modoConsulta.Parameters.AddWithValue("$c", decisionModo.CadenaId);
+                    modoConsulta.Parameters.AddWithValue("$n", nombreModo);
+                    if (modoConsulta.ExecuteScalar() is not long modoId)
+                        throw new InvalidOperationException("El modo ya no está disponible.");
+                    new RepositorioModosEsquemaDiccionario(conexion).FijarModo(
+                        decisionModo.CadenaId,
+                        modoId
+                    );
+                    new EvaluadorAlertasEsquemaDiccionario(conexion).Evaluar();
+                    CargarDecisionesPendientes();
+                    return;
+                }
+            }
             var esquema =
                 new RepositorioEsquemas(conexion).ObtenerPorProveedor(decisionModo.Proveedor)
                 ?? throw new InvalidOperationException("No se encontró el esquema del proveedor.");
@@ -442,7 +482,14 @@ public partial class MainWindow : Window
         try
         {
             using var conexion = BaseComun.Abrir(DocumentosGuardados.RutaBaseComun);
-            var resultado = new MotorCadenas(conexion).CrearCadenaIgual(fila.VersionId);
+            using var consulta = conexion.CreateCommand();
+            consulta.CommandText =
+                "SELECT EXISTS(SELECT 1 FROM decisiones_esquema_diccionario WHERE version_id=$v AND tipo='sin_piso' AND estado='pendiente');";
+            consulta.Parameters.AddWithValue("$v", fila.VersionId);
+            var resultado =
+                Convert.ToInt64(consulta.ExecuteScalar()) != 0
+                    ? new MotorCadenasDiccionario(conexion).CrearCadenaManual(fila.VersionId)
+                    : new MotorCadenas(conexion).CrearCadenaIgual(fila.VersionId);
             if (resultado.Estado != "cadena_creada")
                 throw new InvalidOperationException(
                     resultado.Motivo ?? "No se pudo crear la cadena."

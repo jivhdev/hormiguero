@@ -18,17 +18,67 @@
     </Grid.RowDefinitions>
     <StackPanel>
       <TextBlock Text="Documentos del proceso" FontSize="20" FontWeight="Bold" />
-      <StackPanel Orientation="Horizontal" Margin="0,8">
+      <StackPanel x:Name="PanelProveedor" Orientation="Horizontal" Margin="0,8">
         <TextBlock Text="Proveedor" VerticalAlignment="Center" Margin="0,0,8,0" />
         <TextBox x:Name="Proveedor" Width="320" />
         <TextBlock Text="Nombre" VerticalAlignment="Center" Margin="18,0,8,0" />
         <TextBox x:Name="Nombre" Width="320" />
       </StackPanel>
       <TextBlock
+        x:Name="AyudaTipos"
         Text="Agregue los tipos que forman el proceso. La lista incluye el diccionario completo, agrupado por categoría."
         TextWrapping="Wrap"
         Margin="0,0,0,8"
       />
+      <WrapPanel x:Name="PanelModos" Margin="0,0,0,8">
+        <TextBlock
+          Text="Modos opcionales (separados por coma)"
+          VerticalAlignment="Center"
+          Margin="0,0,8,0"
+        />
+        <TextBox x:Name="ModosTexto" Width="280" />
+        <TextBlock Text="Decide el modo" VerticalAlignment="Center" Margin="14,0,8,0" />
+        <ComboBox x:Name="LugarDecideModo" Width="190" DisplayMemberPath="Nombre" />
+      </WrapPanel>
+      <WrapPanel x:Name="PanelAvisos" Margin="0,0,0,8">
+        <TextBlock Text="Aviso" VerticalAlignment="Center" Margin="0,0,5,0" />
+        <ComboBox x:Name="TipoAviso" Width="110" SelectedIndex="0" Margin="0,0,5,0">
+          <ComboBoxItem Content="Falta dato" Tag="falta_dato" />
+          <ComboBoxItem Content="Plazo" Tag="plazo" />
+          <ComboBoxItem Content="Listo para" Tag="listo_para" />
+        </ComboBox>
+        <ComboBox x:Name="DatoAviso" Width="150" DisplayMemberPath="Texto" Margin="0,0,5,0" />
+        <ComboBox
+          x:Name="LugarAvisoA"
+          Width="130"
+          DisplayMemberPath="Nombre"
+          SelectionChanged="LugarAviso_SelectionChanged"
+          Margin="0,0,5,0"
+        />
+        <ComboBox
+          x:Name="LugarAvisoB"
+          Width="130"
+          DisplayMemberPath="Nombre"
+          SelectionChanged="LugarAviso_SelectionChanged"
+          Margin="0,0,5,0"
+        />
+        <TextBox
+          x:Name="DiasAviso"
+          Width="45"
+          ToolTip="Días del plazo"
+          Text="30"
+          Margin="0,0,5,0"
+        />
+        <TextBox x:Name="TextoAviso" Width="160" ToolTip="Texto del aviso" />
+        <CheckBox x:Name="PorLinea" Content="Por línea" VerticalAlignment="Center" Margin="5,0" />
+        <Button Content="Agregar" Click="AgregarAviso_Click" Padding="7,3" />
+      </WrapPanel>
+      <TextBlock
+        x:Name="ReglasAvisoTexto"
+        TextWrapping="Wrap"
+        Foreground="{DynamicResource Hormiguero.TextoSecundario}"
+      />
+      <TextBlock x:Name="PanelResumen" TextWrapping="Wrap" Visibility="Collapsed" />
     </StackPanel>
     <Grid Grid.Row="1">
       <Grid.ColumnDefinitions>
@@ -36,7 +86,7 @@
         <ColumnDefinition Width="Auto" />
         <ColumnDefinition Width="1.2*" />
       </Grid.ColumnDefinitions>
-      <DockPanel>
+      <DockPanel x:Name="PanelTipos">
         <TextBlock
           DockPanel.Dock="Top"
           Text="Tipos del diccionario"
@@ -46,6 +96,7 @@
         <ListBox x:Name="Tipos" DisplayMemberPath="Texto" />
       </DockPanel>
       <Button
+        x:Name="AgregarTipo"
         Grid.Column="1"
         Content="Agregar tipo →"
         Click="Agregar_Click"
@@ -59,7 +110,7 @@
           <RowDefinition Height="Auto" />
           <RowDefinition Height="*" />
         </Grid.RowDefinitions>
-        <DockPanel>
+        <DockPanel x:Name="PanelLugares">
           <TextBlock
             DockPanel.Dock="Top"
             Text="Lugares del esquema"
@@ -100,8 +151,14 @@
             </DataGrid.Columns>
           </DataGrid>
         </DockPanel>
-        <TextBlock Grid.Row="1" Text="Enlaces declarados" FontWeight="Bold" Margin="0,12,0,5" />
-        <Grid Grid.Row="2">
+        <TextBlock
+          x:Name="TituloEnlaces"
+          Grid.Row="1"
+          Text="Enlaces declarados"
+          FontWeight="Bold"
+          Margin="0,12,0,5"
+        />
+        <Grid x:Name="PanelEnlaces" Grid.Row="2">
           <Grid.RowDefinitions>
             <RowDefinition Height="Auto" />
             <RowDefinition Height="Auto" />
@@ -147,8 +204,30 @@
       </Grid>
     </Grid>
     <StackPanel Grid.Row="2" Orientation="Horizontal" HorizontalAlignment="Right" Margin="0,10,0,0">
-      <TextBlock x:Name="Estado" VerticalAlignment="Center" TextWrapping="Wrap" Width="600" />
-      <Button Content="Guardar" Click="Guardar_Click" Padding="12,6" Margin="4" />
+      <TextBlock x:Name="NumeroPaso" VerticalAlignment="Center" Margin="0,0,10,0" />
+      <Button
+        x:Name="Anterior"
+        Content="Anterior"
+        Click="Anterior_Click"
+        Padding="10,6"
+        Margin="4"
+      />
+      <Button
+        x:Name="Siguiente"
+        Content="Siguiente"
+        Click="Siguiente_Click"
+        Padding="10,6"
+        Margin="4"
+      />
+      <TextBlock x:Name="Estado" VerticalAlignment="Center" TextWrapping="Wrap" Width="360" />
+      <Button
+        x:Name="Guardar"
+        Content="Guardar"
+        Click="Guardar_Click"
+        Padding="12,6"
+        Margin="4"
+        Visibility="Collapsed"
+      />
       <Button Content="Cancelar" IsCancel="True" Padding="12,6" Margin="4" />
     </StackPanel>
   </Grid>

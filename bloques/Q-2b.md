@@ -22,3 +22,22 @@ Lee `bloques/Q-2.md` (pedido, decisión de tablas paralelas y tu reporte: quedó
 `dotnet build` sin advertencias; `dotnet test` todo pasa; `dotnet csharpier check .` sin errores en tus archivos. Si algo no está definido, elige lo más simple, anótalo y sigue. Reporte al final con lo retirado y la lista de pantallas.
 
 ## Reporte del agente
+
+### Implementación
+
+- Se agregó la migración 19 para datos de cadena, historial de modos y opciones/tipo de las decisiones del esquema nuevo. Las migraciones 1–18 quedaron intactas.
+- El asistente del esquema del diccionario recorre siete pasos: proveedor, documentos, inicios, enlaces, modos, avisos y resumen. Guarda los tres tipos de aviso; habilita “por línea” cuando los lugares seleccionados están conectados por un enlace declarado.
+- El evaluador nuevo genera avisos de falta de dato, plazo y listo para; incluye plazos desde fecha de emisión o dato ingresado, alcance por cadena o línea, urgencia, idempotencia y cierre al llegar el destino. Los datos y cambios de modo quedan guardados en tablas nuevas; los cambios de modo guardan historial.
+- El motor crea decisiones nuevas para “sin piso” y modo. Buscadero muestra cadenas, conteos, avisos, listos, detalles con modo/datos y dudosos del modelo nuevo. Se pueden aceptar o rechazar dudosos. Archivero consulta las decisiones nuevas y permite fijar el modo o crear la cadena manualmente.
+- Se retiraron del proyecto las ventanas C3 DialogoEsquemaCadena, DialogoReglaEsquema y DialogoDudososCadena, así como las pruebas del asistente, reglas/decisiones y recorridos de publicación C3 que dependían de ese flujo. La lista “Esquemas…” abre el asistente del diccionario.
+
+### Pantallas
+
+- Buscadero: lista de esquemas, asistente de siete pasos, vista de cadenas con jerarquía, detalle de cadena, Avisos/Listos para y Dudosos.
+- Archivero: Decisiones pendientes, con decisiones de sin piso y modo.
+
+### Verificación
+
+- dotnet build Hormiguero.slnx --no-restore: compilación correcta, 0 advertencias y 0 errores.
+- dotnet test Hormiguero.slnx --no-build: correcto; 807 pruebas superadas, 0 fallidas.
+- dotnet csharpier check .: correcto; 338 archivos revisados.

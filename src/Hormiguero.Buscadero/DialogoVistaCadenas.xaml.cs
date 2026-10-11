@@ -10,18 +10,17 @@ namespace Buscadero.App;
 public partial class DialogoVistaCadenas : Window
 {
     private readonly Microsoft.Data.Sqlite.SqliteConnection _conexion;
-    private readonly RepositorioEsquemas _esquemas;
     private readonly RepositorioEsquemasDiccionario _esquemasDiccionario;
     private readonly RepositorioCadenas _cadenas;
     private long? _seleccionado;
     private long? _versionSeleccionada;
+    private bool _cadenaDiccionarioSeleccionada;
     private IReadOnlyList<FilaArbolCadena> _filas = [];
 
     public DialogoVistaCadenas(long? cadenaInicial = null)
     {
         InitializeComponent();
         _conexion = BaseComun.Abrir(DocumentosGuardados.RutaBaseComun);
-        _esquemas = new(_conexion);
         _esquemasDiccionario = new(_conexion);
         _cadenas = new(_conexion);
         CargarCadenas(cadenaInicial);
@@ -31,17 +30,16 @@ public partial class DialogoVistaCadenas : Window
     {
         try
         {
-            var proveedoresActivos = _esquemas
+            var proveedoresActivos = _esquemasDiccionario
                 .Listar()
                 .Where(e => e.Activo)
                 .Select(e => e.Proveedor)
-                .Concat(_esquemasDiccionario.Listar().Where(e => e.Activo).Select(e => e.Proveedor))
                 .ToHashSet(StringComparer.OrdinalIgnoreCase);
             EstadoSinEsquemas.Visibility =
                 proveedoresActivos.Count == 0 ? Visibility.Visible : Visibility.Collapsed;
             var filas = AsistenteEsquemaCadena
                 .ListarCadenas(_conexion)
-                .Where(c => proveedoresActivos.Contains(c.Proveedor))
+                .Where(c => c.EsDiccionario && proveedoresActivos.Contains(c.Proveedor))
                 .Select(c => new CadenaVm(
                     c.Id,
                     c.Proveedor,
@@ -51,7 +49,7 @@ public partial class DialogoVistaCadenas : Window
                     c.EsDiccionario
                 ))
                 .ToArray();
-            var evaluador = new EvaluadorAlertasEsquema(_conexion);
+            var evaluador = new EvaluadorAlertasEsquemaDiccionario(_conexion);
             evaluador.Evaluar();
             var conteos = evaluador.Conteos().ToDictionary(c => c.CadenaId);
             var filtradas = filas
@@ -75,8 +73,8 @@ public partial class DialogoVistaCadenas : Window
                     Agrupar.SelectedIndex == 1
                         ? $"{f.Cliente ?? "Sin cliente"} · {f.Nombre}"
                         : $"{f.Proveedor} · {f.Nombre}",
-                    f.EsDiccionario ? 0 : conteos.GetValueOrDefault(f.Id)?.Cantidad ?? 0,
-                    f.EsDiccionario ? null : conteos.GetValueOrDefault(f.Id)?.Urgencia
+                    conteos.GetValueOrDefault(f.Id)?.Cantidad ?? 0,
+                    conteos.GetValueOrDefault(f.Id)?.Urgencia
                 ))
                 .ToArray();
             if (cadenaInicial is long id)
@@ -111,6 +109,7 @@ public partial class DialogoVistaCadenas : Window
         if (Cadenas.SelectedItem is not CadenaFila fila)
             return;
         _seleccionado = fila.Cadena.Id;
+        _cadenaDiccionarioSeleccionada = fila.Cadena.EsDiccionario;
         try
         {
             if (fila.Cadena.EsDiccionario)
@@ -135,31 +134,15 @@ public partial class DialogoVistaCadenas : Window
                     docsDiccionario,
                     versionesDiccionario
                 );
-                PanelModo.Visibility = Visibility.Collapsed;
-                DatosCadena.Visibility = Visibility.Collapsed;
-                PrepararArbol(fila.Cadena.Nombre, null);
+                PrepararModoYDatosDiccionario(fila.Cadena.Id, esquemaDiccionario);
+                var conteoDiccionario = new EvaluadorAlertasEsquemaDiccionario(_conexion)
+                    .Conteos()
+                    .FirstOrDefault(c => c.CadenaId == fila.Cadena.Id);
+                PrepararArbol(fila.Cadena.Nombre, conteoDiccionario);
                 Estado.Text = "";
                 return;
             }
-            var esquema = _esquemas.ObtenerPorProveedor(fila.Cadena.Proveedor);
-            if (esquema is null)
-            {
-                Estado.Text = "Este proveedor no tiene esquema de cadena.";
-                return;
-            }
-            PrepararModoYDatos(fila.Cadena.Id, esquema);
-            var docs = _cadenas.ArbolPorLugares(fila.Cadena.Id);
-            var versiones = docs.Select(d => d.VersionId)
-                .Distinct()
-                .Select(id => _cadenas.ObtenerVersionDocumento(id))
-                .Where(v => v is not null)
-                .ToDictionary(v => v!.VersionId, v => v!);
-            _filas = AsistenteEsquemaCadena.ArmarArbol(esquema, docs, versiones);
-            var conteo = new EvaluadorAlertasEsquema(_conexion)
-                .Conteos()
-                .FirstOrDefault(c => c.CadenaId == fila.Cadena.Id);
-            PrepararArbol(fila.Cadena.Nombre, conteo);
-            Estado.Text = "";
+            Estado.Text = "La cadena seleccionada no pertenece al modelo de esquemas actual.";
         }
         catch (Exception ex)
         {
@@ -215,50 +198,52 @@ public partial class DialogoVistaCadenas : Window
         return documentos;
     }
 
-    private void PrepararModoYDatos(long cadenaId, EsquemaCadena esquema)
+    private void PrepararModoYDatosDiccionario(long cadenaId, EsquemaDiccionario esquema)
     {
-        PanelModo.Visibility = esquema.Modos.Count == 0 ? Visibility.Collapsed : Visibility.Visible;
-        ModoCadena.ItemsSource = esquema.Modos.Select(m => new ModoVm(m.Id, m.Nombre)).ToArray();
+        var modos = new RepositorioModosEsquemaDiccionario(_conexion).Listar(esquema.Id);
+        PanelModo.Visibility = modos.Count == 0 ? Visibility.Collapsed : Visibility.Visible;
+        ModoCadena.ItemsSource = modos.Select(m => new ModoVm(m.Id, m.Nombre)).ToArray();
         using (var q = _conexion.CreateCommand())
         {
-            q.CommandText = "SELECT modo_id FROM cadenas WHERE id=$c";
+            q.CommandText = "SELECT modo_id FROM cadenas_diccionario WHERE id=$c;";
             q.Parameters.AddWithValue("$c", cadenaId);
-            var valor = q.ExecuteScalar();
-            if (valor is long modoId)
+            if (q.ExecuteScalar() is long modoId)
                 ModoCadena.SelectedValue = modoId;
         }
-        var nombres = esquema
-            .ReglasAlerta.Select(r =>
+        var nombres = new List<string>();
+        using (var q = _conexion.CreateCommand())
+        {
+            q.CommandText =
+                "SELECT tipo,parametros_json FROM reglas_alerta_esquema_diccionario WHERE esquema_id=$e AND tipo IN ('falta_dato','plazo');";
+            q.Parameters.AddWithValue("$e", esquema.Id);
+            using var r = q.ExecuteReader();
+            while (r.Read())
             {
-                using var json = JsonDocument.Parse(r.ParametrosJson);
-                string? dato = r.Tipo switch
-                {
-                    "falta_dato" => json.RootElement.GetProperty("dato").GetString(),
-                    "plazo" when json.RootElement.TryGetProperty("desdeDato", out var desde) =>
-                        desde.GetString(),
-                    _ => null,
-                };
-                return dato;
-            })
-            .Where(n => !string.IsNullOrWhiteSpace(n))
-            .Distinct(StringComparer.OrdinalIgnoreCase)
-            .ToArray();
-        var guardados = new RepositorioDatosCadena(_conexion)
+                using var json = JsonDocument.Parse(r.GetString(1));
+                string propiedad = r.GetString(0) == "falta_dato" ? "dato" : "desdeDato";
+                if (
+                    json.RootElement.TryGetProperty(propiedad, out var dato)
+                    && dato.ValueKind == JsonValueKind.String
+                )
+                    nombres.Add(dato.GetString() ?? "");
+            }
+        }
+        var guardados = new RepositorioDatosCadenaDiccionario(_conexion)
             .Listar(cadenaId)
             .ToDictionary(d => d.Nombre, d => d.Valor, StringComparer.OrdinalIgnoreCase);
         DatosCadena.Children.Clear();
-        foreach (string nombre in nombres!)
+        foreach (string nombre in nombres.Distinct(StringComparer.OrdinalIgnoreCase))
         {
             var fila = new StackPanel
             {
                 Orientation = Orientation.Horizontal,
-                Margin = new Thickness(0, 3, 0, 3),
+                Margin = new Thickness(0, 2, 0, 2),
             };
             fila.Children.Add(
                 new TextBlock
                 {
                     Text = nombre,
-                    Width = 150,
+                    Width = 180,
                     VerticalAlignment = VerticalAlignment.Center,
                 }
             );
@@ -266,15 +251,15 @@ public partial class DialogoVistaCadenas : Window
             {
                 Text = guardados.GetValueOrDefault(nombre) ?? "",
                 Width = 150,
-                Padding = new Thickness(5),
                 Tag = nombre,
+                Padding = new Thickness(5),
             };
             fila.Children.Add(valor);
             var guardar = new Button
             {
                 Content = "Guardar",
-                Margin = new Thickness(6, 0, 0, 0),
                 Tag = valor,
+                Margin = new Thickness(6, 0, 0, 0),
                 Padding = new Thickness(8, 3, 8, 3),
             };
             guardar.Click += (_, _) =>
@@ -282,7 +267,7 @@ public partial class DialogoVistaCadenas : Window
                 try
                 {
                     var campo = (TextBox)guardar.Tag;
-                    new RepositorioDatosCadena(_conexion).Guardar(
+                    new RepositorioDatosCadenaDiccionario(_conexion).Guardar(
                         cadenaId,
                         (string)campo.Tag,
                         campo.Text
@@ -297,7 +282,7 @@ public partial class DialogoVistaCadenas : Window
             fila.Children.Add(guardar);
             DatosCadena.Children.Add(fila);
         }
-        DatosCadena.Visibility = nombres.Length == 0 ? Visibility.Collapsed : Visibility.Visible;
+        DatosCadena.Visibility = nombres.Count == 0 ? Visibility.Collapsed : Visibility.Visible;
     }
 
     private void CambiarModo_Click(object sender, RoutedEventArgs e)
@@ -309,8 +294,13 @@ public partial class DialogoVistaCadenas : Window
         }
         try
         {
-            new RepositorioModosEsquema(_conexion).FijarModo(cadenaId, modo.Id);
-            Estado.Text = "Modo actualizado.";
+            if (_cadenaDiccionarioSeleccionada)
+            {
+                new RepositorioModosEsquemaDiccionario(_conexion).FijarModo(cadenaId, modo.Id);
+                Estado.Text = "Modo actualizado.";
+                return;
+            }
+            Estado.Text = "La cadena ya no pertenece al modelo actual.";
         }
         catch (Exception error)
         {
@@ -437,10 +427,7 @@ public partial class DialogoVistaCadenas : Window
                 Estado.Text = "Seleccione una cadena para revisar sus dudosos.";
                 return;
             }
-            new DialogoDudososCadena(fila.Cadena.Id, fila.Cadena.Nombre)
-            {
-                Owner = this,
-            }.ShowDialog();
+            new DialogoDudosos(fila.Cadena.Id) { Owner = this }.ShowDialog();
             Cadenas.SelectedItem = null;
             Cadenas.SelectedItem = fila;
         }

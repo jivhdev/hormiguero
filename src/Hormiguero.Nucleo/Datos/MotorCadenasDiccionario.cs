@@ -22,7 +22,7 @@ public sealed class MotorCadenasDiccionario(SqliteConnection conexion)
         using (var ya = conexion.CreateCommand())
         {
             ya.CommandText =
-                "SELECT EXISTS(SELECT 1 FROM ubicaciones_cadena_diccionario WHERE version_id=$v);";
+                "SELECT EXISTS(SELECT 1 FROM ubicaciones_cadena_diccionario WHERE version_id=$v) OR EXISTS(SELECT 1 FROM decisiones_esquema_diccionario WHERE version_id=$v AND tipo='rechazado' AND estado='resuelta');";
             ya.Parameters.AddWithValue("$v", versionId);
             if (Convert.ToInt64(ya.ExecuteScalar()) != 0)
                 return new("ya_procesado");
@@ -69,15 +69,85 @@ public sealed class MotorCadenasDiccionario(SqliteConnection conexion)
         {
             Coincidencia coincidencia = elegidas[0];
             GuardarUbicacion(versionId, lugar, cadenas[0], coincidencia, "activo", null);
+            RegistrarDecisionModo(versionId, esquema, lugar, cadenas[0]);
             return new("ubicado", cadenas[0]);
         }
         if (!lugar.IniciaCadena)
+        {
+            RegistrarSinPiso(versionId, proveedor.Clave);
             return new(
                 "sin_piso",
                 Motivo: "No coincide con un enlace declarado y el lugar no inicia cadenas."
             );
+        }
         long cadena = CrearCadena(versionId, esquema, proveedor.Clave, lugar);
+        RegistrarDecisionModo(versionId, esquema, lugar, cadena);
         return new("cadena_creada", cadena);
+    }
+
+    public ResultadoMotorCadena CrearCadenaManual(long versionId)
+    {
+        ProveedorDocumento? proveedor = ProveedorDeDocumento.Determinar(conexion, versionId);
+        if (proveedor is null)
+            return new("sin_esquema", Motivo: "No se pudo determinar el proveedor.");
+        var esquema = new RepositorioEsquemasDiccionario(conexion).ObtenerPorProveedor(
+            proveedor.Clave
+        );
+        string? tipo = LeerTipo(versionId);
+        var lugar = tipo is null
+            ? null
+            : esquema?.Lugares.SingleOrDefault(l => l.DatoTipoId == tipo);
+        if (esquema is null || lugar is null)
+            return new("tipo_fuera_esquema");
+        long cadena = CrearCadena(versionId, esquema, proveedor.Clave, lugar);
+        using var q = conexion.CreateCommand();
+        q.CommandText =
+            "UPDATE decisiones_esquema_diccionario SET estado='resuelta' WHERE version_id=$v AND tipo='sin_piso' AND estado='pendiente';";
+        q.Parameters.AddWithValue("$v", versionId);
+        q.ExecuteNonQuery();
+        RegistrarDecisionModo(versionId, esquema, lugar, cadena);
+        return new("cadena_creada", cadena);
+    }
+
+    private void RegistrarSinPiso(long versionId, string proveedor)
+    {
+        using var q = conexion.CreateCommand();
+        q.CommandText =
+            "INSERT INTO decisiones_esquema_diccionario(version_id,proveedor,motivo,creada_en,estado,tipo,opciones_json) VALUES($v,$p,'No se encontró un origen en los enlaces declarados.',$f,'pendiente','sin_piso','[]') ON CONFLICT(version_id) DO NOTHING;";
+        q.Parameters.AddWithValue("$v", versionId);
+        q.Parameters.AddWithValue("$p", proveedor);
+        q.Parameters.AddWithValue("$f", DateTime.Now.ToString("o"));
+        q.ExecuteNonQuery();
+    }
+
+    private void RegistrarDecisionModo(
+        long versionId,
+        EsquemaDiccionario esquema,
+        LugarDiccionario lugar,
+        long cadenaId
+    )
+    {
+        using var q = conexion.CreateCommand();
+        q.CommandText =
+            "SELECT e.lugar_decide_modo_id,(SELECT json_group_array(nombre) FROM (SELECT nombre FROM modos_esquema_diccionario WHERE esquema_id=e.id ORDER BY id)) FROM esquemas_diccionario e WHERE e.id=$e AND NOT EXISTS(SELECT 1 FROM cadenas_diccionario c WHERE c.id=$c AND c.modo_id IS NOT NULL);";
+        q.Parameters.AddWithValue("$e", esquema.Id);
+        q.Parameters.AddWithValue("$c", cadenaId);
+        using var r = q.ExecuteReader();
+        if (!r.Read() || r.IsDBNull(0) || r.GetInt64(0) != lugar.Id)
+            return;
+        string opciones = r.IsDBNull(1) ? "[]" : r.GetString(1);
+        r.Close();
+        if (opciones == "[]")
+            return;
+        using var guardar = conexion.CreateCommand();
+        guardar.CommandText =
+            "INSERT INTO decisiones_esquema_diccionario(version_id,proveedor,motivo,creada_en,estado,tipo,cadena_id,opciones_json) VALUES($v,$p,'Modo pendiente',$f,'pendiente','modo',$c,$o) ON CONFLICT(version_id) DO NOTHING;";
+        guardar.Parameters.AddWithValue("$v", versionId);
+        guardar.Parameters.AddWithValue("$p", esquema.Proveedor);
+        guardar.Parameters.AddWithValue("$f", DateTime.Now.ToString("o"));
+        guardar.Parameters.AddWithValue("$c", cadenaId);
+        guardar.Parameters.AddWithValue("$o", opciones);
+        guardar.ExecuteNonQuery();
     }
 
     private List<Coincidencia> Buscar(
