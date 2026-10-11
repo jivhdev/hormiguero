@@ -548,6 +548,10 @@ public sealed class ObservadorCarpetasService : IDisposable
                     coincidencia with
                     {
                         ModoImpresion = modoImpresion,
+                        Impresora =
+                            carpeta.AccionAlLlegar == "Configuracion"
+                                ? coincidencia.Impresora
+                                : carpeta.Impresora,
                     }
                 );
                 if (avisoImpresion is not null)

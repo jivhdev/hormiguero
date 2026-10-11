@@ -52,6 +52,7 @@ public sealed class CampoPropioEdicion : INotifyPropertyChanged
         }
     }
     public bool Marcado { get; set; }
+    public bool EsAnterior { get; set; }
     public IReadOnlyList<KeyValuePair<string, string>> OpcionesDatos
     {
         get => _opcionesDatos;
@@ -154,6 +155,7 @@ public partial class IdentificarDocumentoWindow : Window
                 _nombreEstandarEditado = true;
         };
         ListaCamposPropios.ItemsSource = _camposPropios;
+        ListaCamposPropiosEditor.ItemsSource = _camposPropios;
         ConfigurarListaDatosEnlazantes();
         ConfigurarListaDatosInformativos();
         CmbCategoriaDocumento.ItemsSource = AsistenteClasificacionService.Categorias;
@@ -227,6 +229,7 @@ public partial class IdentificarDocumentoWindow : Window
                 _nombreEstandarEditado = true;
         };
         ListaCamposPropios.ItemsSource = _camposPropios;
+        ListaCamposPropiosEditor.ItemsSource = _camposPropios;
         ConfigurarListaDatosEnlazantes();
         ConfigurarListaDatosInformativos();
         CmbCategoriaDocumento.ItemsSource = AsistenteClasificacionService.Categorias;
@@ -428,7 +431,7 @@ public partial class IdentificarDocumentoWindow : Window
         PanelInformativos.Visibility =
             nuevoPaso == Paso.OtrosDatos ? Visibility.Visible : Visibility.Collapsed;
         PanelDatosAnteriores.Visibility =
-            nuevoPaso == Paso.OtrosDatos && _camposPropios.Count > 0
+            nuevoPaso == Paso.OtrosDatos && _camposPropios.Any(campo => campo.EsAnterior)
                 ? Visibility.Visible
                 : Visibility.Collapsed;
         ChkSinNumero.Visibility =
@@ -460,7 +463,12 @@ public partial class IdentificarDocumentoWindow : Window
         // Preview obligatorio de anterior/actual/futuro (Caso-1, punto 3): visible desde que hay
         // carpeta+organización elegidas hasta confirmar, para que sea imposible llegar a "Guardar y
         // clasificar" sin haberlo visto.
-        var mostrarPreview = nuevoPaso == Paso.Guardar && !_modoObservador;
+        var mostrarPreview =
+            !_modoObservador
+            && (
+                nuevoPaso == Paso.Guardar
+                || (nuevoPaso == Paso.Resumen && _preguntarNombre && _edicion is null)
+            );
         PanelPreview.Visibility = mostrarPreview ? Visibility.Visible : Visibility.Collapsed;
         if (mostrarPreview)
         {
@@ -1007,6 +1015,7 @@ public partial class IdentificarDocumentoWindow : Window
                     ? "Zona guardada; no se pudo leer un valor de ejemplo."
                     : $"Valor de ejemplo: \"{texto}\" (página {campo.Pagina + 1})."
             );
+            edicion.EsAnterior = true;
             edicion.Marcado = true;
             edicion.Pagina = campo.Pagina;
             edicion.X = campo.X;
@@ -1560,7 +1569,8 @@ public partial class IdentificarDocumentoWindow : Window
         };
 
         TxtPreviewActual.Text =
-            ClasificadorService.CalcularRutaDestino(
+            "Se guardará en: "
+            + ClasificadorService.CalcularRutaDestino(
                 nombreArchivo,
                 configuracionTemporal,
                 fecha,
@@ -1650,12 +1660,23 @@ public partial class IdentificarDocumentoWindow : Window
     }
 
     /// <summary>
-    /// El nombre final recien se decide en el Paso 4 (mantener vs extraer): mientras tanto, el
-    /// preview usa el nombre original como mejor aproximacion disponible -- se corrige solo
-    /// apenas el usuario elige "extraer" y marca el campo.
+    /// Mientras no se elige otro nombre, la vista previa conserva el nombre original; se actualiza
+    /// al marcar un nombre extraído o al escribir el nombre de este documento.
     /// </summary>
     private string LeerNombreArchivoPreview()
     {
+        if (
+            _preguntarNombre
+            && _edicion is null
+            && !string.IsNullOrWhiteSpace(TxtNombreEsteDocumento.Text)
+        )
+        {
+            string nombre = TxtNombreEsteDocumento.Text.Trim();
+            return System.IO.Path.HasExtension(nombre)
+                ? nombre
+                : nombre + System.IO.Path.GetExtension(_rutaArchivo);
+        }
+
         var extrayendoNombre =
             _configuracionExistente?.Renombrar ?? (RbExtraerNombre.IsChecked == true);
 
@@ -1669,6 +1690,12 @@ public partial class IdentificarDocumentoWindow : Window
         }
 
         return _rutaArchivo;
+    }
+
+    private void TxtNombreEsteDocumento_TextChanged(object sender, TextChangedEventArgs e)
+    {
+        if (PanelPreview.Visibility == Visibility.Visible)
+            ActualizarPreview();
     }
 
     private void MostrarResumen()
@@ -1713,7 +1740,24 @@ public partial class IdentificarDocumentoWindow : Window
             + $"Número: {(_datosEnlazantes.FirstOrDefault(d => d.DefineTipo)?.ValorLeido is { Length: > 0 } numero ? numero : "no informado")}\n"
             + $"Carpeta madre: {_carpetaDestino}\n"
             + $"Subcarpetas: {formatoTexto}\n"
-            + $"Nombre de archivo: {nombreTexto}";
+            + $"Nombre de archivo: {nombreTexto}\n"
+            + $"Al guardar: {(_abrirDespuesDeGuardar ? "se abre el documento" : "no se abre el documento")} y {TextoModoImpresion()}";
+    }
+
+    private string TextoModoImpresion()
+    {
+        string modo = _modoImpresion switch
+        {
+            ModoImpresion.PrimeraPagina => "se imprime la primera página",
+            ModoImpresion.TodoElDocumento => "se imprime todo",
+            ModoImpresion.PreguntarCadaVez => "se pregunta si se imprime",
+            _ => "no se imprime",
+        };
+        return
+            (_modoImpresion is ModoImpresion.PrimeraPagina or ModoImpresion.TodoElDocumento)
+            && !string.IsNullOrWhiteSpace(_impresora)
+            ? $"{modo} en {_impresora}"
+            : modo;
     }
 
     private void BtnSiguiente_Click(object sender, RoutedEventArgs e)
@@ -1963,6 +2007,15 @@ public partial class IdentificarDocumentoWindow : Window
                 }
                 if (_configuracionExistente is null)
                 {
+                    try
+                    {
+                        _ = LeerCamposPropiosValidados();
+                    }
+                    catch (InvalidOperationException error)
+                    {
+                        MostrarError(error.Message);
+                        return;
+                    }
                     if (
                         RbMantenerNombre.IsChecked != true
                         && RbExtraerNombre.IsChecked != true
@@ -2001,6 +2054,7 @@ public partial class IdentificarDocumentoWindow : Window
         {
             AplicarVinculosDatosAnteriores();
             var marcas = _marcas.Values.ToList();
+            var camposPropios = LeerCamposPropiosValidados();
             var grupoDocumento = RbEmitido.IsChecked == true ? "Emitido" : "Recibido";
             var nombreEstandar = string.IsNullOrWhiteSpace(TxtNombreEstandar.Text)
                 ? $"{_tipo.Trim()} · {_emisor.Trim()}"
@@ -2057,6 +2111,7 @@ public partial class IdentificarDocumentoWindow : Window
                     grupoDocumento,
                     nombreEstandar
                 );
+                _configuraciones.GuardarCamposPropios(configuracionId, camposPropios);
                 DatosEnlazantesConfiguracionService.Guardar(
                     _emisor,
                     _tipo,
@@ -2134,7 +2189,7 @@ public partial class IdentificarDocumentoWindow : Window
                     _abrirDespuesDeGuardar,
                     _preguntarNombre
                 );
-                _configuraciones.GuardarCamposPropios(edicion.Configuracion.Id, []);
+                _configuraciones.GuardarCamposPropios(edicion.Configuracion.Id, camposPropios);
                 _configuraciones.ActualizarTipoDocumento(
                     edicion.Configuracion.Id,
                     grupoDocumento,
@@ -2285,6 +2340,7 @@ public partial class IdentificarDocumentoWindow : Window
 
     private void GuardarConfiguracionYCerrar(List<Marca> marcas, string rutaFinal)
     {
+        var camposPropios = LeerCamposPropiosValidados();
         if (_configuracionExistente is not null)
         {
             _configuraciones.AgregarPatronAConfiguracionExistente(
@@ -2315,7 +2371,7 @@ public partial class IdentificarDocumentoWindow : Window
                 patronGuardado.Id,
                 LeerVinculosDatosAnteriores()
             );
-            _configuraciones.GuardarCamposPropios(_configuracionExistente.Id, []);
+            _configuraciones.GuardarCamposPropios(_configuracionExistente.Id, camposPropios);
             AuditoriaService.Registrar(
                 "CLASIFICACION_VINCULADA",
                 $"Emisor={_emisor}; Tipo={_tipo}"
@@ -2334,7 +2390,7 @@ public partial class IdentificarDocumentoWindow : Window
                 _abrirDespuesDeGuardar,
                 _preguntarNombre
             );
-            _configuraciones.GuardarCamposPropios(configuracionId, []);
+            _configuraciones.GuardarCamposPropios(configuracionId, camposPropios);
             _configuracionImpresion.Guardar(configuracionId, _modoImpresion, _impresora);
             _configuraciones.ActualizarTipoDocumento(
                 configuracionId,

@@ -288,6 +288,13 @@ public static class Migraciones
         ),
         (
             17,
+            "DROP TRIGGER trg_diccionario_datos_no_editar; "
+                + "UPDATE diccionario_datos SET grupo='Del proveedor' WHERE id IN ('rut_proveedor','nombre_proveedor'); "
+                + "UPDATE diccionario_datos SET grupo='Del cliente' WHERE id IN ('rut_cliente','nombre_cliente'); "
+                + "CREATE TRIGGER trg_diccionario_datos_no_editar BEFORE UPDATE ON diccionario_datos BEGIN SELECT RAISE(ABORT,'El diccionario de datos es fijo.'); END;"
+        ),
+        (
+            18,
             "CREATE TABLE esquemas_diccionario(id INTEGER PRIMARY KEY, proveedor TEXT NOT NULL COLLATE NOCASE UNIQUE, nombre TEXT NOT NULL, activo INTEGER NOT NULL DEFAULT 1 CHECK(activo IN (0,1)), creada_en TEXT NOT NULL, actualizada_en TEXT NOT NULL); "
                 + "CREATE TABLE lugares_esquema_diccionario(id INTEGER PRIMARY KEY, esquema_id INTEGER NOT NULL REFERENCES esquemas_diccionario(id), orden INTEGER NOT NULL, dato_tipo_id TEXT NOT NULL REFERENCES diccionario_datos(id), inicia_cadena INTEGER NOT NULL DEFAULT 0 CHECK(inicia_cadena IN (0,1)), nombre TEXT NOT NULL, activo INTEGER NOT NULL DEFAULT 1 CHECK(activo IN (0,1)), UNIQUE(esquema_id,dato_tipo_id), UNIQUE(esquema_id,orden)); "
                 + "CREATE TABLE enlaces_esquema_diccionario(id INTEGER PRIMARY KEY, lugar_a INTEGER NOT NULL REFERENCES lugares_esquema_diccionario(id), lugar_b INTEGER NOT NULL REFERENCES lugares_esquema_diccionario(id), dato_diccionario_id TEXT NOT NULL REFERENCES diccionario_datos(id), cardinalidad TEXT NOT NULL CHECK(cardinalidad IN ('uno_a_uno','uno_a_varios')), CHECK(lugar_a<>lugar_b)); "

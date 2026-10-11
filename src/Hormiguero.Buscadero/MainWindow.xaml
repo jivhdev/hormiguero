@@ -134,6 +134,22 @@
                   Padding="10,4"
                   Click="BotonBuscar_Click"
                 />
+                <Button
+                  x:Name="BotonAtrasBusqueda"
+                  Content="← Atrás"
+                  Padding="8,4"
+                  Margin="6,0,0,0"
+                  IsEnabled="False"
+                  Click="BotonAtrasBusqueda_Click"
+                />
+                <Button
+                  x:Name="BotonAdelanteBusqueda"
+                  Content="Adelante →"
+                  Padding="8,4"
+                  Margin="4,0,0,0"
+                  IsEnabled="False"
+                  Click="BotonAdelanteBusqueda_Click"
+                />
               </WrapPanel>
 
               <StackPanel Grid.Row="1" Margin="0,0,0,8">

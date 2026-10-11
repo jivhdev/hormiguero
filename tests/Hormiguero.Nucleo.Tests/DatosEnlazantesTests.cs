@@ -51,8 +51,24 @@ public sealed class DatosEnlazantesTests : IDisposable
             DiccionarioDatosEnlazantes.ClaveDeEnlace("nombre_propio", "  Acme   Spa ")
         );
         Assert.Equal(6, DiccionarioDatosEnlazantes.Todos.Count(d => d.Orden >= 18));
+        Assert.Equal(
+            "Del proveedor",
+            DiccionarioDatosEnlazantes.Todos.Single(d => d.Id == "rut_proveedor").Grupo
+        );
+        Assert.Equal(
+            "Del proveedor",
+            DiccionarioDatosEnlazantes.Todos.Single(d => d.Id == "nombre_proveedor").Grupo
+        );
+        Assert.Equal(
+            "Del cliente",
+            DiccionarioDatosEnlazantes.Todos.Single(d => d.Id == "rut_cliente").Grupo
+        );
+        Assert.Equal(
+            "Del cliente",
+            DiccionarioDatosEnlazantes.Todos.Single(d => d.Id == "nombre_cliente").Grupo
+        );
         Assert.All(
-            DiccionarioDatosEnlazantes.Todos.Where(d => d.Orden >= 18),
+            DiccionarioDatosEnlazantes.Todos.Where(d => d.Id is "rut_propio" or "nombre_propio"),
             d => Assert.Equal("Otros", d.Grupo)
         );
         Assert.Equal(23L, Escalar(conexion, "SELECT COUNT(*) FROM diccionario_datos;"));

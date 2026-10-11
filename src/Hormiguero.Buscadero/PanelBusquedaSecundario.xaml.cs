@@ -1,5 +1,6 @@
 using System.Collections.Specialized;
 using System.Diagnostics;
+using System.IO;
 using System.Windows;
 using System.Windows.Controls;
 using System.Windows.Input;
@@ -19,6 +20,7 @@ public partial class PanelBusquedaSecundario : UserControl
 {
     private ServicioBusqueda? _servicioBusqueda;
     private RepositorioMarcas? _repositorioMarcas;
+    private readonly HistorialBusqueda _historialBusqueda = new();
     private CancellationTokenSource? _cancelacionBusqueda;
     private SesionMarcas? _sesionMarcas;
     private string? _documentoActual;
@@ -34,6 +36,7 @@ public partial class PanelBusquedaSecundario : UserControl
     private double _zoom = 1;
     private IReadOnlyList<OpcionCarpetaBusqueda> _carpetasAlcance = [];
     private int _generacionSelectorCarpetas;
+    private bool _estadoActualEnHistorial;
 
     public PanelBusquedaSecundario()
     {
@@ -48,6 +51,8 @@ public partial class PanelBusquedaSecundario : UserControl
 
     public void Limpiar()
     {
+        ActualizarEntradaHistorialActual();
+        _estadoActualEnHistorial = false;
         _cancelacionBusqueda?.Cancel();
         _generacionDocumento++;
         _documentoActual = null;
@@ -87,6 +92,8 @@ public partial class PanelBusquedaSecundario : UserControl
             TextoEstado.Text = "Ingrese un número de documento.";
             return;
         }
+
+        ActualizarEntradaHistorialActual();
 
         _cancelacionBusqueda?.Cancel();
         _cancelacionBusqueda?.Dispose();
@@ -156,6 +163,21 @@ public partial class PanelBusquedaSecundario : UserControl
                 TextoEstado.Text +=
                     " Esta carpeta aún se está indexando; puede faltar algún resultado.";
             }
+
+            _historialBusqueda.Agregar(
+                new EntradaHistorialBusqueda(
+                    numeroBusqueda,
+                    alcance,
+                    filtro,
+                    modo,
+                    resultados.ToList(),
+                    _documentoActual,
+                    _paginaActual,
+                    _zoom
+                )
+            );
+            _estadoActualEnHistorial = true;
+            ActualizarBotonesHistorial();
         }
         catch (OperationCanceledException)
         {
@@ -245,7 +267,109 @@ public partial class PanelBusquedaSecundario : UserControl
         }
     }
 
-    private async Task AbrirDocumentoAsync(string ruta)
+    private void BotonAtrasBusqueda_Click(object sender, RoutedEventArgs e) =>
+        _ = MoverHistorialAsync(false);
+
+    private void BotonAdelanteBusqueda_Click(object sender, RoutedEventArgs e) =>
+        _ = MoverHistorialAsync(true);
+
+    private async Task MoverHistorialAsync(bool adelante)
+    {
+        ActualizarEntradaHistorialActual();
+        var entrada = adelante ? _historialBusqueda.Adelante() : _historialBusqueda.Atras();
+        if (entrada is null)
+        {
+            return;
+        }
+
+        _estadoActualEnHistorial = true;
+
+        TextoNumero.Text = entrada.Numero;
+        ComboAlcance.SelectedIndex = entrada.Alcance switch
+        {
+            AlcanceBusqueda.TodasLasCarpetas => 1,
+            AlcanceBusqueda.CarpetaEspecifica => 2,
+            _ => 0,
+        };
+        ComboModo.SelectedIndex = entrada.Modo switch
+        {
+            ModoBusqueda.Exacto => 1,
+            ModoBusqueda.Alfanumerico => 2,
+            ModoBusqueda.SoloNumero => 3,
+            ModoBusqueda.SoloLetras => 4,
+            _ => 0,
+        };
+        ComboFiltroCarpeta.Text = entrada.Carpeta;
+        ListaResultados.ItemsSource = entrada
+            .Resultados.Select(resultado => new ResultadoBusquedaVm
+            {
+                Ruta = resultado.Ruta,
+                Carpeta = resultado.Carpeta,
+                Nombre = resultado.Nombre,
+                Modificado = resultado.FechaModificacion.ToString("yyyy-MM-dd HH:mm"),
+            })
+            .ToList();
+        ListaResultados.Visibility =
+            entrada.Resultados.Count > 0 ? Visibility.Visible : Visibility.Collapsed;
+        TextoEstado.Text = entrada.Resultados.Count switch
+        {
+            0 => "Sin coincidencias.",
+            1 => "1 coincidencia encontrada.",
+            _ => $"{entrada.Resultados.Count} coincidencias. Elija un documento para abrirlo.",
+        };
+
+        if (entrada.Documento is not null)
+        {
+            await AbrirDocumentoAsync(entrada.Documento, entrada.Pagina, entrada.Zoom);
+        }
+        else
+        {
+            CerrarDocumentoActual();
+        }
+
+        ActualizarBotonesHistorial();
+    }
+
+    private void ActualizarEntradaHistorialActual()
+    {
+        if (!_estadoActualEnHistorial || _historialBusqueda.Actual is not { } actual)
+        {
+            return;
+        }
+
+        _historialBusqueda.ActualizarActual(
+            actual with
+            {
+                Documento = _documentoActual,
+                Pagina = _paginaActual,
+                Zoom = _zoom,
+            }
+        );
+    }
+
+    private void ActualizarBotonesHistorial()
+    {
+        BotonAtrasBusqueda.IsEnabled = _historialBusqueda.PuedeIrAtras;
+        BotonAdelanteBusqueda.IsEnabled = _historialBusqueda.PuedeIrAdelante;
+    }
+
+    private void CerrarDocumentoActual()
+    {
+        _generacionDocumento++;
+        _documentoActual = null;
+        _infoTextoActual = null;
+        _sesionMarcas = null;
+        ImagenPdf.Source = null;
+        CanvasMarcas.Children.Clear();
+        BarraVisor.Visibility = Visibility.Collapsed;
+        BotonImprimir.IsEnabled = false;
+        BotonAbrirEnVisor.IsEnabled = false;
+        BotonCopiarPdf.IsEnabled = false;
+        TextoVisorVacio.Text = "Ingrese otro número y busque.";
+        TextoVisorVacio.Visibility = Visibility.Visible;
+    }
+
+    private async Task AbrirDocumentoAsync(string ruta, int pagina = 0, double zoom = 1)
     {
         var generacion = ++_generacionDocumento;
         _documentoActual = ruta;
@@ -255,6 +379,11 @@ public partial class PanelBusquedaSecundario : UserControl
         TextoVisorVacio.Text = "Cargando documento...";
         try
         {
+            if (!System.IO.File.Exists(ruta))
+            {
+                throw new FileNotFoundException("Ese archivo ya no está en esa ubicación", ruta);
+            }
+
             var totalPaginas = await Task.Run(() => VisorPdf.ObtenerTotalPaginas(ruta));
             var infoTexto = await Task.Run(() => LeerInfoTexto(ruta));
             if (generacion != _generacionDocumento)
@@ -267,8 +396,8 @@ public partial class PanelBusquedaSecundario : UserControl
             _palabrasSeleccionadas = [];
             _textoSeleccionado = string.Empty;
             BotonCopiarTextoSeleccionado.IsEnabled = false;
-            _paginaActual = 0;
-            _zoom = 1;
+            _paginaActual = Math.Clamp(pagina, 0, Math.Max(0, totalPaginas - 1));
+            _zoom = Math.Clamp(zoom, 0.2, 4);
             _sesionMarcas = sesion;
             TextoDocumento.Text = System.IO.Path.GetFileName(ruta);
             BotonImprimir.IsEnabled = true;
@@ -294,7 +423,10 @@ public partial class PanelBusquedaSecundario : UserControl
             ImagenPdf.Source = null;
             CanvasMarcas.Children.Clear();
             BarraVisor.Visibility = Visibility.Collapsed;
-            TextoVisorVacio.Text = $"No se pudo abrir el PDF: {excepcion.Message}";
+            TextoVisorVacio.Text =
+                excepcion is FileNotFoundException
+                    ? "Ese archivo ya no está en esa ubicación"
+                    : $"No se pudo abrir el PDF: {excepcion.Message}";
             TextoVisorVacio.Visibility = Visibility.Visible;
         }
     }
@@ -579,6 +711,13 @@ public partial class PanelBusquedaSecundario : UserControl
 
     private void Panel_PreviewKeyDown(object sender, KeyEventArgs e)
     {
+        if (Keyboard.Modifiers == ModifierKeys.Alt && e.Key is Key.Left or Key.Right)
+        {
+            _ = MoverHistorialAsync(e.Key == Key.Right);
+            e.Handled = true;
+            return;
+        }
+
         if (Keyboard.Modifiers == ModifierKeys.Control && e.Key == Key.C && AtenderCtrlC())
         {
             e.Handled = true;

@@ -309,6 +309,66 @@
                   </ItemsControl.ItemTemplate>
                 </ItemsControl>
               </StackPanel>
+              <StackPanel Name="PanelCamposPropios" Margin="0,12,0,0">
+                <TextBlock
+                  Text="Campos propios de este tipo de documento"
+                  FontWeight="Bold"
+                  Margin="0,0,0,4"
+                />
+                <TextBlock
+                  Text="Agrega datos que quieras reconocer y buscar después. Para cada dato, escribe un nombre y marca su zona en el PDF."
+                  TextWrapping="Wrap"
+                  Foreground="{DynamicResource Hormiguero.TextoSecundario}"
+                  Margin="0,0,0,6"
+                />
+                <Button
+                  Name="BtnAgregarCampoPropio"
+                  Content="Agregar campo propio"
+                  Padding="6,4"
+                  HorizontalAlignment="Left"
+                  Click="BtnAgregarCampoPropio_Click"
+                  Margin="0,0,0,8"
+                />
+                <ItemsControl Name="ListaCamposPropiosEditor">
+                  <ItemsControl.ItemTemplate>
+                    <DataTemplate>
+                      <Border
+                        BorderBrush="{DynamicResource Hormiguero.Borde}"
+                        BorderThickness="1"
+                        Padding="6"
+                        Margin="0,0,0,6"
+                      >
+                        <StackPanel>
+                          <TextBlock Text="Nombre del campo" FontWeight="SemiBold" />
+                          <TextBox
+                            Text="{Binding Nombre, UpdateSourceTrigger=PropertyChanged}"
+                            Margin="0,3,0,4"
+                          />
+                          <TextBlock
+                            Text="{Binding Estado}"
+                            TextWrapping="Wrap"
+                            Foreground="{DynamicResource Hormiguero.TextoSecundario}"
+                            Margin="0,0,0,4"
+                          />
+                          <StackPanel Orientation="Horizontal">
+                            <Button
+                              Content="Marcar zona"
+                              Padding="5,3"
+                              Click="BtnMarcarCampoPropio_Click"
+                            />
+                            <Button
+                              Content="Quitar"
+                              Padding="5,3"
+                              Margin="6,0,0,0"
+                              Click="BtnQuitarCampoPropio_Click"
+                            />
+                          </StackPanel>
+                        </StackPanel>
+                      </Border>
+                    </DataTemplate>
+                  </ItemsControl.ItemTemplate>
+                </ItemsControl>
+              </StackPanel>
               <Expander
                 Name="PanelDatosAnteriores"
                 Header="Datos propios guardados anteriormente"
@@ -443,14 +503,6 @@
             Margin="20,0,0,6"
             Text="La carpeta se sigue eligiendo sola; antes de guardar, el documento queda en &quot;Pendientes por reconocer&quot; para escribir o confirmar su nombre."
           />
-          <CheckBox
-            Name="ChkAbrirDespuesDeGuardar"
-            Content="Abrir el documento después de guardarlo"
-            Checked="ChkAbrirDespuesDeGuardar_Changed"
-            Unchecked="ChkAbrirDespuesDeGuardar_Changed"
-            Margin="0,10,0,0"
-          />
-
           <StackPanel Name="PanelMarcarNombre" Visibility="Collapsed" Margin="0,8,0,0">
             <Button
               Name="BtnMarcarNombreArchivo"
@@ -520,11 +572,25 @@
           <!-- Caso-11, punto 1: con "Preguntar el nombre cada vez", también para este primer documento -->
           <StackPanel Name="PanelNombreEsteDocumento" Visibility="Collapsed" Margin="0,0,0,12">
             <TextBlock Text="Nombre para este documento" FontWeight="Bold" Margin="0,0,0,4" />
-            <TextBox Name="TxtNombreEsteDocumento" />
+            <TextBox
+              Name="TxtNombreEsteDocumento"
+              TextChanged="TxtNombreEsteDocumento_TextChanged"
+            />
           </StackPanel>
 
           <StackPanel Name="PanelImpresion">
-            <TextBlock Text="Impresión" FontWeight="Bold" Margin="0,12,0,4" />
+            <TextBlock
+              Text="Al guardar este tipo de documento:"
+              FontWeight="Bold"
+              Margin="0,12,0,4"
+            />
+            <CheckBox
+              Name="ChkAbrirDespuesDeGuardar"
+              Content="Abrir el documento después de guardarlo"
+              Checked="ChkAbrirDespuesDeGuardar_Changed"
+              Unchecked="ChkAbrirDespuesDeGuardar_Changed"
+              Margin="0,0,0,10"
+            />
             <TextBlock Text="Imprimir automáticamente al archivar" />
             <ComboBox
               Name="CmbModoImpresion"
@@ -533,7 +599,7 @@
             >
               <ComboBoxItem Content="No" Tag="No" />
               <ComboBoxItem Content="Primera página" Tag="PrimeraPagina" />
-              <ComboBoxItem Content="Todo el documento" Tag="TodoElDocumento" />
+              <ComboBoxItem Content="Todo" Tag="TodoElDocumento" />
               <ComboBoxItem Content="Preguntar cada vez" Tag="PreguntarCadaVez" />
             </ComboBox>
             <TextBlock Text="Impresora" />
@@ -575,12 +641,16 @@
               TextWrapping="Wrap"
               Margin="0,0,0,8"
             />
-            <TextBlock
-              Text="Este documento quedaría en:"
-              FontWeight="SemiBold"
-              TextWrapping="Wrap"
-            />
-            <TextBlock Name="TxtPreviewActual" TextWrapping="Wrap" Margin="0,0,0,8" />
+            <TextBlock Text="Se guardará en:" FontWeight="Bold" FontSize="14" TextWrapping="Wrap" />
+            <Border
+              Background="{DynamicResource Hormiguero.Fondo}"
+              BorderBrush="{DynamicResource Hormiguero.Aviso}"
+              BorderThickness="2"
+              Padding="8"
+              Margin="0,0,0,8"
+            >
+              <TextBlock Name="TxtPreviewActual" TextWrapping="Wrap" FontWeight="Bold" />
+            </Border>
             <TextBlock
               Name="TxtPreviewFuturaTitulo"
               Text="Cuando llegue el próximo período, se crearía:"

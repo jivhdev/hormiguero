@@ -170,6 +170,16 @@ public sealed class VentanasArchiveroSmokeTests
                 (
                     (System.Windows.Controls.ComboBox)asistenteGuardado.FindName("ComboAccion")!
                 ).SelectedIndex = 4;
+                var comboImpresora = (System.Windows.Controls.ComboBox)
+                    asistenteGuardado.FindName("ComboImpresora")!;
+                var impresoraElegida = $"Impresora de prueba {Guid.NewGuid():N}";
+                var opcionImpresora = new System.Windows.Controls.ComboBoxItem
+                {
+                    Content = impresoraElegida,
+                    Tag = impresoraElegida,
+                };
+                comboImpresora.Items.Add(opcionImpresora);
+                comboImpresora.SelectedItem = opcionImpresora;
                 typeof(AsistenteCarpetaObservadaWindow)
                     .GetField(
                         "_rutaEjemplo",
@@ -227,6 +237,7 @@ public sealed class VentanasArchiveroSmokeTests
                     || carpetaGuardada.ZonaCedible?.TextoEsperado != "CEDIBLE"
                     || carpetaGuardada.ConfiguracionesDocumentoIds?.Single() != idDiseno
                     || carpetaGuardada.AccionAlLlegar != "AvisarImprimirPrimeraPagina"
+                    || carpetaGuardada.Impresora != impresoraElegida
                     || configuracionesObservador.ObtenerTodas().Any(c => c.Id == idDiseno)
                     || !configuracionesObservador
                         .ObtenerTodasConPatronesParaObservador()
@@ -275,6 +286,27 @@ public sealed class VentanasArchiveroSmokeTests
                 identificarObservador.Close();
                 var titulo = (System.Windows.Controls.TextBlock)
                     identificar.FindName("TxtTituloPaso")!;
+                mostrarPaso.Invoke(identificar, [Enum.Parse(tipoPaso, "OtrosDatos")]);
+                identificar.UpdateLayout();
+                var agregarCampoPropio = (System.Windows.Controls.Button)
+                    identificar.FindName("BtnAgregarCampoPropio")!;
+                agregarCampoPropio.RaiseEvent(
+                    new System.Windows.RoutedEventArgs(
+                        System.Windows.Controls.Primitives.ButtonBase.ClickEvent
+                    )
+                );
+                if (
+                    (
+                        (System.Windows.Controls.ItemsControl)
+                            identificar.FindName("ListaCamposPropiosEditor")!
+                    )
+                        .Items
+                        .Count != 1
+                )
+                    throw new InvalidOperationException(
+                        "El paso de otros datos no permitió agregar un campo propio."
+                    );
+                mostrarPaso.Invoke(identificar, [Enum.Parse(tipoPaso, "QueDocumento")]);
                 var listaDocumentos = (System.Windows.Controls.ListBox)
                     identificar.FindName("ListaDocumentos")!;
                 var categoria = (System.Windows.Controls.ComboBox)
@@ -370,6 +402,173 @@ public sealed class VentanasArchiveroSmokeTests
                         );
                 }
                 identificar.Close();
+
+                var rutaPdfSubcarpetas = CreadorPdfDePrueba.CrearConLineas(
+                    raiz,
+                    "EMISOR",
+                    "TIPO",
+                    "06-10-2026"
+                );
+                var identificarSubcarpetas = new IdentificarDocumentoWindow(rutaPdfSubcarpetas)
+                {
+                    Width = 1366,
+                    Height = 768,
+                };
+                var categoriaSubcarpetas = (System.Windows.Controls.ComboBox)
+                    identificarSubcarpetas.FindName("CmbCategoriaDocumento")!;
+                categoriaSubcarpetas.SelectedItem = "Ventas propias";
+                var documentoSubcarpetas = (System.Windows.Controls.ListBox)
+                    identificarSubcarpetas.FindName("ListaDocumentos")!;
+                documentoSubcarpetas.SelectedItem = AsistenteClasificacionService
+                    .DocumentosDeCategoria("Ventas propias")
+                    .Single(d => d.Id == "factura_propia");
+                string emisorSubcarpetas = $"Emisor de prueba {Guid.NewGuid():N}";
+                (
+                    (System.Windows.Controls.ComboBox)identificarSubcarpetas.FindName("CmbEmisor")!
+                ).Text = emisorSubcarpetas;
+                typeof(IdentificarDocumentoWindow)
+                    .GetField(
+                        "_emisor",
+                        System.Reflection.BindingFlags.Instance
+                            | System.Reflection.BindingFlags.NonPublic
+                    )!
+                    .SetValue(identificarSubcarpetas, emisorSubcarpetas);
+                var marcasSubcarpetas =
+                    (Dictionary<CampoMarca, Marca>)
+                        typeof(IdentificarDocumentoWindow)
+                            .GetField(
+                                "_marcas",
+                                System.Reflection.BindingFlags.Instance
+                                    | System.Reflection.BindingFlags.NonPublic
+                            )!
+                            .GetValue(identificarSubcarpetas)!;
+                marcasSubcarpetas[CampoMarca.Emisor] = new(CampoMarca.Emisor, 0, 0, 0.02, 1, 0.15);
+                marcasSubcarpetas[CampoMarca.Tipo] = new(CampoMarca.Tipo, 0, 0, 0.21, 1, 0.15);
+                var datosSubcarpetas =
+                    (System.Collections.ObjectModel.ObservableCollection<DatoEnlazanteEdicion>)
+                        typeof(IdentificarDocumentoWindow)
+                            .GetField(
+                                "_datosEnlazantes",
+                                System.Reflection.BindingFlags.Instance
+                                    | System.Reflection.BindingFlags.NonPublic
+                            )!
+                            .GetValue(identificarSubcarpetas)!;
+                var numeroSubcarpetas = datosSubcarpetas.Single(d => d.DefineTipo);
+                numeroSubcarpetas.Incluido = true;
+                numeroSubcarpetas.Marcado = true;
+                numeroSubcarpetas.ValorLeido = "123";
+                numeroSubcarpetas.Pagina = 0;
+                numeroSubcarpetas.X = 0;
+                numeroSubcarpetas.Y = 0.21;
+                numeroSubcarpetas.Ancho = 1;
+                numeroSubcarpetas.Alto = 0.15;
+                marcasSubcarpetas[CampoMarca.Fecha] = new(
+                    CampoMarca.Fecha,
+                    0,
+                    0,
+                    0.40,
+                    1,
+                    0.15,
+                    "06-10-2026"
+                );
+                (
+                    (System.Windows.Controls.TextBox)
+                        identificarSubcarpetas.FindName("TxtCarpetaDestino")!
+                ).Text = raiz;
+                (
+                    (System.Windows.Controls.RadioButton)
+                        identificarSubcarpetas.FindName("RbGuardarSubcarpetas")!
+                ).IsChecked = true;
+                (
+                    (System.Windows.Controls.RadioButton)
+                        identificarSubcarpetas.FindName("RbMantenerNombre")!
+                ).IsChecked = true;
+                mostrarPaso.Invoke(identificarSubcarpetas, [Enum.Parse(tipoPaso, "Guardar")]);
+                identificarSubcarpetas.UpdateLayout();
+                var controlOrganizacion = (System.Windows.Controls.UserControl)
+                    identificarSubcarpetas.FindName("ControlOrganizacion")!;
+                ((OrganizacionCarpetaControl)controlOrganizacion).Iniciar(
+                    FormatoCarpeta.AnioMes,
+                    "yyyy\\yyyyMM",
+                    false
+                );
+                identificarSubcarpetas.UpdateLayout();
+                var rutaEsperada = Path.Combine(
+                    raiz,
+                    "2026",
+                    "202610",
+                    Path.GetFileName(rutaPdfSubcarpetas)
+                );
+                var vistaRuta = (System.Windows.Controls.TextBlock)
+                    identificarSubcarpetas.FindName("TxtPreviewActual")!;
+                if (
+                    !vistaRuta.Text.StartsWith("Se guardará en: ", StringComparison.Ordinal)
+                    || !vistaRuta.Text.Contains(rutaEsperada, StringComparison.OrdinalIgnoreCase)
+                )
+                    throw new InvalidOperationException("La ruta final no se mostró destacada.");
+                identificarSubcarpetas.Show();
+                identificarSubcarpetas.UpdateLayout();
+                var siguienteSubcarpetas = (System.Windows.Controls.Button)
+                    identificarSubcarpetas.FindName("BtnSiguiente")!;
+                siguienteSubcarpetas.RaiseEvent(
+                    new System.Windows.RoutedEventArgs(
+                        System.Windows.Controls.Primitives.ButtonBase.ClickEvent
+                    )
+                );
+                var formatoElegido = (FormatoCarpeta)
+                    typeof(IdentificarDocumentoWindow)
+                        .GetField(
+                            "_formato",
+                            System.Reflection.BindingFlags.Instance
+                                | System.Reflection.BindingFlags.NonPublic
+                        )!
+                        .GetValue(identificarSubcarpetas)!;
+                var patronElegido = (string?)
+                    typeof(IdentificarDocumentoWindow)
+                        .GetField(
+                            "_patronCarpeta",
+                            System.Reflection.BindingFlags.Instance
+                                | System.Reflection.BindingFlags.NonPublic
+                        )!
+                        .GetValue(identificarSubcarpetas);
+                if (formatoElegido != FormatoCarpeta.AnioMes || patronElegido != "yyyy\\yyyyMM")
+                    throw new InvalidOperationException(
+                        "El asistente no conservó el formato y patrón elegidos."
+                    );
+                int idSubcarpetas = new ConfiguracionDocumentoRepository().GuardarNueva(
+                    emisorSubcarpetas,
+                    "Factura propia",
+                    raiz,
+                    formatoElegido,
+                    patronElegido,
+                    false,
+                    marcasSubcarpetas.Values.ToList()
+                );
+                var configuracionSubcarpetas =
+                    new ConfiguracionDocumentoRepository().BuscarPorEmisorYTipo(
+                        emisorSubcarpetas,
+                        "Factura propia"
+                    )!;
+                if (configuracionSubcarpetas.Id != idSubcarpetas)
+                    throw new InvalidOperationException(
+                        "La configuración guardada no coincide con el diseño del asistente."
+                    );
+                string rutaGuardada = ClasificadorService.Clasificar(
+                    rutaPdfSubcarpetas,
+                    configuracionSubcarpetas,
+                    new DateTime(2026, 10, 6),
+                    null
+                );
+                if (
+                    configuracionSubcarpetas.FormatoCarpeta != FormatoCarpeta.AnioMes
+                    || configuracionSubcarpetas.PatronCarpeta != "yyyy\\yyyyMM"
+                    || rutaGuardada != rutaEsperada
+                    || !File.Exists(rutaGuardada)
+                )
+                    throw new InvalidOperationException(
+                        "Guardar en subcarpetas no conservó el patrón por año y mes o no guardó el PDF en el período."
+                    );
+                identificarSubcarpetas.Close();
 
                 var sinTexto = new IdentificarSinTextoWindow(rutaPdf);
                 sinTexto.Width = 1366;
