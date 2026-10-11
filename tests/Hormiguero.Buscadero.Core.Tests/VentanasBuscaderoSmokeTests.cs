@@ -77,18 +77,103 @@ public sealed class VentanasBuscaderoSmokeTests
                         ventana.UpdateLayout();
                         if (ventana is DialogoEsquemaDiccionario asistente)
                         {
+                            asistente.Width = 900;
+                            asistente.Height = Math.Min(680, SystemParameters.WorkArea.Height - 40);
+                            asistente.UpdateLayout();
+                            foreach (
+                                string nombreBoton in new[] { "Anterior", "Siguiente", "Cancelar" }
+                            )
+                            {
+                                var botonPie = Assert.IsAssignableFrom<FrameworkElement>(
+                                    asistente.FindName(nombreBoton)
+                                );
+                                Point esquina = botonPie.PointToScreen(
+                                    new Point(botonPie.ActualWidth, botonPie.ActualHeight)
+                                );
+                                Assert.InRange(
+                                    esquina.X,
+                                    SystemParameters.WorkArea.Left,
+                                    SystemParameters.WorkArea.Right
+                                );
+                                Assert.InRange(
+                                    esquina.Y,
+                                    SystemParameters.WorkArea.Top,
+                                    SystemParameters.WorkArea.Bottom
+                                );
+                            }
                             Assert.Equal(
                                 "Paso 1 de 7",
                                 Assert.IsType<TextBlock>(asistente.FindName("NumeroPaso")).Text
                             );
-                            Assert.IsType<TextBox>(asistente.FindName("Proveedor")).Text =
-                                "PROVEEDOR DE PRUEBA";
+                            var proveedor = Assert.IsType<ComboBox>(
+                                asistente.FindName("Proveedor")
+                            );
+                            proveedor.Text = "PROVEEDOR DE PRUEBA";
+                            Assert.Equal(
+                                "Proceso con PROVEEDOR DE PRUEBA",
+                                Assert.IsType<TextBox>(asistente.FindName("Nombre")).Text
+                            );
                             Assert.IsType<TextBox>(asistente.FindName("Nombre")).Text =
                                 "Proceso de prueba";
                             Pulsar(asistente, "Siguiente");
                             var tipos = Assert.IsType<ListBox>(asistente.FindName("Tipos"));
+                            Assert.Equal(
+                                Visibility.Visible,
+                                Assert.IsType<Grid>(asistente.FindName("PanelTipos")).Visibility
+                            );
+                            Assert.Equal(
+                                "Documentos del proceso",
+                                Assert.IsType<TextBlock>(asistente.FindName("TituloPaso")).Text
+                            );
+                            Assert.True(tipos.Items.Count > 0);
+                            foreach (var item in tipos.Items)
+                            {
+                                string nombre = (string)
+                                    item.GetType().GetProperty("NombreDocumento")!.GetValue(item)!;
+                                string id = (string)
+                                    item.GetType().GetProperty("Id")!.GetValue(item)!;
+                                Assert.False(nombre.StartsWith("N°", StringComparison.Ordinal));
+                                Assert.DoesNotContain(
+                                    "RUT",
+                                    nombre,
+                                    StringComparison.OrdinalIgnoreCase
+                                );
+                                Assert.DoesNotContain(
+                                    "razón social",
+                                    nombre,
+                                    StringComparison.OrdinalIgnoreCase
+                                );
+                                Assert.DoesNotContain(
+                                    id,
+                                    new[]
+                                    {
+                                        "rut_proveedor",
+                                        "nombre_proveedor",
+                                        "rut_cliente",
+                                        "nombre_cliente",
+                                        "rut_propio",
+                                        "nombre_propio",
+                                    }
+                                );
+                            }
                             tipos.SelectedIndex = 0;
                             Pulsar(asistente, "AgregarTipo");
+                            var seleccionados = Assert.IsType<ListBox>(
+                                asistente.FindName("LugaresProceso")
+                            );
+                            Assert.Single(seleccionados.Items);
+                            Assert.Equal(
+                                tipos
+                                    .Items[0]
+                                    .GetType()
+                                    .GetProperty("NombreDocumento")!
+                                    .GetValue(tipos.Items[0]),
+                                seleccionados
+                                    .Items[0]
+                                    .GetType()
+                                    .GetProperty("Nombre")!
+                                    .GetValue(seleccionados.Items[0])
+                            );
                             Pulsar(asistente, "Siguiente");
                             var lugares = Assert.IsType<System.Windows.Controls.DataGrid>(
                                 asistente.FindName("Lugares")
@@ -115,6 +200,8 @@ public sealed class VentanasBuscaderoSmokeTests
             catch (Exception excepcion)
             {
                 error = excepcion;
+                foreach (Window ventana in Application.Current?.Windows.Cast<Window>() ?? [])
+                    ventana.Close();
             }
         });
         hilo.SetApartmentState(ApartmentState.STA);

@@ -4,9 +4,10 @@
   xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
   Title="Esquema de documentos"
   Width="900"
-  Height="700"
+  Height="680"
   MinWidth="760"
-  MinHeight="600"
+  MinHeight="440"
+  WindowStartupLocation="CenterScreen"
   Background="{DynamicResource Hormiguero.Fondo}"
   Foreground="{DynamicResource Hormiguero.Texto}"
 >
@@ -16,112 +17,116 @@
       <RowDefinition Height="*" />
       <RowDefinition Height="Auto" />
     </Grid.RowDefinitions>
-    <StackPanel>
-      <TextBlock Text="Documentos del proceso" FontSize="20" FontWeight="Bold" />
-      <StackPanel x:Name="PanelProveedor" Orientation="Horizontal" Margin="0,8">
-        <TextBlock Text="Proveedor" VerticalAlignment="Center" Margin="0,0,8,0" />
-        <TextBox x:Name="Proveedor" Width="320" />
-        <TextBlock Text="Nombre" VerticalAlignment="Center" Margin="18,0,8,0" />
-        <TextBox x:Name="Nombre" Width="320" />
-      </StackPanel>
+    <StackPanel Margin="0,0,0,10">
+      <TextBlock x:Name="TituloPaso" Text="Proveedor" FontSize="20" FontWeight="Bold" />
       <TextBlock
-        x:Name="AyudaTipos"
-        Text="Agregue los tipos que forman el proceso. La lista incluye el diccionario completo, agrupado por categoría."
+        x:Name="AyudaPaso"
+        Text="Indique el proveedor y el nombre editable del proceso."
         TextWrapping="Wrap"
-        Margin="0,0,0,8"
+        Margin="0,4,0,0"
       />
-      <WrapPanel x:Name="PanelModos" Margin="0,0,0,8">
-        <TextBlock
-          Text="Modos opcionales (separados por coma)"
-          VerticalAlignment="Center"
-          Margin="0,0,8,0"
-        />
-        <TextBox x:Name="ModosTexto" Width="280" />
-        <TextBlock Text="Decide el modo" VerticalAlignment="Center" Margin="14,0,8,0" />
-        <ComboBox x:Name="LugarDecideModo" Width="190" DisplayMemberPath="Nombre" />
-      </WrapPanel>
-      <WrapPanel x:Name="PanelAvisos" Margin="0,0,0,8">
-        <TextBlock Text="Aviso" VerticalAlignment="Center" Margin="0,0,5,0" />
-        <ComboBox x:Name="TipoAviso" Width="110" SelectedIndex="0" Margin="0,0,5,0">
-          <ComboBoxItem Content="Falta dato" Tag="falta_dato" />
-          <ComboBoxItem Content="Plazo" Tag="plazo" />
-          <ComboBoxItem Content="Listo para" Tag="listo_para" />
-        </ComboBox>
-        <ComboBox x:Name="DatoAviso" Width="150" DisplayMemberPath="Texto" Margin="0,0,5,0" />
-        <ComboBox
-          x:Name="LugarAvisoA"
-          Width="130"
-          DisplayMemberPath="Nombre"
-          SelectionChanged="LugarAviso_SelectionChanged"
-          Margin="0,0,5,0"
-        />
-        <ComboBox
-          x:Name="LugarAvisoB"
-          Width="130"
-          DisplayMemberPath="Nombre"
-          SelectionChanged="LugarAviso_SelectionChanged"
-          Margin="0,0,5,0"
-        />
-        <TextBox
-          x:Name="DiasAviso"
-          Width="45"
-          ToolTip="Días del plazo"
-          Text="30"
-          Margin="0,0,5,0"
-        />
-        <TextBox x:Name="TextoAviso" Width="160" ToolTip="Texto del aviso" />
-        <CheckBox x:Name="PorLinea" Content="Por línea" VerticalAlignment="Center" Margin="5,0" />
-        <Button Content="Agregar" Click="AgregarAviso_Click" Padding="7,3" />
-      </WrapPanel>
-      <TextBlock
-        x:Name="ReglasAvisoTexto"
-        TextWrapping="Wrap"
-        Foreground="{DynamicResource Hormiguero.TextoSecundario}"
-      />
-      <TextBlock x:Name="PanelResumen" TextWrapping="Wrap" Visibility="Collapsed" />
     </StackPanel>
-    <Grid Grid.Row="1">
-      <Grid.ColumnDefinitions>
-        <ColumnDefinition Width="*" />
-        <ColumnDefinition Width="Auto" />
-        <ColumnDefinition Width="1.2*" />
-      </Grid.ColumnDefinitions>
-      <DockPanel x:Name="PanelTipos">
-        <TextBlock
-          DockPanel.Dock="Top"
-          Text="Tipos del diccionario"
-          FontWeight="Bold"
-          Margin="0,0,0,5"
-        />
-        <ListBox x:Name="Tipos" DisplayMemberPath="Texto" />
-      </DockPanel>
-      <Button
-        x:Name="AgregarTipo"
-        Grid.Column="1"
-        Content="Agregar tipo →"
-        Click="Agregar_Click"
-        Margin="8"
-        Padding="10,5"
-        VerticalAlignment="Top"
-      />
-      <Grid Grid.Column="2">
-        <Grid.RowDefinitions>
-          <RowDefinition Height="*" />
-          <RowDefinition Height="Auto" />
-          <RowDefinition Height="*" />
-        </Grid.RowDefinitions>
-        <DockPanel x:Name="PanelLugares">
+    <ScrollViewer
+      Grid.Row="1"
+      VerticalScrollBarVisibility="Auto"
+      HorizontalScrollBarVisibility="Disabled"
+    >
+      <Grid>
+        <StackPanel x:Name="PanelProveedor" Margin="0,4">
+          <TextBlock Text="Proveedor" FontWeight="Bold" Margin="0,0,0,4" />
+          <ComboBox
+            x:Name="Proveedor"
+            Width="420"
+            HorizontalAlignment="Left"
+            IsEditable="True"
+            IsTextSearchEnabled="True"
+            StaysOpenOnEdit="True"
+          />
+          <TextBlock Text="Nombre del esquema" FontWeight="Bold" Margin="0,12,0,4" />
+          <TextBox x:Name="Nombre" Width="420" HorizontalAlignment="Left" />
+        </StackPanel>
+        <Grid x:Name="PanelTipos" Visibility="Collapsed">
+          <Grid.ColumnDefinitions>
+            <ColumnDefinition Width="*" />
+            <ColumnDefinition Width="Auto" />
+            <ColumnDefinition Width="*" />
+          </Grid.ColumnDefinitions>
+          <DockPanel>
+            <TextBlock
+              DockPanel.Dock="Top"
+              Text="Documentos disponibles"
+              FontWeight="Bold"
+              Margin="0,0,0,5"
+            />
+            <ListBox
+              x:Name="Tipos"
+              DisplayMemberPath="NombreDocumento"
+              MouseDoubleClick="Tipo_DoubleClick"
+              MinHeight="300"
+            >
+              <ListBox.GroupStyle>
+                <GroupStyle>
+                  <GroupStyle.HeaderTemplate>
+                    <DataTemplate>
+                      <TextBlock Text="{Binding Name}" FontWeight="Bold" Margin="0,7,0,2" />
+                    </DataTemplate>
+                  </GroupStyle.HeaderTemplate>
+                </GroupStyle>
+              </ListBox.GroupStyle>
+            </ListBox>
+          </DockPanel>
+          <StackPanel Grid.Column="1" VerticalAlignment="Center" Margin="8">
+            <Button
+              x:Name="AgregarTipo"
+              Content="Agregar →"
+              Click="Agregar_Click"
+              Padding="10,5"
+              Margin="0,3"
+            />
+            <Button
+              x:Name="QuitarTipo"
+              Content="← Quitar"
+              Click="QuitarTipo_Click"
+              Padding="10,5"
+              Margin="0,3"
+            />
+          </StackPanel>
+          <DockPanel Grid.Column="2">
+            <StackPanel
+              DockPanel.Dock="Bottom"
+              Orientation="Horizontal"
+              HorizontalAlignment="Center"
+              Margin="0,6,0,0"
+            >
+              <Button Content="Subir" Click="SubirTipo_Click" Padding="10,4" Margin="3" />
+              <Button Content="Bajar" Click="BajarTipo_Click" Padding="10,4" Margin="3" />
+            </StackPanel>
+            <TextBlock
+              DockPanel.Dock="Top"
+              Text="Documentos del proceso, en orden"
+              FontWeight="Bold"
+              Margin="0,0,0,5"
+            />
+            <ListBox
+              x:Name="LugaresProceso"
+              DisplayMemberPath="Nombre"
+              MouseDoubleClick="LugarProceso_DoubleClick"
+              MinHeight="300"
+            />
+          </DockPanel>
+        </Grid>
+        <DockPanel x:Name="PanelLugares" Visibility="Collapsed">
           <TextBlock
             DockPanel.Dock="Top"
-            Text="Lugares del esquema"
-            FontWeight="Bold"
-            Margin="0,0,0,5"
+            Text="Marque los documentos que pueden iniciar la cadena."
+            Margin="0,0,0,8"
           />
           <DataGrid
             x:Name="Lugares"
             AutoGenerateColumns="False"
             CanUserAddRows="False"
             IsReadOnly="False"
+            MinHeight="300"
           >
             <DataGrid.Columns>
               <DataGridTextColumn
@@ -151,41 +156,40 @@
             </DataGrid.Columns>
           </DataGrid>
         </DockPanel>
-        <TextBlock
-          x:Name="TituloEnlaces"
-          Grid.Row="1"
-          Text="Enlaces declarados"
-          FontWeight="Bold"
-          Margin="0,12,0,5"
-        />
-        <Grid x:Name="PanelEnlaces" Grid.Row="2">
+        <Grid x:Name="PanelEnlaces" Visibility="Collapsed">
           <Grid.RowDefinitions>
             <RowDefinition Height="Auto" />
             <RowDefinition Height="Auto" />
             <RowDefinition Height="*" />
           </Grid.RowDefinitions>
           <WrapPanel>
-            <ComboBox
-              x:Name="LugarA"
-              Width="140"
-              DisplayMemberPath="Nombre"
-              SelectionChanged="Lugar_SelectionChanged"
-              Margin="0,0,4,4"
-            />
-            <TextBlock Text="→" VerticalAlignment="Center" Margin="2,0,4,4" />
-            <ComboBox
-              x:Name="LugarB"
-              Width="150"
-              DisplayMemberPath="Nombre"
-              SelectionChanged="Lugar_SelectionChanged"
-              Margin="0,0,4,4"
-            />
-            <ComboBox x:Name="Dato" Width="210" DisplayMemberPath="Texto" Margin="0,0,4,4" />
+            <StackPanel Margin="0,0,8,4">
+              <TextBlock Text="Documento A" />
+              <ComboBox
+                x:Name="LugarA"
+                Width="175"
+                DisplayMemberPath="Nombre"
+                SelectionChanged="Lugar_SelectionChanged"
+              />
+            </StackPanel>
+            <StackPanel Margin="0,0,8,4">
+              <TextBlock Text="Documento B" />
+              <ComboBox
+                x:Name="LugarB"
+                Width="175"
+                DisplayMemberPath="Nombre"
+                SelectionChanged="Lugar_SelectionChanged"
+              />
+            </StackPanel>
+            <StackPanel Margin="0,0,8,4">
+              <TextBlock Text="Por qué dato" />
+              <ComboBox x:Name="Dato" Width="260" DisplayMemberPath="Texto" />
+            </StackPanel>
           </WrapPanel>
-          <WrapPanel Grid.Row="1" Margin="0,2,0,4">
-            <ComboBox x:Name="Cardinalidad" Width="160" SelectedIndex="0" Margin="0,0,6,0">
-              <ComboBoxItem Content="uno a uno" Tag="uno_a_uno" />
-              <ComboBoxItem Content="uno a varios" Tag="uno_a_varios" />
+          <WrapPanel Grid.Row="1" Margin="0,5,0,8">
+            <ComboBox x:Name="Cardinalidad" Width="170" SelectedIndex="0" Margin="0,0,8,0">
+              <ComboBoxItem Content="Uno a uno" Tag="uno_a_uno" />
+              <ComboBoxItem Content="Uno a varios" Tag="uno_a_varios" />
             </ComboBox>
             <Button Content="Agregar enlace" Click="AgregarEnlace_Click" Padding="8,3" />
           </WrapPanel>
@@ -198,37 +202,118 @@
               Padding="8,3"
               Margin="0,4,0,0"
             />
-            <ListBox x:Name="Enlaces" />
+            <ListBox x:Name="Enlaces" MinHeight="220" />
           </DockPanel>
         </Grid>
+        <StackPanel x:Name="PanelModos" Visibility="Collapsed" Margin="0,4">
+          <TextBlock Text="Modos opcionales (separados por coma)" FontWeight="Bold" />
+          <TextBox x:Name="ModosTexto" Width="420" HorizontalAlignment="Left" Margin="0,4,0,10" />
+          <TextBlock Text="Documento que decide el modo" FontWeight="Bold" />
+          <ComboBox
+            x:Name="LugarDecideModo"
+            Width="300"
+            HorizontalAlignment="Left"
+            DisplayMemberPath="Nombre"
+          />
+        </StackPanel>
+        <StackPanel x:Name="PanelAvisos" Visibility="Collapsed" Margin="0,4">
+          <WrapPanel>
+            <StackPanel Margin="0,0,8,5">
+              <TextBlock Text="Aviso" />
+              <ComboBox x:Name="TipoAviso" Width="130" SelectedIndex="0">
+                <ComboBoxItem Content="Falta dato" Tag="falta_dato" />
+                <ComboBoxItem Content="Plazo" Tag="plazo" />
+                <ComboBoxItem Content="Listo para" Tag="listo_para" />
+              </ComboBox>
+            </StackPanel>
+            <StackPanel Margin="0,0,8,5">
+              <TextBlock Text="Dato o fecha" />
+              <ComboBox x:Name="DatoAviso" Width="190" DisplayMemberPath="Texto" />
+            </StackPanel>
+            <StackPanel Margin="0,0,8,5">
+              <TextBlock Text="Documento A" />
+              <ComboBox
+                x:Name="LugarAvisoA"
+                Width="160"
+                DisplayMemberPath="Nombre"
+                SelectionChanged="LugarAviso_SelectionChanged"
+              />
+            </StackPanel>
+            <StackPanel Margin="0,0,8,5">
+              <TextBlock Text="Documento B" />
+              <ComboBox
+                x:Name="LugarAvisoB"
+                Width="160"
+                DisplayMemberPath="Nombre"
+                SelectionChanged="LugarAviso_SelectionChanged"
+              />
+            </StackPanel>
+            <StackPanel Margin="0,0,8,5">
+              <TextBlock Text="Días" />
+              <TextBox x:Name="DiasAviso" Width="55" ToolTip="Días del plazo" Text="30" />
+            </StackPanel>
+            <StackPanel Margin="0,0,8,5">
+              <TextBlock Text="Texto del aviso" />
+              <TextBox x:Name="TextoAviso" Width="210" />
+            </StackPanel>
+            <CheckBox
+              x:Name="PorLinea"
+              Content="Por línea"
+              VerticalAlignment="Bottom"
+              Margin="5,0"
+            />
+            <Button
+              Content="Agregar aviso"
+              Click="AgregarAviso_Click"
+              Padding="7,3"
+              VerticalAlignment="Bottom"
+              Margin="4"
+            />
+          </WrapPanel>
+          <TextBlock
+            x:Name="ReglasAvisoTexto"
+            TextWrapping="Wrap"
+            Margin="0,12,0,0"
+            Foreground="{DynamicResource Hormiguero.TextoSecundario}"
+          />
+        </StackPanel>
+        <TextBlock x:Name="PanelResumen" Visibility="Collapsed" TextWrapping="Wrap" Margin="0,4" />
       </Grid>
-    </Grid>
-    <StackPanel Grid.Row="2" Orientation="Horizontal" HorizontalAlignment="Right" Margin="0,10,0,0">
-      <TextBlock x:Name="NumeroPaso" VerticalAlignment="Center" Margin="0,0,10,0" />
-      <Button
-        x:Name="Anterior"
-        Content="Anterior"
-        Click="Anterior_Click"
-        Padding="10,6"
-        Margin="4"
+    </ScrollViewer>
+    <DockPanel Grid.Row="2" Margin="0,10,0,0">
+      <TextBlock
+        x:Name="Estado"
+        DockPanel.Dock="Left"
+        VerticalAlignment="Center"
+        TextWrapping="Wrap"
+        Width="360"
       />
-      <Button
-        x:Name="Siguiente"
-        Content="Siguiente"
-        Click="Siguiente_Click"
-        Padding="10,6"
-        Margin="4"
-      />
-      <TextBlock x:Name="Estado" VerticalAlignment="Center" TextWrapping="Wrap" Width="360" />
-      <Button
-        x:Name="Guardar"
-        Content="Guardar"
-        Click="Guardar_Click"
-        Padding="12,6"
-        Margin="4"
-        Visibility="Collapsed"
-      />
-      <Button Content="Cancelar" IsCancel="True" Padding="12,6" Margin="4" />
-    </StackPanel>
+      <StackPanel Orientation="Horizontal" HorizontalAlignment="Right">
+        <TextBlock x:Name="NumeroPaso" VerticalAlignment="Center" Margin="0,0,10,0" />
+        <Button
+          x:Name="Anterior"
+          Content="Anterior"
+          Click="Anterior_Click"
+          Padding="10,6"
+          Margin="4"
+        />
+        <Button
+          x:Name="Siguiente"
+          Content="Siguiente"
+          Click="Siguiente_Click"
+          Padding="10,6"
+          Margin="4"
+        />
+        <Button
+          x:Name="Guardar"
+          Content="Guardar"
+          Click="Guardar_Click"
+          Padding="12,6"
+          Margin="4"
+          Visibility="Collapsed"
+        />
+        <Button x:Name="Cancelar" Content="Cancelar" IsCancel="True" Padding="12,6" Margin="4" />
+      </StackPanel>
+    </DockPanel>
   </Grid>
 </Window>

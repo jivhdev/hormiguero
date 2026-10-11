@@ -24,3 +24,14 @@ Prueba en vivo de `DialogoEsquemaDiccionario`:
 `dotnet build` sin advertencias; `dotnet test` todo pasa; `dotnet csharpier check .` sin errores en tus archivos. Reporte al final con lo corregido en cada paso.
 
 ## Reporte del agente
+
+- Paso 1: titulé la pantalla «Proveedor», agregué autocompletado con emisores de identificaciones y proveedores de esquemas guardados, y propuse «Proceso con {proveedor}» como nombre editable. El estado de validación se limpia al avanzar.
+- Paso 2: puse las listas de documentos disponibles y documentos del proceso en paralelo. Agregar, quitar, doble clic, Subir y Bajar actualizan la selección visible. Ordené las categorías según lo pedido, quité el prefijo «N°» de los nombres y filtré los datos que `DiccionarioDatosEnlazantes.EsParte` identifica como partes.
+- Paso 3: titulé «Inicios de cadena» y expliqué qué marcar; las filas muestran categoría y nombre amigable, con acción para quitar.
+- Paso 4: titulé «Enlaces»; etiqueté Documento A, Documento B y Por qué dato; mantuve solo documentos seleccionados, ordené los datos por sugerencia y categoría, mostré la marca ✓ y conservé la frase de cada enlace y la acción para quitarlo.
+- Paso 5: titulé «Modos» y aclaré cómo se usan los modos opcionales y el documento que los determina.
+- Paso 6: titulé «Avisos», aclaré su propósito y mantuve visibles la configuración, la acción para agregar y la lista de avisos dentro del contenido desplazable.
+- Paso 7: titulé «Resumen» y aclaré que permite revisar antes de guardar.
+- Ventana: centré el diálogo, limité su alto al área útil menos 40 px, dejé el contenido de los pasos con scroll y fijé el pie con Anterior, Siguiente, Guardar y Cancelar.
+- Prueba STA: comprueba los límites del pie, la propuesta automática del nombre, ambas listas, la exclusión de RUT/razón social y prefijos «N°», y que Agregar mueve un tipo a la lista del proceso.
+- Verificación: `dotnet build` correcto, 0 advertencias y 0 errores; `dotnet test` correcto, 807 pruebas aprobadas, 0 fallidas y 0 omitidas; `dotnet csharpier check .` correcto, 338 archivos revisados.

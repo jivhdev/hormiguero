@@ -1,6 +1,7 @@
 using System.Text.Json;
 using System.Windows;
 using System.Windows.Controls;
+using System.Windows.Data;
 using Hormiguero.Nucleo.Datos;
 
 namespace Buscadero.App;
@@ -13,23 +14,43 @@ public partial class DialogoEsquemaDiccionario : Window
     private readonly List<EnlaceVm> _enlaces = [];
     private readonly List<DefinicionReglaAlertaDiccionario> _reglasAviso = [];
     private int _paso = 1;
+    private string _nombreAutogenerado = "";
+    private bool _actualizandoNombre;
 
     public DialogoEsquemaDiccionario(string? proveedor = null)
     {
         InitializeComponent();
+        Proveedor.Loaded += (_, _) =>
+        {
+            if (Proveedor.Template.FindName("PART_EditableTextBox", Proveedor) is TextBox entrada)
+                entrada.TextChanged += Proveedor_TextChanged;
+        };
+        MaxHeight = Math.Max(440, SystemParameters.WorkArea.Height - 40);
+        Height = Math.Min(680, MaxHeight);
         _conexion = BaseComun.Abrir(DocumentosGuardados.RutaBaseComun);
         _repositorio = new(_conexion);
+        Proveedor.ItemsSource = LeerProveedoresConocidos();
         DatoAviso.ItemsSource = new[] { new DatoVm("", "Fecha del documento", "Fechas", false) }
             .Concat(LeerDatosAviso())
             .ToArray();
-        Tipos.ItemsSource = RepositorioEsquemasDiccionario
+        var tipos = RepositorioEsquemasDiccionario
             .ListarTiposDocumento(_conexion)
+            .Where(t => !DiccionarioDatosEnlazantes.EsParte(t.Id))
+            .OrderBy(t => OrdenGrupo(t.Grupo))
+            .ThenBy(t => t.Nombre)
             .Select(t => new TipoVm(t.Id, t.Nombre, t.Grupo))
             .ToArray();
+        Tipos.ItemsSource = tipos;
+        CollectionViewSource
+            .GetDefaultView(Tipos.ItemsSource)
+            .GroupDescriptions.Add(new PropertyGroupDescription(nameof(TipoVm.Grupo)));
         Proveedor.Text = proveedor ?? "";
+        Proveedor_TextChanged(Proveedor, null!);
         if (proveedor is not null && _repositorio.ObtenerPorProveedor(proveedor) is { } esquema)
         {
+            _actualizandoNombre = true;
             Nombre.Text = esquema.Nombre;
+            _actualizandoNombre = false;
             using (var q = _conexion.CreateCommand())
             {
                 q.CommandText =
@@ -66,7 +87,13 @@ public partial class DialogoEsquemaDiccionario : Window
                     var tipo = ((IEnumerable<TipoVm>)Tipos.ItemsSource).Single(t =>
                         t.Id == l.DatoTipoId
                     );
-                    return new LugarVm(l.Orden, l.DatoTipoId, tipo.Grupo, l.Nombre, l.IniciaCadena);
+                    return new LugarVm(
+                        l.Orden,
+                        l.DatoTipoId,
+                        tipo.Grupo,
+                        tipo.NombreDocumento,
+                        l.IniciaCadena
+                    );
                 })
             );
             _enlaces.AddRange(
@@ -130,19 +157,30 @@ public partial class DialogoEsquemaDiccionario : Window
             return;
         }
         _paso = Math.Min(7, _paso + 1);
+        Estado.Text = "";
         ActualizarPaso();
     }
 
     private void ActualizarPaso()
     {
         NumeroPaso.Text = $"Paso {_paso} de 7";
+        (TituloPaso.Text, AyudaPaso.Text) = _paso switch
+        {
+            1 => ("Proveedor", "Indique el proveedor y el nombre editable del proceso."),
+            2 => (
+                "Documentos del proceso",
+                "Agregue los documentos y ordénelos como ocurren en el proceso."
+            ),
+            3 => ("Inicios de cadena", "Marque qué documentos pueden iniciar una cadena."),
+            4 => ("Enlaces", "Relacione documentos por los datos que comparten."),
+            5 => ("Modos", "Agregue modos opcionales e indique qué documento determina cada modo."),
+            6 => ("Avisos", "Configure avisos para los documentos y plazos del proceso."),
+            _ => ("Resumen", "Revise el esquema antes de guardarlo."),
+        };
         PanelProveedor.Visibility = _paso == 1 ? Visibility.Visible : Visibility.Collapsed;
-        AyudaTipos.Visibility = _paso == 2 ? Visibility.Visible : Visibility.Collapsed;
         PanelTipos.Visibility = _paso == 2 ? Visibility.Visible : Visibility.Collapsed;
-        AgregarTipo.Visibility = _paso == 2 ? Visibility.Visible : Visibility.Collapsed;
         PanelLugares.Visibility = _paso == 3 ? Visibility.Visible : Visibility.Collapsed;
         PanelEnlaces.Visibility = _paso == 4 ? Visibility.Visible : Visibility.Collapsed;
-        TituloEnlaces.Visibility = _paso == 4 ? Visibility.Visible : Visibility.Collapsed;
         PanelModos.Visibility = _paso == 5 ? Visibility.Visible : Visibility.Collapsed;
         PanelAvisos.Visibility = _paso == 6 ? Visibility.Visible : Visibility.Collapsed;
         ReglasAvisoTexto.Visibility = _paso == 6 ? Visibility.Visible : Visibility.Collapsed;
@@ -152,17 +190,32 @@ public partial class DialogoEsquemaDiccionario : Window
         Anterior.IsEnabled = _paso > 1;
         Siguiente.Visibility = _paso < 7 ? Visibility.Visible : Visibility.Collapsed;
         Guardar.Visibility = _paso == 7 ? Visibility.Visible : Visibility.Collapsed;
+        if (_paso == 2)
+            ActualizarTiposSeleccionados();
     }
 
     private void Agregar_Click(object sender, RoutedEventArgs e)
     {
         if (Tipos.SelectedItem is not TipoVm tipo || _lugares.Any(l => l.Id == tipo.Id))
             return;
+        AgregarTipoProceso(tipo);
+    }
+
+    private void Tipo_DoubleClick(object sender, System.Windows.Input.MouseButtonEventArgs e)
+    {
+        if (Tipos.SelectedItem is TipoVm tipo)
+            AgregarTipoProceso(tipo);
+    }
+
+    private void AgregarTipoProceso(TipoVm tipo)
+    {
+        if (_lugares.Any(l => l.Id == tipo.Id))
+            return;
         var lugar = new LugarVm(
             _lugares.Count,
             tipo.Id,
             tipo.Grupo,
-            tipo.Nombre,
+            tipo.NombreDocumento,
             _lugares.Count == 0
         );
         _lugares.Add(lugar);
@@ -173,6 +226,49 @@ public partial class DialogoEsquemaDiccionario : Window
         }
         ActualizarLugares();
         ActualizarEnlaces();
+        ActualizarTiposSeleccionados(lugar);
+        Estado.Text = $"{lugar.Nombre} agregado al proceso.";
+    }
+
+    private void QuitarTipo_Click(object sender, RoutedEventArgs e) => QuitarTipoSeleccionado();
+
+    private void LugarProceso_DoubleClick(
+        object sender,
+        System.Windows.Input.MouseButtonEventArgs e
+    ) => QuitarTipoSeleccionado();
+
+    private void QuitarTipoSeleccionado()
+    {
+        if (LugaresProceso.SelectedItem is not LugarVm lugar)
+            return;
+        QuitarLugar(lugar);
+        Estado.Text = $"{lugar.Nombre} quitado del proceso.";
+    }
+
+    private void SubirTipo_Click(object sender, RoutedEventArgs e) => MoverTipo(-1);
+
+    private void BajarTipo_Click(object sender, RoutedEventArgs e) => MoverTipo(1);
+
+    private void MoverTipo(int desplazamiento)
+    {
+        int indice = LugaresProceso.SelectedIndex;
+        int destino = indice + desplazamiento;
+        if (indice < 0 || destino < 0 || destino >= _lugares.Count)
+            return;
+        (_lugares[indice], _lugares[destino]) = (_lugares[destino], _lugares[indice]);
+        Reordenar();
+        ActualizarLugares();
+        ActualizarEnlaces();
+        ActualizarTiposSeleccionados(_lugares[destino]);
+        Estado.Text = "Orden de documentos actualizado.";
+    }
+
+    private void ActualizarTiposSeleccionados(LugarVm? seleccionado = null)
+    {
+        LugaresProceso.ItemsSource = null;
+        LugaresProceso.ItemsSource = _lugares.OrderBy(l => l.Orden).ToArray();
+        if (seleccionado is not null)
+            LugaresProceso.SelectedItem = seleccionado;
     }
 
     private void AgregarSugerencia(LugarVm a, LugarVm b)
@@ -197,11 +293,17 @@ public partial class DialogoEsquemaDiccionario : Window
     {
         if ((sender as FrameworkElement)?.DataContext is not LugarVm lugar)
             return;
+        QuitarLugar(lugar);
+    }
+
+    private void QuitarLugar(LugarVm lugar)
+    {
         _lugares.Remove(lugar);
         _enlaces.RemoveAll(e => e.OrdenA == lugar.Orden || e.OrdenB == lugar.Orden);
         Reordenar();
         ActualizarLugares();
         ActualizarEnlaces();
+        ActualizarTiposSeleccionados();
     }
 
     private void Lugar_SelectionChanged(object sender, SelectionChangedEventArgs e)
@@ -216,10 +318,8 @@ public partial class DialogoEsquemaDiccionario : Window
         Dato.ItemsSource = RepositorioEsquemasDiccionario
             .ListarDatos(_conexion, a.Id, b.Id)
             .Select(d => new DatoVm(d.Id, d.Nombre, d.Grupo, d.Sugerido))
-            .GroupBy(d => d.Grupo)
-            .SelectMany(g => g)
             .OrderByDescending(d => d.Sugerido)
-            .ThenBy(d => d.Grupo)
+            .ThenBy(d => OrdenGrupo(d.Grupo))
             .ThenBy(d => d.Nombre)
             .ToArray();
         Dato.SelectedIndex = 0;
@@ -341,6 +441,18 @@ public partial class DialogoEsquemaDiccionario : Window
         return filas;
     }
 
+    private string[] LeerProveedoresConocidos()
+    {
+        using var consulta = _conexion.CreateCommand();
+        consulta.CommandText =
+            "SELECT emisor FROM identificaciones WHERE TRIM(emisor)<>'' UNION SELECT proveedor FROM esquemas_diccionario WHERE TRIM(proveedor)<>'' ORDER BY 1 COLLATE NOCASE;";
+        using var lector = consulta.ExecuteReader();
+        var proveedores = new List<string>();
+        while (lector.Read())
+            proveedores.Add(lector.GetString(0));
+        return proveedores.ToArray();
+    }
+
     private void ActualizarReglasAviso() =>
         ReglasAvisoTexto.Text = string.Join(
             Environment.NewLine,
@@ -444,6 +556,31 @@ public partial class DialogoEsquemaDiccionario : Window
             _lugares[i].Orden = i;
     }
 
+    private void Proveedor_TextChanged(object sender, TextChangedEventArgs e)
+    {
+        if (_actualizandoNombre)
+            return;
+        string proveedor = Proveedor.Text.Trim();
+        string sugerido = string.IsNullOrWhiteSpace(proveedor) ? "" : $"Proceso con {proveedor}";
+        if (string.IsNullOrWhiteSpace(Nombre.Text) || Nombre.Text == _nombreAutogenerado)
+        {
+            _actualizandoNombre = true;
+            Nombre.Text = sugerido;
+            _actualizandoNombre = false;
+        }
+        _nombreAutogenerado = sugerido;
+    }
+
+    private static int OrdenGrupo(string grupo) =>
+        grupo switch
+        {
+            "Ventas propias" => 0,
+            "Compras propias" => 1,
+            "Del cliente" => 2,
+            "Del proveedor" => 3,
+            _ => 4,
+        };
+
     protected override void OnClosed(EventArgs e)
     {
         _conexion.Dispose();
@@ -452,7 +589,11 @@ public partial class DialogoEsquemaDiccionario : Window
 
     private sealed record TipoVm(string Id, string Nombre, string Grupo)
     {
-        public string Texto => $"{Grupo} · {Nombre}";
+        public string NombreDocumento =>
+            Nombre
+                .Replace("N° ", "", StringComparison.OrdinalIgnoreCase)
+                .Replace("Nº ", "", StringComparison.OrdinalIgnoreCase)
+                .Replace("No. ", "", StringComparison.OrdinalIgnoreCase);
     }
 
     private sealed record DatoVm(string Id, string Nombre, string Grupo, bool Sugerido)
