@@ -1,5 +1,6 @@
 using System.Collections.Specialized;
 using System.Diagnostics;
+using System.IO;
 using System.Windows;
 using System.Windows.Controls;
 using System.Windows.Input;
@@ -47,6 +48,7 @@ public partial class MainWindow : Window
     private readonly ServicioBusqueda _servicioBusqueda;
     private readonly IndexadoEnSegundoPlano _indexadoEnSegundoPlano;
     private readonly RepositorioMarcas _repositorioMarcas;
+    private readonly HistorialBusqueda _historialBusqueda = new();
 
     private enum ModoInteraccionPdf
     {
@@ -224,6 +226,8 @@ public partial class MainWindow : Window
             return;
         }
 
+        ActualizarEntradaHistorialActual();
+
         // Caso-14: el filtro de carpeta solo tiene efecto con el alcance "Carpeta específica".
         var filtro =
             ObtenerAlcanceSeleccionado() == AlcanceBusqueda.CarpetaEspecifica
@@ -295,6 +299,20 @@ public partial class MainWindow : Window
                 TextoEstadoBusqueda.Text +=
                     " Esta carpeta aún se está indexando; puede faltar algún resultado.";
             }
+
+            _historialBusqueda.Agregar(
+                new EntradaHistorialBusqueda(
+                    numero,
+                    alcance,
+                    filtro,
+                    modo,
+                    resultados.ToList(),
+                    _documentoActual,
+                    _paginaActual,
+                    _zoom
+                )
+            );
+            ActualizarBotonesHistorial();
         }
         catch (OperationCanceledException)
         {
@@ -317,6 +335,115 @@ public partial class MainWindow : Window
 
     private void BotonCancelarBusqueda_Click(object sender, RoutedEventArgs e) =>
         _cancelacionBusqueda?.Cancel();
+
+    private void BotonAtrasBusqueda_Click(object sender, RoutedEventArgs e) =>
+        _ = MoverHistorialAsync(false);
+
+    private void BotonAdelanteBusqueda_Click(object sender, RoutedEventArgs e) =>
+        _ = MoverHistorialAsync(true);
+
+    private async Task MoverHistorialAsync(bool adelante)
+    {
+        if (_buscando)
+        {
+            return;
+        }
+
+        ActualizarEntradaHistorialActual();
+        var entrada = adelante ? _historialBusqueda.Adelante() : _historialBusqueda.Atras();
+        if (entrada is null)
+        {
+            return;
+        }
+
+        TextoNumero.Text = entrada.Numero;
+        ComboAlcance.SelectedIndex = entrada.Alcance switch
+        {
+            AlcanceBusqueda.TodasLasCarpetas => 1,
+            AlcanceBusqueda.CarpetaEspecifica => 2,
+            _ => 0,
+        };
+        ComboModo.SelectedIndex = entrada.Modo switch
+        {
+            ModoBusqueda.Exacto => 1,
+            ModoBusqueda.Alfanumerico => 2,
+            ModoBusqueda.SoloNumero => 3,
+            ModoBusqueda.SoloLetras => 4,
+            _ => 0,
+        };
+        ComboFiltroCarpeta.Text = entrada.Carpeta;
+        ListaResultados.ItemsSource = entrada.Resultados.Select(ConvertirResultadoVm).ToList();
+        ListaResultados.Visibility =
+            entrada.Resultados.Count > 0 ? Visibility.Visible : Visibility.Collapsed;
+        PanelSinResultados.Visibility =
+            entrada.Resultados.Count == 0 ? Visibility.Visible : Visibility.Collapsed;
+        TextoEstadoBusqueda.Text = entrada.Resultados.Count switch
+        {
+            0 => "Sin coincidencias.",
+            1 => "1 coincidencia encontrada.",
+            _ =>
+                $"{entrada.Resultados.Count} coincidencias encontradas. Haga doble clic para abrir una.",
+        };
+
+        if (entrada.Documento is not null)
+        {
+            await AbrirDocumentoAsync(entrada.Documento, entrada.Pagina, entrada.Zoom);
+        }
+        else
+        {
+            CerrarDocumentoActual();
+        }
+
+        ActualizarBotonesHistorial();
+    }
+
+    private static ResultadoBusquedaVm ConvertirResultadoVm(ResultadoBusqueda resultado) =>
+        new()
+        {
+            Ruta = resultado.Ruta,
+            Carpeta = resultado.Carpeta,
+            Nombre = resultado.Nombre,
+            Modificado = resultado.FechaModificacion.ToString("yyyy-MM-dd HH:mm"),
+        };
+
+    private void ActualizarEntradaHistorialActual()
+    {
+        if (_historialBusqueda.Actual is not { } actual)
+        {
+            return;
+        }
+
+        _historialBusqueda.ActualizarActual(
+            actual with
+            {
+                Documento = _documentoActual,
+                Pagina = _paginaActual,
+                Zoom = _zoom,
+            }
+        );
+    }
+
+    private void ActualizarBotonesHistorial()
+    {
+        BotonAtrasBusqueda.IsEnabled = _historialBusqueda.PuedeIrAtras;
+        BotonAdelanteBusqueda.IsEnabled = _historialBusqueda.PuedeIrAdelante;
+    }
+
+    private void CerrarDocumentoActual()
+    {
+        _documentoActual = null;
+        _infoTextoActual = null;
+        _sesionMarcas = null;
+        ImagenPdf.Source = null;
+        CanvasMarcas.Children.Clear();
+        BarraVisor.Visibility = Visibility.Collapsed;
+        BarraMarcas.Visibility = Visibility.Collapsed;
+        TextoVisorVacio.Visibility = Visibility.Visible;
+        TextoVisorVacio.Text = "Busque un documento para visualizarlo.";
+        BotonImprimir.IsEnabled = false;
+        BotonAbrirEnVisor.IsEnabled = false;
+        BotonCopiarPdf.IsEnabled = false;
+    }
 
     private void ActualizarSugerenciasCarpeta()
     {
@@ -457,13 +584,18 @@ public partial class MainWindow : Window
         TextoEstadoBusqueda.Text = string.Empty;
     }
 
-    private async Task AbrirDocumentoAsync(string ruta)
+    private async Task AbrirDocumentoAsync(string ruta, int pagina = 0, double zoom = 1.0)
     {
         BotonImprimir.IsEnabled = false;
         BotonAbrirEnVisor.IsEnabled = false;
         BotonCopiarPdf.IsEnabled = false;
         try
         {
+            if (!System.IO.File.Exists(ruta))
+            {
+                throw new FileNotFoundException("Ese archivo ya no está en esa ubicación", ruta);
+            }
+
             var totalPaginas = await Task.Run(() => VisorPdf.ObtenerTotalPaginas(ruta));
             var infoTexto = await Task.Run(() => LeerInfoTexto(ruta));
 
@@ -473,8 +605,8 @@ public partial class MainWindow : Window
             _palabrasSeleccionadas = [];
             _textoSeleccionado = string.Empty;
             BotonCopiarTextoSeleccionado.IsEnabled = false;
-            _paginaActual = 0;
-            _zoom = 1.0;
+            _paginaActual = Math.Clamp(pagina, 0, Math.Max(0, totalPaginas - 1));
+            _zoom = Math.Clamp(zoom, ZoomMinimo, ZoomMaximo);
             var sesion = await Task.Run(() => new SesionMarcas(_repositorioMarcas, ruta));
             // Si mientras cargaban las marcas se abrió otro documento, esta carga ya no sirve.
             if (_documentoActual != ruta)
@@ -516,7 +648,9 @@ public partial class MainWindow : Window
             TextoVisorVacio.Visibility = Visibility.Visible;
             MessageBox.Show(
                 this,
-                $"No se pudo abrir el PDF.\n\nDetalle: {excepcion.Message}",
+                excepcion is FileNotFoundException
+                    ? "Ese archivo ya no está en esa ubicación"
+                    : $"No se pudo abrir el PDF.\n\nDetalle: {excepcion.Message}",
                 "Buscadero",
                 MessageBoxButton.OK,
                 MessageBoxImage.Warning
@@ -782,6 +916,17 @@ public partial class MainWindow : Window
 
     private void Ventana_PreviewKeyDown(object sender, KeyEventArgs e)
     {
+        if (
+            Keyboard.Modifiers == ModifierKeys.Alt
+            && !PanelBusquedaSecundario.IsKeyboardFocusWithin
+            && e.Key is Key.Left or Key.Right
+        )
+        {
+            _ = MoverHistorialAsync(e.Key == Key.Right);
+            e.Handled = true;
+            return;
+        }
+
         if (Keyboard.Modifiers == ModifierKeys.Control && e.Key == Key.C)
         {
             if (PanelBusquedaSecundario.IsKeyboardFocusWithin)
