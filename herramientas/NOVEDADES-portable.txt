@@ -13,8 +13,12 @@ LO MÁS NUEVO (11-10)  -- ojo: conviene partir con los datos en blanco (Reinicia
     "Uno a varios". Ej.: "Una OC propia puede tener varias Guía del proveedor (por N° OC propia)"
     y "Cada Guía del proveedor se enlaza con Factura del proveedor (por N° Guía)". Ya no son solo
     parejas: la cadena es toda la lista enlazada.
- 5) Modos (opcional)  6) Avisos  7) Resumen → Guardar.
- PARA PROBAR Y COMENTAR: cómo te resulta armar los enlaces y qué le falta a Modos y Avisos.
+ 5) Modos (opcional): lista (ej. Retiro, Despacho) y qué documento decide el modo.
+ 6) Avisos: "Agregar aviso…" abre el editor de 3 tarjetas: Falta ingresar un dato (el dato se
+    elige del diccionario o se escribe, ej. "Fecha de retiro"), Plazo entre documentos (N días
+    hábiles/corridos, "por línea" si hay enlace, ej. cada Guía sin su Factura) y Listo para…
+ 7) Resumen → Guardar.
+ PARA PROBAR Y COMENTAR: cómo te resulta armar los enlaces, los modos y los avisos.
 == ARCHIVERO ==
 - ARREGLADO: las subcarpetas elegidas (ej. FCV6610) no se guardaban y todo quedaba en
   la carpeta base. Ahora la ruta completa se ve destacada en el paso 5.
