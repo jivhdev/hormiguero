@@ -5,6 +5,39 @@ namespace Buscadero.Core.Alertas;
 
 public static class EditorReglasEsquema
 {
+    public static string PluralizarTipo(string nombre)
+    {
+        string[] prefijos = ["Nota de crédito", "Nota", "Factura", "Guía", "Orden", "OC"];
+        string prefijo =
+            prefijos.FirstOrDefault(p => nombre.StartsWith(p, StringComparison.OrdinalIgnoreCase))
+            ?? "";
+        if (prefijo.Length == 0)
+            return nombre;
+        string plural = prefijo switch
+        {
+            "Guía" => "Guías",
+            "Factura" => "Facturas",
+            "Nota" => "Notas",
+            "Nota de crédito" => "Notas de crédito",
+            "Orden" => "Órdenes",
+            _ => prefijo,
+        };
+        return plural + nombre[prefijo.Length..];
+    }
+
+    public static bool PermitePorLinea(
+        int ordenA,
+        int ordenB,
+        IEnumerable<(int OrdenA, int OrdenB, string Cardinalidad)> enlaces
+    ) =>
+        enlaces.Any(enlace =>
+            enlace.Cardinalidad is "uno_a_uno" or "uno_a_varios"
+            && (
+                (enlace.OrdenA == ordenA && enlace.OrdenB == ordenB)
+                || (enlace.OrdenA == ordenB && enlace.OrdenB == ordenA)
+            )
+        );
+
     public static IReadOnlyList<string> CamposPorTipo(string tipo) =>
         tipo switch
         {
@@ -27,10 +60,14 @@ public static class EditorReglasEsquema
     public static string TextoSugerido(string tipo, string lugarEsperado = "") =>
         tipo switch
         {
-            "falta_dato" => "Ingresar fecha de retiro",
+            "falta_dato" =>
+                $"Ingresar {InicialMinuscula(string.IsNullOrWhiteSpace(lugarEsperado) ? "fecha de retiro" : lugarEsperado)}",
             "plazo" when !string.IsNullOrWhiteSpace(lugarEsperado) => $"Falta {lugarEsperado}",
+            "listo_para" => "Listos para facturar",
             _ => "",
         };
+
+    private static string InicialMinuscula(string texto) => texto.ToLowerInvariant();
 
     public static string? Validar(string tipo, object parametros)
     {

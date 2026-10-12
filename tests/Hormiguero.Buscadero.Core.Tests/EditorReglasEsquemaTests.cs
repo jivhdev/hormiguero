@@ -6,6 +6,32 @@ namespace Hormiguero.Buscadero.Core.Tests;
 public sealed class EditorReglasEsquemaTests
 {
     [Fact]
+    public void PluralizaElNombreDelTipoEnFrasesDeEnlace()
+    {
+        Assert.Equal(
+            "Guías del proveedor",
+            EditorReglasEsquema.PluralizarTipo("Guía del proveedor")
+        );
+        Assert.Equal(
+            "Facturas del proveedor",
+            EditorReglasEsquema.PluralizarTipo("Factura del proveedor")
+        );
+        Assert.Equal("Notas de crédito", EditorReglasEsquema.PluralizarTipo("Nota de crédito"));
+        Assert.Equal("Órdenes propias", EditorReglasEsquema.PluralizarTipo("Orden propias"));
+        Assert.Equal("OC propia", EditorReglasEsquema.PluralizarTipo("OC propia"));
+    }
+
+    [Fact]
+    public void PorLineaSoloSePermiteCuandoHayUnEnlaceEntreDocumentosElegidos()
+    {
+        var enlaces = new[] { (0, 2, "uno_a_varios"), (1, 3, "uno_a_uno") };
+        Assert.True(EditorReglasEsquema.PermitePorLinea(2, 0, enlaces));
+        Assert.True(EditorReglasEsquema.PermitePorLinea(1, 3, enlaces));
+        Assert.False(EditorReglasEsquema.PermitePorLinea(0, 1, enlaces));
+        Assert.False(EditorReglasEsquema.PermitePorLinea(0, 2, [(0, 2, "muchos_a_muchos")]));
+    }
+
+    [Fact]
     public void ExponeSoloCamposDelTipoYTextoSugerido()
     {
         Assert.Equal(new[] { "dato", "texto" }, EditorReglasEsquema.CamposPorTipo("falta_dato"));
@@ -28,8 +54,12 @@ public sealed class EditorReglasEsquemaTests
             EditorReglasEsquema.CamposPorTipo("listo_para")
         );
         Assert.Equal("Ingresar fecha de retiro", EditorReglasEsquema.TextoSugerido("falta_dato"));
+        Assert.Equal(
+            "Ingresar n° factura del proveedor",
+            EditorReglasEsquema.TextoSugerido("falta_dato", "N° Factura del proveedor")
+        );
         Assert.Equal("Falta Guía", EditorReglasEsquema.TextoSugerido("plazo", "Guía"));
-        Assert.Equal("", EditorReglasEsquema.TextoSugerido("listo_para", "Guía"));
+        Assert.Equal("Listos para facturar", EditorReglasEsquema.TextoSugerido("listo_para"));
     }
 
     [Fact]

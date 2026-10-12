@@ -1,4 +1,4 @@
-using System.Text.Json;
+﻿using System.Text.Json;
 using Hormiguero.Nucleo.Datos;
 using Microsoft.Data.Sqlite;
 
@@ -231,5 +231,62 @@ public sealed class Q2bAlertasDiccionarioTests : IDisposable
         q.Parameters.AddWithValue("$r", ruta);
         q.Parameters.AddWithValue("$f", fecha);
         q.ExecuteNonQuery();
+    }
+
+    [Fact]
+    public void Quitar_un_modo_lo_borra_salvo_si_una_cadena_lo_usa()
+    {
+        long esquema = new RepositorioEsquemasDiccionario(_conexion).Guardar(
+            "ACME",
+            "Proceso",
+            [new(0, "oc_propia", true, "OC propia")],
+            []
+        );
+        var config = new RepositorioConfiguracionEsquemaDiccionario(_conexion);
+        config.GuardarModos(esquema, 0, ["Retiro", "Despacho", "Mixto"]);
+        using (var q = _conexion.CreateCommand())
+        {
+            q.CommandText =
+                "INSERT INTO cadenas_diccionario(esquema_id,nombre,modo_id) SELECT $e,'OC 1',id FROM modos_esquema_diccionario WHERE nombre='Mixto';";
+            q.Parameters.AddWithValue("$e", esquema);
+            q.ExecuteNonQuery();
+        }
+
+        config.GuardarModos(esquema, 0, ["retiro"]);
+
+        Assert.Equal(
+            ["Mixto", "Retiro"],
+            new RepositorioModosEsquemaDiccionario(_conexion)
+                .Listar(esquema)
+                .Select(m => m.Nombre)
+                .Order()
+        );
+    }
+
+    [Fact]
+    public void Guardar_aviso_con_lugar_opcional_vacio_no_falla()
+    {
+        long esquema = new RepositorioEsquemasDiccionario(_conexion).Guardar(
+            "ACME",
+            "Proceso",
+            [new(0, "guia_proveedor", true, "Guía"), new(1, "factura_proveedor", false, "Factura")],
+            []
+        );
+
+        new RepositorioConfiguracionEsquemaDiccionario(_conexion).GuardarReglas(
+            esquema,
+            [
+                new(
+                    0,
+                    null,
+                    "plazo",
+                    """{"desdeLugarId":0,"hastaLugarId":1,"condicionLugarId":null,"dias":7}"""
+                ),
+            ]
+        );
+
+        using var q = _conexion.CreateCommand();
+        q.CommandText = "SELECT count(*) FROM reglas_alerta_esquema_diccionario;";
+        Assert.Equal(1L, q.ExecuteScalar());
     }
 }
