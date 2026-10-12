@@ -1,4 +1,4 @@
-using System.Globalization;
+﻿using System.Globalization;
 using System.Text.Json;
 using Microsoft.Data.Sqlite;
 
@@ -17,6 +17,7 @@ public sealed class RepositorioConfiguracionEsquemaDiccionario(SqliteConnection 
     public void GuardarModos(long esquemaId, int? ordenDecideModo, IReadOnlyList<string> modos)
     {
         using var tx = conexion.BeginTransaction();
+        BorrarModosQuitados(tx, esquemaId, modos);
         foreach (
             string nombre in modos
                 .Where(m => !string.IsNullOrWhiteSpace(m))
@@ -101,6 +102,7 @@ public sealed class RepositorioConfiguracionEsquemaDiccionario(SqliteConnection 
             q.Parameters.AddWithValue("$e", esquemaId);
             q.ExecuteNonQuery();
         }
+        BorrarModosQuitados(tx, esquemaId, modos);
         foreach (
             string nombre in modos
                 .Where(m => !string.IsNullOrWhiteSpace(m))
@@ -151,6 +153,7 @@ public sealed class RepositorioConfiguracionEsquemaDiccionario(SqliteConnection 
         {
             if (
                 !documento.RootElement.TryGetProperty(propiedad, out var valor)
+                || valor.ValueKind != System.Text.Json.JsonValueKind.Number
                 || !valor.TryGetInt64(out long orden)
             )
                 continue;
@@ -164,6 +167,31 @@ public sealed class RepositorioConfiguracionEsquemaDiccionario(SqliteConnection 
                 raiz[propiedad] = id;
         }
         return raiz.ToJsonString();
+    }
+
+    // Los modos quitados en pantalla se borran (con los avisos que los usaban; el asistente
+    // vuelve a guardar todos sus avisos), salvo los que ya usa alguna cadena o su historial:
+    // esos se conservan para no perder lo registrado.
+    private void BorrarModosQuitados(
+        SqliteTransaction tx,
+        long esquemaId,
+        IReadOnlyList<string> modos
+    )
+    {
+        const string quitados =
+            "SELECT id FROM modos_esquema_diccionario WHERE esquema_id=$e "
+            + "AND lower(nombre) NOT IN (SELECT lower(trim(value)) FROM json_each($n)) "
+            + "AND id NOT IN (SELECT modo_id FROM cadenas_diccionario WHERE modo_id IS NOT NULL) "
+            + "AND id NOT IN (SELECT modo_anterior_id FROM historial_modos_cadena_diccionario WHERE modo_anterior_id IS NOT NULL) "
+            + "AND id NOT IN (SELECT modo_nuevo_id FROM historial_modos_cadena_diccionario WHERE modo_nuevo_id IS NOT NULL)";
+        using var q = conexion.CreateCommand();
+        q.Transaction = tx;
+        q.CommandText =
+            $"DELETE FROM reglas_alerta_esquema_diccionario WHERE modo_id IN ({quitados}); "
+            + $"DELETE FROM modos_esquema_diccionario WHERE id IN ({quitados});";
+        q.Parameters.AddWithValue("$e", esquemaId);
+        q.Parameters.AddWithValue("$n", JsonSerializer.Serialize(modos));
+        q.ExecuteNonQuery();
     }
 }
 
