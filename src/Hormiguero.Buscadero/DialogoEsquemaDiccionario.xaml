@@ -206,8 +206,17 @@
           </DockPanel>
         </Grid>
         <Grid x:Name="PanelModos" Visibility="Collapsed" Margin="0,4">
-          <Grid.RowDefinitions><RowDefinition Height="Auto"/><RowDefinition Height="Auto"/><RowDefinition Height="*"/><RowDefinition Height="Auto"/></Grid.RowDefinitions>
-          <TextBlock Text="Opcional. Si el proceso tiene variantes, por ejemplo Retiro o Despacho, escríbalas aquí; Archivero preguntará cuál es al llegar el documento que decide." TextWrapping="Wrap" Margin="0,0,0,10" />
+          <Grid.RowDefinitions>
+            <RowDefinition Height="Auto" />
+            <RowDefinition Height="Auto" />
+            <RowDefinition Height="*" />
+            <RowDefinition Height="Auto" />
+          </Grid.RowDefinitions>
+          <TextBlock
+            Text="Opcional. Si el proceso tiene variantes, por ejemplo Retiro o Despacho, escríbalas aquí; Archivero preguntará cuál es al llegar el documento que decide."
+            TextWrapping="Wrap"
+            Margin="0,0,0,10"
+          />
           <DockPanel Grid.Row="1" LastChildFill="False" Margin="0,0,0,8">
             <TextBox x:Name="ModoNuevo" Width="260" Margin="0,0,8,0" />
             <Button Content="Agregar" Click="AgregarModo_Click" Padding="10,4" Margin="0,0,6,0" />
@@ -215,21 +224,55 @@
           </DockPanel>
           <ListBox x:Name="ModosLista" Grid.Row="2" MinHeight="160" />
           <DockPanel Grid.Row="3" Margin="0,10,0,0">
-            <TextBlock Text="Documento que decide el modo" VerticalAlignment="Center" Margin="0,0,10,0" />
+            <TextBlock
+              Text="Documento que decide el modo"
+              VerticalAlignment="Center"
+              Margin="0,0,10,0"
+            />
             <ComboBox x:Name="LugarDecideModo" Width="300" DisplayMemberPath="Nombre" />
           </DockPanel>
         </Grid>
         <DockPanel x:Name="PanelAvisos" Visibility="Collapsed" Margin="0,4">
-          <StackPanel DockPanel.Dock="Bottom" Orientation="Horizontal" HorizontalAlignment="Right" Margin="0,8,0,0">
-            <Button Content="Agregar aviso…" Click="AgregarAviso_Click" Padding="10,5" Margin="3" />
-            <Button Content="Editar…" Click="EditarAviso_Click" Padding="10,5" Margin="3" />
+          <StackPanel
+            DockPanel.Dock="Bottom"
+            Orientation="Horizontal"
+            HorizontalAlignment="Right"
+            Margin="0,8,0,0"
+          >
+            <Button
+              x:Name="BotonAgregarAviso"
+              Content="Agregar aviso…"
+              Click="AgregarAviso_Click"
+              Padding="10,5"
+              Margin="3"
+            />
+            <Button
+              x:Name="BotonEditarAviso"
+              Content="Editar…"
+              Click="EditarAviso_Click"
+              Padding="10,5"
+              Margin="3"
+            />
             <Button Content="Quitar" Click="QuitarAviso_Click" Padding="10,5" Margin="3" />
           </StackPanel>
           <Grid>
-            <ListBox x:Name="ListaAvisos" MouseDoubleClick="EditarAviso_DoubleClick" MinHeight="220" DisplayMemberPath="Frase" />
-            <TextBlock x:Name="SinAvisos" Text="Todavía no hay avisos. Son opcionales." Foreground="{DynamicResource Hormiguero.TextoSecundario}" HorizontalAlignment="Center" VerticalAlignment="Center" IsHitTestVisible="False" />
+            <ListBox
+              x:Name="ListaAvisos"
+              MouseDoubleClick="EditarAviso_DoubleClick"
+              MinHeight="220"
+              DisplayMemberPath="Frase"
+            />
+            <TextBlock
+              x:Name="SinAvisos"
+              Text="Todavía no hay avisos. Son opcionales."
+              Foreground="{DynamicResource Hormiguero.TextoSecundario}"
+              HorizontalAlignment="Center"
+              VerticalAlignment="Center"
+              IsHitTestVisible="False"
+            />
           </Grid>
-        </DockPanel>        <TextBlock x:Name="PanelResumen" Visibility="Collapsed" TextWrapping="Wrap" Margin="0,4" />
+        </DockPanel>
+        <TextBlock x:Name="PanelResumen" Visibility="Collapsed" TextWrapping="Wrap" Margin="0,4" />
       </Grid>
     </ScrollViewer>
     <DockPanel Grid.Row="2" Margin="0,10,0,0">

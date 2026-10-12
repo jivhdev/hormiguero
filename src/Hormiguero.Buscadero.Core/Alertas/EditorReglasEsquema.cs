@@ -60,10 +60,14 @@ public static class EditorReglasEsquema
     public static string TextoSugerido(string tipo, string lugarEsperado = "") =>
         tipo switch
         {
-            "falta_dato" => "Ingresar fecha de retiro",
+            "falta_dato" =>
+                $"Ingresar {InicialMinuscula(string.IsNullOrWhiteSpace(lugarEsperado) ? "fecha de retiro" : lugarEsperado)}",
             "plazo" when !string.IsNullOrWhiteSpace(lugarEsperado) => $"Falta {lugarEsperado}",
+            "listo_para" => "Listos para facturar",
             _ => "",
         };
+
+    private static string InicialMinuscula(string texto) => texto.ToLowerInvariant();
 
     public static string? Validar(string tipo, object parametros)
     {

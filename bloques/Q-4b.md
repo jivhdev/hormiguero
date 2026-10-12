@@ -21,3 +21,9 @@ Q-4 funciona en vivo: modos en lista, tres tarjetas, campos por tipo, "Por líne
 `dotnet build` sin advertencias; `dotnet test` todo pasa; `dotnet csharpier check .` sin errores en tus archivos. Español neutro. Reporte al final.
 
 ## Reporte del agente
+
+Pulí el editor: la tarjeta activa usa borde y fondo de acento, anuncia «elegida» y distingue las tres categorías con tema claro y oscuro. Corregí «hábiles»/«corridos» y la frase de «Listo para facturar». Los textos sugeridos cambian con el dato o documento mientras no se hayan editado. El caso «fecha de retiro» se ofrece como dato sintético del aviso, ya que el catálogo del núcleo no lo contiene y el formato del aviso permite guardar nombres libres; no se modificó el núcleo. Corregí también la recarga de avisos con campos opcionales nulos.
+
+Añadí la aceptación STA al recorrido de ventanas existente: arma el esquema PROVEEDOR DEMO SPA, guarda y vuelve a abrir mediante Editar para comparar documentos, enlaces, modos, documento que decide y avisos. Comprueba los límites de 1366×768 y la información accesible de las tarjetas en ambos temas.
+
+Verificación: dotnet build correcto, 0 advertencias; dotnet test correcto (811 pruebas); dotnet csharpier check . correcto (339 archivos).

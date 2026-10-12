@@ -1,5 +1,6 @@
 using System.Text.Json;
 using System.Windows;
+using System.Windows.Automation;
 using System.Windows.Controls;
 using System.Windows.Controls.Primitives;
 using Buscadero.Core.Alertas;
@@ -32,6 +33,7 @@ internal sealed class DialogoEditorAviso : Window
     private readonly ComboBox _modo = new() { MinWidth = 220 };
     private readonly Button _guardar = new()
     {
+        Name = "GuardarAviso",
         Content = "Guardar aviso",
         Padding = new Thickness(12, 6, 12, 6),
         IsDefault = true,
@@ -54,6 +56,9 @@ internal sealed class DialogoEditorAviso : Window
     private CheckBox? _linea;
     private string _tipo = "falta_dato";
     private AvisoDefinicion? _existente;
+    private bool _textoEditado;
+    private bool _actualizandoTexto;
+    private readonly List<Button> _botonesTipo = [];
     public AvisoDefinicion? Resultado { get; private set; }
 
     public DialogoEditorAviso(
@@ -64,6 +69,7 @@ internal sealed class DialogoEditorAviso : Window
         AvisoDefinicion? existente
     )
     {
+        NameScope.SetNameScope(this, new NameScope());
         _lugares = lugares;
         _datos = datos;
         _enlaces = enlaces;
@@ -74,6 +80,8 @@ internal sealed class DialogoEditorAviso : Window
         Height = 700;
         MinWidth = 600;
         MinHeight = 440;
+        MaxHeight = Math.Max(440, SystemParameters.WorkArea.Height - 40);
+        Height = Math.Min(700, MaxHeight);
         WindowStartupLocation = WindowStartupLocation.CenterOwner;
         var root = new DockPanel { Margin = new Thickness(16) };
         var pie = new StackPanel
@@ -90,6 +98,7 @@ internal sealed class DialogoEditorAviso : Window
         root.Children.Add(pie);
         var contenido = new StackPanel();
         var tarjetas = new UniformGrid { Columns = 3, Margin = new Thickness(0, 0, 0, 12) };
+        int indiceTarjeta = 0;
         foreach (
             var opcion in new[]
             {
@@ -106,7 +115,11 @@ internal sealed class DialogoEditorAviso : Window
                 Margin = new Thickness(3),
                 Padding = new Thickness(8),
                 MinHeight = 58,
+                BorderThickness = new Thickness(2),
             };
+            boton.Name = $"TipoAviso{indiceTarjeta++}";
+            RegisterName(boton.Name, boton);
+            _botonesTipo.Add(boton);
             boton.Click += (_, _) => ElegirTipo((string)boton.Tag);
             tarjetas.Children.Add(boton);
         }
@@ -137,14 +150,21 @@ internal sealed class DialogoEditorAviso : Window
         };
         root.Children.Add(scroll);
         Content = root;
+        _frase.Name = "FraseAviso";
+        RegisterName(_frase.Name, _frase);
+        RegisterName(_guardar.Name, _guardar);
         ElegirTipo(existente?.Tipo ?? "falta_dato");
         if (existente is not null)
             CargarExistente(existente);
+        ActualizarTarjetas();
     }
 
     private void ElegirTipo(string tipo)
     {
         _tipo = tipo;
+        foreach (var elemento in _campos.Children.OfType<FrameworkElement>())
+            if (!string.IsNullOrEmpty(elemento.Name))
+                UnregisterName(elemento.Name);
         _campos.Children.Clear();
         if (tipo == "falta_dato")
             CamposFalta();
@@ -152,6 +172,7 @@ internal sealed class DialogoEditorAviso : Window
             CamposPlazo();
         else
             CamposListo();
+        ActualizarTarjetas();
         ActualizarFrase();
     }
 
@@ -171,6 +192,19 @@ internal sealed class DialogoEditorAviso : Window
             MinWidth = 300,
             DisplayMemberPath = display,
         };
+        c.Name = titulo switch
+        {
+            "Dato que falta" => "DatoAviso",
+            "Documento del proceso" => "UbicacionAviso",
+            "Contar desde" => "OrigenAviso",
+            "Tipo de días" => "TipoDiasAviso",
+            "Hasta que llegue" or "Y también esté" => "DestinoAviso",
+            "Solo si existe (opcional)" => "CondicionAviso",
+            "Cuando esté" => "CuandoAviso",
+            _ => "",
+        };
+        if (c.Name.Length > 0)
+            RegisterName(c.Name, c);
         c.SelectionChanged += (_, _) => ActualizarFrase();
         _campos.Children.Add(c);
         return c;
@@ -187,17 +221,53 @@ internal sealed class DialogoEditorAviso : Window
             }
         );
         var t = new TextBox { Text = inicial, MinWidth = 300 };
-        t.TextChanged += (_, _) => ActualizarFrase();
+        t.Name = titulo switch
+        {
+            "Texto del aviso" or "Nombre de la lista" => "TextoAviso",
+            "Cantidad de días" => "DiasAviso",
+            _ => "",
+        };
+        if (t.Name.Length > 0)
+            RegisterName(t.Name, t);
+        t.TextChanged += (_, _) =>
+        {
+            if (!_actualizandoTexto)
+                _textoEditado = true;
+            ActualizarFrase();
+        };
         _campos.Children.Add(t);
         return t;
+    }
+
+    // Dato del diccionario elegido, o el escrito por el usuario (se guarda con su nombre).
+    private DatoAvisoOpcion? DatoElegido()
+    {
+        if (_dato is null)
+            return null;
+        if (_dato.SelectedItem is DatoAvisoOpcion elegido && elegido.Nombre == _dato.Text)
+            return elegido;
+        string texto = _dato.Text.Trim();
+        return texto.Length == 0
+            ? null
+            : _datos.FirstOrDefault(d =>
+                string.Equals(d.Nombre, texto, StringComparison.OrdinalIgnoreCase)
+            ) ?? new DatoAvisoOpcion(texto, texto);
     }
 
     private void CamposFalta()
     {
         _dato = Selector("Dato que falta", _datos.Cast<object>(), nameof(DatoAvisoOpcion.Nombre));
+        // Se puede elegir un dato del diccionario o escribir uno propio (ej. "Fecha de retiro"),
+        // que se ingresa después en la cadena.
+        _dato.IsEditable = true;
+        _dato.SelectionChanged += (_, _) => ActualizarTextoSugerido();
+        _dato.AddHandler(
+            System.Windows.Controls.Primitives.TextBoxBase.TextChangedEvent,
+            new TextChangedEventHandler((_, _) => ActualizarTextoSugerido())
+        );
         if (_datos.Count > 0)
             _dato.SelectedIndex = 0;
-        _texto = Texto("Texto del aviso", "Ingresar fecha de retiro");
+        _texto = Texto("Texto del aviso");
         _ubicacion = Selector(
             "Documento del proceso",
             _lugares.Cast<object>(),
@@ -205,6 +275,7 @@ internal sealed class DialogoEditorAviso : Window
         );
         if (_lugares.Count > 0)
             _ubicacion.SelectedIndex = 0;
+        ActualizarTextoSugerido(true);
     }
 
     private void CamposPlazo()
@@ -219,7 +290,7 @@ internal sealed class DialogoEditorAviso : Window
         _dias = Texto("Cantidad de días", "7");
         _tipoDias = Selector(
             "Tipo de días",
-            new object[] { new Opcion("Hábiles", "habiles"), new Opcion("Corridos", "corridos") },
+            new object[] { new Opcion("hábiles", "habiles"), new Opcion("corridos", "corridos") },
             nameof(Opcion.Nombre)
         );
         _tipoDias.SelectedIndex = 0;
@@ -248,10 +319,12 @@ internal sealed class DialogoEditorAviso : Window
                 TextWrapping = TextWrapping.Wrap,
             }
         );
-        _texto = Texto("Texto del aviso", "Falta el documento");
+        _texto = Texto("Texto del aviso");
         _destino.SelectionChanged += (_, _) => ActualizarPorLinea();
+        _destino.SelectionChanged += (_, _) => ActualizarTextoSugerido();
         _origen.SelectionChanged += (_, _) => ActualizarPorLinea();
         ActualizarPorLinea();
+        ActualizarTextoSugerido(true);
     }
 
     private void CamposListo()
@@ -272,7 +345,59 @@ internal sealed class DialogoEditorAviso : Window
             nameof(LugarAvisoOpcion.Nombre)
         );
         _condicion.SelectedIndex = 0;
-        _texto = Texto("Nombre de la lista", "Listos para facturar");
+        _texto = Texto("Nombre de la lista");
+        ActualizarTextoSugerido(true);
+    }
+
+    private void ActualizarTextoSugerido(bool reiniciar = false)
+    {
+        if (_texto is null)
+            return;
+        if (reiniciar)
+            _textoEditado = false;
+        if (_textoEditado)
+            return;
+        string sugerencia = _tipo switch
+        {
+            "falta_dato" when DatoElegido() is DatoAvisoOpcion dato =>
+                $"Ingresar {InicialMinuscula(dato.Nombre)}",
+            "plazo" when _destino?.SelectedItem is LugarAvisoOpcion destino =>
+                $"Falta {destino.Nombre}",
+            "listo_para" => "Listos para facturar",
+            _ => "",
+        };
+        _actualizandoTexto = true;
+        _texto.Text = sugerencia;
+        _actualizandoTexto = false;
+    }
+
+    private static string InicialMinuscula(string texto) => texto.ToLowerInvariant();
+
+    private void ActualizarTarjetas()
+    {
+        foreach (Button boton in _botonesTipo)
+        {
+            bool elegida = Equals(boton.Tag, _tipo);
+            var acento = (System.Windows.Media.SolidColorBrush)FindResource("Hormiguero.Acento");
+            boton.BorderBrush = elegida
+                ? acento
+                : (System.Windows.Media.Brush)FindResource("Hormiguero.Borde");
+            boton.Background = elegida
+                ? new System.Windows.Media.SolidColorBrush(
+                    System.Windows.Media.Color.FromArgb(
+                        36,
+                        acento.Color.R,
+                        acento.Color.G,
+                        acento.Color.B
+                    )
+                )
+                : (System.Windows.Media.Brush)FindResource("Hormiguero.Fondo");
+            AutomationProperties.SetItemStatus(boton, elegida ? "Elegida" : "No elegida");
+            AutomationProperties.SetName(
+                boton,
+                $"{((string)boton.Content).Replace('\n', ' ')}: {(elegida ? "elegida" : "no elegida")}"
+            );
+        }
     }
 
     private void ActualizarPorLinea()
@@ -294,14 +419,14 @@ internal sealed class DialogoEditorAviso : Window
         string mensaje = _texto?.Text.Trim() ?? "aviso";
         _frase.Text = _tipo switch
         {
-            "falta_dato" when _dato?.SelectedItem is DatoAvisoOpcion d =>
+            "falta_dato" when DatoElegido() is DatoAvisoOpcion d =>
                 $"Mientras falte {d.Nombre}, aviso «{mensaje}».",
             "plazo" when _destino?.SelectedItem is LugarAvisoOpcion h =>
                 $"Si pasan {_dias?.Text} días {(_tipoDias?.SelectedItem as Opcion)?.Nombre} desde {(_origen?.SelectedItem is LugarAvisoOpcion o ? o.Nombre + " (su fecha de emisión)" : "el dato ingresado")} sin {h.Nombre}, aviso «{mensaje}»{(_linea?.IsChecked == true ? " (por línea)" : "")}.",
             "listo_para"
                 when _cuando?.SelectedItem is LugarAvisoOpcion c
                     && _destino?.SelectedItem is LugarAvisoOpcion l =>
-                $"Listo para «{mensaje}» cuando estén {c.Nombre} + {l.Nombre}.",
+                $"Listo para {mensaje.Replace("Listos para ", "", StringComparison.OrdinalIgnoreCase)} cuando estén {c.Nombre} + {l.Nombre}.",
             _ => "Complete los campos del aviso.",
         };
     }
@@ -320,9 +445,11 @@ internal sealed class DialogoEditorAviso : Window
             }
             if (_tipo == "falta_dato")
             {
-                _dato!.SelectedItem = _datos.FirstOrDefault(x =>
-                    x.Id == r.GetProperty("dato").GetString()
-                );
+                string idDato = r.GetProperty("dato").GetString() ?? "";
+                if (_datos.FirstOrDefault(x => x.Id == idDato) is DatoAvisoOpcion conocido)
+                    _dato!.SelectedItem = conocido;
+                else
+                    _dato!.Text = idDato;
                 _texto!.Text = r.GetProperty("texto").GetString() ?? "";
                 _ubicacion!.SelectedItem = _lugares.FirstOrDefault(x =>
                     x.Orden == aviso.OrdenLugar
@@ -381,7 +508,7 @@ internal sealed class DialogoEditorAviso : Window
             if (_tipo == "falta_dato")
             {
                 if (
-                    _dato?.SelectedItem is not DatoAvisoOpcion dato
+                    DatoElegido() is not DatoAvisoOpcion dato
                     || _ubicacion?.SelectedItem is not LugarAvisoOpcion lugar
                 )
                     throw new InvalidOperationException();

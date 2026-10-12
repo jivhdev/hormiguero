@@ -54,8 +54,12 @@ public sealed class EditorReglasEsquemaTests
             EditorReglasEsquema.CamposPorTipo("listo_para")
         );
         Assert.Equal("Ingresar fecha de retiro", EditorReglasEsquema.TextoSugerido("falta_dato"));
+        Assert.Equal(
+            "Ingresar n° factura del proveedor",
+            EditorReglasEsquema.TextoSugerido("falta_dato", "N° Factura del proveedor")
+        );
         Assert.Equal("Falta Guía", EditorReglasEsquema.TextoSugerido("plazo", "Guía"));
-        Assert.Equal("", EditorReglasEsquema.TextoSugerido("listo_para", "Guía"));
+        Assert.Equal("Listos para facturar", EditorReglasEsquema.TextoSugerido("listo_para"));
     }
 
     [Fact]

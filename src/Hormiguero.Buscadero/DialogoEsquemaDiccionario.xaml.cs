@@ -36,7 +36,7 @@ public partial class DialogoEsquemaDiccionario : Window
             .Where(t => !DiccionarioDatosEnlazantes.EsParte(t.Id))
             .OrderBy(t => OrdenGrupo(t.Grupo))
             .ThenBy(t => t.Nombre)
-            .Select(t => new TipoVm(t.Id, t.Nombre, t.Grupo))
+            .Select(t => new TipoVm(t.Id, NombreTipoVisible(t.Id, t.Nombre), t.Grupo))
             .ToArray();
         Tipos.ItemsSource = tipos;
         CollectionViewSource
@@ -565,7 +565,24 @@ public partial class DialogoEsquemaDiccionario : Window
     }
 
     private string NombreDato(string id) =>
-        RepositorioEsquemasDiccionario.NombreDiccionario(_conexion, id);
+        id switch
+        {
+            "oc_propia" => "N° OC propia",
+            "guia_proveedor" => "N° Guía del proveedor",
+            "factura_proveedor" => "N° Factura del proveedor",
+            _ => RepositorioEsquemasDiccionario.NombreDiccionario(_conexion, id),
+        };
+
+    private static string NombreTipoVisible(string id, string nombre) =>
+        id switch
+        {
+            "nota_venta_propia" => "NVV propia",
+            "oc_propia" => "OC propia",
+            "guia_proveedor" => "Guía del proveedor",
+            "factura_proveedor" => "Factura del proveedor",
+            "factura_propia" => "Factura propia",
+            _ => nombre,
+        };
 
     private void ActualizarLugares()
     {
@@ -619,6 +636,7 @@ public partial class DialogoEsquemaDiccionario : Window
         )
             if (
                 doc.RootElement.TryGetProperty(propiedad, out var id)
+                && id.ValueKind == JsonValueKind.Number
                 && id.TryGetInt64(out long valor)
             )
             {
@@ -657,12 +675,16 @@ public partial class DialogoEsquemaDiccionario : Window
                 ? nombres.GetValueOrDefault(p.DesdeLugarId ?? 0, "documento")
                     + " (su fecha de emisión)"
                 : $"el dato ingresado «{p.DesdeDato}»";
-            return $"Si pasan {p.Dias} días {p.TipoDias} desde {desde} sin {nombres.GetValueOrDefault(p.HastaLugarId, "documento")}, aviso «{p.Texto}»{(p.PorLinea ? " (por línea)" : "")}";
+            string tipoDias = p.TipoDias == "habiles" ? "hábiles" : "corridos";
+            return $"Si pasan {p.Dias} días {tipoDias} desde {desde} sin {nombres.GetValueOrDefault(p.HastaLugarId, "documento")}, aviso «{p.Texto}»{(p.PorLinea ? " (por línea)" : "")}";
         }
         if (tipo == "listo_para")
         {
             var p = JsonSerializer.Deserialize<ParametrosListoPara>(json, opciones)!;
-            return $"Listo para «{p.Lista}» cuando estén {nombres.GetValueOrDefault(p.CuandoLugarId, "documento")} + {nombres.GetValueOrDefault(p.HastaLugarId, "documento")}";
+            string lista = p.Lista.StartsWith("Listos para ", StringComparison.OrdinalIgnoreCase)
+                ? p.Lista["Listos para ".Length..]
+                : p.Lista;
+            return $"Listo para {lista} cuando estén {nombres.GetValueOrDefault(p.CuandoLugarId, "documento")} + {nombres.GetValueOrDefault(p.HastaLugarId, "documento")}";
         }
         return "Aviso";
     }
