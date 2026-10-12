@@ -205,79 +205,31 @@
             <ListBox x:Name="Enlaces" MinHeight="220" />
           </DockPanel>
         </Grid>
-        <StackPanel x:Name="PanelModos" Visibility="Collapsed" Margin="0,4">
-          <TextBlock Text="Modos opcionales (separados por coma)" FontWeight="Bold" />
-          <TextBox x:Name="ModosTexto" Width="420" HorizontalAlignment="Left" Margin="0,4,0,10" />
-          <TextBlock Text="Documento que decide el modo" FontWeight="Bold" />
-          <ComboBox
-            x:Name="LugarDecideModo"
-            Width="300"
-            HorizontalAlignment="Left"
-            DisplayMemberPath="Nombre"
-          />
-        </StackPanel>
-        <StackPanel x:Name="PanelAvisos" Visibility="Collapsed" Margin="0,4">
-          <WrapPanel>
-            <StackPanel Margin="0,0,8,5">
-              <TextBlock Text="Aviso" />
-              <ComboBox x:Name="TipoAviso" Width="130" SelectedIndex="0">
-                <ComboBoxItem Content="Falta dato" Tag="falta_dato" />
-                <ComboBoxItem Content="Plazo" Tag="plazo" />
-                <ComboBoxItem Content="Listo para" Tag="listo_para" />
-              </ComboBox>
-            </StackPanel>
-            <StackPanel Margin="0,0,8,5">
-              <TextBlock Text="Dato o fecha" />
-              <ComboBox x:Name="DatoAviso" Width="190" DisplayMemberPath="Texto" />
-            </StackPanel>
-            <StackPanel Margin="0,0,8,5">
-              <TextBlock Text="Documento A" />
-              <ComboBox
-                x:Name="LugarAvisoA"
-                Width="160"
-                DisplayMemberPath="Nombre"
-                SelectionChanged="LugarAviso_SelectionChanged"
-              />
-            </StackPanel>
-            <StackPanel Margin="0,0,8,5">
-              <TextBlock Text="Documento B" />
-              <ComboBox
-                x:Name="LugarAvisoB"
-                Width="160"
-                DisplayMemberPath="Nombre"
-                SelectionChanged="LugarAviso_SelectionChanged"
-              />
-            </StackPanel>
-            <StackPanel Margin="0,0,8,5">
-              <TextBlock Text="Días" />
-              <TextBox x:Name="DiasAviso" Width="55" ToolTip="Días del plazo" Text="30" />
-            </StackPanel>
-            <StackPanel Margin="0,0,8,5">
-              <TextBlock Text="Texto del aviso" />
-              <TextBox x:Name="TextoAviso" Width="210" />
-            </StackPanel>
-            <CheckBox
-              x:Name="PorLinea"
-              Content="Por línea"
-              VerticalAlignment="Bottom"
-              Margin="5,0"
-            />
-            <Button
-              Content="Agregar aviso"
-              Click="AgregarAviso_Click"
-              Padding="7,3"
-              VerticalAlignment="Bottom"
-              Margin="4"
-            />
-          </WrapPanel>
-          <TextBlock
-            x:Name="ReglasAvisoTexto"
-            TextWrapping="Wrap"
-            Margin="0,12,0,0"
-            Foreground="{DynamicResource Hormiguero.TextoSecundario}"
-          />
-        </StackPanel>
-        <TextBlock x:Name="PanelResumen" Visibility="Collapsed" TextWrapping="Wrap" Margin="0,4" />
+        <Grid x:Name="PanelModos" Visibility="Collapsed" Margin="0,4">
+          <Grid.RowDefinitions><RowDefinition Height="Auto"/><RowDefinition Height="Auto"/><RowDefinition Height="*"/><RowDefinition Height="Auto"/></Grid.RowDefinitions>
+          <TextBlock Text="Opcional. Si el proceso tiene variantes, por ejemplo Retiro o Despacho, escríbalas aquí; Archivero preguntará cuál es al llegar el documento que decide." TextWrapping="Wrap" Margin="0,0,0,10" />
+          <DockPanel Grid.Row="1" LastChildFill="False" Margin="0,0,0,8">
+            <TextBox x:Name="ModoNuevo" Width="260" Margin="0,0,8,0" />
+            <Button Content="Agregar" Click="AgregarModo_Click" Padding="10,4" Margin="0,0,6,0" />
+            <Button Content="Quitar" Click="QuitarModo_Click" Padding="10,4" />
+          </DockPanel>
+          <ListBox x:Name="ModosLista" Grid.Row="2" MinHeight="160" />
+          <DockPanel Grid.Row="3" Margin="0,10,0,0">
+            <TextBlock Text="Documento que decide el modo" VerticalAlignment="Center" Margin="0,0,10,0" />
+            <ComboBox x:Name="LugarDecideModo" Width="300" DisplayMemberPath="Nombre" />
+          </DockPanel>
+        </Grid>
+        <DockPanel x:Name="PanelAvisos" Visibility="Collapsed" Margin="0,4">
+          <StackPanel DockPanel.Dock="Bottom" Orientation="Horizontal" HorizontalAlignment="Right" Margin="0,8,0,0">
+            <Button Content="Agregar aviso…" Click="AgregarAviso_Click" Padding="10,5" Margin="3" />
+            <Button Content="Editar…" Click="EditarAviso_Click" Padding="10,5" Margin="3" />
+            <Button Content="Quitar" Click="QuitarAviso_Click" Padding="10,5" Margin="3" />
+          </StackPanel>
+          <Grid>
+            <ListBox x:Name="ListaAvisos" MouseDoubleClick="EditarAviso_DoubleClick" MinHeight="220" DisplayMemberPath="Frase" />
+            <TextBlock x:Name="SinAvisos" Text="Todavía no hay avisos. Son opcionales." Foreground="{DynamicResource Hormiguero.TextoSecundario}" HorizontalAlignment="Center" VerticalAlignment="Center" IsHitTestVisible="False" />
+          </Grid>
+        </DockPanel>        <TextBlock x:Name="PanelResumen" Visibility="Collapsed" TextWrapping="Wrap" Margin="0,4" />
       </Grid>
     </ScrollViewer>
     <DockPanel Grid.Row="2" Margin="0,10,0,0">

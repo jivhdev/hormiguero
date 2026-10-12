@@ -12,7 +12,8 @@ public partial class DialogoEsquemaDiccionario : Window
     private readonly RepositorioEsquemasDiccionario _repositorio;
     private readonly List<LugarVm> _lugares = [];
     private readonly List<EnlaceVm> _enlaces = [];
-    private readonly List<DefinicionReglaAlertaDiccionario> _reglasAviso = [];
+    private readonly List<AvisoVm> _reglasAviso = [];
+    private readonly List<string> _modos = [];
     private int _paso = 1;
     private string _nombreAutogenerado = "";
     private bool _actualizandoNombre;
@@ -30,9 +31,6 @@ public partial class DialogoEsquemaDiccionario : Window
         _conexion = BaseComun.Abrir(DocumentosGuardados.RutaBaseComun);
         _repositorio = new(_conexion);
         Proveedor.ItemsSource = LeerProveedoresConocidos();
-        DatoAviso.ItemsSource = new[] { new DatoVm("", "Fecha del documento", "Fechas", false) }
-            .Concat(LeerDatosAviso())
-            .ToArray();
         var tipos = RepositorioEsquemasDiccionario
             .ListarTiposDocumento(_conexion)
             .Where(t => !DiccionarioDatosEnlazantes.EsParte(t.Id))
@@ -58,8 +56,7 @@ public partial class DialogoEsquemaDiccionario : Window
                 q.Parameters.AddWithValue("$e", esquema.Id);
                 LugarDecideModo.Tag = Convert.ToInt32(q.ExecuteScalar());
             }
-            ModosTexto.Text = string.Join(
-                ", ",
+            _modos.AddRange(
                 new RepositorioModosEsquemaDiccionario(_conexion)
                     .Listar(esquema.Id)
                     .Select(m => m.Nombre)
@@ -67,19 +64,31 @@ public partial class DialogoEsquemaDiccionario : Window
             using (var q = _conexion.CreateCommand())
             {
                 q.CommandText =
-                    "SELECT l.orden,r.modo_id,r.tipo,r.parametros_json FROM reglas_alerta_esquema_diccionario r JOIN lugares_esquema_diccionario l ON l.id=r.lugar_id WHERE r.esquema_id=$e ORDER BY r.id;";
+                    "SELECT l.orden,r.modo_id,r.tipo,r.parametros_json,(SELECT nombre FROM modos_esquema_diccionario WHERE id=r.modo_id) FROM reglas_alerta_esquema_diccionario r JOIN lugares_esquema_diccionario l ON l.id=r.lugar_id WHERE r.esquema_id=$e ORDER BY r.id;";
                 q.Parameters.AddWithValue("$e", esquema.Id);
                 using var r = q.ExecuteReader();
+                var filas =
+                    new List<(
+                        int Orden,
+                        long? ModoId,
+                        string Tipo,
+                        string Json,
+                        string? NombreModo
+                    )>();
                 while (r.Read())
-                    _reglasAviso.Add(
-                        new(
+                    filas.Add(
+                        (
                             r.GetInt32(0),
                             r.IsDBNull(1) ? null : r.GetInt64(1),
                             r.GetString(2),
                             r.GetString(3),
-                            false
+                            r.IsDBNull(4) ? null : r.GetString(4)
                         )
                     );
+                r.Close();
+                _reglasAviso.AddRange(
+                    filas.Select(f => CargarAviso(f.Orden, f.ModoId, f.Tipo, f.Json, f.NombreModo))
+                );
             }
             _lugares.AddRange(
                 esquema.Lugares.Select(l =>
@@ -125,6 +134,15 @@ public partial class DialogoEsquemaDiccionario : Window
             );
         }
         ActualizarLugares();
+        for (int i = 0; i < _reglasAviso.Count; i++)
+            _reglasAviso[i] = _reglasAviso[i] with
+            {
+                Frase =
+                    FraseAviso(_reglasAviso[i].Tipo, _reglasAviso[i].ParametrosJson)
+                    + (_reglasAviso[i].ModoNombre is string m ? $" (modo {m})" : ""),
+            };
+        ModosLista.ItemsSource = _modos;
+        ActualizarModos();
         ActualizarEnlaces();
         ActualizarReglasAviso();
         ActualizarPaso();
@@ -183,10 +201,9 @@ public partial class DialogoEsquemaDiccionario : Window
         PanelEnlaces.Visibility = _paso == 4 ? Visibility.Visible : Visibility.Collapsed;
         PanelModos.Visibility = _paso == 5 ? Visibility.Visible : Visibility.Collapsed;
         PanelAvisos.Visibility = _paso == 6 ? Visibility.Visible : Visibility.Collapsed;
-        ReglasAvisoTexto.Visibility = _paso == 6 ? Visibility.Visible : Visibility.Collapsed;
         PanelResumen.Visibility = _paso == 7 ? Visibility.Visible : Visibility.Collapsed;
         PanelResumen.Text =
-            $"Proveedor: {Proveedor.Text}\nEsquema: {Nombre.Text}\nDocumentos: {string.Join(", ", _lugares.Select(l => l.Nombre))}\nEnlaces: {string.Join("; ", _enlaces.Select(e => e.Texto))}\nModos: {ModosTexto.Text}\nAvisos: {_reglasAviso.Count}";
+            $"Proveedor: {Proveedor.Text}\nEsquema: {Nombre.Text}\nDocumentos: {string.Join(", ", _lugares.Select(l => l.Nombre))}\nEnlaces:\n{string.Join("\n", _enlaces.Select(e => "• " + e.Texto))}\nModos: {string.Join(", ", _modos)}{(LugarDecideModo.SelectedItem is LugarVm decide ? $" (decide: {decide.Nombre})" : "")}\nAvisos:\n{string.Join("\n", _reglasAviso.Select(a => "• " + a.Frase))}";
         Anterior.IsEnabled = _paso > 1;
         Siguiente.Visibility = _paso < 7 ? Visibility.Visible : Visibility.Collapsed;
         Guardar.Visibility = _paso == 7 ? Visibility.Visible : Visibility.Collapsed;
@@ -370,63 +387,70 @@ public partial class DialogoEsquemaDiccionario : Window
         ActualizarEnlaces();
     }
 
-    private void AgregarAviso_Click(object sender, RoutedEventArgs e)
+    private void AgregarAviso_Click(object sender, RoutedEventArgs e) => EditarAviso(null);
+
+    private void EditarAviso_Click(object sender, RoutedEventArgs e) => EditarAvisoSeleccionado();
+
+    private void EditarAviso_DoubleClick(
+        object sender,
+        System.Windows.Input.MouseButtonEventArgs e
+    ) => EditarAvisoSeleccionado();
+
+    private void EditarAvisoSeleccionado()
     {
-        if (
-            TipoAviso.SelectedItem is not ComboBoxItem tipoItem
-            || LugarAvisoA.SelectedItem is not LugarVm lugarA
+        if (ListaAvisos.SelectedItem is AvisoVm aviso)
+            EditarAviso(aviso);
+    }
+
+    private void QuitarAviso_Click(object sender, RoutedEventArgs e)
+    {
+        if (ListaAvisos.SelectedItem is AvisoVm aviso)
+        {
+            _reglasAviso.Remove(aviso);
+            ActualizarReglasAviso();
+        }
+    }
+
+    private void EditarAviso(AvisoVm? existente)
+    {
+        var actual = existente is null
+            ? null
+            : new AvisoDefinicion(
+                existente.OrdenLugar,
+                existente.Tipo,
+                existente.ParametrosJson,
+                existente.ModoNombre
+            );
+        var editor = new DialogoEditorAviso(
+            _lugares.Select(l => new LugarAvisoOpcion(l.Orden, l.Nombre)).ToArray(),
+            LeerDatosAviso()
+                .Where(d => d.Id.Length > 0)
+                .Select(d => new DatoAvisoOpcion(d.Id, d.Nombre))
+                .ToArray(),
+            _enlaces.Select(e => (e.OrdenA, e.OrdenB, e.Cardinalidad)).ToArray(),
+            _modos,
+            actual
         )
         {
-            Estado.Text = "Seleccione el tipo de aviso y su documento de referencia.";
+            Owner = this,
+        };
+        if (editor.ShowDialog() != true || editor.Resultado is not { } resultado)
             return;
-        }
-        string tipo = (string)tipoItem.Tag;
-        string texto = TextoAviso.Text.Trim();
-        object parametros;
-        if (
-            tipo == "falta_dato"
-            && DatoAviso.SelectedItem is DatoVm dato
-            && !string.IsNullOrWhiteSpace(dato.Id)
-        )
-            parametros = new
-            {
-                dato = dato.Id,
-                texto = string.IsNullOrWhiteSpace(texto) ? $"Falta {dato.Nombre}" : texto,
-            };
-        else if (
-            tipo == "plazo"
-            && LugarAvisoB.SelectedItem is LugarVm destino
-            && int.TryParse(DiasAviso.Text, out int dias)
-            && dias >= 0
-        )
-            parametros = new
-            {
-                desdeLugarId = (long)lugarA.Orden,
-                desdeDato = (DatoAviso.SelectedItem as DatoVm)?.Id is { Length: > 0 } fechaDato
-                    ? fechaDato
-                    : null,
-                hastaLugarId = (long)destino.Orden,
-                dias,
-                tipoDias = "corridos",
-                calendarioId = (long?)null,
-                condicionLugarId = (long?)null,
-                texto = string.IsNullOrWhiteSpace(texto) ? $"Falta {destino.Nombre}" : texto,
-                porLinea = PorLinea.IsChecked == true,
-            };
-        else if (tipo == "listo_para" && LugarAvisoB.SelectedItem is LugarVm listo)
-            parametros = new
-            {
-                cuandoLugarId = (long)lugarA.Orden,
-                condicionLugarId = (long?)null,
-                hastaLugarId = (long)listo.Orden,
-                lista = string.IsNullOrWhiteSpace(texto) ? $"Listo para {listo.Nombre}" : texto,
-            };
-        else
-        {
-            Estado.Text = "Complete los campos requeridos para el tipo de aviso.";
-            return;
-        }
-        _reglasAviso.Add(new(lugarA.Orden, null, tipo, JsonSerializer.Serialize(parametros)));
+        if (existente is not null)
+            _reglasAviso.Remove(existente);
+        _reglasAviso.Add(
+            new(
+                resultado.OrdenLugar,
+                null,
+                resultado.Tipo,
+                resultado.ParametrosJson,
+                true,
+                resultado.ModoNombre,
+                FraseAviso(resultado.Tipo, resultado.ParametrosJson)
+                    + (resultado.ModoNombre is string modo ? $" (modo {modo})" : ""),
+                0
+            )
+        );
         ActualizarReglasAviso();
     }
 
@@ -453,11 +477,40 @@ public partial class DialogoEsquemaDiccionario : Window
         return proveedores.ToArray();
     }
 
-    private void ActualizarReglasAviso() =>
-        ReglasAvisoTexto.Text = string.Join(
-            Environment.NewLine,
-            _reglasAviso.Select(r => $"{r.Tipo}: {r.ParametrosJson}")
-        );
+    private void ActualizarReglasAviso()
+    {
+        ListaAvisos.ItemsSource = _reglasAviso.ToArray();
+        SinAvisos.Visibility = _reglasAviso.Count == 0 ? Visibility.Visible : Visibility.Collapsed;
+    }
+
+    private void AgregarModo_Click(object sender, RoutedEventArgs e)
+    {
+        string modo = ModoNuevo.Text.Trim();
+        if (modo.Length == 0 || _modos.Contains(modo, StringComparer.OrdinalIgnoreCase))
+            return;
+        _modos.Add(modo);
+        ModosLista.ItemsSource = null;
+        ModosLista.ItemsSource = _modos;
+        ModoNuevo.Clear();
+        ActualizarModos();
+    }
+
+    private void QuitarModo_Click(object sender, RoutedEventArgs e)
+    {
+        if (ModosLista.SelectedItem is not string modo)
+            return;
+        _modos.Remove(modo);
+        ModosLista.ItemsSource = null;
+        ModosLista.ItemsSource = _modos;
+        ActualizarModos();
+    }
+
+    private void ActualizarModos()
+    {
+        LugarDecideModo.IsEnabled = _modos.Count > 0;
+        if (_modos.Count == 0)
+            LugarDecideModo.SelectedIndex = -1;
+    }
 
     private void Guardar_Click(object sender, RoutedEventArgs e)
     {
@@ -486,14 +539,21 @@ public partial class DialogoEsquemaDiccionario : Window
             new RepositorioConfiguracionEsquemaDiccionario(_conexion).GuardarModos(
                 esquemaId,
                 LugarDecideModo.SelectedItem is LugarVm decide ? decide.Orden : null,
-                ModosTexto.Text.Split(
-                    ',',
-                    StringSplitOptions.TrimEntries | StringSplitOptions.RemoveEmptyEntries
-                )
+                _modos
             );
+            var modosId = LeerIdsModo(esquemaId);
             new RepositorioConfiguracionEsquemaDiccionario(_conexion).GuardarReglas(
                 esquemaId,
                 _reglasAviso
+                    .Select(a =>
+                        a.ConModo(
+                            a.ModoNombre is string nombre
+                            && modosId.TryGetValue(nombre, out long id)
+                                ? id
+                                : null
+                        )
+                    )
+                    .ToArray()
             );
             DialogResult = true;
             Close();
@@ -515,12 +575,8 @@ public partial class DialogoEsquemaDiccionario : Window
         LugarA.ItemsSource = _lugares;
         LugarB.ItemsSource = _lugares;
         LugarDecideModo.ItemsSource = _lugares;
-        LugarAvisoA.ItemsSource = _lugares;
-        LugarAvisoB.ItemsSource = _lugares;
         if (LugarDecideModo.Tag is int orden && orden >= 0)
             LugarDecideModo.SelectedItem = _lugares.FirstOrDefault(l => l.Orden == orden);
-        LugarAvisoA.SelectedIndex = _lugares.Count > 0 ? 0 : -1;
-        LugarAvisoB.SelectedIndex = _lugares.Count > 1 ? 1 : -1;
         LugarA.SelectedIndex = _lugares.Count > 0 ? 0 : -1;
         LugarB.SelectedIndex = _lugares.Count > 1 ? 1 : -1;
     }
@@ -528,26 +584,87 @@ public partial class DialogoEsquemaDiccionario : Window
     private void ActualizarEnlaces()
     {
         Enlaces.ItemsSource = _enlaces.Select(e => e.Texto).ToArray();
-        ActualizarPorLinea();
     }
 
-    private void LugarAviso_SelectionChanged(object sender, SelectionChangedEventArgs e) =>
-        ActualizarPorLinea();
-
-    private void ActualizarPorLinea()
+    private Dictionary<string, long> LeerIdsModo(long esquemaId)
     {
-        PorLinea.IsEnabled =
-            LugarAvisoA.SelectedItem is LugarVm a
-            && LugarAvisoB.SelectedItem is LugarVm b
-            && _enlaces.Any(enlace =>
-                enlace.Cardinalidad is "uno_a_uno" or "uno_a_varios"
-                && (
-                    (enlace.OrdenA == a.Orden && enlace.OrdenB == b.Orden)
-                    || (enlace.OrdenA == b.Orden && enlace.OrdenB == a.Orden)
-                )
-            );
-        if (!PorLinea.IsEnabled)
-            PorLinea.IsChecked = false;
+        using var q = _conexion.CreateCommand();
+        q.CommandText = "SELECT nombre,id FROM modos_esquema_diccionario WHERE esquema_id=$e;";
+        q.Parameters.AddWithValue("$e", esquemaId);
+        using var r = q.ExecuteReader();
+        var salida = new Dictionary<string, long>(StringComparer.OrdinalIgnoreCase);
+        while (r.Read())
+            salida[r.GetString(0)] = r.GetInt64(1);
+        return salida;
+    }
+
+    private AvisoVm CargarAviso(
+        int orden,
+        long? modoId,
+        string tipo,
+        string json,
+        string? modoNombre
+    )
+    {
+        using var doc = JsonDocument.Parse(json);
+        var node = System.Text.Json.Nodes.JsonNode.Parse(json)!;
+        foreach (
+            string propiedad in new[]
+            {
+                "desdeLugarId",
+                "hastaLugarId",
+                "cuandoLugarId",
+                "condicionLugarId",
+            }
+        )
+            if (
+                doc.RootElement.TryGetProperty(propiedad, out var id)
+                && id.TryGetInt64(out long valor)
+            )
+            {
+                using var q = _conexion.CreateCommand();
+                q.CommandText = "SELECT orden FROM lugares_esquema_diccionario WHERE id=$i;";
+                q.Parameters.AddWithValue("$i", valor);
+                if (q.ExecuteScalar() is long o)
+                    node[propiedad] = o;
+            }
+        string normalizado = node.ToJsonString();
+        return new(
+            orden,
+            modoId,
+            tipo,
+            normalizado,
+            true,
+            modoNombre,
+            FraseAviso(tipo, normalizado) + (modoNombre is null ? "" : $" (modo {modoNombre})"),
+            modoId ?? 0
+        );
+    }
+
+    private string FraseAviso(string tipo, string json)
+    {
+        var nombres = _lugares.ToDictionary(l => (long)l.Orden, l => l.Nombre);
+        var opciones = new JsonSerializerOptions { PropertyNameCaseInsensitive = true };
+        if (tipo == "falta_dato")
+        {
+            var p = JsonSerializer.Deserialize<ParametrosFaltaDato>(json, opciones)!;
+            return $"Mientras falte ingresar {p.Dato}, avisar: «{p.Texto}»";
+        }
+        if (tipo == "plazo")
+        {
+            var p = JsonSerializer.Deserialize<ParametrosPlazo>(json, opciones)!;
+            string desde = p.DesdeDato is null
+                ? nombres.GetValueOrDefault(p.DesdeLugarId ?? 0, "documento")
+                    + " (su fecha de emisión)"
+                : $"el dato ingresado «{p.DesdeDato}»";
+            return $"Si pasan {p.Dias} días {p.TipoDias} desde {desde} sin {nombres.GetValueOrDefault(p.HastaLugarId, "documento")}, aviso «{p.Texto}»{(p.PorLinea ? " (por línea)" : "")}";
+        }
+        if (tipo == "listo_para")
+        {
+            var p = JsonSerializer.Deserialize<ParametrosListoPara>(json, opciones)!;
+            return $"Listo para «{p.Lista}» cuando estén {nombres.GetValueOrDefault(p.CuandoLugarId, "documento")} + {nombres.GetValueOrDefault(p.HastaLugarId, "documento")}";
+        }
+        return "Aviso";
     }
 
     private void Reordenar()
@@ -622,7 +739,22 @@ public partial class DialogoEsquemaDiccionario : Window
     {
         public string Texto =>
             Cardinalidad == "uno_a_varios"
-                ? $"Una {NombreA} puede tener varias {NombreB} (se unen por {NombreDato})"
+                ? $"Una {NombreA} puede tener varias {Buscadero.Core.Alertas.EditorReglasEsquema.PluralizarTipo(NombreB)} (se unen por {NombreDato})"
                 : $"Cada {NombreA} se enlaza con {NombreB} (por {NombreDato})";
+    }
+
+    private sealed record AvisoVm(
+        int OrdenLugar,
+        long? ModoId,
+        string Tipo,
+        string ParametrosJson,
+        bool IdsSonOrdenes,
+        string? ModoNombre,
+        string Frase,
+        long ModoIdOriginal
+    )
+    {
+        public DefinicionReglaAlertaDiccionario ConModo(long? modoId) =>
+            new(OrdenLugar, modoId, Tipo, ParametrosJson, IdsSonOrdenes);
     }
 }
