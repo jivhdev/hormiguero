@@ -9,10 +9,16 @@ namespace Archivero.Servicios;
 public static class PublicadorDatosDocumentoService
 {
     public static bool PublicacionAutomaticaActiva { get; set; }
+    public static IBuscadorDocumentosCadena? BuscadorEnCarpeta { get; set; }
     public static Task? UltimaRevisionEnlaces { get; private set; }
     public static event Action<long?, string>? RevisionEnlacesFallida;
 
-    public static void PublicarGuiaFirmada(string ruta, string tipoId, string proveedor)
+    public static void PublicarGuiaFirmada(
+        string ruta,
+        string tipoId,
+        string proveedor,
+        bool revisarEnlaces = true
+    )
     {
         string numero = string.Concat(Path.GetFileNameWithoutExtension(ruta).Where(char.IsDigit))
             .TrimStart('0');
@@ -113,7 +119,7 @@ public static class PublicadorDatosDocumentoService
                 DatoDiccionarioId: "nombre_proveedor"
             ),
         };
-        Publicar(ruta, configuracion, valores, "manual");
+        Publicar(ruta, configuracion, valores, "manual", revisarEnlaces: revisarEnlaces);
     }
 
     public static void PublicarGuardado(
@@ -195,7 +201,8 @@ public static class PublicadorDatosDocumentoService
         ConfiguracionDocumento configuracion,
         IReadOnlyList<ValorDocumentoLeido> valoresLeidos,
         string procedencia,
-        DatoEnlazante? datoIdentificador = null
+        DatoEnlazante? datoIdentificador = null,
+        bool revisarEnlaces = true
     )
     {
         var infoAntes = new FileInfo(ruta);
@@ -305,7 +312,8 @@ public static class PublicadorDatosDocumentoService
             || modificado != infoAntes.LastWriteTimeUtc
         )
             throw new IOException("El documento cambió mientras se publicaba.");
-        UltimaRevisionEnlaces = Task.Run(() => RevisarEnlaces(publicado.Version.Id));
+        if (revisarEnlaces)
+            UltimaRevisionEnlaces = Task.Run(() => RevisarEnlaces(publicado.Version.Id));
     }
 
     public static Task RevisarEnlacesPendientesAsync() => Task.Run(() => RevisarEnlaces(null));
@@ -313,7 +321,7 @@ public static class PublicadorDatosDocumentoService
     private static void RevisarEnlaces(long? versionId)
     {
         using var conexion = BaseComun.Abrir(DocumentosGuardados.RutaBaseComun);
-        var motor = new MotorCadenas(conexion);
+        var motor = new MotorCadenas(conexion, BuscadorEnCarpeta);
         try
         {
             motor.Procesar(versionId);

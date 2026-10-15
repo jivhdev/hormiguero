@@ -324,6 +324,13 @@ public static class Migraciones
                 + "CREATE TABLE reconocimientos_esquema_diccionario(id INTEGER PRIMARY KEY,esquema_id INTEGER NOT NULL REFERENCES esquemas_diccionario(id) ON DELETE CASCADE,tipo TEXT NOT NULL CHECK(tipo IN ('rut','nombre')),valor_normalizado TEXT NOT NULL,UNIQUE(tipo,valor_normalizado)); "
                 + "CREATE INDEX idx_reconocimientos_esquema_diccionario_esquema ON reconocimientos_esquema_diccionario(esquema_id);"
         ),
+        (
+            21,
+            "CREATE TABLE ubicaciones_extra_cadena_diccionario(id INTEGER PRIMARY KEY,version_id INTEGER NOT NULL REFERENCES versiones_documento(id),cadena_id INTEGER NOT NULL REFERENCES cadenas_diccionario(id),lugar_id INTEGER NOT NULL REFERENCES lugares_esquema_diccionario(id),linea_id INTEGER NULL,creada_en TEXT NOT NULL,UNIQUE(version_id,cadena_id)); "
+                + "ALTER TABLE decisiones_esquema_diccionario ADD COLUMN tipo_faltante TEXT NULL; "
+                + "ALTER TABLE decisiones_esquema_diccionario ADD COLUMN numero_faltante TEXT NULL; "
+                + "CREATE VIEW ubicaciones_diccionario_todas AS SELECT id,cadena_id,version_id,lugar_id,padre_id,linea_id,estado,motivo,orden,0 AS extra FROM ubicaciones_cadena_diccionario UNION ALL SELECT -id AS id,cadena_id,version_id,lugar_id,NULL AS padre_id,linea_id,'activo' AS estado,NULL AS motivo,(SELECT COALESCE(MAX(orden),-1)+1 FROM ubicaciones_cadena_diccionario u WHERE u.cadena_id=x.cadena_id) AS orden,1 AS extra FROM ubicaciones_extra_cadena_diccionario x;"
+        ),
     ];
 
     public static void Aplicar(

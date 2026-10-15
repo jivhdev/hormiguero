@@ -401,7 +401,7 @@ public sealed class EvaluadorAlertasEsquemaDiccionario(
     {
         using var q = conexion.CreateCommand();
         q.CommandText =
-            "SELECT EXISTS(SELECT 1 FROM ubicaciones_cadena_diccionario WHERE cadena_id=$c AND lugar_id=$l AND estado='activo' AND ($linea IS NULL OR linea_id=$linea OR linea_id IS NULL));";
+            "SELECT EXISTS(SELECT 1 FROM ubicaciones_diccionario_todas WHERE cadena_id=$c AND lugar_id=$l AND estado='activo' AND ($linea IS NULL OR linea_id=$linea OR linea_id IS NULL));";
         q.Parameters.AddWithValue("$c", c);
         q.Parameters.AddWithValue("$l", l);
         q.Parameters.AddWithValue("$linea", (object?)linea ?? DBNull.Value);
@@ -412,7 +412,7 @@ public sealed class EvaluadorAlertasEsquemaDiccionario(
     {
         using var q = conexion.CreateCommand();
         q.CommandText =
-            "SELECT DISTINCT linea_id FROM ubicaciones_cadena_diccionario WHERE cadena_id=$c AND lugar_id=$l AND linea_id IS NOT NULL AND estado='activo' ORDER BY linea_id;";
+            "SELECT DISTINCT linea_id FROM ubicaciones_diccionario_todas WHERE cadena_id=$c AND lugar_id=$l AND linea_id IS NOT NULL AND estado='activo' ORDER BY linea_id;";
         q.Parameters.AddWithValue("$c", c);
         q.Parameters.AddWithValue("$l", lugar);
         using var r = q.ExecuteReader();
@@ -426,7 +426,7 @@ public sealed class EvaluadorAlertasEsquemaDiccionario(
     {
         using var q = conexion.CreateCommand();
         q.CommandText =
-            "SELECT COALESCE((SELECT fecha_reconocida FROM valores_informativos_documento WHERE version_id=u.version_id AND dato='fecha_documento'),substr(v.registrada_en,1,10)) FROM ubicaciones_cadena_diccionario u JOIN versiones_documento v ON v.id=u.version_id WHERE u.cadena_id=$c AND u.lugar_id=$l AND u.estado='activo' AND ($linea IS NULL OR u.linea_id=$linea) ORDER BY u.orden LIMIT 1;";
+            "SELECT COALESCE((SELECT fecha_reconocida FROM valores_informativos_documento WHERE version_id=u.version_id AND dato='fecha_documento'),substr(v.registrada_en,1,10)) FROM ubicaciones_diccionario_todas u JOIN versiones_documento v ON v.id=u.version_id WHERE u.cadena_id=$c AND u.lugar_id=$l AND u.estado='activo' AND ($linea IS NULL OR u.linea_id=$linea) ORDER BY u.orden LIMIT 1;";
         q.Parameters.AddWithValue("$c", c);
         q.Parameters.AddWithValue("$l", l);
         q.Parameters.AddWithValue("$linea", (object?)linea ?? DBNull.Value);

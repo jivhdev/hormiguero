@@ -269,6 +269,104 @@ public sealed class CadenasJcvIntegracionTests : IDisposable
     }
 
     [Fact]
+    public void NVV_propia_se_asocia_a_cadenas_de_Hoffens_y_Cobelcar()
+    {
+        var motor = new MotorCadenas(_conexion);
+        long nvv = Documento(
+            "NVV",
+            "NVV 20220",
+            "20220",
+            new(2025, 4, 1),
+            ("nota_venta_propia", "20220")
+        );
+        Assert.Equal("esperando_inicio", motor.ProcesarVersion(nvv).Estado);
+        long hoffens = Documento(
+            "OCC",
+            "OCC Hoffens 20527",
+            "20527",
+            new(2025, 4, 2),
+            ("rut_proveedor", "96.548.020-K"),
+            ("oc_propia", "20527"),
+            ("nota_venta_propia", "20220")
+        );
+        long cadenaHoffens = motor.ProcesarVersion(hoffens).CadenaId!.Value;
+        long cobelcar = Documento(
+            "OCC",
+            "OCC Cobelcar 20528",
+            "20528",
+            new(2025, 4, 3),
+            ("rut_proveedor", "78.615.580-0"),
+            ("oc_propia", "20528"),
+            ("nota_venta_propia", "20220")
+        );
+        long cadenaCobelcar = motor.ProcesarVersion(cobelcar).CadenaId!.Value;
+
+        using var q = _conexion.CreateCommand();
+        q.CommandText =
+            "SELECT COUNT(DISTINCT cadena_id) FROM ubicaciones_diccionario_todas WHERE version_id=$v AND estado='activo';";
+        q.Parameters.AddWithValue("$v", nvv);
+        Assert.Equal(2L, (long)q.ExecuteScalar()!);
+        Assert.NotEqual(cadenaHoffens, cadenaCobelcar);
+        q.CommandText =
+            "SELECT COUNT(*) FROM ubicaciones_extra_cadena_diccionario WHERE version_id=$v;";
+        Assert.Equal(1L, (long)q.ExecuteScalar()!);
+    }
+
+    [Fact]
+    public void Factura_no_ocupa_un_lugar_uno_a_uno_ya_usado_en_la_linea()
+    {
+        var motor = new MotorCadenas(_conexion);
+        long occ = Documento(
+            "OCC",
+            "OCC 20417",
+            "20417",
+            new(2025, 4, 1),
+            ("rut_proveedor", "96.548.020-K"),
+            ("oc_propia", "20417")
+        );
+        motor.ProcesarVersion(occ);
+        long grc = Documento(
+            "GRC",
+            "GRC 1190036",
+            "1190036",
+            new(2025, 4, 2),
+            ("guia_proveedor", "1190036"),
+            ("oc_propia", "20417")
+        );
+        motor.ProcesarVersion(grc);
+        long primera = Documento(
+            "FCC",
+            "FCC 2419619",
+            "2419619",
+            new(2025, 4, 3),
+            ("factura_proveedor", "2419619"),
+            ("guia_proveedor", "1190036")
+        );
+        motor.ProcesarVersion(primera);
+        long segunda = Documento(
+            "FCC",
+            "FCC 2419620",
+            "2419620",
+            new(2025, 4, 4),
+            ("factura_proveedor", "2419620"),
+            ("guia_proveedor", "1190036")
+        );
+
+        var resultado = motor.ProcesarVersion(segunda);
+        using var diagnostico = _conexion.CreateCommand();
+        diagnostico.CommandText =
+            "SELECT COUNT(*),GROUP_CONCAT(linea_id),GROUP_CONCAT(estado) FROM ubicaciones_cadena_diccionario WHERE cadena_id=(SELECT cadena_id FROM ubicaciones_cadena_diccionario WHERE version_id=$v) AND lugar_id=(SELECT lugar_id FROM ubicaciones_cadena_diccionario WHERE version_id=$v) AND estado='activo';";
+        diagnostico.Parameters.AddWithValue("$v", primera);
+        string detalle = Convert.ToString(diagnostico.ExecuteScalar()) ?? "sin filas";
+        Assert.Equal("dudoso", resultado.Estado);
+        Assert.Contains("1", detalle);
+        using var q = _conexion.CreateCommand();
+        q.CommandText = "SELECT estado FROM ubicaciones_cadena_diccionario WHERE version_id=$v;";
+        q.Parameters.AddWithValue("$v", segunda);
+        Assert.Equal("dudoso", q.ExecuteScalar());
+    }
+
+    [Fact]
     public void Retiro_avisa_al_dia_siguiente_de_la_fecha_ingresada()
     {
         var motor = new MotorCadenas(_conexion);

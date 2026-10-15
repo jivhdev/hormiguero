@@ -178,7 +178,7 @@ public partial class DialogoVistaCadenas : Window
     {
         using var comando = _conexion.CreateCommand();
         comando.CommandText =
-            "SELECT u.id,u.version_id,u.lugar_id,l.nombre,l.orden,u.linea_id,p.version_id,d.nombre FROM ubicaciones_cadena_diccionario u JOIN lugares_esquema_diccionario l ON l.id=u.lugar_id JOIN versiones_documento v ON v.id=u.version_id JOIN documentos d ON d.id=v.documento_id LEFT JOIN ubicaciones_cadena_diccionario p ON p.id=u.padre_id WHERE u.cadena_id=$c AND u.estado='activo' ORDER BY l.orden,u.linea_id,u.orden;";
+            "SELECT u.id,u.version_id,u.lugar_id,l.nombre,l.orden,u.linea_id,p.version_id,d.nombre FROM ubicaciones_diccionario_todas u JOIN lugares_esquema_diccionario l ON l.id=u.lugar_id JOIN versiones_documento v ON v.id=u.version_id JOIN documentos d ON d.id=v.documento_id LEFT JOIN ubicaciones_diccionario_todas p ON p.id=u.padre_id WHERE u.cadena_id=$c AND u.estado='activo' ORDER BY l.orden,u.linea_id,u.orden;";
         comando.Parameters.AddWithValue("$c", cadenaId);
         using var lector = comando.ExecuteReader();
         var documentos = new List<DocumentoLugarCadena>();
@@ -392,7 +392,18 @@ public partial class DialogoVistaCadenas : Window
                     "DELETE FROM ubicaciones_cadena_diccionario WHERE version_id=$v AND cadena_id=$c;";
                 quitar.Parameters.AddWithValue("$v", versionId);
                 quitar.Parameters.AddWithValue("$c", fila.Cadena.Id);
-                if (quitar.ExecuteNonQuery() == 0)
+                int quitados = quitar.ExecuteNonQuery();
+                if (quitados == 0)
+                {
+                    using var quitarExtra = _conexion.CreateCommand();
+                    quitarExtra.Transaction = tx;
+                    quitarExtra.CommandText =
+                        "DELETE FROM ubicaciones_extra_cadena_diccionario WHERE version_id=$v AND cadena_id=$c;";
+                    quitarExtra.Parameters.AddWithValue("$v", versionId);
+                    quitarExtra.Parameters.AddWithValue("$c", fila.Cadena.Id);
+                    quitados = quitarExtra.ExecuteNonQuery();
+                }
+                if (quitados == 0)
                 {
                     tx.Rollback();
                     Estado.Text = "El documento ya no pertenece a esta cadena.";

@@ -184,7 +184,7 @@ public static class ProveedorDeDocumento
             + "JOIN enlaces_esquema_diccionario enlace ON COALESCE(da.enlaza_como,da.id)=enlace.dato_diccionario_id "
             + "JOIN lugares_esquema_diccionario lugar ON lugar.id IN (enlace.lugar_a,enlace.lugar_b) "
             + "JOIN esquemas_diccionario e ON e.id=lugar.esquema_id AND e.activo=1 "
-            + "JOIN ubicaciones_cadena_diccionario u ON u.lugar_id IN (enlace.lugar_a,enlace.lugar_b) AND u.estado='activo' "
+            + "JOIN ubicaciones_diccionario_todas u ON u.lugar_id IN (enlace.lugar_a,enlace.lugar_b) AND u.estado='activo' "
             + "JOIN cadenas_diccionario c ON c.id=u.cadena_id AND c.esquema_id=e.id AND c.estado='activa' "
             + "JOIN valores_documento anterior ON anterior.version_id=u.version_id AND anterior.estado='vigente' AND anterior.valor_clave=actual.valor_clave "
             + "JOIN diccionario_datos dx ON dx.id=anterior.dato_diccionario_id AND COALESCE(dx.enlaza_como,dx.id)=COALESCE(da.enlaza_como,da.id) "

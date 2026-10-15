@@ -8,7 +8,10 @@ public sealed record ResultadoMotorCadena(
     string? Motivo = null
 );
 
-public sealed class MotorCadenas(SqliteConnection conexion)
+public sealed class MotorCadenas(
+    SqliteConnection conexion,
+    IBuscadorDocumentosCadena? buscador = null
+)
 {
     private readonly HashSet<long> _reprocesando = [];
 
@@ -22,10 +25,10 @@ public sealed class MotorCadenas(SqliteConnection conexion)
     }
 
     public ResultadoMotorCadena ProcesarVersion(long versionId) =>
-        new MotorCadenasDiccionario(conexion).ProcesarVersion(versionId);
+        new MotorCadenasDiccionario(conexion, buscador).ProcesarVersion(versionId);
 
     public ResultadoMotorCadena ProcesarVersionDiccionario(long versionId) =>
-        new MotorCadenasDiccionario(conexion).ProcesarVersion(versionId);
+        new MotorCadenasDiccionario(conexion, buscador).ProcesarVersion(versionId);
 
     private ResultadoMotorCadena ProcesarVersion(long versionId, bool reprocesarPendiente)
     {

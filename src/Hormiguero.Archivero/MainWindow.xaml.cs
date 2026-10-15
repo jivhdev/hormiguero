@@ -434,44 +434,50 @@ public partial class MainWindow : Window
     private void BtnBuscarOrigen_Click(object sender, RoutedEventArgs e)
     {
         var fila = FilaDecision(sender);
-        if (fila is null || string.IsNullOrWhiteSpace(fila.Decision.NumeroMencionado))
+        if (fila is null)
             return;
-        string numero = fila.Decision.NumeroMencionado;
-        string buscadero = Path.Combine(AppContext.BaseDirectory, "Buscadero.exe");
         try
         {
-            if (File.Exists(buscadero))
-            {
-                var inicio = new System.Diagnostics.ProcessStartInfo(buscadero)
-                {
-                    UseShellExecute = true,
-                };
-                inicio.ArgumentList.Add(numero);
-                System.Diagnostics.Process.Start(inicio);
-                return;
-            }
-        }
-        catch
-        {
-            // Si Buscadero no puede abrirse, se facilita la búsqueda manual con el mismo número.
-        }
-
-        try
-        {
-            System.Windows.Clipboard.SetText(numero);
-            System.Windows.MessageBox.Show(
-                this,
-                $"No se pudo abrir Buscadero. Se copió {fila.Decision.DatoMencionado} {numero}; búscalo en Buscadero. La decisión seguirá pendiente hasta que se resuelva.",
-                "Decisiones pendientes",
-                MessageBoxButton.OK,
-                MessageBoxImage.Information
-            );
+            using var conexion = BaseComun.Abrir(DocumentosGuardados.RutaBaseComun);
+            using var consulta = conexion.CreateCommand();
+            consulta.CommandText =
+                "SELECT tipo_faltante,numero_faltante,proveedor FROM decisiones_esquema_diccionario WHERE version_id=$v AND tipo='sin_inicio' AND estado='pendiente';";
+            consulta.Parameters.AddWithValue("$v", fila.VersionId);
+            using var lector = consulta.ExecuteReader();
+            if (!lector.Read() || lector.IsDBNull(0) || lector.IsDBNull(1))
+                throw new InvalidOperationException(
+                    "No se pudo identificar el documento faltante."
+                );
+            string tipo = lector.GetString(0);
+            string numero = lector.GetString(1);
+            string proveedor = lector.GetString(2);
+            lector.Close();
+            var esquema =
+                new RepositorioEsquemasDiccionario(conexion).ObtenerPorProveedor(proveedor)
+                ?? throw new InvalidOperationException(
+                    "El esquema del documento ya no está disponible."
+                );
+            var buscador = new BuscadorDocumentosEnCarpetaService();
+            var versiones = buscador.Buscar(tipo, numero, esquema);
+            var motor = new MotorCadenasDiccionario(conexion, buscador);
+            foreach (long version in versiones)
+                motor.ProcesarVersion(version);
+            motor.ProcesarVersion(fila.VersionId);
+            CargarDecisionesPendientes();
+            if (versiones.Count == 0)
+                System.Windows.MessageBox.Show(
+                    this,
+                    $"No se encontró {fila.Decision.DatoMencionado} {numero} en las carpetas configuradas.",
+                    "Decisiones pendientes",
+                    MessageBoxButton.OK,
+                    MessageBoxImage.Information
+                );
         }
         catch (Exception ex)
         {
             System.Windows.MessageBox.Show(
                 this,
-                $"No se pudo abrir Buscadero ni copiar el número {numero}: {ex.Message}",
+                $"No se pudo buscar en las carpetas configuradas: {ex.Message}",
                 "Decisiones pendientes",
                 MessageBoxButton.OK,
                 MessageBoxImage.Warning

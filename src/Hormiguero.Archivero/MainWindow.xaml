@@ -165,7 +165,7 @@
                 Visibility="{Binding MostrarAccionesOrigen, Converter={StaticResource BooleanToVisibilityConverter}}"
               >
                 <Button
-                  Content="Buscar el origen"
+                  Content="Buscar otra vez"
                   Padding="6,3"
                   Margin="2"
                   Click="BtnBuscarOrigen_Click"
