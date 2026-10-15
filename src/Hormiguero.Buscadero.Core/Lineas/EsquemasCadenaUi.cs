@@ -24,7 +24,8 @@ public sealed record CadenaVista(
     string Nombre,
     string Estado,
     string? Cliente,
-    bool EsDiccionario = false
+    bool EsDiccionario = false,
+    string Situacion = "activa"
 );
 
 public sealed record DudosoCadenaVista(
@@ -113,7 +114,7 @@ public static class AsistenteEsquemaCadena
     {
         using var comando = conexion.CreateCommand();
         comando.CommandText =
-            "SELECT id,proveedor,nombre,estado,cliente,0 FROM cadenas WHERE esquema_id IS NOT NULL UNION ALL SELECT c.id,e.proveedor,c.nombre,c.estado,c.cliente,1 FROM cadenas_diccionario c JOIN esquemas_diccionario e ON e.id=c.esquema_id ORDER BY 2,5,3,1;";
+            "SELECT id,proveedor,nombre,estado,cliente,0,estado FROM cadenas WHERE esquema_id IS NOT NULL UNION ALL SELECT c.id,e.proveedor,c.nombre,c.estado,c.cliente,1,c.situacion FROM cadenas_diccionario c JOIN esquemas_diccionario e ON e.id=c.esquema_id ORDER BY 2,5,3,1;";
         using var lector = comando.ExecuteReader();
         var resultados = new List<CadenaVista>();
         while (lector.Read())
@@ -124,7 +125,8 @@ public static class AsistenteEsquemaCadena
                     lector.GetString(2),
                     lector.GetString(3),
                     lector.IsDBNull(4) ? null : lector.GetString(4),
-                    lector.GetInt64(5) != 0
+                    lector.GetInt64(5) != 0,
+                    lector.GetString(6)
                 )
             );
         return resultados;

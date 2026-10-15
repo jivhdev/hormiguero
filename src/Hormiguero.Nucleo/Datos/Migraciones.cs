@@ -331,6 +331,16 @@ public static class Migraciones
                 + "ALTER TABLE decisiones_esquema_diccionario ADD COLUMN numero_faltante TEXT NULL; "
                 + "CREATE VIEW ubicaciones_diccionario_todas AS SELECT id,cadena_id,version_id,lugar_id,padre_id,linea_id,estado,motivo,orden,0 AS extra FROM ubicaciones_cadena_diccionario UNION ALL SELECT -id AS id,cadena_id,version_id,lugar_id,NULL AS padre_id,linea_id,'activo' AS estado,NULL AS motivo,(SELECT COALESCE(MAX(orden),-1)+1 FROM ubicaciones_cadena_diccionario u WHERE u.cadena_id=x.cadena_id) AS orden,1 AS extra FROM ubicaciones_extra_cadena_diccionario x;"
         ),
+        (
+            22,
+            "ALTER TABLE cadenas_diccionario ADD COLUMN situacion TEXT NOT NULL DEFAULT 'activa' CHECK(situacion IN ('activa','completa','cerrada')); "
+                + "ALTER TABLE cadenas_diccionario ADD COLUMN situacion_desde TEXT NOT NULL DEFAULT ''; "
+                + "ALTER TABLE cadenas_diccionario ADD COLUMN rut_cliente TEXT NULL; "
+                + "UPDATE cadenas_diccionario SET situacion_desde=COALESCE((SELECT aplicada_en FROM migraciones WHERE version=21),datetime('now')); "
+                + "CREATE TABLE historial_situacion_cadena_diccionario(id INTEGER PRIMARY KEY,cadena_id INTEGER NOT NULL REFERENCES cadenas_diccionario(id),situacion TEXT NOT NULL,detalle TEXT NOT NULL,fecha TEXT NOT NULL); "
+                + "CREATE TABLE documentos_manuales_cadena_diccionario(id INTEGER PRIMARY KEY,cadena_id INTEGER NOT NULL REFERENCES cadenas_diccionario(id),version_id INTEGER NOT NULL REFERENCES versiones_documento(id),tipo TEXT NOT NULL CHECK(tipo IN ('cotizacion_propia','cotizacion_proveedor')),agregado_en TEXT NOT NULL,UNIQUE(cadena_id,version_id)); "
+                + "CREATE INDEX idx_documentos_manuales_cadena ON documentos_manuales_cadena_diccionario(cadena_id,tipo);"
+        ),
     ];
 
     public static void Aplicar(

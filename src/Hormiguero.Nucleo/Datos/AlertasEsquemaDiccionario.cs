@@ -131,6 +131,9 @@ public sealed class EvaluadorAlertasEsquemaDiccionario(
     public void Evaluar(DateOnly? hoy = null)
     {
         DateOnly fecha = hoy ?? DateOnly.FromDateTime(_reloj());
+        new RepositorioSituacionCadenaDiccionario(conexion).RecalcularTodas(
+            fecha.ToDateTime(TimeOnly.MaxValue)
+        );
         var reglas =
             new List<(long Id, long Esquema, long Lugar, long? Modo, string Tipo, string Json)>();
         using (var q = conexion.CreateCommand())
@@ -156,7 +159,7 @@ public sealed class EvaluadorAlertasEsquemaDiccionario(
             using (var q = conexion.CreateCommand())
             {
                 q.CommandText =
-                    "SELECT c.id,e.proveedor,c.cliente FROM cadenas_diccionario c JOIN esquemas_diccionario e ON e.id=c.esquema_id WHERE c.esquema_id=$e AND c.estado='activa' AND ($m IS NULL OR c.modo_id=$m);";
+                    "SELECT c.id,e.proveedor,c.cliente FROM cadenas_diccionario c JOIN esquemas_diccionario e ON e.id=c.esquema_id WHERE c.esquema_id=$e AND c.estado='activa' AND c.situacion<>'cerrada' AND ($m IS NULL OR c.modo_id=$m);";
                 q.Parameters.AddWithValue("$e", regla.Esquema);
                 q.Parameters.AddWithValue("$m", (object?)regla.Modo ?? DBNull.Value);
                 using var r = q.ExecuteReader();

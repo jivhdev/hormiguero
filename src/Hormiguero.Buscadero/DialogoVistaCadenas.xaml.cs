@@ -30,6 +30,8 @@ public partial class DialogoVistaCadenas : Window
     {
         try
         {
+            var evaluador = new EvaluadorAlertasEsquemaDiccionario(_conexion);
+            evaluador.Evaluar();
             var proveedoresActivos = _esquemasDiccionario
                 .Listar()
                 .Where(e => e.Activo)
@@ -46,16 +48,15 @@ public partial class DialogoVistaCadenas : Window
                     c.Nombre,
                     c.Estado,
                     c.Cliente,
-                    c.EsDiccionario
+                    c.EsDiccionario,
+                    c.Situacion
                 ))
                 .ToArray();
-            var evaluador = new EvaluadorAlertasEsquemaDiccionario(_conexion);
-            evaluador.Evaluar();
             var conteos = evaluador.Conteos().ToDictionary(c => c.CadenaId);
             var filtradas = filas
                 .Where(f =>
                     f.Proveedor.Contains(FiltroProveedor.Text, StringComparison.OrdinalIgnoreCase)
-                    && (FiltroEstado.SelectedIndex == 1 || f.Estado == "activa")
+                    && EstadoVisible(f.Situacion)
                     && (
                         string.IsNullOrWhiteSpace(FiltroCliente.Text)
                         || (
@@ -71,8 +72,8 @@ public partial class DialogoVistaCadenas : Window
                 .Select(f => new CadenaFila(
                     f,
                     Agrupar.SelectedIndex == 1
-                        ? $"{f.Cliente ?? "Sin cliente"} · {f.Nombre}"
-                        : $"{f.Proveedor} · {f.Nombre}",
+                        ? $"{f.Cliente ?? "Sin cliente"} · {f.Nombre} · {f.Situacion}"
+                        : $"{f.Proveedor} · {f.Nombre} · {f.Situacion}",
                     conteos.GetValueOrDefault(f.Id)?.Cantidad ?? 0,
                     conteos.GetValueOrDefault(f.Id)?.Urgencia
                 ))
@@ -135,11 +136,12 @@ public partial class DialogoVistaCadenas : Window
                     versionesDiccionario
                 );
                 PrepararModoYDatosDiccionario(fila.Cadena.Id, esquemaDiccionario);
+                PrepararCotizaciones(fila.Cadena.Id);
                 var conteoDiccionario = new EvaluadorAlertasEsquemaDiccionario(_conexion)
                     .Conteos()
                     .FirstOrDefault(c => c.CadenaId == fila.Cadena.Id);
                 PrepararArbol(fila.Cadena.Nombre, conteoDiccionario);
-                Estado.Text = "";
+                Estado.Text = $"Situación: {fila.Cadena.Situacion}";
                 return;
             }
             Estado.Text = "La cadena seleccionada no pertenece al modelo de esquemas actual.";
@@ -148,6 +150,103 @@ public partial class DialogoVistaCadenas : Window
         {
             Estado.Text = $"No se pudo cargar el árbol de la cadena: {ex.Message}";
         }
+    }
+
+    private bool EstadoVisible(string situacion) =>
+        FiltroEstado.SelectedIndex switch
+        {
+            1 => situacion == "activa",
+            2 => situacion == "completa",
+            3 => situacion == "cerrada",
+            4 => true,
+            _ => situacion is "activa" or "completa",
+        };
+
+    private void PrepararCotizaciones(long cadenaId)
+    {
+        var repositorio = new RepositorioSituacionCadenaDiccionario(_conexion);
+        var sugerencias = repositorio.Sugerir(cadenaId, DateTime.Now);
+        PrepararListaCotizaciones(
+            CotizacionesCliente,
+            sugerencias.Where(c => c.Tipo == "cotizacion_propia"),
+            cadenaId,
+            "Agregar a esta cadena"
+        );
+        PrepararListaCotizaciones(
+            CotizacionesProveedor,
+            sugerencias.Where(c => c.Tipo == "cotizacion_proveedor"),
+            cadenaId,
+            "Agregar a mano"
+        );
+        var agregadas = repositorio.ListarAgregadas(cadenaId);
+        PrepararListaCotizaciones(CotizacionesAgregadas, agregadas, cadenaId, "Quitar", true);
+        using var consultaCliente = _conexion.CreateCommand();
+        consultaCliente.CommandText =
+            "SELECT EXISTS(SELECT 1 FROM cadenas_diccionario WHERE id=$c AND rut_cliente IS NOT NULL AND rut_cliente<>'');";
+        consultaCliente.Parameters.AddWithValue("$c", cadenaId);
+        TituloCotizacionesCliente.Visibility =
+            Convert.ToInt64(consultaCliente.ExecuteScalar()) != 0
+                ? Visibility.Visible
+                : Visibility.Collapsed;
+        TituloCotizacionesProveedor.Visibility =
+            sugerencias.Any(c => c.Tipo == "cotizacion_proveedor")
+            || agregadas.Any(c => c.Tipo == "cotizacion_proveedor")
+                ? Visibility.Visible
+                : Visibility.Collapsed;
+        TituloCotizacionesAgregadas.Visibility =
+            agregadas.Count == 0 ? Visibility.Collapsed : Visibility.Visible;
+        PanelCotizaciones.Visibility = Visibility.Visible;
+    }
+
+    private void PrepararListaCotizaciones(
+        ItemsControl destino,
+        IEnumerable<CotizacionCadena> cotizaciones,
+        long cadenaId,
+        string textoBoton,
+        bool quitar = false
+    )
+    {
+        destino.ItemsSource = cotizaciones
+            .Select(c =>
+            {
+                var fila = new DockPanel { Margin = new Thickness(0, 3, 0, 3) };
+                string codigo = c.Tipo == "cotizacion_propia" ? "COV" : "COVP";
+                var nombre = new TextBlock
+                {
+                    Text = $"{codigo} · {c.Numero} · {c.Nombre}",
+                    VerticalAlignment = VerticalAlignment.Center,
+                };
+                DockPanel.SetDock(nombre, Dock.Left);
+                fila.Children.Add(nombre);
+                var boton = new Button
+                {
+                    Content = textoBoton,
+                    Tag = c.VersionId,
+                    Padding = new Thickness(8, 3, 8, 3),
+                    Margin = new Thickness(8, 0, 0, 0),
+                };
+                boton.Click += (_, _) =>
+                {
+                    try
+                    {
+                        var repo = new RepositorioSituacionCadenaDiccionario(_conexion);
+                        if (quitar)
+                            repo.Quitar(cadenaId, c.VersionId);
+                        else
+                            repo.Agregar(cadenaId, c.VersionId);
+                        CargarCadenas(cadenaId);
+                    }
+                    catch (Exception ex)
+                    {
+                        Estado.Text = $"No se pudo actualizar la cotización: {ex.Message}";
+                    }
+                };
+                DockPanel.SetDock(boton, Dock.Right);
+                fila.Children.Add(boton);
+                return fila;
+            })
+            .ToArray();
+        destino.Visibility = destino.Items.Count == 0 ? Visibility.Collapsed : Visibility.Visible;
     }
 
     private void PrepararArbol(string nombre, ConteoAlertasCadena? conteo)
@@ -410,6 +509,10 @@ public partial class DialogoVistaCadenas : Window
                     return;
                 }
                 tx.Commit();
+                new RepositorioSituacionCadenaDiccionario(_conexion).Recalcular(
+                    fila.Cadena.Id,
+                    DateTime.Now
+                );
                 _versionSeleccionada = null;
                 CargarCadenas(fila.Cadena.Id);
                 Estado.Text = "Documento quitado de la cadena.";
@@ -473,7 +576,8 @@ public partial class DialogoVistaCadenas : Window
         string Nombre,
         string Estado,
         string? Cliente,
-        bool EsDiccionario
+        bool EsDiccionario,
+        string Situacion
     );
 
     private sealed record ModoVm(long Id, string Nombre);

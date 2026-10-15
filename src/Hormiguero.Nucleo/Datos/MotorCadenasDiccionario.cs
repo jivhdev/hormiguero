@@ -573,6 +573,7 @@ public sealed class MotorCadenasDiccionario(
         long id = Convert.ToInt64(comando.ExecuteScalar());
         InsertarUbicacion(tx, versionId, lugar, id, null, null, "activo", null);
         tx.Commit();
+        new RepositorioSituacionCadenaDiccionario(conexion).Recalcular(id, DateTime.Now);
         return id;
     }
 
@@ -608,6 +609,12 @@ public sealed class MotorCadenasDiccionario(
         }
         InsertarUbicacion(tx, versionId, lugar, cadena, padre, linea, estado, motivo);
         tx.Commit();
+        if (estado == "activo")
+        {
+            var situaciones = new RepositorioSituacionCadenaDiccionario(conexion);
+            if (!situaciones.DocumentoAgregado(cadena, versionId, DateTime.Now))
+                situaciones.Recalcular(cadena, DateTime.Now);
+        }
     }
 
     private bool LugarOcupado(long cadena, long lugar, long? linea, long versionId)

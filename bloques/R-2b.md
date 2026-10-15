@@ -29,3 +29,11 @@ Completa con 2 GRC solo cuando ambas tienen FCV; NCC reabre y NCV vuelve a compl
 `dotnet build` sin advertencias; `dotnet test` todo pasa; `dotnet csharpier check .` sin errores en tus archivos. Español neutro. Reporte al final.
 
 ## Reporte del agente
+
+Implementé la migración aditiva 22 con `situacion`, `situacion_desde`, el RUT del cliente, el historial de cambios y las cotizaciones agregadas a mano. El Núcleo recalcula la situación al ubicar o quitar documentos y al evaluar avisos: exige GRC, FCV para cada línea de GRC y NCV para cada NCC; reabre cadenas completas o cerradas al llegar otro documento, y cierra las completas tras 90 días. Las cerradas dejan de generar avisos.
+
+Buscadero muestra la situación en la lista y el detalle. El filtro inicial incluye activas y completas, y permite filtrar cada situación por separado. En el detalle se sugieren COV sin otra cadena del mismo RUT, registradas en los últimos 90 días, y COVP del proveedor del esquema; ambas se pueden agregar y quitar a mano.
+
+Agregué pruebas integradas para dos GRC, NCC/NCV, cierre a los 90 días, reapertura por documento nuevo, sugerencias COV por RUT, exclusión de otro cliente y agregado/retiro de COV y COVP.
+
+Verificación: `dotnet build Hormiguero.slnx` terminó con 0 advertencias y 0 errores; `dotnet test Hormiguero.slnx` pasó las 827 pruebas; `dotnet csharpier check .` revisó 346 archivos sin errores.

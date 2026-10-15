@@ -367,6 +367,233 @@ public sealed class CadenasJcvIntegracionTests : IDisposable
     }
 
     [Fact]
+    public void Situacion_completa_reabre_con_ncc_y_vuelve_a_completa_con_ncv()
+    {
+        var motor = new MotorCadenas(_conexion);
+        long occ = Documento(
+            "OCC",
+            "OCC 31001",
+            "31001",
+            DateOnly.FromDateTime(DateTime.Today),
+            ("rut_proveedor", "96.548.020-K"),
+            ("oc_propia", "31001"),
+            ("rut_cliente", "12.345.678-5")
+        );
+        long cadena = motor.ProcesarVersion(occ).CadenaId!.Value;
+        var guias = new List<string>();
+        for (int i = 1; i <= 2; i++)
+        {
+            string guia = $"31900{i}";
+            guias.Add(guia);
+            long grc = Documento(
+                "GRC",
+                $"GRC {guia}",
+                guia,
+                DateOnly.FromDateTime(DateTime.Today),
+                ("guia_proveedor", guia),
+                ("oc_propia", "31001")
+            );
+            motor.ProcesarVersion(grc);
+        }
+        long fcc = Documento(
+            "FCC",
+            "FCC 551",
+            "551",
+            DateOnly.FromDateTime(DateTime.Today),
+            ("factura_proveedor", "551"),
+            ("guia_proveedor", "319001")
+        );
+        motor.ProcesarVersion(fcc);
+        foreach (string guia in guias)
+        {
+            long fcv = Documento(
+                "FCV",
+                $"FCV {guia}",
+                guia,
+                DateOnly.FromDateTime(DateTime.Today),
+                ("factura_propia", guia),
+                ("guia_proveedor", guia)
+            );
+            motor.ProcesarVersion(fcv);
+            if (guia == guias[0])
+                Assert.Equal("activa", Situacion(cadena));
+        }
+        Assert.True(Situacion(cadena) == "completa", $"{Situacion(cadena)}: {Ubicaciones(cadena)}");
+
+        long ncc = Documento(
+            "NCC",
+            "NCC 551",
+            "552",
+            DateOnly.FromDateTime(DateTime.Today),
+            ("nota_credito_proveedor", "552"),
+            ("factura_proveedor", "551")
+        );
+        var resultadoNcc = motor.ProcesarVersion(ncc);
+        Assert.True(
+            resultadoNcc.CadenaId == cadena,
+            $"{resultadoNcc.Estado}: {resultadoNcc.Motivo}; {Ubicaciones(cadena)}"
+        );
+        Assert.Equal("activa", Situacion(cadena));
+        long ncv = Documento(
+            "NCV",
+            "NCV 319001",
+            "553",
+            DateOnly.FromDateTime(DateTime.Today),
+            ("nota_credito_propia", "553"),
+            ("factura_propia", "319001")
+        );
+        motor.ProcesarVersion(ncv);
+        Assert.True(Situacion(cadena) == "completa", $"{Situacion(cadena)}: {Ubicaciones(cadena)}");
+        using var historial = _conexion.CreateCommand();
+        historial.CommandText =
+            "SELECT detalle FROM historial_situacion_cadena_diccionario WHERE cadena_id=$c AND detalle LIKE 'Reabierta:%';";
+        historial.Parameters.AddWithValue("$c", cadena);
+        Assert.Contains("NCC 552", Convert.ToString(historial.ExecuteScalar()));
+    }
+
+    [Fact]
+    public void Cadena_completa_cierra_a_los_90_dias_y_no_crea_avisos_nuevos()
+    {
+        var motor = new MotorCadenas(_conexion);
+        DateOnly fecha = DateOnly.FromDateTime(DateTime.Today);
+        long occ = Documento(
+            "OCC",
+            "OCC cierre",
+            "41001",
+            fecha,
+            ("rut_proveedor", "96.548.020-K"),
+            ("oc_propia", "41001")
+        );
+        long cadena = motor.ProcesarVersion(occ).CadenaId!.Value;
+        long ocl = Documento(
+            "OCL",
+            "OCL cliente",
+            "51002",
+            fecha,
+            ("oc_cliente", "51002"),
+            ("rut_cliente", "12.345.678-5")
+        );
+        motor.ProcesarVersion(ocl);
+        long grc = Documento(
+            "GRC",
+            "GRC cierre",
+            "419001",
+            fecha,
+            ("guia_proveedor", "419001"),
+            ("oc_propia", "41001")
+        );
+        motor.ProcesarVersion(grc);
+        long fcv = Documento(
+            "FCV",
+            "FCV cierre",
+            "419001",
+            fecha,
+            ("factura_propia", "419001"),
+            ("guia_proveedor", "419001")
+        );
+        motor.ProcesarVersion(fcv);
+        Assert.Equal("completa", Situacion(cadena));
+        var evaluador = new EvaluadorAlertasEsquemaDiccionario(_conexion);
+        using (var regla = _conexion.CreateCommand())
+        {
+            regla.CommandText =
+                "INSERT INTO reglas_alerta_esquema_diccionario(esquema_id,lugar_id,tipo,parametros_json) SELECT esquema_id,(SELECT id FROM lugares_esquema_diccionario WHERE esquema_id=c.esquema_id AND dato_tipo_id='oc_propia'),'falta_dato','{\"dato\":\"Dato manual\",\"texto\":\"Nuevo\"}' FROM cadenas_diccionario c WHERE c.id=$c;";
+            regla.Parameters.AddWithValue("$c", cadena);
+            regla.ExecuteNonQuery();
+        }
+        evaluador.Evaluar(fecha.AddDays(90));
+        Assert.Equal("cerrada", Situacion(cadena));
+        Assert.DoesNotContain(evaluador.ListarAbiertas(cadenaId: cadena), a => a.Texto == "Nuevo");
+
+        long grcf = Documento(
+            "GRCF",
+            "419001 firmado.pdf",
+            "419001",
+            fecha.AddDays(91),
+            ("guia_firmada_proveedor", "419001")
+        );
+        motor.ProcesarVersion(grcf);
+        Assert.Equal("activa", Situacion(cadena));
+    }
+
+    [Fact]
+    public void COV_sugerida_por_rut_se_puede_agregar_y_quitar_y_omite_otro_cliente()
+    {
+        var motor = new MotorCadenas(_conexion);
+        DateOnly fecha = DateOnly.FromDateTime(DateTime.Today);
+        long occ = Documento(
+            "OCC",
+            "OCC cliente",
+            "51001",
+            fecha,
+            ("rut_proveedor", "96.548.020-K"),
+            ("oc_propia", "51001"),
+            ("oc_cliente", "51002")
+        );
+        long cadena = motor.ProcesarVersion(occ).CadenaId!.Value;
+        long ocl = Documento(
+            "OCL",
+            "OCL cliente",
+            "51002",
+            fecha,
+            ("oc_cliente", "51002"),
+            ("rut_cliente", "12.345.678-5")
+        );
+        motor.ProcesarVersion(ocl);
+        long covCliente = Documento(
+            "COV",
+            "COV cliente 1",
+            "61001",
+            fecha,
+            ("cotizacion_propia", "61001"),
+            ("rut_cliente", "12.345.678-5")
+        );
+        long covOtro = Documento(
+            "COV",
+            "COV otro",
+            "61002",
+            fecha,
+            ("cotizacion_propia", "61002"),
+            ("rut_cliente", "98.765.432-1")
+        );
+        var repo = new RepositorioSituacionCadenaDiccionario(_conexion);
+        Assert.Contains(repo.Sugerir(cadena, DateTime.Now), c => c.VersionId == covCliente);
+        Assert.DoesNotContain(repo.Sugerir(cadena, DateTime.Now), c => c.VersionId == covOtro);
+        long covp = Documento(
+            "COVP",
+            "COVP proveedor",
+            "62001",
+            fecha,
+            ("cotizacion_proveedor", "62001")
+        );
+        Assert.Contains(repo.Sugerir(cadena, DateTime.Now), c => c.VersionId == covp);
+        repo.Agregar(cadena, covCliente);
+        Assert.Contains(repo.ListarAgregadas(cadena), c => c.VersionId == covCliente);
+        repo.Quitar(cadena, covCliente);
+        Assert.DoesNotContain(repo.ListarAgregadas(cadena), c => c.VersionId == covCliente);
+        repo.Agregar(cadena, covp);
+        Assert.Contains(repo.ListarAgregadas(cadena), c => c.VersionId == covp);
+        repo.Quitar(cadena, covp);
+    }
+
+    private string Situacion(long cadena)
+    {
+        using var q = _conexion.CreateCommand();
+        q.CommandText = "SELECT situacion FROM cadenas_diccionario WHERE id=$c;";
+        q.Parameters.AddWithValue("$c", cadena);
+        return Convert.ToString(q.ExecuteScalar())!;
+    }
+
+    private string Ubicaciones(long cadena)
+    {
+        using var q = _conexion.CreateCommand();
+        q.CommandText =
+            "SELECT GROUP_CONCAT(l.dato_tipo_id||':'||COALESCE(u.linea_id,'null')) FROM ubicaciones_diccionario_todas u JOIN lugares_esquema_diccionario l ON l.id=u.lugar_id WHERE u.cadena_id=$c AND u.estado='activo';";
+        q.Parameters.AddWithValue("$c", cadena);
+        return Convert.ToString(q.ExecuteScalar()) ?? "vacío";
+    }
+
+    [Fact]
     public void Retiro_avisa_al_dia_siguiente_de_la_fecha_ingresada()
     {
         var motor = new MotorCadenas(_conexion);
@@ -413,6 +640,10 @@ public sealed class CadenasJcvIntegracionTests : IDisposable
             "GRCF" => "guia_firmada_proveedor",
             "FCC" => "factura_proveedor",
             "FCV" => "factura_propia",
+            "NCC" => "nota_credito_proveedor",
+            "NCV" => "nota_credito_propia",
+            "COV" => "cotizacion_propia",
+            "COVP" => "cotizacion_proveedor",
             _ => throw new ArgumentOutOfRangeException(nameof(tipo)),
         };
         string proveedor =
@@ -431,7 +662,9 @@ public sealed class CadenasJcvIntegracionTests : IDisposable
             );
             proveedor = Convert.ToString(proveedorGuia.ExecuteScalar()) ?? proveedor;
         }
-        string emisor = tipo is "OCC" or "NVV" or "OCL" or "FCV" ? "Empresa" : proveedor;
+        string emisor = tipo is "OCC" or "NVV" or "OCL" or "FCV" or "NCV" or "COV"
+            ? "Empresa"
+            : proveedor;
         string grupo = emisor == "Empresa" ? "Emitido" : "Recibido";
         long identificacion = Identificacion(tipoId, emisor, grupo);
         if (tipo == "GRC" && proveedor == "COBELCAR")
