@@ -22,3 +22,9 @@ R-1 dejó solo 2 pruebas (normalizar e importar). Faltan las que pedía `bloques
 `dotnet build` sin advertencias; `dotnet test` todo pasa; `dotnet csharpier check .` sin errores en tus archivos. Reporte al final con lo que tuviste que arreglar.
 
 ## Reporte del agente
+
+Agregué pruebas de integración con las migraciones y `configuracion/cadenas-jcv.json` reales para reconocimiento, GRCF, avisos de Hoffens, flujo corto de Cobelcar y retiro. En el orden inverso, la GRCF queda hoy en `sin_piso`; cuando llega la GRC se ubica en su cadena, pero la GRCF queda pendiente de resolución y no se reubica automáticamente.
+
+Corregí tres fallos que mostraron las pruebas: el importador ahora ignora reconocimientos normalizados repetidos; los documentos emitidos ya no toman su emisor como proveedor por tener datos del proveedor; y la determinación del proveedor puede recuperar el esquema diccionario por sus enlaces declarados. Esto permite asociar la FCV con su cadena y cerrar «Listos para facturar».
+
+Verificación: `dotnet build Hormiguero.slnx` terminó con 0 advertencias y 0 errores; `dotnet test Hormiguero.slnx` pasó las 818 pruebas; `dotnet csharpier check .` revisó 342 archivos sin errores.

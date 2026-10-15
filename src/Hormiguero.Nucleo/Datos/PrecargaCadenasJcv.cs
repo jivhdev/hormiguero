@@ -95,7 +95,7 @@ public static class PrecargaCadenasJcv
                     using var r = conexion.CreateCommand();
                     r.Transaction = tx;
                     r.CommandText =
-                        "INSERT INTO reconocimientos_esquema_diccionario(esquema_id,tipo,valor_normalizado) VALUES($e,$t,$v);";
+                        "INSERT OR IGNORE INTO reconocimientos_esquema_diccionario(esquema_id,tipo,valor_normalizado) VALUES($e,$t,$v);";
                     r.Parameters.AddWithValue("$e", esquemaId);
                     r.Parameters.AddWithValue("$t", tipo);
                     r.Parameters.AddWithValue("$v", normalizado);

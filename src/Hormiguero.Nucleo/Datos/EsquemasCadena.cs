@@ -128,7 +128,7 @@ public static class ProveedorDeDocumento
             return new(reconocido.Proveedor, reconocido.Proveedor);
         string? proveedor =
             esPropio && esCompra ? rut ?? nombre
-            : esDelProveedor ? emisor
+            : esDelProveedor && !esPropio ? emisor
             : rut ?? nombre;
         if (string.IsNullOrWhiteSpace(proveedor))
         {
@@ -159,6 +159,36 @@ public static class ProveedorDeDocumento
         using var comando = conexion.CreateCommand();
         comando.CommandText =
             "SELECT DISTINCT c.proveedor FROM valores_documento actual JOIN campos_documento campo ON campo.id=actual.campo_id JOIN tipos_documento_datos tipo ON tipo.identificacion_id=campo.identificacion_id AND tipo.dato_diccionario_id=actual.dato_diccionario_id AND tipo.activo=1 AND tipo.enlazable=1 JOIN valores_documento anterior ON anterior.dato_diccionario_id=actual.dato_diccionario_id AND anterior.valor_clave=actual.valor_clave AND anterior.estado='vigente' JOIN campos_documento campo_anterior ON campo_anterior.id=anterior.campo_id JOIN tipos_documento_datos tipo_anterior ON tipo_anterior.identificacion_id=campo_anterior.identificacion_id AND tipo_anterior.dato_diccionario_id=anterior.dato_diccionario_id AND tipo_anterior.activo=1 AND tipo_anterior.enlazable=1 JOIN enlaces_cadena enlace ON enlace.version_id=anterior.version_id AND enlace.estado='activo' JOIN vagones_cadena vagon ON vagon.id=enlace.vagon_cadena_id AND vagon.estado='activo' JOIN cadenas c ON c.id=vagon.cadena_id AND c.estado='activa' JOIN esquemas_cadena esquema ON esquema.id=c.esquema_id AND esquema.activo=1 WHERE actual.version_id=$v AND actual.estado='vigente' AND actual.dato_diccionario_id IS NOT NULL AND actual.valor_clave<>'';";
+        comando.Parameters.AddWithValue("$v", versionId);
+        using var lector = comando.ExecuteReader();
+        if (!lector.Read())
+        {
+            lector.Close();
+            return DeterminarPorCadenaDiccionario(conexion, versionId);
+        }
+        string proveedor = lector.GetString(0);
+        if (lector.Read())
+            return null;
+        return new(proveedor, proveedor);
+    }
+
+    private static ProveedorDocumento? DeterminarPorCadenaDiccionario(
+        SqliteConnection conexion,
+        long versionId
+    )
+    {
+        using var comando = conexion.CreateCommand();
+        comando.CommandText =
+            "SELECT DISTINCT e.proveedor FROM valores_documento actual "
+            + "JOIN diccionario_datos da ON da.id=actual.dato_diccionario_id "
+            + "JOIN enlaces_esquema_diccionario enlace ON COALESCE(da.enlaza_como,da.id)=enlace.dato_diccionario_id "
+            + "JOIN lugares_esquema_diccionario lugar ON lugar.id IN (enlace.lugar_a,enlace.lugar_b) "
+            + "JOIN esquemas_diccionario e ON e.id=lugar.esquema_id AND e.activo=1 "
+            + "JOIN ubicaciones_cadena_diccionario u ON u.lugar_id IN (enlace.lugar_a,enlace.lugar_b) AND u.estado='activo' "
+            + "JOIN cadenas_diccionario c ON c.id=u.cadena_id AND c.esquema_id=e.id AND c.estado='activa' "
+            + "JOIN valores_documento anterior ON anterior.version_id=u.version_id AND anterior.estado='vigente' AND anterior.valor_clave=actual.valor_clave "
+            + "JOIN diccionario_datos dx ON dx.id=anterior.dato_diccionario_id AND COALESCE(dx.enlaza_como,dx.id)=COALESCE(da.enlaza_como,da.id) "
+            + "WHERE actual.version_id=$v AND actual.estado='vigente' AND actual.dato_diccionario_id IS NOT NULL AND actual.valor_clave<>'';";
         comando.Parameters.AddWithValue("$v", versionId);
         using var lector = comando.ExecuteReader();
         if (!lector.Read())
