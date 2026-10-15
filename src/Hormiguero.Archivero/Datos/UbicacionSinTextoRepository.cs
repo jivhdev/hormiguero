@@ -27,6 +27,54 @@ public class UbicacionSinTextoRepository
         return resultado;
     }
 
+    public List<(UbicacionSinTexto Ubicacion, string Tipo, string Proveedor)> ObtenerParaCadena(
+        string tipo,
+        string proveedor
+    )
+    {
+        using var conexion = BaseDeDatos.CrearConexion();
+        using var comando = conexion.CreateCommand();
+        comando.CommandText = """
+            SELECT u.Id, u.CarpetaMadre, u.FormatoCarpeta, u.PatronCarpeta, c.TipoId, c.Proveedor
+            FROM UbicacionesSinTexto u
+            JOIN UbicacionesSinTextoCadena c ON c.UbicacionId=u.Id
+            WHERE c.TipoId=$tipo AND c.Proveedor=$proveedor ORDER BY u.Id DESC;
+            """;
+        comando.Parameters.AddWithValue("$tipo", tipo);
+        comando.Parameters.AddWithValue("$proveedor", proveedor);
+        using var lector = comando.ExecuteReader();
+        var resultado = new List<(UbicacionSinTexto, string, string)>();
+        while (lector.Read())
+            resultado.Add(
+                (
+                    new UbicacionSinTexto(
+                        lector.GetInt32(0),
+                        lector.GetString(1),
+                        Enum.Parse<FormatoCarpeta>(lector.GetString(2)),
+                        lector.IsDBNull(3) ? null : lector.GetString(3)
+                    ),
+                    lector.GetString(4),
+                    lector.GetString(5)
+                )
+            );
+        return resultado;
+    }
+
+    public void AsociarACadena(int ubicacionId, string tipo, string proveedor)
+    {
+        using var conexion = BaseDeDatos.CrearConexion();
+        using var comando = conexion.CreateCommand();
+        comando.CommandText = """
+            INSERT INTO UbicacionesSinTextoCadena(UbicacionId, TipoId, Proveedor)
+            VALUES($id, $tipo, $proveedor)
+            ON CONFLICT(UbicacionId, TipoId, Proveedor) DO NOTHING;
+            """;
+        comando.Parameters.AddWithValue("$id", ubicacionId);
+        comando.Parameters.AddWithValue("$tipo", tipo);
+        comando.Parameters.AddWithValue("$proveedor", proveedor);
+        comando.ExecuteNonQuery();
+    }
+
     /// <summary>
     /// Devuelve la ubicación existente si ya hay una exactamente igual (misma carpeta, formato y
     /// patrón), o crea una nueva. Evita que "Crear ubicación nueva" acumule entradas repetidas

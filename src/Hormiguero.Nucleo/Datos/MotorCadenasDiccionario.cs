@@ -2,8 +2,13 @@ using Microsoft.Data.Sqlite;
 
 namespace Hormiguero.Nucleo.Datos;
 
-public sealed class MotorCadenasDiccionario(SqliteConnection conexion)
+public sealed class MotorCadenasDiccionario(
+    SqliteConnection conexion,
+    IBuscadorDocumentosCadena? buscador = null
+)
 {
+    private readonly HashSet<long> procesando = [];
+
     private sealed record Valor(string Dato, string Original, string Clave);
 
     private sealed record Coincidencia(
@@ -19,17 +24,51 @@ public sealed class MotorCadenasDiccionario(SqliteConnection conexion)
 
     public ResultadoMotorCadena ProcesarVersion(long versionId)
     {
+        if (!procesando.Add(versionId))
+            return new("ya_procesado");
+        try
+        {
+            return ProcesarVersionInterno(versionId);
+        }
+        finally
+        {
+            procesando.Remove(versionId);
+        }
+    }
+
+    private ResultadoMotorCadena ProcesarVersionInterno(long versionId)
+    {
+        bool yaProcesado;
         using (var ya = conexion.CreateCommand())
         {
             ya.CommandText =
                 "SELECT EXISTS(SELECT 1 FROM ubicaciones_cadena_diccionario WHERE version_id=$v) OR EXISTS(SELECT 1 FROM decisiones_esquema_diccionario WHERE version_id=$v AND tipo='rechazado' AND estado='resuelta');";
             ya.Parameters.AddWithValue("$v", versionId);
-            if (Convert.ToInt64(ya.ExecuteScalar()) != 0)
-                return new("ya_procesado");
+            yaProcesado = Convert.ToInt64(ya.ExecuteScalar()) != 0;
+        }
+        if (yaProcesado)
+        {
+            string? tipoPropio = LeerTipo(versionId);
+            if (tipoPropio is "nota_venta_propia" or "oc_cliente" or "cotizacion_propia")
+                return ProcesarPrevioEnTodosLosEsquemas(versionId, tipoPropio)
+                    ?? new("ya_procesado");
+            return new("ya_procesado");
+        }
+        string? tipoDocumento = LeerTipo(versionId);
+        if (tipoDocumento is "nota_venta_propia" or "oc_cliente" or "cotizacion_propia")
+        {
+            ResultadoMotorCadena? previo = ProcesarPrevioEnTodosLosEsquemas(
+                versionId,
+                tipoDocumento
+            );
+            if (previo is not null)
+                return previo;
         }
         ProveedorDocumento? proveedor = ProveedorDeDocumento.Determinar(conexion, versionId);
         if (proveedor is null)
+        {
             return new("sin_esquema", Motivo: "El documento no tiene proveedor determinado.");
+        }
         EsquemaDiccionario? esquema = new RepositorioEsquemasDiccionario(
             conexion
         ).ObtenerPorProveedor(proveedor.Clave);
@@ -52,6 +91,23 @@ public sealed class MotorCadenasDiccionario(SqliteConnection conexion)
             .ToArray();
         var elegidas = exactas.Length > 0 ? exactas : coincidencias.ToArray();
         var cadenas = elegidas.Select(c => c.Cadena).Distinct().ToArray();
+        if (!lugar.IniciaCadena && cadenas.Length > 1 && exactas.Length == elegidas.Length)
+        {
+            foreach (long cadenaId in cadenas)
+            {
+                Coincidencia coincidencia = elegidas.First(c => c.Cadena == cadenaId);
+                GuardarUbicacion(versionId, lugar, cadenaId, coincidencia, "activo", null);
+                CompletarCadena(cadenaId, esquema);
+            }
+            if (cadenas.Any(cadenaId => EstaDudoso(versionId, cadenaId)))
+                return new(
+                    "dudoso",
+                    cadenas[0],
+                    "El lugar ya está ocupado en esta línea de la cadena."
+                );
+            ResolverSinInicioMencionados(versionId);
+            return new("ubicado", cadenas[0]);
+        }
         if (elegidas.Any(c => !exactas.Contains(c)) || cadenas.Length > 1)
         {
             long destino = cadenas.Min();
@@ -69,20 +125,333 @@ public sealed class MotorCadenasDiccionario(SqliteConnection conexion)
         {
             Coincidencia coincidencia = elegidas[0];
             GuardarUbicacion(versionId, lugar, cadenas[0], coincidencia, "activo", null);
+            if (EstaDudoso(versionId, cadenas[0]))
+                return new(
+                    "dudoso",
+                    cadenas[0],
+                    "El lugar ya está ocupado en esta línea de la cadena."
+                );
             RegistrarDecisionModo(versionId, esquema, lugar, cadenas[0]);
+            CompletarCadena(cadenas[0], esquema);
+            ResolverSinInicioMencionados(versionId);
             return new("ubicado", cadenas[0]);
         }
         if (!lugar.IniciaCadena)
         {
-            RegistrarSinPiso(versionId, proveedor.Clave);
+            if (lugar.Orden < esquema.Lugares.Single(l => l.IniciaCadena).Orden)
+                return new("esperando_inicio");
+            foreach (var pendiente in LeerPendientesExternos(esquema, lugar, versionId))
+            {
+                if (procesando.Contains(pendiente))
+                    continue;
+                ProcesarVersion(pendiente);
+                if (EstaEnAlgunaCadena(versionId))
+                    return new("ubicado");
+                if (EstaEnAlgunaCadena(pendiente))
+                {
+                    procesando.Remove(versionId);
+                    try
+                    {
+                        ResultadoMotorCadena reintento = ProcesarVersion(versionId);
+                        if (EstaEnAlgunaCadena(versionId))
+                            return reintento;
+                    }
+                    finally
+                    {
+                        procesando.Add(versionId);
+                    }
+                }
+            }
+            RegistrarSinInicio(versionId, proveedor.Clave, esquema, lugar);
             return new(
-                "sin_piso",
-                Motivo: "No coincide con un enlace declarado y el lugar no inicia cadenas."
+                "sin_inicio",
+                Motivo: MotivoSinInicio(esquema, lugar, LeerValores(versionId))
             );
         }
         long cadena = CrearCadena(versionId, esquema, proveedor.Clave, lugar);
         RegistrarDecisionModo(versionId, esquema, lugar, cadena);
+        CompletarCadena(cadena, esquema);
+        ResolverSinInicioMencionados(versionId);
         return new("cadena_creada", cadena);
+    }
+
+    private ResultadoMotorCadena? ProcesarPrevioEnTodosLosEsquemas(long versionId, string tipo)
+    {
+        var repositorio = new RepositorioEsquemasDiccionario(conexion);
+        var esquemas = repositorio.Listar().Where(e => e.Activo).ToArray();
+        var ubicaciones = 0;
+        var aplica = false;
+        foreach (var esquema in esquemas)
+        {
+            LugarDiccionario? lugar = esquema.Lugares.SingleOrDefault(l =>
+                l.DatoTipoId == tipo && l.Orden < esquema.Lugares.Single(i => i.IniciaCadena).Orden
+            );
+            if (lugar is null)
+                continue;
+            aplica = true;
+            foreach (Valor valor in LeerValores(versionId))
+            {
+                var exactas = Buscar(esquema, lugar, valor)
+                    .Where(c =>
+                        DiccionarioDatosEnlazantes.ValorLiteralNormalizado(c.Original)
+                        == DiccionarioDatosEnlazantes.ValorLiteralNormalizado(c.Nuevo)
+                    )
+                    .GroupBy(c => c.Cadena)
+                    .Select(g => g.First())
+                    .ToArray();
+                foreach (var coincidencia in exactas)
+                {
+                    if (EstaEnCadena(versionId, coincidencia.Cadena))
+                        continue;
+                    GuardarUbicacion(
+                        versionId,
+                        lugar,
+                        coincidencia.Cadena,
+                        coincidencia,
+                        "activo",
+                        null
+                    );
+                    ubicaciones++;
+                    CompletarCadena(coincidencia.Cadena, esquema);
+                }
+            }
+        }
+        if (!aplica)
+            return null;
+        return ubicaciones > 0 ? new("ubicado") : new("esperando_inicio");
+    }
+
+    private void CompletarCadena(long cadenaId, EsquemaDiccionario esquema)
+    {
+        bool huboCambios;
+        do
+        {
+            huboCambios = false;
+            using var comando = conexion.CreateCommand();
+            comando.CommandText =
+                "SELECT u.version_id FROM ubicaciones_diccionario_todas u WHERE u.cadena_id=$c AND u.estado='activo' ORDER BY u.orden;";
+            comando.Parameters.AddWithValue("$c", cadenaId);
+            var versiones = new List<long>();
+            using (var lector = comando.ExecuteReader())
+                while (lector.Read())
+                    versiones.Add(lector.GetInt64(0));
+            foreach (long version in versiones)
+            {
+                foreach (long candidato in BuscarVersionesEnlazadas(version, esquema, cadenaId))
+                {
+                    if (procesando.Contains(candidato))
+                        continue;
+                    int antes = ContarUbicaciones(cadenaId);
+                    ProcesarVersion(candidato);
+                    huboCambios |= ContarUbicaciones(cadenaId) > antes;
+                }
+            }
+        } while (huboCambios);
+    }
+
+    private IEnumerable<long> BuscarVersionesEnlazadas(
+        long versionId,
+        EsquemaDiccionario esquema,
+        long cadenaId
+    )
+    {
+        string? tipo = LeerTipo(versionId);
+        var lugar = tipo is null
+            ? null
+            : esquema.Lugares.SingleOrDefault(l => l.DatoTipoId == tipo);
+        if (lugar is null)
+            yield break;
+        var vistos = new HashSet<long>();
+        foreach (Valor valor in LeerValores(versionId))
+        {
+            using var buscarEquivalencia = conexion.CreateCommand();
+            buscarEquivalencia.CommandText =
+                "SELECT COALESCE(enlaza_como,id) FROM diccionario_datos WHERE id=$d;";
+            buscarEquivalencia.Parameters.AddWithValue("$d", valor.Dato);
+            string datoComparable =
+                Convert.ToString(buscarEquivalencia.ExecuteScalar()) ?? valor.Dato;
+            using var consulta = conexion.CreateCommand();
+            consulta.CommandText =
+                "SELECT DISTINCT x.version_id FROM enlaces_esquema_diccionario e JOIN lugares_esquema_diccionario otro ON otro.id=CASE WHEN e.lugar_a=$l THEN e.lugar_b ELSE e.lugar_a END JOIN diccionario_datos de ON de.id=e.dato_diccionario_id JOIN valores_documento x ON x.valor_clave=$k AND x.estado='vigente' JOIN diccionario_datos dx ON dx.id=x.dato_diccionario_id AND COALESCE(dx.enlaza_como,dx.id)=COALESCE(de.enlaza_como,de.id) JOIN versiones_documento v ON v.id=x.version_id AND v.estado='vigente' WHERE (e.lugar_a=$l OR e.lugar_b=$l) AND otro.esquema_id=$e AND x.version_id<>$v AND EXISTS(SELECT 1 FROM valores_documento xv JOIN diccionario_datos dv ON dv.id=xv.dato_diccionario_id WHERE xv.version_id=$v AND xv.estado='vigente' AND xv.valor_clave=$k AND COALESCE(dv.enlaza_como,dv.id)=COALESCE(de.enlaza_como,de.id));";
+            consulta.Parameters.AddWithValue("$l", lugar.Id);
+            consulta.Parameters.AddWithValue("$e", esquema.Id);
+            consulta.Parameters.AddWithValue("$v", versionId);
+            consulta.Parameters.AddWithValue("$k", valor.Clave);
+            var encontrados = new List<long>();
+            using (var lector = consulta.ExecuteReader())
+                while (lector.Read())
+                    encontrados.Add(lector.GetInt64(0));
+            if (encontrados.Count == 0 && buscador is not null)
+            {
+                long otroId =
+                    esquema
+                        .Enlaces.Where(e =>
+                            (e.LugarA == lugar.Id || e.LugarB == lugar.Id)
+                            && Equivalente(e.DatoDiccionarioId, datoComparable)
+                        )
+                        .Select(e => e.LugarA == lugar.Id ? e.LugarB : e.LugarA)
+                        .Select(id => esquema.Lugares.Single(l => l.Id == id))
+                        .FirstOrDefault()
+                        ?.Id
+                    ?? 0;
+                var otro = esquema.Lugares.FirstOrDefault(l => l.Id == otroId);
+                if (otro is not null)
+                    encontrados.AddRange(buscador.Buscar(otro.DatoTipoId, valor.Original, esquema));
+            }
+            foreach (long candidato in encontrados)
+                if (vistos.Add(candidato) && !EstaEnCadena(candidato, cadenaId))
+                    yield return candidato;
+        }
+    }
+
+    private bool Equivalente(string dato, string esperado)
+    {
+        using var q = conexion.CreateCommand();
+        q.CommandText = "SELECT COALESCE(enlaza_como,id) FROM diccionario_datos WHERE id=$d;";
+        q.Parameters.AddWithValue("$d", dato);
+        return string.Equals(
+            Convert.ToString(q.ExecuteScalar()),
+            esperado,
+            StringComparison.Ordinal
+        );
+    }
+
+    private IEnumerable<long> LeerPendientesExternos(
+        EsquemaDiccionario esquema,
+        LugarDiccionario lugar,
+        long versionId
+    )
+    {
+        if (buscador is null)
+            yield break;
+        var valores = LeerValores(versionId);
+        var vistos = new HashSet<long>();
+        foreach (
+            var enlace in esquema.Enlaces.Where(e => e.LugarA == lugar.Id || e.LugarB == lugar.Id)
+        )
+        {
+            long otroId = enlace.LugarA == lugar.Id ? enlace.LugarB : enlace.LugarA;
+            var otro = esquema.Lugares.Single(l => l.Id == otroId);
+            foreach (
+                Valor valor in valores.Where(v => Equivalente(v.Dato, enlace.DatoDiccionarioId))
+            )
+            foreach (long candidato in buscador.Buscar(otro.DatoTipoId, valor.Original, esquema))
+                if (vistos.Add(candidato))
+                    yield return candidato;
+        }
+    }
+
+    private void RegistrarSinInicio(
+        long versionId,
+        string proveedor,
+        EsquemaDiccionario esquema,
+        LugarDiccionario lugar
+    )
+    {
+        string motivo = MotivoSinInicio(esquema, lugar, LeerValores(versionId));
+        using var q = conexion.CreateCommand();
+        EnlaceDeclarado? enlace = esquema.Enlaces.FirstOrDefault(e =>
+            e.LugarA == lugar.Id || e.LugarB == lugar.Id
+        );
+        long otroId =
+            enlace is null ? esquema.Lugares.Single(l => l.IniciaCadena).Id
+            : enlace.LugarA == lugar.Id ? enlace.LugarB
+            : enlace.LugarA;
+        string? tipoFaltante = esquema.Lugares.FirstOrDefault(l => l.Id == otroId)?.DatoTipoId;
+        string numeroFaltante = enlace is null
+            ? ""
+            : LeerValores(versionId)
+                .FirstOrDefault(v => Equivalente(v.Dato, enlace.DatoDiccionarioId))
+                ?.Clave
+                ?? "";
+        q.CommandText =
+            "INSERT INTO decisiones_esquema_diccionario(version_id,proveedor,motivo,creada_en,estado,tipo,opciones_json,tipo_faltante,numero_faltante) VALUES($v,$p,$m,$f,'pendiente','sin_inicio','[\"Buscar otra vez\",\"Crear cadena igual\",\"Solo archivar\"]',$tf,$nf) ON CONFLICT(version_id) DO UPDATE SET proveedor=excluded.proveedor,motivo=excluded.motivo,tipo='sin_inicio',estado='pendiente',opciones_json=excluded.opciones_json,tipo_faltante=excluded.tipo_faltante,numero_faltante=excluded.numero_faltante WHERE decisiones_esquema_diccionario.estado='pendiente';";
+        q.Parameters.AddWithValue("$v", versionId);
+        q.Parameters.AddWithValue("$p", proveedor);
+        q.Parameters.AddWithValue("$m", motivo);
+        q.Parameters.AddWithValue("$f", DateTime.Now.ToString("o"));
+        q.Parameters.AddWithValue("$tf", (object?)tipoFaltante ?? DBNull.Value);
+        q.Parameters.AddWithValue("$nf", numeroFaltante);
+        q.ExecuteNonQuery();
+    }
+
+    private string MotivoSinInicio(
+        EsquemaDiccionario esquema,
+        LugarDiccionario lugar,
+        IReadOnlyList<Valor> valores
+    )
+    {
+        var inicio = esquema.Lugares.Single(l => l.IniciaCadena);
+        EnlaceDeclarado? enlace = esquema.Enlaces.FirstOrDefault(e =>
+            e.LugarA == lugar.Id || e.LugarB == lugar.Id
+        );
+        string dato = enlace?.DatoDiccionarioId ?? inicio.DatoTipoId;
+        string numero =
+            valores.FirstOrDefault(v => Equivalente(v.Dato, dato))?.Original ?? "desconocido";
+        string tipoFaltante = inicio.Nombre;
+        if (enlace is not null)
+        {
+            long otroId = enlace.LugarA == lugar.Id ? enlace.LugarB : enlace.LugarA;
+            tipoFaltante = esquema.Lugares.Single(l => l.Id == otroId).Nombre;
+        }
+        return $"Falta la {tipoFaltante} {numero}: no está en la carpeta.";
+    }
+
+    private void ResolverSinInicioMencionados(long versionId)
+    {
+        string? tipoLlegado = LeerTipo(versionId);
+        if (tipoLlegado is null)
+            return;
+        using var q = conexion.CreateCommand();
+        q.CommandText =
+            "SELECT d.version_id FROM decisiones_esquema_diccionario d WHERE d.tipo='sin_inicio' AND d.estado='pendiente' AND d.tipo_faltante=$t AND EXISTS(SELECT 1 FROM valores_documento x WHERE x.version_id=$l AND x.estado='vigente' AND x.valor_clave=d.numero_faltante);";
+        q.Parameters.AddWithValue("$t", tipoLlegado);
+        q.Parameters.AddWithValue("$l", versionId);
+        var pendientes = new List<long>();
+        using (var r = q.ExecuteReader())
+            while (r.Read())
+                pendientes.Add(r.GetInt64(0));
+        foreach (long pendiente in pendientes)
+        {
+            if (procesando.Contains(pendiente))
+                continue;
+            ProcesarVersion(pendiente);
+            if (!EstaEnAlgunaCadena(pendiente))
+                continue;
+            using var marcar = conexion.CreateCommand();
+            marcar.CommandText =
+                "UPDATE decisiones_esquema_diccionario SET estado='resuelta' WHERE version_id=$v AND tipo='sin_inicio' AND estado='pendiente';";
+            marcar.Parameters.AddWithValue("$v", pendiente);
+            marcar.ExecuteNonQuery();
+        }
+    }
+
+    private bool EstaEnAlgunaCadena(long version)
+    {
+        using var q = conexion.CreateCommand();
+        q.CommandText =
+            "SELECT EXISTS(SELECT 1 FROM ubicaciones_diccionario_todas WHERE version_id=$v AND estado='activo');";
+        q.Parameters.AddWithValue("$v", version);
+        return Convert.ToInt64(q.ExecuteScalar()) != 0;
+    }
+
+    private bool EstaEnCadena(long version, long cadena)
+    {
+        using var q = conexion.CreateCommand();
+        q.CommandText =
+            "SELECT EXISTS(SELECT 1 FROM ubicaciones_diccionario_todas WHERE version_id=$v AND cadena_id=$c AND estado='activo');";
+        q.Parameters.AddWithValue("$v", version);
+        q.Parameters.AddWithValue("$c", cadena);
+        return Convert.ToInt64(q.ExecuteScalar()) != 0;
+    }
+
+    private int ContarUbicaciones(long cadena)
+    {
+        using var q = conexion.CreateCommand();
+        q.CommandText =
+            "SELECT COUNT(*) FROM ubicaciones_diccionario_todas WHERE cadena_id=$c AND estado='activo';";
+        q.Parameters.AddWithValue("$c", cadena);
+        return Convert.ToInt32(q.ExecuteScalar());
     }
 
     public ResultadoMotorCadena CrearCadenaManual(long versionId)
@@ -102,10 +471,11 @@ public sealed class MotorCadenasDiccionario(SqliteConnection conexion)
         long cadena = CrearCadena(versionId, esquema, proveedor.Clave, lugar);
         using var q = conexion.CreateCommand();
         q.CommandText =
-            "UPDATE decisiones_esquema_diccionario SET estado='resuelta' WHERE version_id=$v AND tipo='sin_piso' AND estado='pendiente';";
+            "UPDATE decisiones_esquema_diccionario SET estado='resuelta' WHERE version_id=$v AND tipo IN ('sin_piso','sin_inicio') AND estado='pendiente';";
         q.Parameters.AddWithValue("$v", versionId);
         q.ExecuteNonQuery();
         RegistrarDecisionModo(versionId, esquema, lugar, cadena);
+        CompletarCadena(cadena, esquema);
         return new("cadena_creada", cadena);
     }
 
@@ -156,12 +526,17 @@ public sealed class MotorCadenasDiccionario(SqliteConnection conexion)
         Valor valor
     )
     {
+        using var equivalencia = conexion.CreateCommand();
+        equivalencia.CommandText =
+            "SELECT COALESCE(enlaza_como,id) FROM diccionario_datos WHERE id=$d;";
+        equivalencia.Parameters.AddWithValue("$d", valor.Dato);
+        string datoComparable = Convert.ToString(equivalencia.ExecuteScalar()) ?? valor.Dato;
         using var comando = conexion.CreateCommand();
         comando.CommandText =
-            "SELECT c.id,u.id,u.lugar_id,u.linea_id,x.valor_original,e.cardinalidad,CASE WHEN e.lugar_b=$l THEN 1 ELSE 0 END FROM enlaces_esquema_diccionario e JOIN lugares_esquema_diccionario la ON la.id=e.lugar_a JOIN ubicaciones_cadena_diccionario u ON u.lugar_id=CASE WHEN e.lugar_a=$l THEN e.lugar_b ELSE e.lugar_a END AND u.estado='activo' JOIN cadenas_diccionario c ON c.id=u.cadena_id AND c.esquema_id=la.esquema_id AND c.estado='activa' JOIN valores_documento x ON x.version_id=u.version_id AND x.dato_diccionario_id=e.dato_diccionario_id AND x.estado='vigente' WHERE la.esquema_id=$e AND (e.lugar_a=$l OR e.lugar_b=$l) AND e.dato_diccionario_id=$d AND x.valor_clave=$k;";
+            "SELECT c.id,u.id,u.lugar_id,u.linea_id,x.valor_original,e.cardinalidad,CASE WHEN e.lugar_b=$l THEN 1 ELSE 0 END FROM enlaces_esquema_diccionario e JOIN diccionario_datos de ON de.id=e.dato_diccionario_id JOIN lugares_esquema_diccionario la ON la.id=e.lugar_a JOIN ubicaciones_diccionario_todas u ON u.lugar_id=CASE WHEN e.lugar_a=$l THEN e.lugar_b ELSE e.lugar_a END AND u.estado='activo' JOIN cadenas_diccionario c ON c.id=u.cadena_id AND c.esquema_id=la.esquema_id AND c.estado='activa' JOIN valores_documento x ON x.version_id=u.version_id AND x.estado='vigente' JOIN diccionario_datos dx ON dx.id=x.dato_diccionario_id AND COALESCE(dx.enlaza_como,dx.id)=COALESCE(de.enlaza_como,de.id) WHERE la.esquema_id=$e AND (e.lugar_a=$l OR e.lugar_b=$l) AND COALESCE(de.enlaza_como,de.id)=$d AND x.valor_clave=$k;";
         comando.Parameters.AddWithValue("$l", actual.Id);
         comando.Parameters.AddWithValue("$e", esquema.Id);
-        comando.Parameters.AddWithValue("$d", valor.Dato);
+        comando.Parameters.AddWithValue("$d", datoComparable);
         comando.Parameters.AddWithValue("$k", valor.Clave);
         using var lector = comando.ExecuteReader();
         var resultados = new List<Coincidencia>();
@@ -198,6 +573,7 @@ public sealed class MotorCadenasDiccionario(SqliteConnection conexion)
         long id = Convert.ToInt64(comando.ExecuteScalar());
         InsertarUbicacion(tx, versionId, lugar, id, null, null, "activo", null);
         tx.Commit();
+        new RepositorioSituacionCadenaDiccionario(conexion).Recalcular(id, DateTime.Now);
         return id;
     }
 
@@ -210,6 +586,15 @@ public sealed class MotorCadenasDiccionario(SqliteConnection conexion)
         string? motivo
     )
     {
+        if (
+            estado == "activo"
+            && coincidencia is { Cardinalidad: "uno_a_uno" }
+            && LugarOcupado(cadena, lugar.Id, coincidencia.Linea, versionId)
+        )
+        {
+            estado = "dudoso";
+            motivo = "El lugar ya está ocupado en esta línea de la cadena.";
+        }
         using var tx = conexion.BeginTransaction();
         long? padre = coincidencia is null ? null : coincidencia.Ubicacion;
         long? linea = coincidencia?.Linea;
@@ -218,12 +603,40 @@ public sealed class MotorCadenasDiccionario(SqliteConnection conexion)
             using var buscarLinea = conexion.CreateCommand();
             buscarLinea.Transaction = tx;
             buscarLinea.CommandText =
-                "SELECT COALESCE(MAX(linea_id),0)+1 FROM ubicaciones_cadena_diccionario WHERE cadena_id=$c;";
+                "SELECT COALESCE(MAX(linea_id),0)+1 FROM ubicaciones_diccionario_todas WHERE cadena_id=$c;";
             buscarLinea.Parameters.AddWithValue("$c", cadena);
             linea = Convert.ToInt64(buscarLinea.ExecuteScalar());
         }
         InsertarUbicacion(tx, versionId, lugar, cadena, padre, linea, estado, motivo);
         tx.Commit();
+        if (estado == "activo")
+        {
+            var situaciones = new RepositorioSituacionCadenaDiccionario(conexion);
+            if (!situaciones.DocumentoAgregado(cadena, versionId, DateTime.Now))
+                situaciones.Recalcular(cadena, DateTime.Now);
+        }
+    }
+
+    private bool LugarOcupado(long cadena, long lugar, long? linea, long versionId)
+    {
+        using var q = conexion.CreateCommand();
+        q.CommandText =
+            "SELECT EXISTS(SELECT 1 FROM ubicaciones_diccionario_todas WHERE cadena_id=$c AND lugar_id=$l AND version_id<>$v AND estado='activo' AND ($linea IS NULL OR linea_id=$linea OR linea_id IS NULL));";
+        q.Parameters.AddWithValue("$c", cadena);
+        q.Parameters.AddWithValue("$l", lugar);
+        q.Parameters.AddWithValue("$v", versionId);
+        q.Parameters.AddWithValue("$linea", (object?)linea ?? DBNull.Value);
+        return Convert.ToInt64(q.ExecuteScalar()) != 0;
+    }
+
+    private bool EstaDudoso(long versionId, long cadena)
+    {
+        using var q = conexion.CreateCommand();
+        q.CommandText =
+            "SELECT EXISTS(SELECT 1 FROM ubicaciones_diccionario_todas WHERE version_id=$v AND cadena_id=$c AND estado='dudoso');";
+        q.Parameters.AddWithValue("$v", versionId);
+        q.Parameters.AddWithValue("$c", cadena);
+        return Convert.ToInt64(q.ExecuteScalar()) != 0;
     }
 
     private void InsertarUbicacion(
@@ -237,6 +650,39 @@ public sealed class MotorCadenasDiccionario(SqliteConnection conexion)
         string? motivo
     )
     {
+        long ordenInicio = 0;
+        using (var inicio = conexion.CreateCommand())
+        {
+            inicio.Transaction = tx;
+            inicio.CommandText =
+                "SELECT orden FROM lugares_esquema_diccionario WHERE esquema_id=(SELECT esquema_id FROM cadenas_diccionario WHERE id=$c) AND inicia_cadena=1;";
+            inicio.Parameters.AddWithValue("$c", cadena);
+            ordenInicio = Convert.ToInt64(inicio.ExecuteScalar());
+        }
+        bool yaTieneUbicacionPrimaria;
+        using (var existente = conexion.CreateCommand())
+        {
+            existente.Transaction = tx;
+            existente.CommandText =
+                "SELECT EXISTS(SELECT 1 FROM ubicaciones_cadena_diccionario WHERE version_id=$v);";
+            existente.Parameters.AddWithValue("$v", versionId);
+            yaTieneUbicacionPrimaria = Convert.ToInt64(existente.ExecuteScalar()) != 0;
+        }
+        if (lugar.Orden < ordenInicio && yaTieneUbicacionPrimaria)
+        {
+            using var extra = conexion.CreateCommand();
+            extra.Transaction = tx;
+            extra.CommandText =
+                "INSERT INTO ubicaciones_extra_cadena_diccionario(version_id,cadena_id,lugar_id,linea_id,creada_en) VALUES($v,$c,$l,$linea,$f) ON CONFLICT(version_id,cadena_id) DO NOTHING;";
+            extra.Parameters.AddWithValue("$v", versionId);
+            extra.Parameters.AddWithValue("$c", cadena);
+            extra.Parameters.AddWithValue("$l", lugar.Id);
+            extra.Parameters.AddWithValue("$linea", (object?)linea ?? DBNull.Value);
+            extra.Parameters.AddWithValue("$f", DateTime.Now.ToString("o"));
+            if (extra.ExecuteNonQuery() > 0)
+                return;
+            return;
+        }
         using var comando = conexion.CreateCommand();
         comando.Transaction = tx;
         comando.CommandText =

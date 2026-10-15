@@ -14,6 +14,7 @@ public partial class DialogoEsquemaDiccionario : Window
     private readonly List<EnlaceVm> _enlaces = [];
     private readonly List<AvisoVm> _reglasAviso = [];
     private readonly List<string> _modos = [];
+    private readonly List<ReglaPropuestaModo> _reglasPropuesta = [];
     private int _paso = 1;
     private string _nombreAutogenerado = "";
     private bool _actualizandoNombre;
@@ -44,8 +45,20 @@ public partial class DialogoEsquemaDiccionario : Window
             .GroupDescriptions.Add(new PropertyGroupDescription(nameof(TipoVm.Grupo)));
         Proveedor.Text = proveedor ?? "";
         Proveedor_TextChanged(Proveedor, null!);
+        if (
+            !string.IsNullOrWhiteSpace(proveedor)
+            && _repositorio.ObtenerPorProveedor(proveedor) is not { } existente
+        )
+            Reconocimientos.Items.Add("Nombre: " + proveedor.Trim());
         if (proveedor is not null && _repositorio.ObtenerPorProveedor(proveedor) is { } esquema)
         {
+            foreach (var reconocimiento in _repositorio.ListarReconocimientos(esquema.Id))
+                Reconocimientos.Items.Add(
+                    (reconocimiento.Tipo == "rut" ? "RUT: " : "Nombre: ")
+                        + reconocimiento.ValorNormalizado
+                );
+            if (Reconocimientos.Items.Count == 0)
+                Reconocimientos.Items.Add("Nombre: " + esquema.Proveedor);
             _actualizandoNombre = true;
             Nombre.Text = esquema.Nombre;
             _actualizandoNombre = false;
@@ -60,6 +73,9 @@ public partial class DialogoEsquemaDiccionario : Window
                 new RepositorioModosEsquemaDiccionario(_conexion)
                     .Listar(esquema.Id)
                     .Select(m => m.Nombre)
+            );
+            _reglasPropuesta.AddRange(
+                new RepositorioModosEsquemaDiccionario(_conexion).ListarReglasPropuesta(esquema.Id)
             );
             using (var q = _conexion.CreateCommand())
             {
@@ -142,7 +158,9 @@ public partial class DialogoEsquemaDiccionario : Window
                     + (_reglasAviso[i].ModoNombre is string m ? $" (modo {m})" : ""),
             };
         ModosLista.ItemsSource = _modos;
+        ModoPropuestaNuevo.ItemsSource = _modos;
         ActualizarModos();
+        ActualizarReglasPropuesta();
         ActualizarEnlaces();
         ActualizarReglasAviso();
         ActualizarPaso();
@@ -500,10 +518,65 @@ public partial class DialogoEsquemaDiccionario : Window
         if (ModosLista.SelectedItem is not string modo)
             return;
         _modos.Remove(modo);
+        _reglasPropuesta.RemoveAll(r =>
+            string.Equals(r.Modo, modo, StringComparison.OrdinalIgnoreCase)
+        );
         ModosLista.ItemsSource = null;
         ModosLista.ItemsSource = _modos;
+        ModoPropuestaNuevo.ItemsSource = null;
+        ModoPropuestaNuevo.ItemsSource = _modos;
         ActualizarModos();
+        ActualizarReglasPropuesta();
     }
+
+    private void AgregarReglaPropuesta_Click(object sender, RoutedEventArgs e)
+    {
+        string contiene = ContienePropuesta.Text.Trim();
+        if (contiene.Length == 0 || ModoPropuestaNuevo.SelectedItem is not string modo)
+            return;
+        _reglasPropuesta.Add(new(_reglasPropuesta.Count, contiene, modo));
+        ContienePropuesta.Clear();
+        ActualizarReglasPropuesta();
+    }
+
+    private void QuitarReglaPropuesta_Click(object sender, RoutedEventArgs e)
+    {
+        if (ReglasPropuestaLista.SelectedIndex < 0)
+            return;
+        _reglasPropuesta.RemoveAt(ReglasPropuestaLista.SelectedIndex);
+        for (int i = 0; i < _reglasPropuesta.Count; i++)
+            _reglasPropuesta[i] = _reglasPropuesta[i] with { Orden = i };
+        ActualizarReglasPropuesta();
+    }
+
+    private void ActualizarReglaPropuesta_Click(object sender, RoutedEventArgs e)
+    {
+        int indice = ReglasPropuestaLista.SelectedIndex;
+        string contiene = ContienePropuesta.Text.Trim();
+        if (
+            indice < 0
+            || contiene.Length == 0
+            || ModoPropuestaNuevo.SelectedItem is not string modo
+        )
+            return;
+        _reglasPropuesta[indice] = new(indice, contiene, modo);
+        ActualizarReglasPropuesta();
+        ReglasPropuestaLista.SelectedIndex = indice;
+    }
+
+    private void ReglaPropuesta_SelectionChanged(object sender, SelectionChangedEventArgs e)
+    {
+        int indice = ReglasPropuestaLista.SelectedIndex;
+        if (indice < 0 || indice >= _reglasPropuesta.Count)
+            return;
+        ContienePropuesta.Text = _reglasPropuesta[indice].Contiene;
+        ModoPropuestaNuevo.SelectedItem = _reglasPropuesta[indice].Modo;
+    }
+
+    private void ActualizarReglasPropuesta() =>
+        ReglasPropuestaLista.ItemsSource = _reglasPropuesta
+            .Select(r => $"Si contiene «{r.Contiene}» → {r.Modo}")
+            .ToArray();
 
     private void ActualizarModos()
     {
@@ -536,10 +609,28 @@ public partial class DialogoEsquemaDiccionario : Window
                     .Select(l => new DefinicionEnlace(l.OrdenA, l.OrdenB, l.Dato, l.Cardinalidad))
                     .ToArray()
             );
+            _repositorio.GuardarReconocimientos(
+                esquemaId,
+                Reconocimientos
+                    .Items.Cast<string>()
+                    .Select(texto =>
+                    {
+                        int separador = texto.IndexOf(':');
+                        return new ReconocimientoProveedor(
+                            separador >= 0 && texto[..separador] == "RUT" ? "rut" : "nombre",
+                            separador >= 0 ? texto[(separador + 1)..].Trim() : texto
+                        );
+                    })
+                    .ToArray()
+            );
             new RepositorioConfiguracionEsquemaDiccionario(_conexion).GuardarModos(
                 esquemaId,
                 LugarDecideModo.SelectedItem is LugarVm decide ? decide.Orden : null,
                 _modos
+            );
+            new RepositorioModosEsquemaDiccionario(_conexion).GuardarReglasPropuesta(
+                esquemaId,
+                _reglasPropuesta.Select((r, i) => r with { Orden = i }).ToArray()
             );
             var modosId = LeerIdsModo(esquemaId);
             new RepositorioConfiguracionEsquemaDiccionario(_conexion).GuardarReglas(
@@ -562,6 +653,28 @@ public partial class DialogoEsquemaDiccionario : Window
         {
             Estado.Text = $"No se pudo guardar el esquema: {error.Message}";
         }
+    }
+
+    private void AgregarReconocimiento_Click(object sender, RoutedEventArgs e)
+    {
+        string valor = ReconocimientoNuevo.Text.Trim();
+        if (valor.Length == 0)
+            return;
+        bool rut = valor.StartsWith("RUT:", StringComparison.OrdinalIgnoreCase);
+        valor =
+            rut ? valor[4..].Trim()
+            : valor.StartsWith("Nombre:", StringComparison.OrdinalIgnoreCase) ? valor[7..].Trim()
+            : valor;
+        string fila = (rut ? "RUT: " : "Nombre: ") + valor;
+        if (!Reconocimientos.Items.Contains(fila))
+            Reconocimientos.Items.Add(fila);
+        ReconocimientoNuevo.Clear();
+    }
+
+    private void QuitarReconocimiento_Click(object sender, RoutedEventArgs e)
+    {
+        if (Reconocimientos.SelectedItem is string fila)
+            Reconocimientos.Items.Remove(fila);
     }
 
     private string NombreDato(string id) =>

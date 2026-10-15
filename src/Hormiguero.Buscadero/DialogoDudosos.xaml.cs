@@ -55,6 +55,16 @@ public partial class DialogoDudosos : Window
             );
         _dudosos = filas;
         ListaDudosos.ItemsSource = _dudosos;
+        using (var qPendientes = _conexion.CreateCommand())
+        {
+            qPendientes.CommandText =
+                "SELECT d.nombre,p.motivo FROM decisiones_esquema_diccionario p JOIN versiones_documento v ON v.id=p.version_id JOIN documentos d ON d.id=v.documento_id WHERE p.tipo='sin_inicio' AND p.estado='pendiente' ORDER BY p.creada_en;";
+            using var lectorPendientes = qPendientes.ExecuteReader();
+            var pendientes = new List<DudosoSinInicioVm>();
+            while (lectorPendientes.Read())
+                pendientes.Add(new(lectorPendientes.GetString(0), lectorPendientes.GetString(1)));
+            ListaSinInicio.ItemsSource = pendientes;
+        }
         TextoContador.Text = $"{filas.Count} dudosos";
         if (filas.Count == 0)
         {
@@ -165,4 +175,6 @@ public partial class DialogoDudosos : Window
         string Nombre,
         string Motivo
     );
+
+    private sealed record DudosoSinInicioVm(string Nombre, string Motivo);
 }

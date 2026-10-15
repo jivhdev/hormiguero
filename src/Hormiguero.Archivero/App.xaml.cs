@@ -72,12 +72,33 @@ public partial class App : System.Windows.Application
         {
             UsarCarpetaComunDeHormiguero();
             PublicadorDatosDocumentoService.PublicacionAutomaticaActiva = true;
+            PublicadorDatosDocumentoService.BuscadorEnCarpeta =
+                new BuscadorDocumentosEnCarpetaService();
 
             // Fase B-4 (D-66): avisa a las otras apps de cada documento guardado.
             ClasificadorService.DocumentoGuardado += AvisarAHormiguero;
         }
 
         BaseDeDatos.AsegurarEsquema();
+        try
+        {
+            using var conexionSemillas = Hormiguero.Nucleo.Datos.BaseComun.Abrir(
+                Hormiguero.Nucleo.Datos.DocumentosGuardados.RutaBaseComun
+            );
+            Hormiguero.Nucleo.Datos.PrecargaCadenasJcv.IntentarImportar(
+                conexionSemillas,
+                System.IO.Path.Combine(
+                    AppContext.BaseDirectory,
+                    "Configuracion",
+                    "cadenas-jcv.json"
+                ),
+                "Archivero"
+            );
+        }
+        catch (Exception error)
+        {
+            AuditoriaService.Registrar("PRECARGA_CADENAS_JCV_FALLIDA", error.Message);
+        }
 
         var configuracion = new ConfiguracionRepository();
         var servicioCarpeta = new CarpetaObservadaService(configuracion);

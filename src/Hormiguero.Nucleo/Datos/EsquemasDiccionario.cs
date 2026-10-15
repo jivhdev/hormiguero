@@ -33,6 +33,8 @@ public sealed record DefinicionEnlace(
     string Cardinalidad
 );
 
+public sealed record ReconocimientoProveedor(string Tipo, string ValorNormalizado);
+
 public sealed record EsquemaDiccionario(
     long Id,
     string Proveedor,
@@ -44,6 +46,79 @@ public sealed record EsquemaDiccionario(
 
 public sealed class RepositorioEsquemasDiccionario(SqliteConnection conexion)
 {
+    public IReadOnlyList<ReconocimientoProveedor> ListarReconocimientos(long esquemaId)
+    {
+        using var q = conexion.CreateCommand();
+        q.CommandText =
+            "SELECT tipo,valor_normalizado FROM reconocimientos_esquema_diccionario WHERE esquema_id=$e ORDER BY tipo,valor_normalizado;";
+        q.Parameters.AddWithValue("$e", esquemaId);
+        using var r = q.ExecuteReader();
+        var filas = new List<ReconocimientoProveedor>();
+        while (r.Read())
+            filas.Add(new(r.GetString(0), r.GetString(1)));
+        return filas;
+    }
+
+    public void GuardarReconocimientos(
+        long esquemaId,
+        IReadOnlyList<ReconocimientoProveedor> reconocimientos
+    )
+    {
+        using var tx = conexion.BeginTransaction();
+        using (var borrar = conexion.CreateCommand())
+        {
+            borrar.Transaction = tx;
+            borrar.CommandText =
+                "DELETE FROM reconocimientos_esquema_diccionario WHERE esquema_id=$e;";
+            borrar.Parameters.AddWithValue("$e", esquemaId);
+            borrar.ExecuteNonQuery();
+        }
+        foreach (var reconocimiento in reconocimientos)
+        {
+            if (reconocimiento.Tipo is not ("rut" or "nombre"))
+                throw new ArgumentException("Tipo de reconocimiento inválido.");
+            string valor =
+                reconocimiento.Tipo == "rut"
+                    ? ProveedorDeDocumento.NormalizarRut(reconocimiento.ValorNormalizado)
+                    : ProveedorDeDocumento.NormalizarNombre(reconocimiento.ValorNormalizado);
+            if (valor.Length == 0)
+                continue;
+            using var q = conexion.CreateCommand();
+            q.Transaction = tx;
+            q.CommandText =
+                "INSERT INTO reconocimientos_esquema_diccionario(esquema_id,tipo,valor_normalizado) VALUES($e,$t,$v);";
+            q.Parameters.AddWithValue("$e", esquemaId);
+            q.Parameters.AddWithValue("$t", reconocimiento.Tipo);
+            q.Parameters.AddWithValue("$v", valor);
+            q.ExecuteNonQuery();
+        }
+        tx.Commit();
+    }
+
+    public static EsquemaDiccionario? ObtenerPorReconocimiento(
+        SqliteConnection conexion,
+        string tipo,
+        string valor
+    )
+    {
+        string normalizado =
+            tipo == "rut"
+                ? ProveedorDeDocumento.NormalizarRut(valor)
+                : ProveedorDeDocumento.NormalizarNombre(valor);
+        if (normalizado.Length == 0)
+            return null;
+        using var q = conexion.CreateCommand();
+        q.CommandText =
+            "SELECT e.id FROM reconocimientos_esquema_diccionario r JOIN esquemas_diccionario e ON e.id=r.esquema_id WHERE r.tipo=$t AND r.valor_normalizado=$v AND e.activo=1;";
+        q.Parameters.AddWithValue("$t", tipo);
+        q.Parameters.AddWithValue("$v", normalizado);
+        object? id = q.ExecuteScalar();
+        if (id is null)
+            return null;
+        var repositorio = new RepositorioEsquemasDiccionario(conexion);
+        return repositorio.LeerPorId(Convert.ToInt64(id));
+    }
+
     public IReadOnlyList<EsquemaDiccionario> Listar()
     {
         using var comando = conexion.CreateCommand();
@@ -220,7 +295,7 @@ public sealed class RepositorioEsquemasDiccionario(SqliteConnection conexion)
     {
         using var comando = conexion.CreateCommand();
         comando.CommandText =
-            "SELECT d.id,d.nombre,d.grupo,EXISTS(SELECT 1 FROM tipos_documento_datos ta JOIN tipos_documento_datos tb ON tb.dato_diccionario_id=$b AND tb.define_tipo=1 AND tb.activo=1 JOIN tipos_documento_datos da ON da.identificacion_id=ta.identificacion_id AND da.dato_diccionario_id=d.id AND da.activo=1 AND da.enlazable=1 JOIN tipos_documento_datos db ON db.identificacion_id=tb.identificacion_id AND db.dato_diccionario_id=d.id AND db.activo=1 AND db.enlazable=1 WHERE ta.dato_diccionario_id=$a AND ta.define_tipo=1 AND ta.activo=1 AND da.enlazable=1 AND db.enlazable=1) AS sugerido FROM diccionario_datos d ORDER BY sugerido DESC,d.grupo,d.orden;";
+            "SELECT d.id,d.nombre,d.grupo,EXISTS(SELECT 1 FROM tipos_documento_datos ta JOIN tipos_documento_datos tb ON tb.dato_diccionario_id=$b AND tb.define_tipo=1 AND tb.activo=1 JOIN tipos_documento_datos da ON da.identificacion_id=ta.identificacion_id AND da.dato_diccionario_id=d.id AND da.activo=1 AND da.enlazable=1 JOIN tipos_documento_datos db ON db.identificacion_id=tb.identificacion_id AND db.dato_diccionario_id=d.id AND db.activo=1 AND db.enlazable=1 WHERE ta.dato_diccionario_id=$a AND ta.define_tipo=1 AND ta.activo=1 AND da.enlazable=1 AND db.enlazable=1) AS sugerido FROM diccionario_datos d WHERE d.id<>'tipo_entrega' ORDER BY sugerido DESC,d.grupo,d.orden;";
         comando.Parameters.AddWithValue("$a", tipoA);
         comando.Parameters.AddWithValue("$b", tipoB);
         using var lector = comando.ExecuteReader();

@@ -29,6 +29,11 @@
 
   <ItemGroup>
     <Resource Include="Recursos\icono.ico" />
+    <None
+      Include="..\..\configuracion\cadenas-jcv.json"
+      Link="Configuracion\cadenas-jcv.json"
+      CopyToOutputDirectory="PreserveNewest"
+    />
   </ItemGroup>
 
   <Target Name="QuitarSimbolosDelPublish" AfterTargets="Publish">

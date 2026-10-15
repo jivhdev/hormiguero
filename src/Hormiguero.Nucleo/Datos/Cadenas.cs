@@ -54,7 +54,9 @@ public sealed record DecisionPendienteCadena(
     string Tipo,
     string Proveedor,
     string DatoMencionado,
-    string NumeroMencionado
+    string NumeroMencionado,
+    string DecisionTipo = "sin_piso",
+    string Motivo = ""
 );
 
 public sealed class RepositorioCadenas(SqliteConnection conexion)

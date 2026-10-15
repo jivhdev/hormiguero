@@ -95,6 +95,33 @@ public partial class MainWindow : Window
             "buscadero",
             System.IO.Path.Combine(AppContext.BaseDirectory, "Datos", "buscadero.db")
         );
+        try
+        {
+            using var conexionSemillas = BaseComun.Abrir(DocumentosGuardados.RutaBaseComun);
+            PrecargaCadenasJcv.IntentarImportar(
+                conexionSemillas,
+                System.IO.Path.Combine(
+                    AppContext.BaseDirectory,
+                    "Configuracion",
+                    "cadenas-jcv.json"
+                ),
+                "Buscadero"
+            );
+        }
+        catch (Exception error)
+        {
+            try
+            {
+                using var conexionAuditoria = BaseComun.Abrir(DocumentosGuardados.RutaBaseComun);
+                using var auditoria = conexionAuditoria.CreateCommand();
+                auditoria.CommandText =
+                    "INSERT INTO auditoria(fecha,app,accion,origen,destino,resultado) VALUES($f,'Buscadero','precarga_cadenas_jcv_fallida','inicio',$d,'fallida');";
+                auditoria.Parameters.AddWithValue("$f", DateTime.Now.ToString("o"));
+                auditoria.Parameters.AddWithValue("$d", error.Message);
+                auditoria.ExecuteNonQuery();
+            }
+            catch { }
+        }
         _servicioCarpetas = new ServicioCarpetas(new RepositorioCarpetas(rutaBaseDeDatos));
 
         var repositorioIndice = new RepositorioIndice(rutaBaseDeDatos);

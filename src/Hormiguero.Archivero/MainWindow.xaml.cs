@@ -43,6 +43,7 @@ public sealed class DecisionPendienteFila : INotifyPropertyChanged
 {
     private Queue<string> _datosPendientes = new();
     private DateTime? _fechaDato;
+    private string? _modoAConfirmar;
 
     public DecisionPendienteFila(DecisionPendienteCadena decision, DecisionModoPendiente? modo)
     {
@@ -55,15 +56,26 @@ public sealed class DecisionPendienteFila : INotifyPropertyChanged
     public long VersionId => Decision.VersionId;
     public string Documento => Decision.Documento;
     public string TipoProveedor => $"{Decision.Tipo} · {Decision.Proveedor}";
-    public string Etiqueta => Modo is null ? "Sin origen" : "Modo";
+    public string Etiqueta =>
+        Modo is not null ? "Modo"
+        : Decision.DecisionTipo == "sin_inicio" ? $"Dudoso: {Decision.Motivo}"
+        : "Sin origen";
     public string Pregunta =>
         Modo is null
             ? string.Empty
             : $"{Decision.Documento} · {Decision.Proveedor} · ¿Qué modo tiene este proceso?";
     public IReadOnlyList<string> OpcionesModo => Modo?.Opciones ?? [];
+    public IReadOnlyList<OpcionModoFila> OpcionesModoFila =>
+        Modo?.Opciones.Select(nombre => new OpcionModoFila(nombre, Destacar(nombre))).ToArray()
+        ?? [];
+    public string PropuestaTexto =>
+        string.IsNullOrWhiteSpace(Modo?.TextoLeido)
+            ? string.Empty
+            : $"Se leyó: «{Modo.TextoLeido}» · propuesto {Modo.ModoPropuesto ?? "Despacho"}";
     public bool EsModo => Modo is not null;
     public bool MostrarAccionesOrigen => Modo is null;
-    public bool MostrarOpcionesModo => EsModo && !ModoElegido;
+    public bool MostrarOpcionesModo => EsModo && !ModoElegido && _modoAConfirmar is null;
+    public bool MostrarConfirmacionRetiro => _modoAConfirmar is not null;
     public bool ModoElegido { get; private set; }
     public string? DatoPendiente { get; private set; }
     public bool MostrarCapturaDato => ModoElegido && DatoPendiente is not null;
@@ -85,6 +97,31 @@ public sealed class DecisionPendienteFila : INotifyPropertyChanged
 
     public event PropertyChangedEventHandler? PropertyChanged;
 
+    private bool Destacar(string nombre) =>
+        Modo?.ModoPropuesto switch
+        {
+            "Retiro" => string.Equals(nombre, "Retiro", StringComparison.OrdinalIgnoreCase),
+            "Despacho" => nombre.StartsWith("Despacho", StringComparison.OrdinalIgnoreCase),
+            _ => false,
+        };
+
+    public void PrepararRetiro()
+    {
+        _modoAConfirmar = "Retiro";
+        PropertyChanged?.Invoke(this, new(nameof(MostrarOpcionesModo)));
+        PropertyChanged?.Invoke(this, new(nameof(MostrarConfirmacionRetiro)));
+    }
+
+    public void CancelarRetiro()
+    {
+        _modoAConfirmar = null;
+        FechaDato = null;
+        PropertyChanged?.Invoke(this, new(nameof(MostrarOpcionesModo)));
+        PropertyChanged?.Invoke(this, new(nameof(MostrarConfirmacionRetiro)));
+    }
+
+    public string? ModoAConfirmar => _modoAConfirmar;
+
     public void MarcarModoElegido(IEnumerable<string> datosPendientes)
     {
         ModoElegido = true;
@@ -104,6 +141,8 @@ public sealed class DecisionPendienteFila : INotifyPropertyChanged
         PropertyChanged?.Invoke(this, new(nameof(MostrarCapturaDato)));
     }
 }
+
+public sealed record OpcionModoFila(string Nombre, bool Destacada);
 
 public partial class MainWindow : Window
 {
@@ -319,7 +358,7 @@ public partial class MainWindow : Window
         using (var q = conexion.CreateCommand())
         {
             q.CommandText =
-                "SELECT p.version_id,d.nombre,COALESCE(i.tipo,''),p.proveedor,p.motivo FROM decisiones_esquema_diccionario p JOIN versiones_documento v ON v.id=p.version_id JOIN documentos d ON d.id=v.documento_id LEFT JOIN identificaciones i ON i.id=(SELECT f.identificacion_id FROM valores_documento x JOIN campos_documento f ON f.id=x.campo_id WHERE x.version_id=v.id AND x.estado='vigente' ORDER BY x.id LIMIT 1) WHERE p.estado='pendiente' ORDER BY p.creada_en;";
+                "SELECT p.version_id,d.nombre,COALESCE(i.tipo,''),p.proveedor,p.motivo,p.tipo FROM decisiones_esquema_diccionario p JOIN versiones_documento v ON v.id=p.version_id JOIN documentos d ON d.id=v.documento_id LEFT JOIN identificaciones i ON i.id=(SELECT f.identificacion_id FROM valores_documento x JOIN campos_documento f ON f.id=x.campo_id WHERE x.version_id=v.id AND x.estado='vigente' ORDER BY x.id LIMIT 1) WHERE p.estado='pendiente' ORDER BY p.creada_en;";
             using var r = q.ExecuteReader();
             while (r.Read())
                 decisiones.Add(
@@ -329,7 +368,9 @@ public partial class MainWindow : Window
                         r.GetString(2),
                         r.GetString(3),
                         r.GetString(4),
-                        ""
+                        "",
+                        r.GetString(5),
+                        r.GetString(4)
                     )
                 );
         }
@@ -364,6 +405,11 @@ public partial class MainWindow : Window
                 consulta.Parameters.AddWithValue("$v", fila.VersionId);
                 if (Convert.ToInt64(consulta.ExecuteScalar()) != 0)
                 {
+                    if (string.Equals(nombreModo, "Retiro", StringComparison.OrdinalIgnoreCase))
+                    {
+                        fila.PrepararRetiro();
+                        return;
+                    }
                     using var modoConsulta = conexion.CreateCommand();
                     modoConsulta.CommandText =
                         "SELECT m.id FROM cadenas_diccionario c JOIN modos_esquema_diccionario m ON m.esquema_id=c.esquema_id WHERE c.id=$c AND m.nombre=$n COLLATE NOCASE;";
@@ -404,6 +450,52 @@ public partial class MainWindow : Window
             );
         }
     }
+
+    private void BtnConfirmarRetiro_Click(object sender, RoutedEventArgs e)
+    {
+        var fila = FilaDecision(sender);
+        if (fila?.Modo is not { } decisionModo || fila.FechaDato is not DateTime fecha)
+        {
+            System.Windows.MessageBox.Show(
+                this,
+                "Seleccione la fecha de retiro.",
+                "Decisiones pendientes",
+                MessageBoxButton.OK,
+                MessageBoxImage.Information
+            );
+            return;
+        }
+        try
+        {
+            using var conexion = BaseComun.Abrir(DocumentosGuardados.RutaBaseComun);
+            using var q = conexion.CreateCommand();
+            q.CommandText =
+                "SELECT m.id FROM cadenas_diccionario c JOIN modos_esquema_diccionario m ON m.esquema_id=c.esquema_id WHERE c.id=$c AND m.nombre='Retiro' COLLATE NOCASE;";
+            q.Parameters.AddWithValue("$c", decisionModo.CadenaId);
+            if (q.ExecuteScalar() is not long modoId)
+                throw new InvalidOperationException("El modo Retiro ya no está disponible.");
+            new RepositorioModosEsquemaDiccionario(conexion).FijarModo(
+                decisionModo.CadenaId,
+                modoId,
+                DateOnly.FromDateTime(fecha)
+            );
+            new EvaluadorAlertasEsquemaDiccionario(conexion).Evaluar();
+            CargarDecisionesPendientes();
+        }
+        catch (Exception ex)
+        {
+            System.Windows.MessageBox.Show(
+                this,
+                ex.Message,
+                "Decisiones pendientes",
+                MessageBoxButton.OK,
+                MessageBoxImage.Warning
+            );
+        }
+    }
+
+    private void BtnCancelarRetiro_Click(object sender, RoutedEventArgs e) =>
+        FilaDecision(sender)?.CancelarRetiro();
 
     private static IReadOnlyList<string> ObtenerDatosPendientes(
         Microsoft.Data.Sqlite.SqliteConnection conexion,
@@ -472,44 +564,50 @@ public partial class MainWindow : Window
     private void BtnBuscarOrigen_Click(object sender, RoutedEventArgs e)
     {
         var fila = FilaDecision(sender);
-        if (fila is null || string.IsNullOrWhiteSpace(fila.Decision.NumeroMencionado))
+        if (fila is null)
             return;
-        string numero = fila.Decision.NumeroMencionado;
-        string buscadero = Path.Combine(AppContext.BaseDirectory, "Buscadero.exe");
         try
         {
-            if (File.Exists(buscadero))
-            {
-                var inicio = new System.Diagnostics.ProcessStartInfo(buscadero)
-                {
-                    UseShellExecute = true,
-                };
-                inicio.ArgumentList.Add(numero);
-                System.Diagnostics.Process.Start(inicio);
-                return;
-            }
-        }
-        catch
-        {
-            // Si Buscadero no puede abrirse, se facilita la búsqueda manual con el mismo número.
-        }
-
-        try
-        {
-            System.Windows.Clipboard.SetText(numero);
-            System.Windows.MessageBox.Show(
-                this,
-                $"No se pudo abrir Buscadero. Se copió {fila.Decision.DatoMencionado} {numero}; búscalo en Buscadero. La decisión seguirá pendiente hasta que se resuelva.",
-                "Decisiones pendientes",
-                MessageBoxButton.OK,
-                MessageBoxImage.Information
-            );
+            using var conexion = BaseComun.Abrir(DocumentosGuardados.RutaBaseComun);
+            using var consulta = conexion.CreateCommand();
+            consulta.CommandText =
+                "SELECT tipo_faltante,numero_faltante,proveedor FROM decisiones_esquema_diccionario WHERE version_id=$v AND tipo='sin_inicio' AND estado='pendiente';";
+            consulta.Parameters.AddWithValue("$v", fila.VersionId);
+            using var lector = consulta.ExecuteReader();
+            if (!lector.Read() || lector.IsDBNull(0) || lector.IsDBNull(1))
+                throw new InvalidOperationException(
+                    "No se pudo identificar el documento faltante."
+                );
+            string tipo = lector.GetString(0);
+            string numero = lector.GetString(1);
+            string proveedor = lector.GetString(2);
+            lector.Close();
+            var esquema =
+                new RepositorioEsquemasDiccionario(conexion).ObtenerPorProveedor(proveedor)
+                ?? throw new InvalidOperationException(
+                    "El esquema del documento ya no está disponible."
+                );
+            var buscador = new BuscadorDocumentosEnCarpetaService();
+            var versiones = buscador.Buscar(tipo, numero, esquema);
+            var motor = new MotorCadenasDiccionario(conexion, buscador);
+            foreach (long version in versiones)
+                motor.ProcesarVersion(version);
+            motor.ProcesarVersion(fila.VersionId);
+            CargarDecisionesPendientes();
+            if (versiones.Count == 0)
+                System.Windows.MessageBox.Show(
+                    this,
+                    $"No se encontró {fila.Decision.DatoMencionado} {numero} en las carpetas configuradas.",
+                    "Decisiones pendientes",
+                    MessageBoxButton.OK,
+                    MessageBoxImage.Information
+                );
         }
         catch (Exception ex)
         {
             System.Windows.MessageBox.Show(
                 this,
-                $"No se pudo abrir Buscadero ni copiar el número {numero}: {ex.Message}",
+                $"No se pudo buscar en las carpetas configuradas: {ex.Message}",
                 "Decisiones pendientes",
                 MessageBoxButton.OK,
                 MessageBoxImage.Warning
@@ -527,7 +625,7 @@ public partial class MainWindow : Window
             using var conexion = BaseComun.Abrir(DocumentosGuardados.RutaBaseComun);
             using var consulta = conexion.CreateCommand();
             consulta.CommandText =
-                "SELECT EXISTS(SELECT 1 FROM decisiones_esquema_diccionario WHERE version_id=$v AND tipo='sin_piso' AND estado='pendiente');";
+                "SELECT EXISTS(SELECT 1 FROM decisiones_esquema_diccionario WHERE version_id=$v AND tipo IN ('sin_piso','sin_inicio') AND estado='pendiente');";
             consulta.Parameters.AddWithValue("$v", fila.VersionId);
             var resultado =
                 Convert.ToInt64(consulta.ExecuteScalar()) != 0

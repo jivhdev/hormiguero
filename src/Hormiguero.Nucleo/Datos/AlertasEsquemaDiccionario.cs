@@ -1,4 +1,5 @@
 using System.Globalization;
+using System.Text;
 using System.Text.Json;
 using Microsoft.Data.Sqlite;
 
@@ -6,6 +7,55 @@ namespace Hormiguero.Nucleo.Datos;
 
 public sealed class RepositorioModosEsquemaDiccionario(SqliteConnection conexion)
 {
+    public IReadOnlyList<ReglaPropuestaModo> ListarReglasPropuesta(long esquemaId)
+    {
+        using var q = conexion.CreateCommand();
+        q.CommandText =
+            "SELECT orden,contiene,modo FROM reglas_propuesta_modo_esquema_diccionario WHERE esquema_id=$e ORDER BY orden;";
+        q.Parameters.AddWithValue("$e", esquemaId);
+        using var r = q.ExecuteReader();
+        var reglas = new List<ReglaPropuestaModo>();
+        while (r.Read())
+            reglas.Add(new(r.GetInt32(0), r.GetString(1), r.GetString(2)));
+        return reglas;
+    }
+
+    public void GuardarReglasPropuesta(long esquemaId, IReadOnlyList<ReglaPropuestaModo> reglas)
+    {
+        using var tx = conexion.BeginTransaction();
+        using (var borrar = conexion.CreateCommand())
+        {
+            borrar.Transaction = tx;
+            borrar.CommandText =
+                "DELETE FROM reglas_propuesta_modo_esquema_diccionario WHERE esquema_id=$e;";
+            borrar.Parameters.AddWithValue("$e", esquemaId);
+            borrar.ExecuteNonQuery();
+        }
+        foreach (
+            var regla in reglas
+                .Where(r =>
+                    !string.IsNullOrWhiteSpace(r.Contiene) && !string.IsNullOrWhiteSpace(r.Modo)
+                )
+                .OrderBy(r => r.Orden)
+        )
+        {
+            using var q = conexion.CreateCommand();
+            q.Transaction = tx;
+            q.CommandText =
+                "INSERT INTO reglas_propuesta_modo_esquema_diccionario(esquema_id,orden,contiene,modo) SELECT $e,$o,$c,$m WHERE EXISTS(SELECT 1 FROM modos_esquema_diccionario WHERE esquema_id=$e AND nombre=$m COLLATE NOCASE);";
+            q.Parameters.AddWithValue("$e", esquemaId);
+            q.Parameters.AddWithValue("$o", regla.Orden);
+            q.Parameters.AddWithValue("$c", regla.Contiene.Trim());
+            q.Parameters.AddWithValue("$m", regla.Modo.Trim());
+            if (q.ExecuteNonQuery() == 0)
+                throw new ArgumentException(
+                    "Cada regla debe proponer un modo del esquema.",
+                    nameof(reglas)
+                );
+        }
+        tx.Commit();
+    }
+
     public void Guardar(long esquemaId, IReadOnlyList<string> nombres)
     {
         using var tx = conexion.BeginTransaction();
@@ -51,22 +101,83 @@ public sealed class RepositorioModosEsquemaDiccionario(SqliteConnection conexion
     {
         using var q = conexion.CreateCommand();
         q.CommandText =
-            "SELECT version_id,cadena_id,proveedor,opciones_json FROM decisiones_esquema_diccionario WHERE tipo='modo' AND estado='pendiente' AND cadena_id IS NOT NULL ORDER BY creada_en;";
+            "SELECT p.version_id,p.cadena_id,p.proveedor,p.opciones_json,(SELECT x.valor_original FROM valores_documento x WHERE x.version_id=p.version_id AND x.dato_diccionario_id='tipo_entrega' AND x.estado='vigente' ORDER BY x.id DESC LIMIT 1),c.esquema_id FROM decisiones_esquema_diccionario p JOIN cadenas_diccionario c ON c.id=p.cadena_id WHERE p.tipo='modo' AND p.estado='pendiente' AND p.cadena_id IS NOT NULL ORDER BY p.creada_en;";
         using var r = q.ExecuteReader();
-        var filas = new List<DecisionModoPendiente>();
+        var pendientes =
+            new List<(
+                long VersionId,
+                long CadenaId,
+                string Proveedor,
+                string[] Opciones,
+                string? Texto,
+                long EsquemaId
+            )>();
         while (r.Read())
+        {
+            string? texto = r.IsDBNull(4) ? null : r.GetString(4);
+            var opciones =
+                System.Text.Json.JsonSerializer.Deserialize<string[]>(r.GetString(3)) ?? [];
+            pendientes.Add(
+                (r.GetInt64(0), r.GetInt64(1), r.GetString(2), opciones, texto, r.GetInt64(5))
+            );
+        }
+        r.Close();
+        var filas = new List<DecisionModoPendiente>();
+        foreach (var pendiente in pendientes)
+        {
+            string? propuesto = null;
+            var opciones = pendiente.Opciones;
+            string? texto = pendiente.Texto;
+            if (!string.IsNullOrWhiteSpace(texto))
+            {
+                propuesto = Proponer(texto, ListarReglasPropuesta(pendiente.EsquemaId));
+                if (propuesto == "Despacho")
+                    opciones = opciones
+                        .OrderByDescending(o =>
+                            o.StartsWith("Despacho", StringComparison.OrdinalIgnoreCase)
+                        )
+                        .ToArray();
+                else if (propuesto is not null)
+                    opciones = opciones
+                        .OrderByDescending(o =>
+                            string.Equals(o, propuesto, StringComparison.OrdinalIgnoreCase)
+                        )
+                        .ToArray();
+            }
             filas.Add(
                 new(
-                    r.GetInt64(0),
-                    r.GetInt64(1),
-                    r.GetString(2),
-                    System.Text.Json.JsonSerializer.Deserialize<string[]>(r.GetString(3)) ?? []
+                    pendiente.VersionId,
+                    pendiente.CadenaId,
+                    pendiente.Proveedor,
+                    opciones,
+                    texto,
+                    propuesto
                 )
             );
+        }
         return filas;
     }
 
-    public void FijarModo(long cadenaId, long? modoId)
+    public static string? Proponer(string texto, IReadOnlyList<ReglaPropuestaModo> reglas)
+    {
+        string normalizado = Normalizar(texto);
+        foreach (var regla in reglas.OrderBy(r => r.Orden))
+            if (normalizado.Contains(Normalizar(regla.Contiene), StringComparison.Ordinal))
+                return regla.Modo;
+        return string.IsNullOrWhiteSpace(texto) ? null : "Despacho";
+    }
+
+    private static string Normalizar(string texto)
+    {
+        var descompuesto = texto.Normalize(NormalizationForm.FormD);
+        var salida = new StringBuilder(descompuesto.Length);
+        foreach (char caracter in descompuesto)
+            if (CharUnicodeInfo.GetUnicodeCategory(caracter) != UnicodeCategory.NonSpacingMark)
+                salida.Append(char.ToUpperInvariant(caracter));
+        return salida.ToString().Normalize(NormalizationForm.FormC);
+    }
+
+    public void FijarModo(long cadenaId, long? modoId, DateOnly? fechaRetiro = null)
     {
         using var tx = conexion.BeginTransaction();
         long esquema;
@@ -108,6 +219,23 @@ public sealed class RepositorioModosEsquemaDiccionario(SqliteConnection conexion
             );
             q.ExecuteNonQuery();
         }
+        if (fechaRetiro is DateOnly fecha)
+        {
+            using var q = conexion.CreateCommand();
+            q.Transaction = tx;
+            q.CommandText =
+                "INSERT INTO datos_cadena_diccionario(cadena_id,nombre,valor,actualizado_en) VALUES($c,'Fecha de retiro',$v,$f) ON CONFLICT(cadena_id,nombre) DO UPDATE SET valor=excluded.valor,actualizado_en=excluded.actualizado_en;";
+            q.Parameters.AddWithValue("$c", cadenaId);
+            q.Parameters.AddWithValue(
+                "$v",
+                fecha.ToString("yyyy-MM-dd", CultureInfo.InvariantCulture)
+            );
+            q.Parameters.AddWithValue(
+                "$f",
+                DateTime.Now.ToString("o", CultureInfo.InvariantCulture)
+            );
+            q.ExecuteNonQuery();
+        }
         if (modoId is not null)
         {
             using var q = conexion.CreateCommand();
@@ -131,6 +259,9 @@ public sealed class EvaluadorAlertasEsquemaDiccionario(
     public void Evaluar(DateOnly? hoy = null)
     {
         DateOnly fecha = hoy ?? DateOnly.FromDateTime(_reloj());
+        new RepositorioSituacionCadenaDiccionario(conexion).RecalcularTodas(
+            fecha.ToDateTime(TimeOnly.MaxValue)
+        );
         var reglas =
             new List<(long Id, long Esquema, long Lugar, long? Modo, string Tipo, string Json)>();
         using (var q = conexion.CreateCommand())
@@ -156,7 +287,7 @@ public sealed class EvaluadorAlertasEsquemaDiccionario(
             using (var q = conexion.CreateCommand())
             {
                 q.CommandText =
-                    "SELECT c.id,e.proveedor,c.cliente FROM cadenas_diccionario c JOIN esquemas_diccionario e ON e.id=c.esquema_id WHERE c.esquema_id=$e AND c.estado='activa' AND ($m IS NULL OR c.modo_id=$m);";
+                    "SELECT c.id,e.proveedor,c.cliente FROM cadenas_diccionario c JOIN esquemas_diccionario e ON e.id=c.esquema_id WHERE c.esquema_id=$e AND c.estado='activa' AND c.situacion<>'cerrada' AND ($m IS NULL OR c.modo_id=$m);";
                 q.Parameters.AddWithValue("$e", regla.Esquema);
                 q.Parameters.AddWithValue("$m", (object?)regla.Modo ?? DBNull.Value);
                 using var r = q.ExecuteReader();
@@ -196,7 +327,9 @@ public sealed class EvaluadorAlertasEsquemaDiccionario(
                             DateOnly? baseLinea = dato is null
                                 ? FechaDocumento(c.Id, desdeLugar, linea)
                                 : LeerFecha(LeerDato(c.Id, dato));
-                            DateOnly? venceLinea = baseLinea?.AddDays(dias);
+                            DateOnly? venceLinea = baseLinea is null
+                                ? null
+                                : SumarDias(baseLinea.Value, dias, root);
                             bool abiertaLinea =
                                 baseLinea is not null && !ExisteLugar(c.Id, hastaLugar, linea);
                             GuardarAlerta(
@@ -216,22 +349,79 @@ public sealed class EvaluadorAlertasEsquemaDiccionario(
                         : LeerFecha(LeerDato(c.Id, dato));
                     if (fechaBase is not null)
                     {
-                        vence = fechaBase.Value.AddDays(dias);
+                        vence = SumarDias(fechaBase.Value, dias, root);
                         activa = !ExisteLugar(c.Id, hastaLugar);
                     }
                 }
                 else if (regla.Tipo == "listo_para")
                 {
                     texto = root.GetProperty("lista").GetString() ?? "Listo para";
-                    activa =
-                        ExisteLugar(c.Id, root.GetProperty("cuandoLugarId").GetInt64())
-                        && !ExisteLugar(c.Id, root.GetProperty("hastaLugarId").GetInt64());
+                    long cuando = root.GetProperty("cuandoLugarId").GetInt64();
+                    long hasta = root.GetProperty("hastaLugarId").GetInt64();
+                    long? condicion =
+                        root.TryGetProperty("condicionLugarId", out var datoCondicion)
+                        && datoCondicion.ValueKind == JsonValueKind.Number
+                            ? datoCondicion.GetInt64()
+                            : null;
+                    if (condicion is long tipoCondicion)
+                    {
+                        foreach (long linea in Lineas(c.Id, cuando))
+                        {
+                            bool listaPorLinea =
+                                ExisteLugar(c.Id, cuando, linea)
+                                && ExisteLugar(c.Id, tipoCondicion, linea)
+                                && !ExisteLugar(c.Id, hasta, linea);
+                            GuardarAlerta(
+                                regla.Id,
+                                c.Id,
+                                texto,
+                                null,
+                                listaPorLinea,
+                                fecha,
+                                $"linea:{linea}"
+                            );
+                        }
+                        continue;
+                    }
+                    activa = ExisteLugar(c.Id, cuando) && !ExisteLugar(c.Id, hasta);
                 }
                 else
                     continue;
                 GuardarAlerta(regla.Id, c.Id, texto, vence, activa, fecha);
             }
         }
+    }
+
+    private DateOnly SumarDias(DateOnly fecha, int dias, JsonElement parametros)
+    {
+        if (!parametros.TryGetProperty("tipoDias", out var tipo) || tipo.GetString() != "habiles")
+            return fecha.AddDays(dias);
+        int restantes = dias;
+        while (restantes > 0)
+        {
+            fecha = fecha.AddDays(1);
+            if (
+                fecha.DayOfWeek is not (DayOfWeek.Saturday or DayOfWeek.Sunday)
+                && !EsFeriado(fecha, parametros)
+            )
+                restantes--;
+        }
+        return fecha;
+    }
+
+    private bool EsFeriado(DateOnly fecha, JsonElement parametros)
+    {
+        object? calendario =
+            parametros.TryGetProperty("calendarioId", out var seleccionado)
+            && seleccionado.ValueKind == JsonValueKind.Number
+                ? seleccionado.GetInt64()
+                : null;
+        using var q = conexion.CreateCommand();
+        q.CommandText =
+            "SELECT EXISTS(SELECT 1 FROM feriados f JOIN calendarios_feriados c ON c.id=f.calendario_id WHERE f.fecha=$f AND f.activo=1 AND c.activo=1 AND c.id=COALESCE($c,(SELECT id FROM calendarios_feriados WHERE activo=1 AND predeterminado=1 LIMIT 1)));";
+        q.Parameters.AddWithValue("$f", fecha.ToString("yyyy-MM-dd", CultureInfo.InvariantCulture));
+        q.Parameters.AddWithValue("$c", calendario ?? DBNull.Value);
+        return Convert.ToInt64(q.ExecuteScalar()) != 0;
     }
 
     public IReadOnlyList<AlertaEsquema> ListarAbiertas(
@@ -342,7 +532,7 @@ public sealed class EvaluadorAlertasEsquemaDiccionario(
     {
         using var q = conexion.CreateCommand();
         q.CommandText =
-            "SELECT EXISTS(SELECT 1 FROM ubicaciones_cadena_diccionario WHERE cadena_id=$c AND lugar_id=$l AND estado='activo' AND ($linea IS NULL OR linea_id=$linea OR linea_id IS NULL));";
+            "SELECT EXISTS(SELECT 1 FROM ubicaciones_diccionario_todas WHERE cadena_id=$c AND lugar_id=$l AND estado='activo' AND ($linea IS NULL OR linea_id=$linea OR linea_id IS NULL));";
         q.Parameters.AddWithValue("$c", c);
         q.Parameters.AddWithValue("$l", l);
         q.Parameters.AddWithValue("$linea", (object?)linea ?? DBNull.Value);
@@ -353,7 +543,7 @@ public sealed class EvaluadorAlertasEsquemaDiccionario(
     {
         using var q = conexion.CreateCommand();
         q.CommandText =
-            "SELECT DISTINCT linea_id FROM ubicaciones_cadena_diccionario WHERE cadena_id=$c AND lugar_id=$l AND linea_id IS NOT NULL AND estado='activo' ORDER BY linea_id;";
+            "SELECT DISTINCT linea_id FROM ubicaciones_diccionario_todas WHERE cadena_id=$c AND lugar_id=$l AND linea_id IS NOT NULL AND estado='activo' ORDER BY linea_id;";
         q.Parameters.AddWithValue("$c", c);
         q.Parameters.AddWithValue("$l", lugar);
         using var r = q.ExecuteReader();
@@ -367,7 +557,7 @@ public sealed class EvaluadorAlertasEsquemaDiccionario(
     {
         using var q = conexion.CreateCommand();
         q.CommandText =
-            "SELECT COALESCE((SELECT fecha_reconocida FROM valores_informativos_documento WHERE version_id=u.version_id AND dato='fecha_documento'),substr(v.registrada_en,1,10)) FROM ubicaciones_cadena_diccionario u JOIN versiones_documento v ON v.id=u.version_id WHERE u.cadena_id=$c AND u.lugar_id=$l AND u.estado='activo' AND ($linea IS NULL OR u.linea_id=$linea) ORDER BY u.orden LIMIT 1;";
+            "SELECT COALESCE((SELECT fecha_reconocida FROM valores_informativos_documento WHERE version_id=u.version_id AND dato='fecha_documento'),substr(v.registrada_en,1,10)) FROM ubicaciones_diccionario_todas u JOIN versiones_documento v ON v.id=u.version_id WHERE u.cadena_id=$c AND u.lugar_id=$l AND u.estado='activo' AND ($linea IS NULL OR u.linea_id=$linea) ORDER BY u.orden LIMIT 1;";
         q.Parameters.AddWithValue("$c", c);
         q.Parameters.AddWithValue("$l", l);
         q.Parameters.AddWithValue("$linea", (object?)linea ?? DBNull.Value);

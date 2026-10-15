@@ -77,7 +77,10 @@
             SelectionChanged="Filtro_TextChanged"
             Margin="0,0,0,6"
           >
+            <ComboBoxItem Content="Activas + completas" />
             <ComboBoxItem Content="Activas" />
+            <ComboBoxItem Content="Completas" />
+            <ComboBoxItem Content="Cerradas" />
             <ComboBoxItem Content="Todas" />
           </ComboBox>
         </StackPanel>
@@ -129,6 +132,31 @@
             </WrapPanel>
             <ItemsControl x:Name="Arbol" />
             <StackPanel x:Name="DatosCadena" Margin="16,12,0,8" />
+            <StackPanel x:Name="PanelCotizaciones" Margin="16,8,0,12" Visibility="Collapsed">
+              <TextBlock
+                x:Name="TituloCotizacionesCliente"
+                Text="Cotizaciones del mismo cliente"
+                FontWeight="Bold"
+                FontSize="15"
+              />
+              <ItemsControl x:Name="CotizacionesCliente" />
+              <TextBlock
+                x:Name="TituloCotizacionesProveedor"
+                Text="Cotizaciones del proveedor"
+                FontWeight="Bold"
+                FontSize="15"
+                Margin="0,10,0,0"
+              />
+              <ItemsControl x:Name="CotizacionesProveedor" />
+              <TextBlock
+                x:Name="TituloCotizacionesAgregadas"
+                Text="Agregadas a mano"
+                FontWeight="Bold"
+                FontSize="15"
+                Margin="0,10,0,0"
+              />
+              <ItemsControl x:Name="CotizacionesAgregadas" />
+            </StackPanel>
           </StackPanel>
         </ScrollViewer>
       </DockPanel>

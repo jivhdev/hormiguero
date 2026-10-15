@@ -9,7 +9,9 @@ public sealed record DatoEnlazante(
     string Grupo,
     int Orden,
     string? CodigoReferencia,
-    string EtiquetaTipo
+    string EtiquetaTipo,
+    string? EnlazaComo = null,
+    bool Enlazable = true
 );
 
 public sealed record DatoTipoDocumento(
@@ -472,6 +474,25 @@ public static class DiccionarioDatosEnlazantes
                 null,
                 "Nombre propio"
             ),
+            new(
+                "guia_firmada_proveedor",
+                "N° Guía firmada del proveedor",
+                "Del proveedor",
+                24,
+                "GRCF",
+                "Guía firmada del proveedor",
+                "guia_proveedor"
+            ),
+            new(
+                "tipo_entrega",
+                "Tipo de entrega (retiro o despacho)",
+                "Otros",
+                25,
+                null,
+                "Tipo de entrega",
+                null,
+                false
+            ),
         ]);
 }
 
@@ -518,6 +539,8 @@ public sealed class RepositorioDatosEnlazantes(SqliteConnection conexion)
         var dato =
             DiccionarioDatosEnlazantes.Todos.SingleOrDefault(d => d.Id == datoId)
             ?? throw new ArgumentException("El dato no pertenece al diccionario.", nameof(datoId));
+        if (!dato.Enlazable)
+            return [];
         return [new(dato, valor, BuscarDocumentos(datoId, valor))];
     }
 
@@ -539,7 +562,9 @@ public sealed class RepositorioDatosEnlazantes(SqliteConnection conexion)
                 .ToArray();
             if (coincidencias.Length == 0)
                 continue;
-            var dato = DiccionarioDatosEnlazantes.Todos.Single(d => d.Id == id);
+            var dato = DiccionarioDatosEnlazantes.Todos.SingleOrDefault(d => d.Id == id);
+            if (dato is null || !dato.Enlazable)
+                continue;
             resultado.Add(new(dato, valor, coincidencias));
         }
         return resultado;
@@ -549,7 +574,7 @@ public sealed class RepositorioDatosEnlazantes(SqliteConnection conexion)
     {
         using var comando = conexion.CreateCommand();
         comando.CommandText =
-            "SELECT id,nombre,grupo,orden,codigo_referencia FROM diccionario_datos ORDER BY orden;";
+            "SELECT id,nombre,grupo,orden,codigo_referencia,enlaza_como FROM diccionario_datos ORDER BY orden;";
         using var lector = comando.ExecuteReader();
         var datos = new List<DatoEnlazante>();
         while (lector.Read())
@@ -561,8 +586,14 @@ public sealed class RepositorioDatosEnlazantes(SqliteConnection conexion)
                     lector.GetInt32(3),
                     lector.IsDBNull(4) ? null : lector.GetString(4),
                     DiccionarioDatosEnlazantes
-                        .Todos.Single(d => d.Id == lector.GetString(0))
-                        .EtiquetaTipo
+                        .Todos.SingleOrDefault(d => d.Id == lector.GetString(0))
+                        ?.EtiquetaTipo
+                        ?? lector.GetString(1),
+                    lector.IsDBNull(5) ? null : lector.GetString(5),
+                    DiccionarioDatosEnlazantes
+                        .Todos.SingleOrDefault(d => d.Id == lector.GetString(0))
+                        ?.Enlazable
+                        ?? false
                 )
             );
         return datos;
@@ -572,6 +603,14 @@ public sealed class RepositorioDatosEnlazantes(SqliteConnection conexion)
     {
         ArgumentException.ThrowIfNullOrWhiteSpace(dato.DatoId);
         ArgumentException.ThrowIfNullOrWhiteSpace(dato.Diseno);
+        bool enlazable =
+            dato.Enlazable
+            && (
+                DiccionarioDatosEnlazantes
+                    .Todos.SingleOrDefault(d => d.Id == dato.DatoId)
+                    ?.Enlazable
+                ?? true
+            );
         if (dato.Pagina < 1 || dato.X < 0 || dato.Y < 0 || dato.Ancho <= 0 || dato.Alto <= 0)
             throw new ArgumentOutOfRangeException(
                 nameof(dato),
@@ -609,7 +648,7 @@ public sealed class RepositorioDatosEnlazantes(SqliteConnection conexion)
         comando.Parameters.AddWithValue("$f", DateTime.Now.ToString("o"));
         comando.Parameters.AddWithValue("$id", dato.Id);
         comando.Parameters.AddWithValue("$t", dato.DefineTipo ? 1 : 0);
-        comando.Parameters.AddWithValue("$e", dato.Enlazable ? 1 : 0);
+        comando.Parameters.AddWithValue("$e", enlazable ? 1 : 0);
         long id = Convert.ToInt64(
             comando.ExecuteScalar()
                 ?? throw new InvalidOperationException(

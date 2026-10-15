@@ -74,6 +74,24 @@ public partial class IdentificarSinTextoWindow : Window
     {
         InitializeComponent();
         _rutaArchivo = rutaArchivo;
+        TipoCadena.ItemsSource = Hormiguero
+            .Nucleo.Datos.PrecargaCadenasJcv.TiposActivos(
+                Hormiguero.Nucleo.Datos.DocumentosGuardados.RutaBaseComun
+            )
+            .Select(t => new KeyValuePair<string, string>(t.Id, t.Nombre))
+            .ToArray();
+        ProveedorCadena.ItemsSource = Hormiguero
+            .Nucleo.Datos.PrecargaCadenasJcv.ProveedoresActivos(
+                Hormiguero.Nucleo.Datos.DocumentosGuardados.RutaBaseComun
+            )
+            .Select(p => new KeyValuePair<string, string>(p.Id, p.Id))
+            .ToArray();
+        TipoCadena.SelectedValue = Hormiguero.Nucleo.Datos.DatosDeApp.LeerPreferencia(
+            "archivero.sin_texto.tipo_cadena"
+        );
+        ProveedorCadena.SelectedValue = Hormiguero.Nucleo.Datos.DatosDeApp.LeerPreferencia(
+            "archivero.sin_texto.proveedor_cadena"
+        );
 
         if (esArchivoDanado)
         {
@@ -605,6 +623,39 @@ public partial class IdentificarSinTextoWindow : Window
             }
 
             _pendientes.Quitar(_rutaArchivo);
+            string? errorRegistro = null;
+            if (
+                TipoCadena.SelectedValue is string tipoCadena
+                && ProveedorCadena.SelectedValue is string proveedorCadena
+            )
+            {
+                try
+                {
+                    var ubicacion = _ubicaciones.ObtenerOCrear(_carpetaMadre, _formato, _patron);
+                    _ubicaciones.AsociarACadena(ubicacion.Id, tipoCadena, proveedorCadena);
+                    PublicadorDatosDocumentoService.PublicarGuiaFirmada(
+                        rutaFinal,
+                        tipoCadena,
+                        proveedorCadena
+                    );
+                    Hormiguero.Nucleo.Datos.DatosDeApp.GuardarPreferencia(
+                        "archivero.sin_texto.tipo_cadena",
+                        tipoCadena
+                    );
+                    Hormiguero.Nucleo.Datos.DatosDeApp.GuardarPreferencia(
+                        "archivero.sin_texto.proveedor_cadena",
+                        proveedorCadena
+                    );
+                }
+                catch (Exception error)
+                {
+                    errorRegistro = error.Message;
+                    AuditoriaService.Registrar(
+                        "PUBLICACION_GRCF_FALLIDA",
+                        $"Ruta={rutaFinal}; Error={error.Message}"
+                    );
+                }
+            }
             AuditoriaService.Registrar(
                 "GUARDADO_MANUAL_SIN_TEXTO",
                 _atajoUsado is null
@@ -613,6 +664,8 @@ public partial class IdentificarSinTextoWindow : Window
             );
 
             var mensaje = $"Documento guardado en:\n{rutaFinal}";
+            if (errorRegistro is not null)
+                mensaje += $"\n\nNo se pudo registrar en la cadena: {errorRegistro}";
             if (_nombreAtajoAGuardar is not null)
             {
                 mensaje += "\n\n" + GuardarAtajo(_nombreAtajoAGuardar);

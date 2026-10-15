@@ -44,6 +44,29 @@
           />
           <TextBlock Text="Nombre del esquema" FontWeight="Bold" Margin="0,12,0,4" />
           <TextBox x:Name="Nombre" Width="420" HorizontalAlignment="Left" />
+          <TextBlock Text="Se reconoce por" FontWeight="Bold" Margin="0,12,0,4" />
+          <TextBlock
+            Text="Agregue un RUT o un nombre de proveedor."
+            Foreground="Gray"
+            Margin="0,0,0,4"
+          />
+          <StackPanel Orientation="Horizontal">
+            <TextBox x:Name="ReconocimientoNuevo" Width="340" />
+            <Button
+              Content="Agregar reconocimiento"
+              Click="AgregarReconocimiento_Click"
+              Margin="6,0,0,0"
+              Padding="8,4"
+            />
+          </StackPanel>
+          <ListBox x:Name="Reconocimientos" Width="420" Height="90" Margin="0,4,0,0" />
+          <Button
+            Content="Quitar seleccionado"
+            Click="QuitarReconocimiento_Click"
+            Width="150"
+            HorizontalAlignment="Left"
+            Margin="0,4,0,0"
+          />
         </StackPanel>
         <Grid x:Name="PanelTipos" Visibility="Collapsed">
           <Grid.ColumnDefinitions>
@@ -211,6 +234,9 @@
             <RowDefinition Height="Auto" />
             <RowDefinition Height="*" />
             <RowDefinition Height="Auto" />
+            <RowDefinition Height="Auto" />
+            <RowDefinition Height="Auto" />
+            <RowDefinition Height="Auto" />
           </Grid.RowDefinitions>
           <TextBlock
             Text="Opcional. Si el proceso tiene variantes, por ejemplo Retiro o Despacho, escríbalas aquí; Archivero preguntará cuál es al llegar el documento que decide."
@@ -230,6 +256,43 @@
               Margin="0,0,10,0"
             />
             <ComboBox x:Name="LugarDecideModo" Width="300" DisplayMemberPath="Nombre" />
+          </DockPanel>
+          <TextBlock
+            Grid.Row="4"
+            Text="Proponer el modo cuando el texto contenga…"
+            FontWeight="Bold"
+            Margin="0,12,0,6"
+          />
+          <DockPanel Grid.Row="5" LastChildFill="False" Margin="0,0,0,6">
+            <TextBox
+              x:Name="ContienePropuesta"
+              Width="220"
+              Margin="0,0,6,0"
+              ToolTip="Texto que se buscará en el dato marcado de la OCC"
+            />
+            <ComboBox x:Name="ModoPropuestaNuevo" Width="180" Margin="0,0,6,0" />
+            <Button Content="Agregar regla" Click="AgregarReglaPropuesta_Click" Padding="8,3" />
+            <Button
+              Content="Actualizar seleccionada"
+              Click="ActualizarReglaPropuesta_Click"
+              Padding="8,3"
+              Margin="6,0,0,0"
+            />
+          </DockPanel>
+          <DockPanel Grid.Row="6">
+            <Button
+              DockPanel.Dock="Bottom"
+              Content="Quitar regla seleccionada"
+              Click="QuitarReglaPropuesta_Click"
+              HorizontalAlignment="Right"
+              Padding="8,3"
+              Margin="0,4,0,0"
+            />
+            <ListBox
+              x:Name="ReglasPropuestaLista"
+              MinHeight="90"
+              SelectionChanged="ReglaPropuesta_SelectionChanged"
+            />
           </DockPanel>
         </Grid>
         <DockPanel x:Name="PanelAvisos" Visibility="Collapsed" Margin="0,4">

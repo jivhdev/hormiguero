@@ -229,6 +229,27 @@
 
       <!-- Paso final: editar el nombre de archivo, antes de guardar -->
       <StackPanel Name="PanelNombreArchivo" Visibility="Collapsed">
+        <TextBlock Text="Datos opcionales para cadenas" FontWeight="Bold" Margin="0,0,0,4" />
+        <TextBlock
+          Text="Si conoce el tipo de documento y el proveedor, Archivero lo registra en la cadena."
+          TextWrapping="Wrap"
+          Foreground="{DynamicResource Hormiguero.TextoSecundario}"
+          Margin="0,0,0,6"
+        />
+        <TextBlock Text="Tipo de documento" />
+        <ComboBox
+          Name="TipoCadena"
+          DisplayMemberPath="Value"
+          SelectedValuePath="Key"
+          Margin="0,0,0,5"
+        />
+        <TextBlock Text="Proveedor" />
+        <ComboBox
+          Name="ProveedorCadena"
+          DisplayMemberPath="Value"
+          SelectedValuePath="Key"
+          Margin="0,0,0,8"
+        />
         <TextBlock
           Text="Nombre con el que se guarda el archivo"
           FontWeight="Bold"
