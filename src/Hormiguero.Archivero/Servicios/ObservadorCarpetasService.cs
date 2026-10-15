@@ -91,12 +91,27 @@ public sealed class ObservadorCarpetasService : IDisposable
                         NotifyFilters.FileName | NotifyFilters.LastWrite | NotifyFilters.Size,
                     EnableRaisingEvents = true,
                 };
-                vigilante.Created += (_, e) => Encolar(e.FullPath, carpeta);
-                vigilante.Changed += (_, e) => Encolar(e.FullPath, carpeta);
-                vigilante.Renamed += (_, e) => Encolar(e.FullPath, carpeta);
-                vigilante.Error += (_, _) =>
-                    Avisar(
-                        $"Se perdió la vigilancia de «{carpeta.Nombre}». Se seguirá revisando periódicamente."
+                vigilante.Created += (_, e) =>
+                    ProtegerEvento("Created", e.FullPath, () => Encolar(e.FullPath, carpeta));
+                vigilante.Changed += (_, e) =>
+                    ProtegerEvento("Changed", e.FullPath, () => Encolar(e.FullPath, carpeta));
+                vigilante.Renamed += (_, e) =>
+                    ProtegerEvento("Renamed", e.FullPath, () => Encolar(e.FullPath, carpeta));
+                vigilante.Error += (_, e) =>
+                    ProtegerEvento(
+                        "Error",
+                        carpeta.Ruta,
+                        () =>
+                        {
+                            if (e.GetException() is Exception error)
+                                AuditoriaService.Registrar(
+                                    "ERROR_MANEJADOR_VIGILANTE",
+                                    $"Evento=Error; Ruta={carpeta.Ruta}; {error}"
+                                );
+                            Avisar(
+                                $"Se perdió la vigilancia de «{carpeta.Nombre}». Se seguirá revisando periódicamente."
+                            );
+                        }
                     );
                 _vigilantes.Add(vigilante);
             }
@@ -108,6 +123,21 @@ public sealed class ObservadorCarpetasService : IDisposable
         }
 
         _revision.Change(TimeSpan.Zero, TimeSpan.FromMinutes(5));
+    }
+
+    private static void ProtegerEvento(string nombre, string ruta, Action manejar)
+    {
+        try
+        {
+            manejar();
+        }
+        catch (Exception ex)
+        {
+            AuditoriaService.Registrar(
+                "ERROR_MANEJADOR_VIGILANTE",
+                $"Evento={nombre}; Ruta={ruta}; {ex}"
+            );
+        }
     }
 
     public void ActualizarCarpetas() => Iniciar();

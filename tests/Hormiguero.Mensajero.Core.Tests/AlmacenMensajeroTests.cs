@@ -305,6 +305,54 @@ public sealed class AlmacenMensajeroTests : IDisposable
     }
 
     [Fact]
+    public void Gestion_de_clientes_guarda_DV_incorrecto_y_cambia_la_clave_normalizada()
+    {
+        using (var almacen = new AlmacenMensajero(RutaBase))
+        {
+            almacen.GuardarClienteFacturaGestion(
+                "76.000.000-0",
+                "Empresa Importada",
+                ["uno@ejemplo.cl"],
+                true,
+                DateTime.Now
+            );
+            Assert.False(RutFactura.Validar("76000000-0"));
+
+            almacen.GuardarClienteFacturaGestion(
+                "77.000.000-0",
+                "Empresa Editada",
+                ["uno@ejemplo.cl", "dos@ejemplo.cl"],
+                true,
+                DateTime.Now,
+                "76000000-0"
+            );
+
+            Assert.Throws<FormatException>(() =>
+                almacen.GuardarClienteFacturaGestion(
+                    "sin numeros",
+                    "Cliente inválido",
+                    [],
+                    true,
+                    DateTime.Now
+                )
+            );
+        }
+
+        using var otra = new AlmacenMensajero(RutaBase);
+        Assert.Equal(
+            [
+                new ClienteFacturaGestion(
+                    "77000000-0",
+                    "Empresa Editada",
+                    "uno@ejemplo.cl; dos@ejemplo.cl",
+                    true
+                ),
+            ],
+            otra.LeerTodosClientesFactura()
+        );
+    }
+
+    [Fact]
     public void Recuerda_estados_de_envio_por_periodo_y_rut()
     {
         using (var almacen = new AlmacenMensajero(RutaBase))

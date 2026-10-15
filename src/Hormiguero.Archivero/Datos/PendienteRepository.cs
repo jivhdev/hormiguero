@@ -58,10 +58,40 @@ public class PendienteRepository
     public bool Quitar(string rutaArchivo)
     {
         using var conexion = BaseDeDatos.CrearConexion();
+        using (var borrarDestino = conexion.CreateCommand())
+        {
+            borrarDestino.CommandText =
+                "DELETE FROM PendientesDuplicados WHERE RutaArchivo = $ruta;";
+            borrarDestino.Parameters.AddWithValue("$ruta", rutaArchivo);
+            borrarDestino.ExecuteNonQuery();
+        }
         using var comando = conexion.CreateCommand();
         comando.CommandText = "DELETE FROM Pendientes WHERE RutaArchivo = $ruta;";
         comando.Parameters.AddWithValue("$ruta", rutaArchivo);
         return comando.ExecuteNonQuery() > 0;
+    }
+
+    public void GuardarDestinoDuplicado(string rutaArchivo, string rutaDestino)
+    {
+        using var conexion = BaseDeDatos.CrearConexion();
+        using var comando = conexion.CreateCommand();
+        comando.CommandText = """
+            INSERT INTO PendientesDuplicados (RutaArchivo, RutaDestino) VALUES ($ruta, $destino)
+            ON CONFLICT(RutaArchivo) DO UPDATE SET RutaDestino = excluded.RutaDestino;
+            """;
+        comando.Parameters.AddWithValue("$ruta", rutaArchivo);
+        comando.Parameters.AddWithValue("$destino", rutaDestino);
+        comando.ExecuteNonQuery();
+    }
+
+    public string? ObtenerDestinoDuplicado(string rutaArchivo)
+    {
+        using var conexion = BaseDeDatos.CrearConexion();
+        using var comando = conexion.CreateCommand();
+        comando.CommandText =
+            "SELECT RutaDestino FROM PendientesDuplicados WHERE RutaArchivo = $ruta;";
+        comando.Parameters.AddWithValue("$ruta", rutaArchivo);
+        return comando.ExecuteScalar() as string;
     }
 
     public List<ArchivoPendiente> ObtenerTodos()

@@ -210,12 +210,13 @@ public sealed class AlmacenMensajero : IDisposable
         string razonSocial,
         IEnumerable<string> correos,
         bool activo,
-        DateTime ahora
+        DateTime ahora,
+        string? rutOriginal = null
     )
     {
         rut = ClickFactura.RutFactura.NormalizarSeguro(rut);
-        if (!ClickFactura.RutFactura.Validar(rut))
-            throw new FormatException("El RUT no es válido.");
+        if (rut.Length == 0 || !rut.Any(char.IsAsciiDigit))
+            throw new FormatException("Ingresa un RUT con al menos un número.");
         if (string.IsNullOrWhiteSpace(razonSocial))
             throw new FormatException("Ingresa la razón social.");
         string correo = ClickFactura.CorreoFactura.NormalizarParaGuardar(
@@ -223,17 +224,29 @@ public sealed class AlmacenMensajero : IDisposable
         );
         string fecha = ahora.ToString("yyyy-MM-dd HH:mm:ss", CultureInfo.InvariantCulture);
         using var comando = conexion.CreateCommand();
-        comando.CommandText =
-            "INSERT INTO clientes_factura(rut, razon_social, correo, activo, creado, actualizado) "
-            + "VALUES ($rut, $razon, $correo, $activo, $fecha, $fecha) "
-            + "ON CONFLICT(rut) DO UPDATE SET razon_social = excluded.razon_social, "
-            + "correo = excluded.correo, activo = excluded.activo, actualizado = excluded.actualizado;";
+        string claveAnterior = ClickFactura.RutFactura.NormalizarSeguro(rutOriginal);
+        if (claveAnterior.Length > 0 && claveAnterior != rut)
+        {
+            comando.CommandText =
+                "UPDATE clientes_factura SET rut = $rut, razon_social = $razon, correo = $correo, "
+                + "activo = $activo, actualizado = $fecha WHERE rut = $rutAnterior;";
+            comando.Parameters.AddWithValue("$rutAnterior", claveAnterior);
+        }
+        else
+        {
+            comando.CommandText =
+                "INSERT INTO clientes_factura(rut, razon_social, correo, activo, creado, actualizado) "
+                + "VALUES ($rut, $razon, $correo, $activo, $fecha, $fecha) "
+                + "ON CONFLICT(rut) DO UPDATE SET razon_social = excluded.razon_social, "
+                + "correo = excluded.correo, activo = excluded.activo, actualizado = excluded.actualizado;";
+        }
         comando.Parameters.AddWithValue("$rut", rut);
         comando.Parameters.AddWithValue("$razon", razonSocial.Trim());
         comando.Parameters.AddWithValue("$correo", correo);
         comando.Parameters.AddWithValue("$activo", activo ? 1 : 0);
         comando.Parameters.AddWithValue("$fecha", fecha);
-        comando.ExecuteNonQuery();
+        if (comando.ExecuteNonQuery() == 0 && claveAnterior.Length > 0 && claveAnterior != rut)
+            throw new InvalidOperationException("El cliente que se intentó editar ya no existe.");
     }
 
     public void EliminarClienteFactura(string rut, DateTime ahora)

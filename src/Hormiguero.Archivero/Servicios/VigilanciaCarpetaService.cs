@@ -58,21 +58,62 @@ public class VigilanciaCarpetaService : IDisposable
         // FileSystemWatcher entrega los eventos Created de a uno, en orden, en un unico hilo de
         // fondo: como este handler es sincronico (sin async/Task.Run), los archivos se procesan
         // de a uno y nunca en paralelo, tal como pide SPEC.md.
-        _watcher.Created += (_, e) => ProcesarArchivo(e.FullPath);
+        _watcher.Created += (_, e) =>
+            EjecutarManejadorProtegido("Created", e.FullPath, () => ProcesarArchivo(e.FullPath));
 
         // Si el usuario saca un archivo de la carpeta observada por fuera de Archivero
         // (lo borra, lo mueve a mano) mientras estaba en pendientes, hay que reflejarlo:
         // si no, la lista de pendientes queda mostrando un archivo que ya no existe.
-        _watcher.Deleted += (_, e) => ManejarArchivoEliminado(e.FullPath);
+        _watcher.Deleted += (_, e) =>
+            EjecutarManejadorProtegido(
+                "Deleted",
+                e.FullPath,
+                () => ManejarArchivoEliminado(e.FullPath)
+            );
         _watcher.Renamed += (_, e) =>
         {
-            ManejarArchivoEliminado(e.OldFullPath);
-            ProcesarArchivo(e.FullPath);
+            EjecutarManejadorProtegido(
+                "Renamed",
+                e.FullPath,
+                () =>
+                {
+                    ManejarArchivoEliminado(e.OldFullPath);
+                    ProcesarArchivo(e.FullPath);
+                }
+            );
         };
 
         // Si la carpeta observada se borra o se mueve mientras Archivero esta corriendo, el
         // FileSystemWatcher dispara Error en vez de quedarse callado.
-        _watcher.Error += (_, _) => CarpetaObservadaNoDisponible?.Invoke();
+        _watcher.Error += (_, e) =>
+            EjecutarManejadorProtegido(
+                "Error",
+                _carpetaObservada,
+                () =>
+                {
+                    if (e.GetException() is Exception error)
+                        AuditoriaService.Registrar(
+                            "ERROR_MANEJADOR_VIGILANTE",
+                            $"Evento=Error; {error}"
+                        );
+                    CarpetaObservadaNoDisponible?.Invoke();
+                }
+            );
+    }
+
+    internal static void EjecutarManejadorProtegido(string nombre, string ruta, Action manejar)
+    {
+        try
+        {
+            manejar();
+        }
+        catch (Exception ex)
+        {
+            AuditoriaService.Registrar(
+                "ERROR_MANEJADOR_VIGILANTE",
+                $"Evento={nombre}; Ruta={ruta}; {ex}"
+            );
+        }
     }
 
     /// <summary>

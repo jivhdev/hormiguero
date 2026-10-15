@@ -90,6 +90,11 @@ public static class BaseDeDatos
                 Motivo TEXT NOT NULL DEFAULT 'NuevoDocumento'
             );
 
+            CREATE TABLE IF NOT EXISTS PendientesDuplicados (
+                RutaArchivo TEXT PRIMARY KEY,
+                RutaDestino TEXT NOT NULL
+            );
+
             CREATE TABLE IF NOT EXISTS Borradores (
                 RutaArchivo TEXT PRIMARY KEY,
                 Datos TEXT NOT NULL

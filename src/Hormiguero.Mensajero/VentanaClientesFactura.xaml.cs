@@ -87,7 +87,12 @@ public partial class VentanaClientesFactura : Window
         actual.RazonSocial = CampoRazon.Text.Trim();
         actual.Correo = string.Join("; ", correos);
         actual.Activo = CampoActivo.IsChecked == true;
-        actual.Modificado = true;
+        actual.Modificado =
+            actual.EsNuevo
+            || actual.Rut != actual.RutOriginal
+            || actual.RazonSocial != actual.RazonSocialOriginal
+            || actual.Correo != actual.CorreoOriginal
+            || actual.Activo != actual.ActivoOriginal;
     }
 
     private void AgregarCorreo_Click(object sender, RoutedEventArgs e)
@@ -167,32 +172,45 @@ public partial class VentanaClientesFactura : Window
     private void Guardar_Click(object sender, RoutedEventArgs e)
     {
         CapturarActual();
-        try
+        var errores = new List<string>();
+        var rutIncorrecto = new List<string>();
+        foreach (ClienteEdicion cliente in clientes.Where(cliente => cliente.Modificado).ToArray())
         {
-            foreach (ClienteEdicion cliente in clientes.Where(cliente => cliente.Modificado))
+            try
             {
                 almacen.GuardarClienteFacturaGestion(
                     cliente.Rut,
                     cliente.RazonSocial,
                     CorreoFactura.Separar(cliente.Correo),
                     cliente.Activo,
-                    DateTime.Now
+                    DateTime.Now,
+                    cliente.EsNuevo ? null : cliente.RutOriginal
                 );
                 cliente.Modificado = false;
                 cliente.EsNuevo = false;
+                cliente.MarcarGuardado();
+                if (!RutFactura.Validar(cliente.Rut))
+                    rutIncorrecto.Add(cliente.RazonSocial);
             }
-            TextoAviso.Text = "Cambios guardados.";
-            Recargar();
+            catch (Exception excepcion)
+            {
+                MensajeroLog.RegistrarError(
+                    $"Guardar cliente de Facturas ({cliente.RazonSocial}, {cliente.Rut})",
+                    excepcion
+                );
+                errores.Add($"{cliente.RazonSocial} ({cliente.Rut}): {excepcion.Message}");
+            }
         }
-        catch (Exception excepcion)
-        {
-            MensajeroLog.RegistrarError("Guardar clientes de Facturas", excepcion);
-            MostrarAviso(
-                "Error",
-                $"No se pudieron guardar los cambios: {excepcion.Message}",
-                false
-            );
-        }
+
+        ActualizarLista();
+        var avisos = rutIncorrecto
+            .Select(razon => $"Revisa el RUT de {razon}: el dígito verificador no calza.")
+            .Concat(errores.Select(error => $"No se guardó {error}"))
+            .ToArray();
+        TextoAviso.Text =
+            avisos.Length == 0 ? "Guardado." : $"Guardado. {string.Join(" ", avisos)}";
+        if (avisos.Length > 0)
+            MostrarAviso("Guardar clientes", TextoAviso.Text, errores.Count == 0);
     }
 
     private void ImportarClientesFactura_Click(object sender, RoutedEventArgs e)
@@ -259,6 +277,7 @@ public partial class VentanaClientesFactura : Window
             RazonSocial = cliente.RazonSocial;
             Correo = cliente.Correo;
             Activo = cliente.Activo;
+            MarcarGuardado();
         }
 
         public string Rut { get; set; } = "";
@@ -267,6 +286,18 @@ public partial class VentanaClientesFactura : Window
         public bool Activo { get; set; }
         public bool Modificado { get; set; }
         public bool EsNuevo { get; set; }
+        public string RutOriginal { get; private set; } = "";
+        public string RazonSocialOriginal { get; private set; } = "";
+        public string CorreoOriginal { get; private set; } = "";
+        public bool ActivoOriginal { get; private set; }
+
+        public void MarcarGuardado()
+        {
+            RutOriginal = Rut;
+            RazonSocialOriginal = RazonSocial;
+            CorreoOriginal = Correo;
+            ActivoOriginal = Activo;
+        }
 
         public override string ToString() => $"{RazonSocial} ({Rut})";
     }
