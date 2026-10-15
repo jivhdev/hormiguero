@@ -198,8 +198,8 @@ internal sealed class DialogoEditorAviso : Window
             "Documento del proceso" => "UbicacionAviso",
             "Contar desde" => "OrigenAviso",
             "Tipo de días" => "TipoDiasAviso",
-            "Hasta que llegue" or "Y también esté" => "DestinoAviso",
-            "Solo si existe (opcional)" => "CondicionAviso",
+            "Hasta que llegue" => "DestinoAviso",
+            "Solo si existe (opcional)" or "Y también esté (opcional)" => "CondicionAviso",
             "Cuando esté" => "CuandoAviso",
             _ => "",
         };
@@ -332,19 +332,21 @@ internal sealed class DialogoEditorAviso : Window
         _cuando = Selector("Cuando esté", _lugares.Cast<object>(), nameof(LugarAvisoOpcion.Nombre));
         if (_cuando.Items.Count > 0)
             _cuando.SelectedIndex = 0;
+        // "Hasta que llegue" es el documento que saca la cadena de la lista (ej. la factura
+        // propia); antes esta casilla decía "Y también esté" y confundía ambos papeles.
+        _condicion = Selector(
+            "Y también esté (opcional)",
+            new object[] { new LugarAvisoOpcion(-1, "Nada más") }.Concat(_lugares),
+            nameof(LugarAvisoOpcion.Nombre)
+        );
+        _condicion.SelectedIndex = 0;
         _destino = Selector(
-            "Y también esté",
+            "Hasta que llegue",
             _lugares.Cast<object>(),
             nameof(LugarAvisoOpcion.Nombre)
         );
         if (_destino.Items.Count > 1)
-            _destino.SelectedIndex = 1;
-        _condicion = Selector(
-            "Solo si existe (opcional)",
-            new object[] { new LugarAvisoOpcion(-1, "Sin condición") }.Concat(_lugares),
-            nameof(LugarAvisoOpcion.Nombre)
-        );
-        _condicion.SelectedIndex = 0;
+            _destino.SelectedIndex = _destino.Items.Count - 1;
         _texto = Texto("Nombre de la lista");
         ActualizarTextoSugerido(true);
     }
@@ -426,7 +428,7 @@ internal sealed class DialogoEditorAviso : Window
             "listo_para"
                 when _cuando?.SelectedItem is LugarAvisoOpcion c
                     && _destino?.SelectedItem is LugarAvisoOpcion l =>
-                $"Listo para {mensaje.Replace("Listos para ", "", StringComparison.OrdinalIgnoreCase)} cuando estén {c.Nombre} + {l.Nombre}.",
+                $"Listo para {mensaje.Replace("Listos para ", "", StringComparison.OrdinalIgnoreCase)} cuando esté{(_condicion?.SelectedItem is LugarAvisoOpcion { Orden: >= 0 } y ? $"n {c.Nombre} + {y.Nombre}" : $" {c.Nombre}")}, hasta que llegue {l.Nombre}.",
             _ => "Complete los campos del aviso.",
         };
     }
@@ -491,6 +493,13 @@ internal sealed class DialogoEditorAviso : Window
                 _destino!.SelectedItem = _lugares.FirstOrDefault(x =>
                     x.Orden == r.GetProperty("hastaLugarId").GetInt32()
                 );
+                if (
+                    r.TryGetProperty("condicionLugarId", out var condicion)
+                    && condicion.ValueKind == JsonValueKind.Number
+                )
+                    _condicion!.SelectedItem = _lugares.FirstOrDefault(x =>
+                        x.Orden == condicion.GetInt32()
+                    );
                 _texto!.Text = r.GetProperty("lista").GetString() ?? "";
             }
         }

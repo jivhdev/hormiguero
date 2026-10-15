@@ -797,7 +797,11 @@ public partial class DialogoEsquemaDiccionario : Window
             string lista = p.Lista.StartsWith("Listos para ", StringComparison.OrdinalIgnoreCase)
                 ? p.Lista["Listos para ".Length..]
                 : p.Lista;
-            return $"Listo para {lista} cuando estén {nombres.GetValueOrDefault(p.CuandoLugarId, "documento")} + {nombres.GetValueOrDefault(p.HastaLugarId, "documento")}";
+            string cuando = nombres.GetValueOrDefault(p.CuandoLugarId, "documento");
+            string hasta = nombres.GetValueOrDefault(p.HastaLugarId, "documento");
+            return p.CondicionLugarId is long y && y != p.CuandoLugarId
+                ? $"Listo para {lista} cuando estén {cuando} + {nombres.GetValueOrDefault(y, "documento")}, hasta que llegue {hasta}"
+                : $"Listo para {lista} cuando esté {cuando}, hasta que llegue {hasta}";
         }
         return "Aviso";
     }

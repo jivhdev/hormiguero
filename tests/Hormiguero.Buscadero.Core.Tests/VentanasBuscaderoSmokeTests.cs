@@ -406,7 +406,7 @@ public sealed class VentanasBuscaderoSmokeTests
             avisos,
             aviso =>
                 Propiedad<string>(aviso, "Frase")
-                == "Listo para facturar cuando est\u00e9n Gu\u00eda del proveedor + Factura del proveedor"
+                == "Listo para facturar cuando est\u00e9n Gu\u00eda del proveedor + Factura del proveedor, hasta que llegue Factura propia"
         );
         var plazo = avisos.Single(aviso => Propiedad<string>(aviso, "Tipo") == "plazo");
         using var parametros = System.Text.Json.JsonDocument.Parse(
@@ -536,16 +536,20 @@ public sealed class VentanasBuscaderoSmokeTests
                     cuando.SelectedItem = cuando
                         .Items.Cast<object>()
                         .Single(item => Propiedad<int>(item, "Orden") == 2);
+                    var tambien = Assert.IsType<ComboBox>(editor.FindName("CondicionAviso"));
+                    tambien.SelectedItem = tambien
+                        .Items.Cast<object>()
+                        .Single(item => Propiedad<int>(item, "Orden") == 3);
                     var destino = Assert.IsType<ComboBox>(editor.FindName("DestinoAviso"));
                     destino.SelectedItem = destino
                         .Items.Cast<object>()
-                        .Single(item => Propiedad<int>(item, "Orden") == 3);
+                        .Single(item => Propiedad<int>(item, "Orden") == 4);
                     Assert.Equal(
                         "Listos para facturar",
                         Assert.IsType<TextBox>(editor.FindName("TextoAviso")).Text
                     );
                     Assert.Equal(
-                        "Listo para facturar cuando estén Guía del proveedor + Factura del proveedor.",
+                        "Listo para facturar cuando estén Guía del proveedor + Factura del proveedor, hasta que llegue Factura propia.",
                         Assert.IsType<TextBlock>(editor.FindName("FraseAviso")).Text
                     );
                 }
