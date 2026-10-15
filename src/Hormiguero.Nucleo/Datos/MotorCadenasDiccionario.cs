@@ -147,6 +147,20 @@ public sealed class MotorCadenasDiccionario(
                 ProcesarVersion(pendiente);
                 if (EstaEnAlgunaCadena(versionId))
                     return new("ubicado");
+                if (EstaEnAlgunaCadena(pendiente))
+                {
+                    procesando.Remove(versionId);
+                    try
+                    {
+                        ResultadoMotorCadena reintento = ProcesarVersion(versionId);
+                        if (EstaEnAlgunaCadena(versionId))
+                            return reintento;
+                    }
+                    finally
+                    {
+                        procesando.Add(versionId);
+                    }
+                }
             }
             RegistrarSinInicio(versionId, proveedor.Clave, esquema, lugar);
             return new(
@@ -310,18 +324,21 @@ public sealed class MotorCadenasDiccionario(
     {
         if (buscador is null)
             yield break;
-        var enlace = esquema.Enlaces.FirstOrDefault(e =>
-            e.LugarA == lugar.Id || e.LugarB == lugar.Id
-        );
-        if (enlace is null)
-            yield break;
-        long otroId = enlace.LugarA == lugar.Id ? enlace.LugarB : enlace.LugarA;
-        var otro = esquema.Lugares.Single(l => l.Id == otroId);
+        var valores = LeerValores(versionId);
+        var vistos = new HashSet<long>();
         foreach (
-            Valor valor in LeerValores(versionId).Where(v => v.Dato == enlace.DatoDiccionarioId)
+            var enlace in esquema.Enlaces.Where(e => e.LugarA == lugar.Id || e.LugarB == lugar.Id)
         )
-        foreach (long candidato in buscador.Buscar(otro.DatoTipoId, valor.Original, esquema))
-            yield return candidato;
+        {
+            long otroId = enlace.LugarA == lugar.Id ? enlace.LugarB : enlace.LugarA;
+            var otro = esquema.Lugares.Single(l => l.Id == otroId);
+            foreach (
+                Valor valor in valores.Where(v => Equivalente(v.Dato, enlace.DatoDiccionarioId))
+            )
+            foreach (long candidato in buscador.Buscar(otro.DatoTipoId, valor.Original, esquema))
+                if (vistos.Add(candidato))
+                    yield return candidato;
+        }
     }
 
     private void RegistrarSinInicio(

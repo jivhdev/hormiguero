@@ -7,13 +7,24 @@ namespace Archivero.Servicios;
 public sealed class BuscadorDocumentosEnCarpetaService : IBuscadorDocumentosCadena
 {
     private readonly Func<IReadOnlyList<ConfiguracionDocumento>> configuraciones;
+    private readonly Func<
+        string,
+        ConfiguracionDocumento,
+        IReadOnlyList<ValorDocumentoLeido>
+    > extraerValores;
 
     public BuscadorDocumentosEnCarpetaService(
-        Func<IReadOnlyList<ConfiguracionDocumento>>? configuraciones = null
-    ) =>
+        Func<IReadOnlyList<ConfiguracionDocumento>>? configuraciones = null,
+        Func<string, ConfiguracionDocumento, IReadOnlyList<ValorDocumentoLeido>>? extraerValores =
+            null
+    )
+    {
         this.configuraciones =
             configuraciones
             ?? (() => new ConfiguracionDocumentoRepository().ObtenerTodasConPatrones());
+        this.extraerValores =
+            extraerValores ?? PublicadorDatosDocumentoService.ExtraerValoresObservados;
+    }
 
     public IReadOnlyList<long> Buscar(
         string tipoDiccionario,
@@ -29,7 +40,16 @@ public sealed class BuscadorDocumentosEnCarpetaService : IBuscadorDocumentosCade
         var versiones = new List<long>();
         if (tipoDiccionario == "guia_firmada_proveedor")
         {
-            foreach (var ubicacion in new UbicacionSinTextoRepository().ObtenerTodas())
+            foreach (
+                var (
+                    ubicacion,
+                    _,
+                    proveedor
+                ) in new UbicacionSinTextoRepository().ObtenerParaCadena(
+                    tipoDiccionario,
+                    esquema.Proveedor
+                )
+            )
             {
                 if (!Directory.Exists(ubicacion.CarpetaMadre))
                     continue;
@@ -49,7 +69,7 @@ public sealed class BuscadorDocumentosEnCarpetaService : IBuscadorDocumentosCade
                     PublicadorDatosDocumentoService.PublicarGuiaFirmada(
                         ruta,
                         tipoDiccionario,
-                        esquema.Proveedor,
+                        proveedor,
                         revisarEnlaces: false
                     );
                     versiones.Add(LeerVersion(ruta));
@@ -85,10 +105,7 @@ public sealed class BuscadorDocumentosEnCarpetaService : IBuscadorDocumentosCade
                 );
                 if (!digitos.TrimStart('0').Contains(numeroClave, StringComparison.Ordinal))
                     continue;
-                var valores = PublicadorDatosDocumentoService.ExtraerValoresObservados(
-                    ruta,
-                    configuracion
-                );
+                var valores = extraerValores(ruta, configuracion);
                 if (
                     !valores.Any(v =>
                         v.DatoDiccionarioId == tipoDiccionario

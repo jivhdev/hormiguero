@@ -626,6 +626,8 @@ public partial class IdentificarSinTextoWindow : Window
             {
                 try
                 {
+                    var ubicacion = _ubicaciones.ObtenerOCrear(_carpetaMadre, _formato, _patron);
+                    _ubicaciones.AsociarACadena(ubicacion.Id, tipoCadena, proveedorCadena);
                     PublicadorDatosDocumentoService.PublicarGuiaFirmada(
                         rutaFinal,
                         tipoCadena,

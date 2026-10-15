@@ -102,6 +102,13 @@ public static class BaseDeDatos
                 PatronCarpeta TEXT NULL
             );
 
+            CREATE TABLE IF NOT EXISTS UbicacionesSinTextoCadena (
+                UbicacionId INTEGER NOT NULL REFERENCES UbicacionesSinTexto(Id) ON DELETE CASCADE,
+                TipoId TEXT NOT NULL,
+                Proveedor TEXT NOT NULL,
+                PRIMARY KEY (UbicacionId, TipoId, Proveedor)
+            );
+
             CREATE TABLE IF NOT EXISTS AtajosGuardadoRapido (
                 Id INTEGER PRIMARY KEY AUTOINCREMENT,
                 Nombre TEXT NOT NULL UNIQUE,
