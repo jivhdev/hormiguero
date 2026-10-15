@@ -1,7 +1,46 @@
 ﻿HORMIGUERO - NOVEDADES PARA PROBAR (la versión exacta está en VERSION.txt)
 ===============================================================================
 
-LO MÁS NUEVO (11-10)  -- ojo: conviene partir con los datos en blanco (Reiniciar)
+LO MÁS NUEVO (15-10)  -- PARTE SIEMPRE CON LOS DATOS EN BLANCO (Reiniciar)
+== TUS CADENAS YA VIENEN CARGADAS: HOFFENS Y COBELCAR ==
+Al abrir con datos en blanco, Buscadero → "Cadenas documentales" → "Esquemas…" ya muestra
+"Proceso Hoffens" y "Proceso Cobelcar" (puedes verlos con "Editar"). Documentos: COVP, COV, OCL,
+NVV, OCC (la que inicia), GRC, GRCF, FCC, NCC, FCV, NCV. Modos: Retiro, Despacho RM, Despacho región.
+Avisos Hoffens: pedir fecha de retiro; "Cliente no retiró" (pasa la fecha sin GRC); "Proveedor no
+ha despachado" (5 días hábiles RM / 10 región desde la OCC sin GRC); "Falta guía firmada" (7 días
+corridos desde la FCC); "Listos para facturar" = GRCF + FCC, hasta tu FCV.
+Cobelcar: retiro igual; despacho 10 días hábiles; "Listos para facturar" = solo la FCC.
+TÚ MARCAS EN ARCHIVERO de dónde sale cada dato (como siempre). Lo que más importa marcar:
+ - OCC: N° OC propia, RUT o nombre del proveedor, N° NVV, N° OCL, fecha, y el dato nuevo
+   "Tipo de entrega (retiro o despacho)" en la zona INFORMACIÓN PARA EL DESPACHO/OBSERVACIONES.
+ - GRC: N° guía, N° OC propia (O. Compra). FCC: N° factura, N° guía, N° OC propia.
+ - FCV: N° factura propia, N° guía (Guía Tercero), N° OCL. NCC: N° FCC. NCV: N° FCV.
+El proveedor se reconoce por RUT o nombre (Hoffens: 96.548.020-K / HOFFENS; Cobelcar:
+78.615.580-0 / VELIZ BELTRAN / COBELCAR): una OCC y una guía del mismo proveedor caen juntas.
+== NINGÚN DOCUMENTO SIN CADENA ==
+- La OCC crea la cadena. Lo de antes (COVP, COV, OCL, NVV) espera en silencio a su OCC; cuando
+  llega, entra solo. Una NVV puede estar en dos cadenas (OCC a Hoffens y a Cobelcar).
+- Lo de después (GRC, FCC, FCV...) sin cadena: el programa BUSCA SU OCC EN LA CARPETA donde
+  Archivero guarda las OCC (por el número en el nombre del archivo, sin abrir todo) y crea la
+  cadena. Si no la encuentra → "Decisiones pendientes" como DUDOSO ("Falta la OCC 20527...") con
+  "Buscar otra vez" / "Crear cadena igual" / "Solo archivar". Si la OCC llega después, se resuelve solo.
+- GUÍA FIRMADA (escaneada): en "Pendientes de distribuir" elige "Tipo de documento" = Guía
+  firmada del proveedor y "Proveedor" = HOFFENS; el número sale del nombre del archivo
+  (ej. 1190036.pdf) y se enlaza sola con su GRC. El guardado rápido lo recuerda.
+== RETIRO O DESPACHO ==
+Al llegar la OCC, "Decisiones pendientes" muestra lo leído en la zona "Tipo de entrega" y propone
+(ej. «RETIRA CLIENTE» → Retiro). Tú confirmas; si es Retiro, escribes ahí la fecha de retiro.
+== ESTADO DE LA CADENA (Buscadero) ==
+Activa → Completa (cada GRC con su FCV) → se reabre si llega NCC/NCV → Cerrada a los 90 días.
+Las COV del mismo cliente aparecen sugeridas en el detalle de la cadena ("Agregar a esta cadena").
+== ARREGLOS ==
+- Mensajero, Facturas → Clientes: ya guarda aunque un RUT tenga el dígito verificador raro
+  (avisa para revisarlo) y un cliente con problema no impide guardar los demás.
+- Archivero: no se cae con guías firmadas duplicadas; cualquier error queda anotado en el registro.
+PARA PROBAR PRIMERO: archivar una OCC de Hoffens o Cobelcar marcando sus datos → ver la cadena en
+Buscadero → archivar su GRC/FCC → ver avisos y "Listos para facturar".
+
+ANTES (11-10)
 == CADENAS: ESQUEMA NUEVO (Buscadero → "Cadenas documentales" → "Esquemas…" → "Nuevo") ==
 7 pasos, todos con botones visibles abajo:
  1) Proveedor (autocompleta; el nombre del esquema se llena solo, se puede cambiar).
