@@ -52,3 +52,9 @@ El mismo motor corre para lo que llega por el asistente, por guardado automátic
 `dotnet build` sin advertencias; `dotnet test` todo pasa; `dotnet csharpier check .` sin errores en tus archivos. Español neutro. Reporte al final.
 
 ## Reporte del agente
+
+Implementé la completación recursiva de enlaces con documentos que ya están registrados en el Núcleo; los previos sin coincidencia quedan en espera, y los posteriores sin coincidencia generan decisiones `sin_inicio` con motivo. Archivero muestra estas decisiones con las acciones disponibles y Buscadero las presenta en una lista de solo lectura. Actualicé pruebas de GRCF antes de GRC y de completación automática.
+
+El bloque **no queda completo**. Falta buscar por número en las carpetas destino de las configuraciones de Archivero, leer y registrar candidatos sin moverlos, y conectar esa búsqueda al motor mediante una dependencia. Tampoco quedó resuelta la asociación de documentos propios previos a todos los esquemas activos: `ubicaciones_cadena_diccionario.version_id` es único y el motor actual no puede guardar una misma NVV en más de una cadena. Falta cubrir el límite de cardinalidad uno a uno y reintentar decisiones solo cuando llega el tipo y número faltantes. La vista de Archivero ofrece “Buscar otra vez” con el flujo preexistente de búsqueda en Buscadero; aún no invoca una búsqueda en carpetas.
+
+Verificación del estado actual: `dotnet build Hormiguero.slnx --no-restore` compiló con 0 advertencias y 0 errores; `dotnet test Hormiguero.slnx --no-build` pasó las 818 pruebas; `dotnet csharpier check .` pasó (342 archivos). Estas pruebas no cubren los puntos pendientes indicados arriba.

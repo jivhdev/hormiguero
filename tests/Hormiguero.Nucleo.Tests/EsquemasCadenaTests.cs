@@ -48,7 +48,7 @@ public sealed class EsquemasCadenaTests : IDisposable
             ("oc_propia", "900", true)
         );
         Assert.Equal("cadena_creada", new MotorCadenas(_conexion).ProcesarVersion(inicio).Estado);
-        Assert.Equal("sin_piso", new MotorCadenas(_conexion).ProcesarVersion(guia).Estado);
+        Assert.Equal("sin_inicio", new MotorCadenas(_conexion).ProcesarVersion(guia).Estado);
     }
 
     [Fact]
@@ -87,8 +87,8 @@ public sealed class EsquemasCadenaTests : IDisposable
         );
         var motor = new MotorCadenas(_conexion);
         long cadena = motor.ProcesarVersion(inicio).CadenaId!.Value;
-        Assert.Equal("ubicado", motor.ProcesarVersion(guia1).Estado);
-        Assert.Equal("ubicado", motor.ProcesarVersion(guia2).Estado);
+        Assert.Equal("ya_procesado", motor.ProcesarVersion(guia1).Estado);
+        Assert.Equal("ya_procesado", motor.ProcesarVersion(guia2).Estado);
         using var consulta = _conexion.CreateCommand();
         consulta.CommandText =
             "SELECT COUNT(*),COUNT(DISTINCT linea_id),COUNT(DISTINCT padre_id) FROM ubicaciones_cadena_diccionario WHERE cadena_id=$c AND lugar_id=(SELECT id FROM lugares_esquema_diccionario WHERE esquema_id=(SELECT esquema_id FROM cadenas_diccionario WHERE id=$c) AND dato_tipo_id='guia_proveedor');";
@@ -129,7 +129,7 @@ public sealed class EsquemasCadenaTests : IDisposable
         );
         var motor = new MotorCadenas(_conexion);
         long cadena = motor.ProcesarVersion(guia).CadenaId!.Value;
-        Assert.Equal("ubicado", motor.ProcesarVersion(factura).Estado);
+        Assert.Equal("ya_procesado", motor.ProcesarVersion(factura).Estado);
         using var consulta = _conexion.CreateCommand();
         consulta.CommandText =
             "SELECT COUNT(*) FROM ubicaciones_cadena_diccionario WHERE cadena_id=$c AND padre_id IS NOT NULL;";

@@ -55,7 +55,10 @@ public sealed class DecisionPendienteFila : INotifyPropertyChanged
     public long VersionId => Decision.VersionId;
     public string Documento => Decision.Documento;
     public string TipoProveedor => $"{Decision.Tipo} · {Decision.Proveedor}";
-    public string Etiqueta => Modo is null ? "Sin origen" : "Modo";
+    public string Etiqueta =>
+        Modo is not null ? "Modo"
+        : Decision.DecisionTipo == "sin_inicio" ? $"Dudoso: {Decision.Motivo}"
+        : "Sin origen";
     public string Pregunta =>
         Modo is null
             ? string.Empty
@@ -276,7 +279,7 @@ public partial class MainWindow : Window
         using (var q = conexion.CreateCommand())
         {
             q.CommandText =
-                "SELECT p.version_id,d.nombre,COALESCE(i.tipo,''),p.proveedor,p.motivo FROM decisiones_esquema_diccionario p JOIN versiones_documento v ON v.id=p.version_id JOIN documentos d ON d.id=v.documento_id LEFT JOIN identificaciones i ON i.id=(SELECT f.identificacion_id FROM valores_documento x JOIN campos_documento f ON f.id=x.campo_id WHERE x.version_id=v.id AND x.estado='vigente' ORDER BY x.id LIMIT 1) WHERE p.estado='pendiente' ORDER BY p.creada_en;";
+                "SELECT p.version_id,d.nombre,COALESCE(i.tipo,''),p.proveedor,p.motivo,p.tipo FROM decisiones_esquema_diccionario p JOIN versiones_documento v ON v.id=p.version_id JOIN documentos d ON d.id=v.documento_id LEFT JOIN identificaciones i ON i.id=(SELECT f.identificacion_id FROM valores_documento x JOIN campos_documento f ON f.id=x.campo_id WHERE x.version_id=v.id AND x.estado='vigente' ORDER BY x.id LIMIT 1) WHERE p.estado='pendiente' ORDER BY p.creada_en;";
             using var r = q.ExecuteReader();
             while (r.Read())
                 decisiones.Add(
@@ -286,7 +289,9 @@ public partial class MainWindow : Window
                         r.GetString(2),
                         r.GetString(3),
                         r.GetString(4),
-                        ""
+                        "",
+                        r.GetString(5),
+                        r.GetString(4)
                     )
                 );
         }
@@ -484,7 +489,7 @@ public partial class MainWindow : Window
             using var conexion = BaseComun.Abrir(DocumentosGuardados.RutaBaseComun);
             using var consulta = conexion.CreateCommand();
             consulta.CommandText =
-                "SELECT EXISTS(SELECT 1 FROM decisiones_esquema_diccionario WHERE version_id=$v AND tipo='sin_piso' AND estado='pendiente');";
+                "SELECT EXISTS(SELECT 1 FROM decisiones_esquema_diccionario WHERE version_id=$v AND tipo IN ('sin_piso','sin_inicio') AND estado='pendiente');";
             consulta.Parameters.AddWithValue("$v", fila.VersionId);
             var resultado =
                 Convert.ToInt64(consulta.ExecuteScalar()) != 0

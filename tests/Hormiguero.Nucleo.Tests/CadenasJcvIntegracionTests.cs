@@ -89,7 +89,7 @@ public sealed class CadenasJcvIntegracionTests : IDisposable
     }
 
     [Fact]
-    public void Guia_firmada_sin_texto_se_ubica_en_linea_de_guia_y_el_orden_inverso_queda_sin_piso()
+    public void Guia_firmada_sin_texto_se_ubica_en_linea_de_guia_tambien_si_llega_antes()
     {
         long occ = Documento(
             "OCC",
@@ -127,7 +127,7 @@ public sealed class CadenasJcvIntegracionTests : IDisposable
             DateOnly.Parse("2025-03-06"),
             ("guia_firmada_proveedor", "1190037")
         );
-        Assert.Equal("sin_piso", motor.ProcesarVersion(grcfPrimero).Estado);
+        Assert.Equal("sin_inicio", motor.ProcesarVersion(grcfPrimero).Estado);
         long grcDespues = Documento(
             "GRC",
             "GRC 1190037",
@@ -137,8 +137,8 @@ public sealed class CadenasJcvIntegracionTests : IDisposable
             ("oc_propia", "20417")
         );
         Assert.Equal("ubicado", motor.ProcesarVersion(grcDespues).Estado);
-        Assert.NotEqual(Linea(grcfPrimero), Linea(grcDespues));
-        Assert.Equal("sin_piso", EstadoDecision(grcfPrimero));
+        Assert.Equal(Linea(grcfPrimero), Linea(grcDespues));
+        Assert.Equal("resuelta", EstadoDecision(grcfPrimero));
     }
 
     [Fact]
@@ -453,7 +453,7 @@ public sealed class CadenasJcvIntegracionTests : IDisposable
     private string EstadoDecision(long version)
     {
         using var q = _conexion.CreateCommand();
-        q.CommandText = "SELECT tipo FROM decisiones_esquema_diccionario WHERE version_id=$v;";
+        q.CommandText = "SELECT estado FROM decisiones_esquema_diccionario WHERE version_id=$v;";
         q.Parameters.AddWithValue("$v", version);
         return Convert.ToString(q.ExecuteScalar())!;
     }
