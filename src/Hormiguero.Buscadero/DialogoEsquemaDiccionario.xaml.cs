@@ -44,8 +44,20 @@ public partial class DialogoEsquemaDiccionario : Window
             .GroupDescriptions.Add(new PropertyGroupDescription(nameof(TipoVm.Grupo)));
         Proveedor.Text = proveedor ?? "";
         Proveedor_TextChanged(Proveedor, null!);
+        if (
+            !string.IsNullOrWhiteSpace(proveedor)
+            && _repositorio.ObtenerPorProveedor(proveedor) is not { } existente
+        )
+            Reconocimientos.Items.Add("Nombre: " + proveedor.Trim());
         if (proveedor is not null && _repositorio.ObtenerPorProveedor(proveedor) is { } esquema)
         {
+            foreach (var reconocimiento in _repositorio.ListarReconocimientos(esquema.Id))
+                Reconocimientos.Items.Add(
+                    (reconocimiento.Tipo == "rut" ? "RUT: " : "Nombre: ")
+                        + reconocimiento.ValorNormalizado
+                );
+            if (Reconocimientos.Items.Count == 0)
+                Reconocimientos.Items.Add("Nombre: " + esquema.Proveedor);
             _actualizandoNombre = true;
             Nombre.Text = esquema.Nombre;
             _actualizandoNombre = false;
@@ -536,6 +548,20 @@ public partial class DialogoEsquemaDiccionario : Window
                     .Select(l => new DefinicionEnlace(l.OrdenA, l.OrdenB, l.Dato, l.Cardinalidad))
                     .ToArray()
             );
+            _repositorio.GuardarReconocimientos(
+                esquemaId,
+                Reconocimientos
+                    .Items.Cast<string>()
+                    .Select(texto =>
+                    {
+                        int separador = texto.IndexOf(':');
+                        return new ReconocimientoProveedor(
+                            separador >= 0 && texto[..separador] == "RUT" ? "rut" : "nombre",
+                            separador >= 0 ? texto[(separador + 1)..].Trim() : texto
+                        );
+                    })
+                    .ToArray()
+            );
             new RepositorioConfiguracionEsquemaDiccionario(_conexion).GuardarModos(
                 esquemaId,
                 LugarDecideModo.SelectedItem is LugarVm decide ? decide.Orden : null,
@@ -562,6 +588,28 @@ public partial class DialogoEsquemaDiccionario : Window
         {
             Estado.Text = $"No se pudo guardar el esquema: {error.Message}";
         }
+    }
+
+    private void AgregarReconocimiento_Click(object sender, RoutedEventArgs e)
+    {
+        string valor = ReconocimientoNuevo.Text.Trim();
+        if (valor.Length == 0)
+            return;
+        bool rut = valor.StartsWith("RUT:", StringComparison.OrdinalIgnoreCase);
+        valor =
+            rut ? valor[4..].Trim()
+            : valor.StartsWith("Nombre:", StringComparison.OrdinalIgnoreCase) ? valor[7..].Trim()
+            : valor;
+        string fila = (rut ? "RUT: " : "Nombre: ") + valor;
+        if (!Reconocimientos.Items.Contains(fila))
+            Reconocimientos.Items.Add(fila);
+        ReconocimientoNuevo.Clear();
+    }
+
+    private void QuitarReconocimiento_Click(object sender, RoutedEventArgs e)
+    {
+        if (Reconocimientos.SelectedItem is string fila)
+            Reconocimientos.Items.Remove(fila);
     }
 
     private string NombreDato(string id) =>

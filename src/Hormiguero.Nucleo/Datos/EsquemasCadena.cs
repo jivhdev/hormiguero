@@ -1,3 +1,6 @@
+using System.Globalization;
+using System.Text;
+using System.Text.RegularExpressions;
 using Microsoft.Data.Sqlite;
 
 namespace Hormiguero.Nucleo.Datos;
@@ -49,6 +52,31 @@ public sealed record ProveedorDocumento(string Clave, string Nombre);
 
 public static class ProveedorDeDocumento
 {
+    public static string NormalizarRut(string rut) =>
+        string.Concat(rut.Where(char.IsLetterOrDigit)).ToUpperInvariant();
+
+    public static string NormalizarNombre(string nombre)
+    {
+        string sinTildes = string.Concat(
+            nombre
+                .Normalize(NormalizationForm.FormD)
+                .Where(c => CharUnicodeInfo.GetUnicodeCategory(c) != UnicodeCategory.NonSpacingMark)
+        );
+        string limpio = string.Join(
+                ' ',
+                sinTildes.Trim().Split((char[]?)null, StringSplitOptions.RemoveEmptyEntries)
+            )
+            .ToUpperInvariant();
+        return Regex
+            .Replace(
+                limpio,
+                @"\s+(S\.?A\.?|SPA|LTDA\.?|LIMITADA|EIRL)\.?$",
+                "",
+                RegexOptions.IgnoreCase
+            )
+            .Trim();
+    }
+
     public static string NormalizarProveedor(string proveedor)
     {
         ArgumentException.ThrowIfNullOrWhiteSpace(proveedor);
@@ -79,6 +107,25 @@ public static class ProveedorDeDocumento
         string? rut = lector.IsDBNull(3) ? null : lector.GetString(3);
         string? nombre = lector.IsDBNull(4) ? null : lector.GetString(4);
         bool esDelProveedor = lector.GetInt64(5) != 0;
+        lector.Close();
+        var reconocido =
+            (
+                rut is null
+                    ? null
+                    : RepositorioEsquemasDiccionario.ObtenerPorReconocimiento(conexion, "rut", rut)
+            )
+            ?? (
+                nombre is null
+                    ? null
+                    : RepositorioEsquemasDiccionario.ObtenerPorReconocimiento(
+                        conexion,
+                        "nombre",
+                        nombre
+                    )
+            )
+            ?? RepositorioEsquemasDiccionario.ObtenerPorReconocimiento(conexion, "nombre", emisor);
+        if (reconocido is not null)
+            return new(reconocido.Proveedor, reconocido.Proveedor);
         string? proveedor =
             esPropio && esCompra ? rut ?? nombre
             : esDelProveedor ? emisor

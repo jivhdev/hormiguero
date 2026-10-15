@@ -196,7 +196,9 @@ public sealed class EvaluadorAlertasEsquemaDiccionario(
                             DateOnly? baseLinea = dato is null
                                 ? FechaDocumento(c.Id, desdeLugar, linea)
                                 : LeerFecha(LeerDato(c.Id, dato));
-                            DateOnly? venceLinea = baseLinea?.AddDays(dias);
+                            DateOnly? venceLinea = baseLinea is null
+                                ? null
+                                : SumarDias(baseLinea.Value, dias, root);
                             bool abiertaLinea =
                                 baseLinea is not null && !ExisteLugar(c.Id, hastaLugar, linea);
                             GuardarAlerta(
@@ -216,22 +218,79 @@ public sealed class EvaluadorAlertasEsquemaDiccionario(
                         : LeerFecha(LeerDato(c.Id, dato));
                     if (fechaBase is not null)
                     {
-                        vence = fechaBase.Value.AddDays(dias);
+                        vence = SumarDias(fechaBase.Value, dias, root);
                         activa = !ExisteLugar(c.Id, hastaLugar);
                     }
                 }
                 else if (regla.Tipo == "listo_para")
                 {
                     texto = root.GetProperty("lista").GetString() ?? "Listo para";
-                    activa =
-                        ExisteLugar(c.Id, root.GetProperty("cuandoLugarId").GetInt64())
-                        && !ExisteLugar(c.Id, root.GetProperty("hastaLugarId").GetInt64());
+                    long cuando = root.GetProperty("cuandoLugarId").GetInt64();
+                    long hasta = root.GetProperty("hastaLugarId").GetInt64();
+                    long? condicion =
+                        root.TryGetProperty("condicionLugarId", out var datoCondicion)
+                        && datoCondicion.ValueKind == JsonValueKind.Number
+                            ? datoCondicion.GetInt64()
+                            : null;
+                    if (condicion is long tipoCondicion)
+                    {
+                        foreach (long linea in Lineas(c.Id, cuando))
+                        {
+                            bool listaPorLinea =
+                                ExisteLugar(c.Id, cuando, linea)
+                                && ExisteLugar(c.Id, tipoCondicion, linea)
+                                && !ExisteLugar(c.Id, hasta, linea);
+                            GuardarAlerta(
+                                regla.Id,
+                                c.Id,
+                                texto,
+                                null,
+                                listaPorLinea,
+                                fecha,
+                                $"linea:{linea}"
+                            );
+                        }
+                        continue;
+                    }
+                    activa = ExisteLugar(c.Id, cuando) && !ExisteLugar(c.Id, hasta);
                 }
                 else
                     continue;
                 GuardarAlerta(regla.Id, c.Id, texto, vence, activa, fecha);
             }
         }
+    }
+
+    private DateOnly SumarDias(DateOnly fecha, int dias, JsonElement parametros)
+    {
+        if (!parametros.TryGetProperty("tipoDias", out var tipo) || tipo.GetString() != "habiles")
+            return fecha.AddDays(dias);
+        int restantes = dias;
+        while (restantes > 0)
+        {
+            fecha = fecha.AddDays(1);
+            if (
+                fecha.DayOfWeek is not (DayOfWeek.Saturday or DayOfWeek.Sunday)
+                && !EsFeriado(fecha, parametros)
+            )
+                restantes--;
+        }
+        return fecha;
+    }
+
+    private bool EsFeriado(DateOnly fecha, JsonElement parametros)
+    {
+        object? calendario =
+            parametros.TryGetProperty("calendarioId", out var seleccionado)
+            && seleccionado.ValueKind == JsonValueKind.Number
+                ? seleccionado.GetInt64()
+                : null;
+        using var q = conexion.CreateCommand();
+        q.CommandText =
+            "SELECT EXISTS(SELECT 1 FROM feriados f JOIN calendarios_feriados c ON c.id=f.calendario_id WHERE f.fecha=$f AND f.activo=1 AND c.activo=1 AND c.id=COALESCE($c,(SELECT id FROM calendarios_feriados WHERE activo=1 AND predeterminado=1 LIMIT 1)));";
+        q.Parameters.AddWithValue("$f", fecha.ToString("yyyy-MM-dd", CultureInfo.InvariantCulture));
+        q.Parameters.AddWithValue("$c", calendario ?? DBNull.Value);
+        return Convert.ToInt64(q.ExecuteScalar()) != 0;
     }
 
     public IReadOnlyList<AlertaEsquema> ListarAbiertas(

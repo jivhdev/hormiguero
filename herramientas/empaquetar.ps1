@@ -18,6 +18,10 @@ if ($LASTEXITCODE -ne 0) { throw "Falló la publicación de Reiniciar Hormiguero
 Copy-Item (Join-Path $PSScriptRoot 'crear-accesos.ps1') $Destino
 Copy-Item (Join-Path $PSScriptRoot 'LEEME-portable.txt') (Join-Path $Destino 'LEEME.txt')
 Copy-Item (Join-Path $PSScriptRoot 'NOVEDADES-portable.txt') (Join-Path $Destino 'NOVEDADES.txt')
+New-Item -ItemType Directory -Force (Join-Path $Destino 'Archivero\Configuracion') | Out-Null
+New-Item -ItemType Directory -Force (Join-Path $Destino 'Buscadero\Configuracion') | Out-Null
+Copy-Item (Join-Path $repo 'configuracion\cadenas-jcv.json') (Join-Path $Destino 'Archivero\Configuracion\cadenas-jcv.json')
+Copy-Item (Join-Path $repo 'configuracion\cadenas-jcv.json') (Join-Path $Destino 'Buscadero\Configuracion\cadenas-jcv.json')
 $version = (git -C $repo log -1 --format='%h %cd' --date=format:'%Y-%m-%d %H:%M')
 Set-Content -Path (Join-Path $Destino 'VERSION.txt') -Value "Hormiguero $version" -Encoding utf8
 Write-Host "Listo: $Destino"

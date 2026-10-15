@@ -1,0 +1,43 @@
+{
+  "version": 1,
+  "esquemas": [
+    {
+      "proveedor": "HOFFENS", "nombre": "Proceso Hoffens", "decide": "oc_propia",
+      "reconocimientos": [{"tipo":"rut","valor":"96.548.020-K"},{"tipo":"nombre","valor":"HOFFENS S.A."},{"tipo":"nombre","valor":"HOFFENS"}],
+      "lugares": [
+        {"tipo":"cotizacion_proveedor","nombre":"COVP","orden":0},{"tipo":"cotizacion_propia","nombre":"COV","orden":1},{"tipo":"oc_cliente","nombre":"OCL","orden":2},{"tipo":"nota_venta_propia","nombre":"NVV","orden":3},{"tipo":"oc_propia","nombre":"OCC","orden":4,"inicia":true},{"tipo":"guia_proveedor","nombre":"GRC","orden":5},{"tipo":"guia_firmada_proveedor","nombre":"GRCF","orden":6},{"tipo":"factura_proveedor","nombre":"FCC","orden":7},{"tipo":"nota_credito_proveedor","nombre":"NCC","orden":8},{"tipo":"factura_propia","nombre":"FCV","orden":9},{"tipo":"nota_credito_propia","nombre":"NCV","orden":10}
+      ],
+      "enlaces": [
+        {"a":"oc_propia","b":"nota_venta_propia","dato":"nota_venta_propia","cardinalidad":"uno_a_varios"},{"a":"oc_propia","b":"oc_cliente","dato":"oc_cliente","cardinalidad":"uno_a_uno"},{"a":"oc_propia","b":"guia_proveedor","dato":"oc_propia","cardinalidad":"uno_a_varios"},{"a":"guia_proveedor","b":"guia_firmada_proveedor","dato":"guia_proveedor","cardinalidad":"uno_a_uno"},{"a":"guia_proveedor","b":"factura_proveedor","dato":"guia_proveedor","cardinalidad":"uno_a_uno"},{"a":"factura_proveedor","b":"nota_credito_proveedor","dato":"factura_proveedor","cardinalidad":"uno_a_uno"},{"a":"guia_proveedor","b":"factura_propia","dato":"guia_proveedor","cardinalidad":"uno_a_uno"},{"a":"factura_propia","b":"nota_credito_propia","dato":"factura_propia","cardinalidad":"uno_a_uno"}
+      ],
+      "modos":["Retiro","Despacho RM","Despacho región"],
+      "avisos":[
+        {"tipo":"falta_dato","lugar":"oc_propia","modo":"Retiro","parametros":{"dato":"Fecha de retiro","texto":"Ingresar fecha de retiro"}},
+        {"tipo":"plazo","lugar":"oc_propia","modo":"Retiro","parametros":{"desdeDato":"Fecha de retiro","hastaLugarId":"guia_proveedor","dias":0,"tipoDias":"corridos","texto":"Cliente no retiró","porLinea":false}},
+        {"tipo":"plazo","lugar":"oc_propia","modo":"Despacho RM","parametros":{"desdeLugarId":"oc_propia","hastaLugarId":"guia_proveedor","dias":5,"tipoDias":"habiles","texto":"Proveedor no ha despachado","porLinea":false}},
+        {"tipo":"plazo","lugar":"oc_propia","modo":"Despacho región","parametros":{"desdeLugarId":"oc_propia","hastaLugarId":"guia_proveedor","dias":10,"tipoDias":"habiles","texto":"Proveedor no ha despachado","porLinea":false}},
+        {"tipo":"plazo","lugar":"factura_proveedor","parametros":{"desdeLugarId":"factura_proveedor","hastaLugarId":"guia_firmada_proveedor","dias":7,"tipoDias":"corridos","texto":"Falta guía firmada","porLinea":true}},
+        {"tipo":"listo_para","lugar":"factura_proveedor","parametros":{"cuandoLugarId":"guia_firmada_proveedor","condicionLugarId":"factura_proveedor","hastaLugarId":"factura_propia","lista":"Listos para facturar"}}
+      ]
+    },
+    {
+      "proveedor": "COBELCAR", "nombre": "Proceso Cobelcar", "decide": "oc_propia",
+      "reconocimientos": [{"tipo":"rut","valor":"78.615.580-0"},{"tipo":"nombre","valor":"VELIZ BELTRAN LIMITADA"},{"tipo":"nombre","valor":"VELIZ BELTRAN"},{"tipo":"nombre","valor":"COBELCAR"}],
+      "lugares": [
+        {"tipo":"cotizacion_proveedor","nombre":"COVP","orden":0},{"tipo":"cotizacion_propia","nombre":"COV","orden":1},{"tipo":"oc_cliente","nombre":"OCL","orden":2},{"tipo":"nota_venta_propia","nombre":"NVV","orden":3},{"tipo":"oc_propia","nombre":"OCC","orden":4,"inicia":true},{"tipo":"guia_proveedor","nombre":"GRC","orden":5},{"tipo":"guia_firmada_proveedor","nombre":"GRCF","orden":6},{"tipo":"factura_proveedor","nombre":"FCC","orden":7},{"tipo":"nota_credito_proveedor","nombre":"NCC","orden":8},{"tipo":"factura_propia","nombre":"FCV","orden":9},{"tipo":"nota_credito_propia","nombre":"NCV","orden":10}
+      ],
+      "enlaces": [
+        {"a":"oc_propia","b":"nota_venta_propia","dato":"nota_venta_propia","cardinalidad":"uno_a_varios"},{"a":"oc_propia","b":"oc_cliente","dato":"oc_cliente","cardinalidad":"uno_a_uno"},{"a":"oc_propia","b":"guia_proveedor","dato":"oc_propia","cardinalidad":"uno_a_varios"},{"a":"guia_proveedor","b":"guia_firmada_proveedor","dato":"guia_proveedor","cardinalidad":"uno_a_uno"},{"a":"guia_proveedor","b":"factura_proveedor","dato":"guia_proveedor","cardinalidad":"uno_a_uno"},{"a":"factura_proveedor","b":"nota_credito_proveedor","dato":"factura_proveedor","cardinalidad":"uno_a_uno"},{"a":"guia_proveedor","b":"factura_propia","dato":"guia_proveedor","cardinalidad":"uno_a_uno"},{"a":"factura_propia","b":"nota_credito_propia","dato":"factura_propia","cardinalidad":"uno_a_uno"}
+      ],
+      "modos":["Retiro","Despacho RM","Despacho región"],
+      "avisos":[
+        {"tipo":"falta_dato","lugar":"oc_propia","modo":"Retiro","parametros":{"dato":"Fecha de retiro","texto":"Ingresar fecha de retiro"}},
+        {"tipo":"plazo","lugar":"oc_propia","modo":"Retiro","parametros":{"desdeDato":"Fecha de retiro","hastaLugarId":"guia_proveedor","dias":0,"tipoDias":"corridos","texto":"Cliente no retiró","porLinea":false}},
+        {"tipo":"plazo","lugar":"oc_propia","modo":"Despacho RM","parametros":{"desdeLugarId":"oc_propia","hastaLugarId":"guia_proveedor","dias":10,"tipoDias":"habiles","texto":"Proveedor no ha despachado","porLinea":false}},
+        {"tipo":"plazo","lugar":"oc_propia","modo":"Despacho región","parametros":{"desdeLugarId":"oc_propia","hastaLugarId":"guia_proveedor","dias":10,"tipoDias":"habiles","texto":"Proveedor no ha despachado","porLinea":false}},
+        {"tipo":"listo_para","lugar":"factura_proveedor","parametros":{"cuandoLugarId":"factura_proveedor","condicionLugarId":"factura_proveedor","hastaLugarId":"factura_propia","lista":"Listos para facturar"}}
+      ]
+    }
+  ]
+}
+

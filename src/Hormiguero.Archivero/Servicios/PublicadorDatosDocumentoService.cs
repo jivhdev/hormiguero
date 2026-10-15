@@ -12,6 +12,110 @@ public static class PublicadorDatosDocumentoService
     public static Task? UltimaRevisionEnlaces { get; private set; }
     public static event Action<long?, string>? RevisionEnlacesFallida;
 
+    public static void PublicarGuiaFirmada(string ruta, string tipoId, string proveedor)
+    {
+        string numero = string.Concat(Path.GetFileNameWithoutExtension(ruta).Where(char.IsDigit))
+            .TrimStart('0');
+        if (numero.Length == 0)
+            throw new InvalidOperationException(
+                "El nombre final del archivo debe incluir el número de la guía."
+            );
+        using var conexion = BaseComun.Abrir(DocumentosGuardados.RutaBaseComun);
+        var tipo = RepositorioEsquemasDiccionario
+            .ListarTiposDocumento(conexion)
+            .SingleOrDefault(t => t.Id == tipoId);
+        if (tipo.Id is null)
+            throw new InvalidOperationException(
+                "El tipo de documento seleccionado ya no está disponible."
+            );
+        var identificaciones = new Identificaciones(conexion);
+        var existente = identificaciones
+            .Listar()
+            .FirstOrDefault(i => i.Tipo == tipo.Nombre && i.Emisor == proveedor);
+        long identificacionId = identificaciones.Guardar(
+            new Identificacion(
+                existente?.Id ?? 0,
+                tipo.Nombre,
+                proveedor,
+                existente?.Datos ?? "{}",
+                "Recibido",
+                tipo.Nombre + " · " + proveedor
+            )
+        );
+        var documentos = new RepositorioDocumentosDatos(conexion);
+        var campos = documentos.ListarCampos(identificacionId);
+        var campoNumero =
+            campos.FirstOrDefault(c => c.NombreEstable == tipoId)
+            ?? new CampoDocumento(
+                0,
+                identificacionId,
+                tipo.Nombre,
+                tipoId,
+                "texto",
+                true,
+                "manual",
+                tipoId
+            );
+        long campoId = documentos.GuardarCampo(campoNumero);
+        new RepositorioDatosEnlazantes(conexion).GuardarDatoTipo(
+            new DatoTipoDocumento(
+                0,
+                identificacionId,
+                tipoId,
+                "sin_texto",
+                campoId,
+                1,
+                0,
+                0,
+                1,
+                1,
+                true,
+                true
+            )
+        );
+        var configuracion = new ConfiguracionDocumento
+        {
+            Emisor = proveedor,
+            Tipo = tipo.Nombre,
+            CarpetaDestino = Path.GetDirectoryName(ruta)!,
+            FormatoCarpeta = FormatoCarpeta.Directo,
+            Renombrar = true,
+            Patrones = [],
+            GrupoDocumento = "Recibido",
+            NombreEstandar = tipo.Nombre + " · " + proveedor,
+        };
+        var valores = new List<ValorDocumentoLeido>
+        {
+            new("Emisor", "emisor", proveedor, proveedor, "manual"),
+            new("Tipo", "tipo", tipo.Nombre, tipo.Nombre, "manual"),
+            new("Fecha", "fecha", "", "", "manual", "fecha"),
+            new(
+                "Nombre de archivo",
+                "nombre_archivo",
+                Path.GetFileNameWithoutExtension(ruta),
+                Path.GetFileNameWithoutExtension(ruta),
+                "manual"
+            ),
+            new(
+                tipo.Nombre,
+                tipoId,
+                numero,
+                DiccionarioDatosEnlazantes.ClaveDeEnlace(tipoId, numero),
+                "manual",
+                DatoDiccionarioId: tipoId
+            ),
+            new(
+                "Nombre o razón social del proveedor",
+                "nombre_proveedor",
+                proveedor,
+                DiccionarioDatosEnlazantes.ClaveDeEnlace("nombre_proveedor", proveedor),
+                "manual",
+                DatoDiccionarioId: "nombre_proveedor"
+            ),
+        };
+        Publicar(ruta, configuracion, valores, "manual");
+    }
+
     public static void PublicarGuardado(
         string ruta,
         ConfiguracionDocumento configuracion,

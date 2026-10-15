@@ -156,12 +156,17 @@ public sealed class MotorCadenasDiccionario(SqliteConnection conexion)
         Valor valor
     )
     {
+        using var equivalencia = conexion.CreateCommand();
+        equivalencia.CommandText =
+            "SELECT COALESCE(enlaza_como,id) FROM diccionario_datos WHERE id=$d;";
+        equivalencia.Parameters.AddWithValue("$d", valor.Dato);
+        string datoComparable = Convert.ToString(equivalencia.ExecuteScalar()) ?? valor.Dato;
         using var comando = conexion.CreateCommand();
         comando.CommandText =
-            "SELECT c.id,u.id,u.lugar_id,u.linea_id,x.valor_original,e.cardinalidad,CASE WHEN e.lugar_b=$l THEN 1 ELSE 0 END FROM enlaces_esquema_diccionario e JOIN lugares_esquema_diccionario la ON la.id=e.lugar_a JOIN ubicaciones_cadena_diccionario u ON u.lugar_id=CASE WHEN e.lugar_a=$l THEN e.lugar_b ELSE e.lugar_a END AND u.estado='activo' JOIN cadenas_diccionario c ON c.id=u.cadena_id AND c.esquema_id=la.esquema_id AND c.estado='activa' JOIN valores_documento x ON x.version_id=u.version_id AND x.dato_diccionario_id=e.dato_diccionario_id AND x.estado='vigente' WHERE la.esquema_id=$e AND (e.lugar_a=$l OR e.lugar_b=$l) AND e.dato_diccionario_id=$d AND x.valor_clave=$k;";
+            "SELECT c.id,u.id,u.lugar_id,u.linea_id,x.valor_original,e.cardinalidad,CASE WHEN e.lugar_b=$l THEN 1 ELSE 0 END FROM enlaces_esquema_diccionario e JOIN diccionario_datos de ON de.id=e.dato_diccionario_id JOIN lugares_esquema_diccionario la ON la.id=e.lugar_a JOIN ubicaciones_cadena_diccionario u ON u.lugar_id=CASE WHEN e.lugar_a=$l THEN e.lugar_b ELSE e.lugar_a END AND u.estado='activo' JOIN cadenas_diccionario c ON c.id=u.cadena_id AND c.esquema_id=la.esquema_id AND c.estado='activa' JOIN valores_documento x ON x.version_id=u.version_id AND x.estado='vigente' JOIN diccionario_datos dx ON dx.id=x.dato_diccionario_id AND COALESCE(dx.enlaza_como,dx.id)=COALESCE(de.enlaza_como,de.id) WHERE la.esquema_id=$e AND (e.lugar_a=$l OR e.lugar_b=$l) AND COALESCE(de.enlaza_como,de.id)=$d AND x.valor_clave=$k;";
         comando.Parameters.AddWithValue("$l", actual.Id);
         comando.Parameters.AddWithValue("$e", esquema.Id);
-        comando.Parameters.AddWithValue("$d", valor.Dato);
+        comando.Parameters.AddWithValue("$d", datoComparable);
         comando.Parameters.AddWithValue("$k", valor.Clave);
         using var lector = comando.ExecuteReader();
         var resultados = new List<Coincidencia>();

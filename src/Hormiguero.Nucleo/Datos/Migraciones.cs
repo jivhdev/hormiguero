@@ -315,6 +315,15 @@ public static class Migraciones
                 + "ALTER TABLE decisiones_esquema_diccionario ADD COLUMN cadena_id INTEGER NULL REFERENCES cadenas_diccionario(id); "
                 + "ALTER TABLE decisiones_esquema_diccionario ADD COLUMN opciones_json TEXT NOT NULL DEFAULT '[]';"
         ),
+        (
+            20,
+            "ALTER TABLE diccionario_datos ADD COLUMN enlaza_como TEXT NULL REFERENCES diccionario_datos(id); "
+                + "DROP TRIGGER trg_diccionario_datos_no_insertar; "
+                + "INSERT INTO diccionario_datos(id,nombre,grupo,orden,codigo_referencia,enlaza_como) VALUES('guia_firmada_proveedor','N° Guía firmada del proveedor','Del proveedor',24,'GRCF','guia_proveedor'); "
+                + "CREATE TRIGGER trg_diccionario_datos_no_insertar BEFORE INSERT ON diccionario_datos BEGIN SELECT RAISE(ABORT,'El diccionario de datos es fijo.'); END; "
+                + "CREATE TABLE reconocimientos_esquema_diccionario(id INTEGER PRIMARY KEY,esquema_id INTEGER NOT NULL REFERENCES esquemas_diccionario(id) ON DELETE CASCADE,tipo TEXT NOT NULL CHECK(tipo IN ('rut','nombre')),valor_normalizado TEXT NOT NULL,UNIQUE(tipo,valor_normalizado)); "
+                + "CREATE INDEX idx_reconocimientos_esquema_diccionario_esquema ON reconocimientos_esquema_diccionario(esquema_id);"
+        ),
     ];
 
     public static void Aplicar(

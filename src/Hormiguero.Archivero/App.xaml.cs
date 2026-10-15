@@ -77,6 +77,25 @@ public partial class App : System.Windows.Application
         }
 
         BaseDeDatos.AsegurarEsquema();
+        try
+        {
+            using var conexionSemillas = Hormiguero.Nucleo.Datos.BaseComun.Abrir(
+                Hormiguero.Nucleo.Datos.DocumentosGuardados.RutaBaseComun
+            );
+            Hormiguero.Nucleo.Datos.PrecargaCadenasJcv.IntentarImportar(
+                conexionSemillas,
+                System.IO.Path.Combine(
+                    AppContext.BaseDirectory,
+                    "Configuracion",
+                    "cadenas-jcv.json"
+                ),
+                "Archivero"
+            );
+        }
+        catch (Exception error)
+        {
+            AuditoriaService.Registrar("PRECARGA_CADENAS_JCV_FALLIDA", error.Message);
+        }
 
         var configuracion = new ConfiguracionRepository();
         var servicioCarpeta = new CarpetaObservadaService(configuracion);

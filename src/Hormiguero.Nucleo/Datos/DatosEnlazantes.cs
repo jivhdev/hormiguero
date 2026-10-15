@@ -9,7 +9,8 @@ public sealed record DatoEnlazante(
     string Grupo,
     int Orden,
     string? CodigoReferencia,
-    string EtiquetaTipo
+    string EtiquetaTipo,
+    string? EnlazaComo = null
 );
 
 public sealed record DatoTipoDocumento(
@@ -472,6 +473,15 @@ public static class DiccionarioDatosEnlazantes
                 null,
                 "Nombre propio"
             ),
+            new(
+                "guia_firmada_proveedor",
+                "N° Guía firmada del proveedor",
+                "Del proveedor",
+                24,
+                "GRCF",
+                "Guía firmada del proveedor",
+                "guia_proveedor"
+            ),
         ]);
 }
 
@@ -549,7 +559,7 @@ public sealed class RepositorioDatosEnlazantes(SqliteConnection conexion)
     {
         using var comando = conexion.CreateCommand();
         comando.CommandText =
-            "SELECT id,nombre,grupo,orden,codigo_referencia FROM diccionario_datos ORDER BY orden;";
+            "SELECT id,nombre,grupo,orden,codigo_referencia,enlaza_como FROM diccionario_datos ORDER BY orden;";
         using var lector = comando.ExecuteReader();
         var datos = new List<DatoEnlazante>();
         while (lector.Read())
@@ -562,7 +572,8 @@ public sealed class RepositorioDatosEnlazantes(SqliteConnection conexion)
                     lector.IsDBNull(4) ? null : lector.GetString(4),
                     DiccionarioDatosEnlazantes
                         .Todos.Single(d => d.Id == lector.GetString(0))
-                        .EtiquetaTipo
+                        .EtiquetaTipo,
+                    lector.IsDBNull(5) ? null : lector.GetString(5)
                 )
             );
         return datos;
