@@ -41,6 +41,21 @@ public sealed class CadenasJcvIntegracionTests : IDisposable
 
     public void Dispose() => _conexion.Dispose();
 
+    [Theory]
+    [InlineData("HOFFENS")]
+    [InlineData("COBELCAR")]
+    public void PrecargaJcv_IncluyeReglasOrdenadasDePropuesta(string proveedor)
+    {
+        var esquema = new RepositorioEsquemasDiccionario(_conexion).ObtenerPorProveedor(proveedor)!;
+        var reglas = new RepositorioModosEsquemaDiccionario(_conexion).ListarReglasPropuesta(
+            esquema.Id
+        );
+
+        Assert.Equal(["RETIRA", "RETIRO"], reglas.Select(r => r.Contiene));
+        Assert.All(reglas, regla => Assert.Equal("Retiro", regla.Modo));
+        Assert.Equal([0, 1], reglas.Select(r => r.Orden));
+    }
+
     [Fact]
     public void Reconoce_rut_emisor_y_nombre_en_la_misma_cadena_y_conserva_el_comportamiento_sin_calce()
     {
@@ -603,18 +618,19 @@ public sealed class CadenasJcvIntegracionTests : IDisposable
             "30001",
             new(2025, 5, 5),
             ("rut_proveedor", "96.548.020-K"),
-            ("oc_propia", "30001")
+            ("oc_propia", "30001"),
+            ("tipo_entrega", "76838441-K EPAC RETIRA CLIENTE")
         );
         long cadena = motor.ProcesarVersion(occ).CadenaId!.Value;
         var modos = new RepositorioModosEsquemaDiccionario(_conexion);
-        modos.FijarModo(cadena, Modo("HOFFENS", "Retiro"));
-        using (var q = _conexion.CreateCommand())
-        {
-            q.CommandText =
-                "INSERT INTO datos_cadena_diccionario(cadena_id,nombre,valor,actualizado_en) VALUES($c,'Fecha de retiro','2025-05-05','2025-05-05');";
-            q.Parameters.AddWithValue("$c", cadena);
-            q.ExecuteNonQuery();
-        }
+        var pendiente = Assert.Single(modos.ListarPendientes(), p => p.VersionId == occ);
+        Assert.Equal("76838441-K EPAC RETIRA CLIENTE", pendiente.TextoLeido);
+        Assert.Equal("Retiro", pendiente.ModoPropuesto);
+        modos.FijarModo(cadena, Modo("HOFFENS", "Retiro"), new DateOnly(2025, 5, 5));
+        Assert.Contains(
+            new RepositorioDatosCadenaDiccionario(_conexion).Listar(cadena),
+            d => d.Nombre == "Fecha de retiro" && d.Valor == "2025-05-05"
+        );
         var evaluador = new EvaluadorAlertasEsquemaDiccionario(_conexion);
         evaluador.Evaluar(new DateOnly(2025, 5, 6));
         Assert.Contains(

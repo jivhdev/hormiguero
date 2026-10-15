@@ -295,7 +295,7 @@ public sealed class RepositorioEsquemasDiccionario(SqliteConnection conexion)
     {
         using var comando = conexion.CreateCommand();
         comando.CommandText =
-            "SELECT d.id,d.nombre,d.grupo,EXISTS(SELECT 1 FROM tipos_documento_datos ta JOIN tipos_documento_datos tb ON tb.dato_diccionario_id=$b AND tb.define_tipo=1 AND tb.activo=1 JOIN tipos_documento_datos da ON da.identificacion_id=ta.identificacion_id AND da.dato_diccionario_id=d.id AND da.activo=1 AND da.enlazable=1 JOIN tipos_documento_datos db ON db.identificacion_id=tb.identificacion_id AND db.dato_diccionario_id=d.id AND db.activo=1 AND db.enlazable=1 WHERE ta.dato_diccionario_id=$a AND ta.define_tipo=1 AND ta.activo=1 AND da.enlazable=1 AND db.enlazable=1) AS sugerido FROM diccionario_datos d ORDER BY sugerido DESC,d.grupo,d.orden;";
+            "SELECT d.id,d.nombre,d.grupo,EXISTS(SELECT 1 FROM tipos_documento_datos ta JOIN tipos_documento_datos tb ON tb.dato_diccionario_id=$b AND tb.define_tipo=1 AND tb.activo=1 JOIN tipos_documento_datos da ON da.identificacion_id=ta.identificacion_id AND da.dato_diccionario_id=d.id AND da.activo=1 AND da.enlazable=1 JOIN tipos_documento_datos db ON db.identificacion_id=tb.identificacion_id AND db.dato_diccionario_id=d.id AND db.activo=1 AND db.enlazable=1 WHERE ta.dato_diccionario_id=$a AND ta.define_tipo=1 AND ta.activo=1 AND da.enlazable=1 AND db.enlazable=1) AS sugerido FROM diccionario_datos d WHERE d.id<>'tipo_entrega' ORDER BY sugerido DESC,d.grupo,d.orden;";
         comando.Parameters.AddWithValue("$a", tipoA);
         comando.Parameters.AddWithValue("$b", tipoB);
         using var lector = comando.ExecuteReader();

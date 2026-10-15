@@ -341,6 +341,13 @@ public static class Migraciones
                 + "CREATE TABLE documentos_manuales_cadena_diccionario(id INTEGER PRIMARY KEY,cadena_id INTEGER NOT NULL REFERENCES cadenas_diccionario(id),version_id INTEGER NOT NULL REFERENCES versiones_documento(id),tipo TEXT NOT NULL CHECK(tipo IN ('cotizacion_propia','cotizacion_proveedor')),agregado_en TEXT NOT NULL,UNIQUE(cadena_id,version_id)); "
                 + "CREATE INDEX idx_documentos_manuales_cadena ON documentos_manuales_cadena_diccionario(cadena_id,tipo);"
         ),
+        (
+            23,
+            "DROP TRIGGER trg_diccionario_datos_no_insertar; "
+                + "INSERT INTO diccionario_datos(id,nombre,grupo,orden,codigo_referencia,enlaza_como) VALUES('tipo_entrega','Tipo de entrega (retiro o despacho)','Otros',25,NULL,NULL); "
+                + "CREATE TRIGGER trg_diccionario_datos_no_insertar BEFORE INSERT ON diccionario_datos BEGIN SELECT RAISE(ABORT,'El diccionario de datos es fijo.'); END; "
+                + "CREATE TABLE reglas_propuesta_modo_esquema_diccionario(id INTEGER PRIMARY KEY,esquema_id INTEGER NOT NULL REFERENCES esquemas_diccionario(id) ON DELETE CASCADE,orden INTEGER NOT NULL,contiene TEXT NOT NULL,modo TEXT NOT NULL,UNIQUE(esquema_id,orden));"
+        ),
     ];
 
     public static void Aplicar(

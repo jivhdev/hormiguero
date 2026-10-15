@@ -19,12 +19,12 @@ public sealed class DatosEnlazantesTests : IDisposable
     public void Dispose() => conexion.Dispose();
 
     [Fact]
-    public void Diccionario_tiene_las_24_entradas_fijas_en_orden_y_la_base_impide_cambios()
+    public void Diccionario_tiene_las_25_entradas_fijas_en_orden_y_la_base_impide_cambios()
     {
         var diccionario = DiccionarioDatosEnlazantes.Todos;
-        Assert.Equal(24, diccionario.Count);
-        Assert.Equal(24, diccionario.Select(d => d.Id).Distinct().Count());
-        Assert.Equal(Enumerable.Range(1, 24), diccionario.Select(d => d.Orden));
+        Assert.Equal(25, diccionario.Count);
+        Assert.Equal(25, diccionario.Select(d => d.Id).Distinct().Count());
+        Assert.Equal(Enumerable.Range(1, 25), diccionario.Select(d => d.Orden));
         Assert.Equal(
             new[] { "Ventas propias", "Del cliente", "Compras propias", "Del proveedor", "Otros" },
             diccionario.Select(d => d.Grupo).Distinct()
@@ -50,7 +50,10 @@ public sealed class DatosEnlazantesTests : IDisposable
             "ACME SPA",
             DiccionarioDatosEnlazantes.ClaveDeEnlace("nombre_propio", "  Acme   Spa ")
         );
-        Assert.Equal(7, DiccionarioDatosEnlazantes.Todos.Count(d => d.Orden >= 18));
+        Assert.Equal(8, DiccionarioDatosEnlazantes.Todos.Count(d => d.Orden >= 18));
+        Assert.False(
+            DiccionarioDatosEnlazantes.Todos.Single(d => d.Id == "tipo_entrega").Enlazable
+        );
         Assert.Equal(
             "Del proveedor",
             DiccionarioDatosEnlazantes.Todos.Single(d => d.Id == "rut_proveedor").Grupo
@@ -71,12 +74,27 @@ public sealed class DatosEnlazantesTests : IDisposable
             DiccionarioDatosEnlazantes.Todos.Where(d => d.Id is "rut_propio" or "nombre_propio"),
             d => Assert.Equal("Otros", d.Grupo)
         );
-        Assert.Equal(24L, Escalar(conexion, "SELECT COUNT(*) FROM diccionario_datos;"));
+        Assert.Equal(25L, Escalar(conexion, "SELECT COUNT(*) FROM diccionario_datos;"));
         Assert.Throws<SqliteException>(() =>
             Ejecutar(
                 "INSERT INTO diccionario_datos(id,nombre,grupo,orden) VALUES('x','x','Otros',25);"
             )
         );
+    }
+
+    [Fact]
+    public void Tipo_entrega_se_guarda_como_zona_informativa_no_enlazable()
+    {
+        long identificacion = new Identificaciones(conexion).Guardar(
+            new(0, "OCC", "Empresa", "{}", "Emitido", "OCC · Empresa")
+        );
+        var repositorio = new RepositorioDatosEnlazantes(conexion);
+
+        repositorio.GuardarDatoTipo(
+            new(0, identificacion, "tipo_entrega", "1", null, 1, 0, 0, 0.5, 0.5, true, false, true)
+        );
+
+        Assert.False(Assert.Single(repositorio.ListarDatosTipo(identificacion)).Enlazable);
     }
 
     [Fact]
@@ -121,7 +139,7 @@ public sealed class DatosEnlazantesTests : IDisposable
         );
         Migraciones.Aplicar(v8, Migraciones.Todas);
         Migraciones.Aplicar(v8, Migraciones.Todas);
-        Assert.Equal(24L, Escalar(v8, "SELECT COUNT(*) FROM diccionario_datos;"));
+        Assert.Equal(25L, Escalar(v8, "SELECT COUNT(*) FROM diccionario_datos;"));
         Assert.Equal("Factura", EscalarTexto(v8, "SELECT tipo FROM identificaciones WHERE id=1;"));
         Assert.Equal(
             "Recibido",

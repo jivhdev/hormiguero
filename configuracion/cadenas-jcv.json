@@ -11,6 +11,7 @@
         {"a":"oc_propia","b":"nota_venta_propia","dato":"nota_venta_propia","cardinalidad":"uno_a_varios"},{"a":"oc_propia","b":"oc_cliente","dato":"oc_cliente","cardinalidad":"uno_a_uno"},{"a":"oc_propia","b":"guia_proveedor","dato":"oc_propia","cardinalidad":"uno_a_varios"},{"a":"guia_proveedor","b":"guia_firmada_proveedor","dato":"guia_proveedor","cardinalidad":"uno_a_uno"},{"a":"guia_proveedor","b":"factura_proveedor","dato":"guia_proveedor","cardinalidad":"uno_a_uno"},{"a":"factura_proveedor","b":"nota_credito_proveedor","dato":"factura_proveedor","cardinalidad":"uno_a_uno"},{"a":"guia_proveedor","b":"factura_propia","dato":"guia_proveedor","cardinalidad":"uno_a_uno"},{"a":"factura_propia","b":"nota_credito_propia","dato":"factura_propia","cardinalidad":"uno_a_uno"}
       ],
       "modos":["Retiro","Despacho RM","Despacho región"],
+      "proponerModo":[{"contiene":"RETIRA","modo":"Retiro"},{"contiene":"RETIRO","modo":"Retiro"}],
       "avisos":[
         {"tipo":"falta_dato","lugar":"oc_propia","modo":"Retiro","parametros":{"dato":"Fecha de retiro","texto":"Ingresar fecha de retiro"}},
         {"tipo":"plazo","lugar":"oc_propia","modo":"Retiro","parametros":{"desdeDato":"Fecha de retiro","hastaLugarId":"guia_proveedor","dias":0,"tipoDias":"corridos","texto":"Cliente no retiró","porLinea":false}},
@@ -30,6 +31,7 @@
         {"a":"oc_propia","b":"nota_venta_propia","dato":"nota_venta_propia","cardinalidad":"uno_a_varios"},{"a":"oc_propia","b":"oc_cliente","dato":"oc_cliente","cardinalidad":"uno_a_uno"},{"a":"oc_propia","b":"guia_proveedor","dato":"oc_propia","cardinalidad":"uno_a_varios"},{"a":"guia_proveedor","b":"guia_firmada_proveedor","dato":"guia_proveedor","cardinalidad":"uno_a_uno"},{"a":"guia_proveedor","b":"factura_proveedor","dato":"guia_proveedor","cardinalidad":"uno_a_uno"},{"a":"factura_proveedor","b":"nota_credito_proveedor","dato":"factura_proveedor","cardinalidad":"uno_a_uno"},{"a":"guia_proveedor","b":"factura_propia","dato":"guia_proveedor","cardinalidad":"uno_a_uno"},{"a":"factura_propia","b":"nota_credito_propia","dato":"factura_propia","cardinalidad":"uno_a_uno"}
       ],
       "modos":["Retiro","Despacho RM","Despacho región"],
+      "proponerModo":[{"contiene":"RETIRA","modo":"Retiro"},{"contiene":"RETIRO","modo":"Retiro"}],
       "avisos":[
         {"tipo":"falta_dato","lugar":"oc_propia","modo":"Retiro","parametros":{"dato":"Fecha de retiro","texto":"Ingresar fecha de retiro"}},
         {"tipo":"plazo","lugar":"oc_propia","modo":"Retiro","parametros":{"desdeDato":"Fecha de retiro","hastaLugarId":"guia_proveedor","dias":0,"tipoDias":"corridos","texto":"Cliente no retiró","porLinea":false}},

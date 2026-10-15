@@ -9,8 +9,12 @@ public sealed record DecisionModoPendiente(
     long VersionId,
     long CadenaId,
     string Proveedor,
-    IReadOnlyList<string> Opciones
+    IReadOnlyList<string> Opciones,
+    string? TextoLeido = null,
+    string? ModoPropuesto = null
 );
+
+public sealed record ReglaPropuestaModo(int Orden, string Contiene, string Modo);
 
 public sealed record DatoCadena(string Nombre, string Valor, DateTime ActualizadoEn);
 

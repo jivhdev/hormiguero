@@ -1,4 +1,5 @@
 using System.Globalization;
+using System.Text;
 using System.Text.Json;
 using Microsoft.Data.Sqlite;
 
@@ -6,6 +7,55 @@ namespace Hormiguero.Nucleo.Datos;
 
 public sealed class RepositorioModosEsquemaDiccionario(SqliteConnection conexion)
 {
+    public IReadOnlyList<ReglaPropuestaModo> ListarReglasPropuesta(long esquemaId)
+    {
+        using var q = conexion.CreateCommand();
+        q.CommandText =
+            "SELECT orden,contiene,modo FROM reglas_propuesta_modo_esquema_diccionario WHERE esquema_id=$e ORDER BY orden;";
+        q.Parameters.AddWithValue("$e", esquemaId);
+        using var r = q.ExecuteReader();
+        var reglas = new List<ReglaPropuestaModo>();
+        while (r.Read())
+            reglas.Add(new(r.GetInt32(0), r.GetString(1), r.GetString(2)));
+        return reglas;
+    }
+
+    public void GuardarReglasPropuesta(long esquemaId, IReadOnlyList<ReglaPropuestaModo> reglas)
+    {
+        using var tx = conexion.BeginTransaction();
+        using (var borrar = conexion.CreateCommand())
+        {
+            borrar.Transaction = tx;
+            borrar.CommandText =
+                "DELETE FROM reglas_propuesta_modo_esquema_diccionario WHERE esquema_id=$e;";
+            borrar.Parameters.AddWithValue("$e", esquemaId);
+            borrar.ExecuteNonQuery();
+        }
+        foreach (
+            var regla in reglas
+                .Where(r =>
+                    !string.IsNullOrWhiteSpace(r.Contiene) && !string.IsNullOrWhiteSpace(r.Modo)
+                )
+                .OrderBy(r => r.Orden)
+        )
+        {
+            using var q = conexion.CreateCommand();
+            q.Transaction = tx;
+            q.CommandText =
+                "INSERT INTO reglas_propuesta_modo_esquema_diccionario(esquema_id,orden,contiene,modo) SELECT $e,$o,$c,$m WHERE EXISTS(SELECT 1 FROM modos_esquema_diccionario WHERE esquema_id=$e AND nombre=$m COLLATE NOCASE);";
+            q.Parameters.AddWithValue("$e", esquemaId);
+            q.Parameters.AddWithValue("$o", regla.Orden);
+            q.Parameters.AddWithValue("$c", regla.Contiene.Trim());
+            q.Parameters.AddWithValue("$m", regla.Modo.Trim());
+            if (q.ExecuteNonQuery() == 0)
+                throw new ArgumentException(
+                    "Cada regla debe proponer un modo del esquema.",
+                    nameof(reglas)
+                );
+        }
+        tx.Commit();
+    }
+
     public void Guardar(long esquemaId, IReadOnlyList<string> nombres)
     {
         using var tx = conexion.BeginTransaction();
@@ -51,22 +101,83 @@ public sealed class RepositorioModosEsquemaDiccionario(SqliteConnection conexion
     {
         using var q = conexion.CreateCommand();
         q.CommandText =
-            "SELECT version_id,cadena_id,proveedor,opciones_json FROM decisiones_esquema_diccionario WHERE tipo='modo' AND estado='pendiente' AND cadena_id IS NOT NULL ORDER BY creada_en;";
+            "SELECT p.version_id,p.cadena_id,p.proveedor,p.opciones_json,(SELECT x.valor_original FROM valores_documento x WHERE x.version_id=p.version_id AND x.dato_diccionario_id='tipo_entrega' AND x.estado='vigente' ORDER BY x.id DESC LIMIT 1),c.esquema_id FROM decisiones_esquema_diccionario p JOIN cadenas_diccionario c ON c.id=p.cadena_id WHERE p.tipo='modo' AND p.estado='pendiente' AND p.cadena_id IS NOT NULL ORDER BY p.creada_en;";
         using var r = q.ExecuteReader();
-        var filas = new List<DecisionModoPendiente>();
+        var pendientes =
+            new List<(
+                long VersionId,
+                long CadenaId,
+                string Proveedor,
+                string[] Opciones,
+                string? Texto,
+                long EsquemaId
+            )>();
         while (r.Read())
+        {
+            string? texto = r.IsDBNull(4) ? null : r.GetString(4);
+            var opciones =
+                System.Text.Json.JsonSerializer.Deserialize<string[]>(r.GetString(3)) ?? [];
+            pendientes.Add(
+                (r.GetInt64(0), r.GetInt64(1), r.GetString(2), opciones, texto, r.GetInt64(5))
+            );
+        }
+        r.Close();
+        var filas = new List<DecisionModoPendiente>();
+        foreach (var pendiente in pendientes)
+        {
+            string? propuesto = null;
+            var opciones = pendiente.Opciones;
+            string? texto = pendiente.Texto;
+            if (!string.IsNullOrWhiteSpace(texto))
+            {
+                propuesto = Proponer(texto, ListarReglasPropuesta(pendiente.EsquemaId));
+                if (propuesto == "Despacho")
+                    opciones = opciones
+                        .OrderByDescending(o =>
+                            o.StartsWith("Despacho", StringComparison.OrdinalIgnoreCase)
+                        )
+                        .ToArray();
+                else if (propuesto is not null)
+                    opciones = opciones
+                        .OrderByDescending(o =>
+                            string.Equals(o, propuesto, StringComparison.OrdinalIgnoreCase)
+                        )
+                        .ToArray();
+            }
             filas.Add(
                 new(
-                    r.GetInt64(0),
-                    r.GetInt64(1),
-                    r.GetString(2),
-                    System.Text.Json.JsonSerializer.Deserialize<string[]>(r.GetString(3)) ?? []
+                    pendiente.VersionId,
+                    pendiente.CadenaId,
+                    pendiente.Proveedor,
+                    opciones,
+                    texto,
+                    propuesto
                 )
             );
+        }
         return filas;
     }
 
-    public void FijarModo(long cadenaId, long? modoId)
+    public static string? Proponer(string texto, IReadOnlyList<ReglaPropuestaModo> reglas)
+    {
+        string normalizado = Normalizar(texto);
+        foreach (var regla in reglas.OrderBy(r => r.Orden))
+            if (normalizado.Contains(Normalizar(regla.Contiene), StringComparison.Ordinal))
+                return regla.Modo;
+        return string.IsNullOrWhiteSpace(texto) ? null : "Despacho";
+    }
+
+    private static string Normalizar(string texto)
+    {
+        var descompuesto = texto.Normalize(NormalizationForm.FormD);
+        var salida = new StringBuilder(descompuesto.Length);
+        foreach (char caracter in descompuesto)
+            if (CharUnicodeInfo.GetUnicodeCategory(caracter) != UnicodeCategory.NonSpacingMark)
+                salida.Append(char.ToUpperInvariant(caracter));
+        return salida.ToString().Normalize(NormalizationForm.FormC);
+    }
+
+    public void FijarModo(long cadenaId, long? modoId, DateOnly? fechaRetiro = null)
     {
         using var tx = conexion.BeginTransaction();
         long esquema;
@@ -102,6 +213,23 @@ public sealed class RepositorioModosEsquemaDiccionario(SqliteConnection conexion
             q.Parameters.AddWithValue("$m", (object?)modoId ?? DBNull.Value);
             q.Parameters.AddWithValue("$a", (object?)anterior ?? DBNull.Value);
             q.Parameters.AddWithValue("$c", cadenaId);
+            q.Parameters.AddWithValue(
+                "$f",
+                DateTime.Now.ToString("o", CultureInfo.InvariantCulture)
+            );
+            q.ExecuteNonQuery();
+        }
+        if (fechaRetiro is DateOnly fecha)
+        {
+            using var q = conexion.CreateCommand();
+            q.Transaction = tx;
+            q.CommandText =
+                "INSERT INTO datos_cadena_diccionario(cadena_id,nombre,valor,actualizado_en) VALUES($c,'Fecha de retiro',$v,$f) ON CONFLICT(cadena_id,nombre) DO UPDATE SET valor=excluded.valor,actualizado_en=excluded.actualizado_en;";
+            q.Parameters.AddWithValue("$c", cadenaId);
+            q.Parameters.AddWithValue(
+                "$v",
+                fecha.ToString("yyyy-MM-dd", CultureInfo.InvariantCulture)
+            );
             q.Parameters.AddWithValue(
                 "$f",
                 DateTime.Now.ToString("o", CultureInfo.InvariantCulture)

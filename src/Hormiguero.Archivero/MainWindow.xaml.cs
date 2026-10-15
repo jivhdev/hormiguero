@@ -43,6 +43,7 @@ public sealed class DecisionPendienteFila : INotifyPropertyChanged
 {
     private Queue<string> _datosPendientes = new();
     private DateTime? _fechaDato;
+    private string? _modoAConfirmar;
 
     public DecisionPendienteFila(DecisionPendienteCadena decision, DecisionModoPendiente? modo)
     {
@@ -64,9 +65,17 @@ public sealed class DecisionPendienteFila : INotifyPropertyChanged
             ? string.Empty
             : $"{Decision.Documento} · {Decision.Proveedor} · ¿Qué modo tiene este proceso?";
     public IReadOnlyList<string> OpcionesModo => Modo?.Opciones ?? [];
+    public IReadOnlyList<OpcionModoFila> OpcionesModoFila =>
+        Modo?.Opciones.Select(nombre => new OpcionModoFila(nombre, Destacar(nombre))).ToArray()
+        ?? [];
+    public string PropuestaTexto =>
+        string.IsNullOrWhiteSpace(Modo?.TextoLeido)
+            ? string.Empty
+            : $"Se leyó: «{Modo.TextoLeido}» · propuesto {Modo.ModoPropuesto ?? "Despacho"}";
     public bool EsModo => Modo is not null;
     public bool MostrarAccionesOrigen => Modo is null;
-    public bool MostrarOpcionesModo => EsModo && !ModoElegido;
+    public bool MostrarOpcionesModo => EsModo && !ModoElegido && _modoAConfirmar is null;
+    public bool MostrarConfirmacionRetiro => _modoAConfirmar is not null;
     public bool ModoElegido { get; private set; }
     public string? DatoPendiente { get; private set; }
     public bool MostrarCapturaDato => ModoElegido && DatoPendiente is not null;
@@ -88,6 +97,31 @@ public sealed class DecisionPendienteFila : INotifyPropertyChanged
 
     public event PropertyChangedEventHandler? PropertyChanged;
 
+    private bool Destacar(string nombre) =>
+        Modo?.ModoPropuesto switch
+        {
+            "Retiro" => string.Equals(nombre, "Retiro", StringComparison.OrdinalIgnoreCase),
+            "Despacho" => nombre.StartsWith("Despacho", StringComparison.OrdinalIgnoreCase),
+            _ => false,
+        };
+
+    public void PrepararRetiro()
+    {
+        _modoAConfirmar = "Retiro";
+        PropertyChanged?.Invoke(this, new(nameof(MostrarOpcionesModo)));
+        PropertyChanged?.Invoke(this, new(nameof(MostrarConfirmacionRetiro)));
+    }
+
+    public void CancelarRetiro()
+    {
+        _modoAConfirmar = null;
+        FechaDato = null;
+        PropertyChanged?.Invoke(this, new(nameof(MostrarOpcionesModo)));
+        PropertyChanged?.Invoke(this, new(nameof(MostrarConfirmacionRetiro)));
+    }
+
+    public string? ModoAConfirmar => _modoAConfirmar;
+
     public void MarcarModoElegido(IEnumerable<string> datosPendientes)
     {
         ModoElegido = true;
@@ -107,6 +141,8 @@ public sealed class DecisionPendienteFila : INotifyPropertyChanged
         PropertyChanged?.Invoke(this, new(nameof(MostrarCapturaDato)));
     }
 }
+
+public sealed record OpcionModoFila(string Nombre, bool Destacada);
 
 public partial class MainWindow : Window
 {
@@ -326,6 +362,11 @@ public partial class MainWindow : Window
                 consulta.Parameters.AddWithValue("$v", fila.VersionId);
                 if (Convert.ToInt64(consulta.ExecuteScalar()) != 0)
                 {
+                    if (string.Equals(nombreModo, "Retiro", StringComparison.OrdinalIgnoreCase))
+                    {
+                        fila.PrepararRetiro();
+                        return;
+                    }
                     using var modoConsulta = conexion.CreateCommand();
                     modoConsulta.CommandText =
                         "SELECT m.id FROM cadenas_diccionario c JOIN modos_esquema_diccionario m ON m.esquema_id=c.esquema_id WHERE c.id=$c AND m.nombre=$n COLLATE NOCASE;";
@@ -366,6 +407,52 @@ public partial class MainWindow : Window
             );
         }
     }
+
+    private void BtnConfirmarRetiro_Click(object sender, RoutedEventArgs e)
+    {
+        var fila = FilaDecision(sender);
+        if (fila?.Modo is not { } decisionModo || fila.FechaDato is not DateTime fecha)
+        {
+            System.Windows.MessageBox.Show(
+                this,
+                "Seleccione la fecha de retiro.",
+                "Decisiones pendientes",
+                MessageBoxButton.OK,
+                MessageBoxImage.Information
+            );
+            return;
+        }
+        try
+        {
+            using var conexion = BaseComun.Abrir(DocumentosGuardados.RutaBaseComun);
+            using var q = conexion.CreateCommand();
+            q.CommandText =
+                "SELECT m.id FROM cadenas_diccionario c JOIN modos_esquema_diccionario m ON m.esquema_id=c.esquema_id WHERE c.id=$c AND m.nombre='Retiro' COLLATE NOCASE;";
+            q.Parameters.AddWithValue("$c", decisionModo.CadenaId);
+            if (q.ExecuteScalar() is not long modoId)
+                throw new InvalidOperationException("El modo Retiro ya no está disponible.");
+            new RepositorioModosEsquemaDiccionario(conexion).FijarModo(
+                decisionModo.CadenaId,
+                modoId,
+                DateOnly.FromDateTime(fecha)
+            );
+            new EvaluadorAlertasEsquemaDiccionario(conexion).Evaluar();
+            CargarDecisionesPendientes();
+        }
+        catch (Exception ex)
+        {
+            System.Windows.MessageBox.Show(
+                this,
+                ex.Message,
+                "Decisiones pendientes",
+                MessageBoxButton.OK,
+                MessageBoxImage.Warning
+            );
+        }
+    }
+
+    private void BtnCancelarRetiro_Click(object sender, RoutedEventArgs e) =>
+        FilaDecision(sender)?.CancelarRetiro();
 
     private static IReadOnlyList<string> ObtenerDatosPendientes(
         Microsoft.Data.Sqlite.SqliteConnection conexion,

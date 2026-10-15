@@ -39,7 +39,7 @@ public static class DatosEnlazantesConfiguracionService
                     zona?.Ancho ?? 0,
                     zona?.Alto ?? 0,
                     string.Empty,
-                    zona?.Enlazable ?? true,
+                    d.Enlazable && (zona?.Enlazable ?? true),
                     datoIdentificador == d.Id
                 );
             })

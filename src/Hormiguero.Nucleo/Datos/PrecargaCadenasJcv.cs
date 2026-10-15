@@ -138,6 +138,25 @@ public static class PrecargaCadenasJcv
                     m.Parameters.AddWithValue("$n", modo);
                     modos.Add(modo, Convert.ToInt64(m.ExecuteScalar()));
                 }
+                if (esquema.TryGetProperty("proponerModo", out var propuestas))
+                {
+                    int ordenPropuesta = 0;
+                    foreach (var propuesta in propuestas.EnumerateArray())
+                    {
+                        using var p = conexion.CreateCommand();
+                        p.Transaction = tx;
+                        p.CommandText =
+                            "INSERT INTO reglas_propuesta_modo_esquema_diccionario(esquema_id,orden,contiene,modo) VALUES($e,$o,$c,$m);";
+                        p.Parameters.AddWithValue("$e", esquemaId);
+                        p.Parameters.AddWithValue("$o", ordenPropuesta++);
+                        p.Parameters.AddWithValue(
+                            "$c",
+                            propuesta.GetProperty("contiene").GetString()!
+                        );
+                        p.Parameters.AddWithValue("$m", propuesta.GetProperty("modo").GetString()!);
+                        p.ExecuteNonQuery();
+                    }
+                }
                 if (
                     esquema.TryGetProperty("decide", out var decide)
                     && decide.ValueKind == JsonValueKind.String

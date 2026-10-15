@@ -1,3 +1,4 @@
+using System.Runtime.ExceptionServices;
 using Archivero;
 using Hormiguero.Nucleo.Datos;
 
@@ -25,6 +26,71 @@ public class DecisionPendienteFilaTests
         Assert.Equal(["Retiro", "Despacho"], fila.OpcionesModo);
         Assert.False(fila.MostrarAccionesOrigen);
         Assert.True(fila.MostrarOpcionesModo);
+    }
+
+    [Fact]
+    public void DecisionModo_ProponeYDestacaRetiroSinConfirmarlo()
+    {
+        Exception? error = null;
+        var hilo = new Thread(() =>
+        {
+            try
+            {
+                var decision = new DecisionPendienteCadena(
+                    12,
+                    "OCC 20527",
+                    "OCC",
+                    "Cobelcar",
+                    "",
+                    ""
+                );
+                var modo = new DecisionModoPendiente(
+                    12,
+                    34,
+                    "Cobelcar",
+                    ["Retiro", "Despacho RM", "Despacho región"],
+                    "76838441-K EPAC RETIRA CLIENTE",
+                    "Retiro"
+                );
+                var fila = new DecisionPendienteFila(decision, modo);
+                Assert.Contains("RETIRA CLIENTE", fila.PropuestaTexto);
+                Assert.Equal("Retiro", fila.OpcionesModoFila[0].Nombre);
+                Assert.True(fila.OpcionesModoFila[0].Destacada);
+                Assert.False(fila.ModoElegido);
+                Assert.True(fila.MostrarOpcionesModo);
+                fila.PrepararRetiro();
+                Assert.True(fila.MostrarConfirmacionRetiro);
+                Assert.False(fila.MostrarOpcionesModo);
+            }
+            catch (Exception ex)
+            {
+                error = ex;
+            }
+        });
+        hilo.SetApartmentState(ApartmentState.STA);
+        hilo.Start();
+        hilo.Join();
+        if (error is not null)
+            ExceptionDispatchInfo.Capture(error).Throw();
+    }
+
+    [Fact]
+    public void DecisionModo_PropuestaDespachoDestacaAmbasOpcionesSinElegirRegion()
+    {
+        var decision = new DecisionPendienteCadena(12, "OCC 20527", "OCC", "Hoffens", "", "");
+        var modo = new DecisionModoPendiente(
+            12,
+            34,
+            "Hoffens",
+            ["Despacho RM", "Despacho región", "Retiro"],
+            "OBRA EDIFICIO VICTORIA, PUERTO MONTT",
+            "Despacho"
+        );
+
+        var fila = new DecisionPendienteFila(decision, modo);
+
+        Assert.Equal([true, true, false], fila.OpcionesModoFila.Select(o => o.Destacada));
+        Assert.False(fila.ModoElegido);
     }
 
     [Fact]

@@ -136,6 +136,11 @@
                 <TextBlock Text="{Binding TipoProveedor}" TextWrapping="Wrap" />
                 <TextBlock Text="{Binding Pregunta}" TextWrapping="Wrap" FontWeight="SemiBold" />
                 <TextBlock
+                  Text="{Binding PropuestaTexto}"
+                  TextWrapping="Wrap"
+                  FontWeight="SemiBold"
+                />
+                <TextBlock
                   Text="{Binding Explicacion}"
                   TextWrapping="Wrap"
                   Foreground="{DynamicResource Hormiguero.TextoSecundario}"
@@ -188,7 +193,7 @@
               </StackPanel>
               <ItemsControl
                 Grid.Column="1"
-                ItemsSource="{Binding OpcionesModo}"
+                ItemsSource="{Binding OpcionesModoFila}"
                 VerticalAlignment="Center"
                 Visibility="{Binding MostrarOpcionesModo, Converter={StaticResource BooleanToVisibilityConverter}}"
               >
@@ -200,8 +205,8 @@
                 <ItemsControl.ItemTemplate>
                   <DataTemplate>
                     <Button
-                      Content="{Binding}"
-                      Tag="{Binding}"
+                      Content="{Binding Nombre}"
+                      Tag="{Binding Nombre}"
                       FontSize="16"
                       FontWeight="Bold"
                       MinWidth="110"
@@ -209,10 +214,47 @@
                       Padding="12,8"
                       Margin="4"
                       Click="BtnFijarModo_Click"
-                    />
+                    >
+                      <Button.Style>
+                        <Style TargetType="Button">
+                          <Style.Triggers>
+                            <DataTrigger Binding="{Binding Destacada}" Value="True">
+                              <Setter
+                                Property="Background"
+                                Value="{DynamicResource Hormiguero.PrincipalSuave}"
+                              />
+                            </DataTrigger>
+                          </Style.Triggers>
+                        </Style>
+                      </Button.Style>
+                    </Button>
                   </DataTemplate>
                 </ItemsControl.ItemTemplate>
               </ItemsControl>
+              <StackPanel
+                Grid.Column="1"
+                Orientation="Horizontal"
+                VerticalAlignment="Center"
+                Visibility="{Binding MostrarConfirmacionRetiro, Converter={StaticResource BooleanToVisibilityConverter}}"
+              >
+                <TextBlock Text="Fecha de retiro:" VerticalAlignment="Center" Margin="4" />
+                <DatePicker
+                  SelectedDate="{Binding FechaDato, UpdateSourceTrigger=PropertyChanged}"
+                  Width="140"
+                />
+                <Button
+                  Content="Confirmar Retiro"
+                  Padding="8,5"
+                  Margin="4"
+                  Click="BtnConfirmarRetiro_Click"
+                />
+                <Button
+                  Content="Cancelar"
+                  Padding="8,5"
+                  Margin="4"
+                  Click="BtnCancelarRetiro_Click"
+                />
+              </StackPanel>
             </Grid>
           </DataTemplate>
         </ListBox.ItemTemplate>
