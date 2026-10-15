@@ -4,6 +4,42 @@ namespace Archivero.Tests;
 
 internal static class CreadorPdfDePrueba
 {
+    public static string CrearSoloImagen(string carpetaDestino, string nombre)
+    {
+        var ruta = Path.Combine(carpetaDestino, nombre);
+        using var stream = new MemoryStream();
+        var offsets = new long[6];
+        void Escribir(string texto) => stream.Write(Encoding.ASCII.GetBytes(texto));
+
+        Escribir("%PDF-1.4\n");
+        offsets[1] = stream.Position;
+        Escribir("1 0 obj\n<< /Type /Catalog /Pages 2 0 R >>\nendobj\n");
+        offsets[2] = stream.Position;
+        Escribir("2 0 obj\n<< /Type /Pages /Kids [3 0 R] /Count 1 >>\nendobj\n");
+        offsets[3] = stream.Position;
+        Escribir(
+            "3 0 obj\n<< /Type /Page /Parent 2 0 R /Resources << /XObject << /Im0 4 0 R >> >> /MediaBox [0 0 100 100] /Contents 5 0 R >>\nendobj\n"
+        );
+        offsets[4] = stream.Position;
+        Escribir(
+            "4 0 obj\n<< /Type /XObject /Subtype /Image /Width 1 /Height 1 /ColorSpace /DeviceRGB /BitsPerComponent 8 /Length 3 >>\nstream\n"
+        );
+        stream.Write([byte.MaxValue, 0, 0]);
+        Escribir("\nendstream\nendobj\n");
+        offsets[5] = stream.Position;
+        var contenido = Encoding.ASCII.GetBytes("q 100 0 0 100 0 0 cm /Im0 Do Q");
+        Escribir($"5 0 obj\n<< /Length {contenido.Length} >>\nstream\n");
+        stream.Write(contenido);
+        Escribir("\nendstream\nendobj\n");
+        var xrefOffset = stream.Position;
+        Escribir("xref\n0 6\n0000000000 65535 f \n");
+        for (var i = 1; i <= 5; i++)
+            Escribir($"{offsets[i]:D10} 00000 n \n");
+        Escribir($"trailer\n<< /Size 6 /Root 1 0 R >>\nstartxref\n{xrefOffset}\n%%EOF");
+        File.WriteAllBytes(ruta, stream.ToArray());
+        return ruta;
+    }
+
     /// <summary>
     /// Crea un PDF mínimo (una página, A4) con dos líneas de texto en posiciones bien
     /// separadas: una cerca del borde superior (banda Y 0-0.3) y otra cerca del borde

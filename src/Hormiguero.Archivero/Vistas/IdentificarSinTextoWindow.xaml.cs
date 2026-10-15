@@ -590,9 +590,14 @@ public partial class IdentificarSinTextoWindow : Window
                     nombre
                 );
             }
-            catch (ArchivoDuplicadoException)
+            catch (ArchivoDuplicadoException duplicado)
             {
                 _pendientes.Agregar(_rutaArchivo, MotivoPendiente.Duplicado);
+                _pendientes.GuardarDestinoDuplicado(_rutaArchivo, duplicado.RutaDestino);
+                AuditoriaService.Registrar(
+                    "DUPLICADO_SIN_TEXTO_DETECTADO",
+                    $"{_rutaArchivo} -> {duplicado.RutaDestino}"
+                );
                 MostrarError(
                     "Duplicado: revisar. El documento quedó en pendientes para compararlo."
                 );

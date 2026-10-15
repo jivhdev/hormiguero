@@ -95,7 +95,15 @@ public static class ClasificadorService
             throw new ArchivoDuplicadoException(rutaDestino);
         }
 
-        CopiarVerificarBorrar(rutaArchivoOrigen, rutaDestino);
+        try
+        {
+            CopiarVerificarBorrar(rutaArchivoOrigen, rutaDestino);
+        }
+        catch (IOException) when (File.Exists(rutaDestino))
+        {
+            // Otro archivo pudo ocupar el destino después de la comprobación inicial.
+            throw new ArchivoDuplicadoException(rutaDestino);
+        }
         return rutaDestino;
     }
 

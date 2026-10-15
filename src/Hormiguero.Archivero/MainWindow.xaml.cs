@@ -127,37 +127,46 @@ public partial class MainWindow : Window
             _carpetasObservadas,
             new ImpresionAlArchivarService(new AccionImpresionWindows())
         );
-        _observador.DocumentoActualizado += documento => Dispatcher.Invoke(CargarObservados);
+        _observador.DocumentoActualizado += documento =>
+            DespacharDesdeFondo("DocumentoActualizado", CargarObservados);
         _observador.ProgresoActualizado += (nombre, procesados, total) =>
-            Dispatcher.Invoke(() =>
-            {
-                TxtProgresoObservador.Text =
-                    procesados < total
-                        ? $"Poniéndose al día: {procesados} de {total} ({nombre})"
-                        : "Al día";
-            });
-        _observador.DocumentoRequiereAtencion += _ => Dispatcher.Invoke(CargarPorAtender);
+            DespacharDesdeFondo(
+                "ProgresoActualizado",
+                () =>
+                {
+                    TxtProgresoObservador.Text =
+                        procesados < total
+                            ? $"Poniéndose al día: {procesados} de {total} ({nombre})"
+                            : "Al día";
+                }
+            );
+        _observador.DocumentoRequiereAtencion += _ =>
+            DespacharDesdeFondo("DocumentoRequiereAtencion", CargarPorAtender);
         _observador.ErrorVisible += mensaje =>
-            Dispatcher.BeginInvoke(() =>
-                System.Windows.MessageBox.Show(
-                    this,
-                    mensaje,
-                    "Carpetas observadas",
-                    MessageBoxButton.OK,
-                    MessageBoxImage.Warning
-                )
+            DespacharDesdeFondo(
+                "ErrorVisible",
+                () =>
+                    System.Windows.MessageBox.Show(
+                        this,
+                        mensaje,
+                        "Carpetas observadas",
+                        MessageBoxButton.OK,
+                        MessageBoxImage.Warning
+                    )
             );
         ComboTema.SelectedIndex = IndiceTema(DatosDeApp.LeerPreferencia("tema.archivero"));
         _inicializandoTema = false;
         PublicadorDatosDocumentoService.RevisionEnlacesFallida += (_, mensaje) =>
-            Dispatcher.Invoke(() =>
-                System.Windows.MessageBox.Show(
-                    this,
-                    mensaje,
-                    "Archivero",
-                    MessageBoxButton.OK,
-                    MessageBoxImage.Warning
-                )
+            DespacharDesdeFondo(
+                "RevisionEnlacesFallida",
+                () =>
+                    System.Windows.MessageBox.Show(
+                        this,
+                        mensaje,
+                        "Archivero",
+                        MessageBoxButton.OK,
+                        MessageBoxImage.Warning
+                    )
             );
         _servicioCarpeta = new CarpetaObservadaService(_configuracion);
         _carpetaObservada = carpetaObservada;
@@ -166,14 +175,18 @@ public partial class MainWindow : Window
         _vigilancia = vigilancia;
         SuscribirEventosVigilancia();
 
-        _bandeja.MostrarVentanaSolicitado += () => Dispatcher.Invoke(RestaurarVentana);
+        _bandeja.MostrarVentanaSolicitado += () =>
+            DespacharDesdeFondo("MostrarVentanaSolicitado", RestaurarVentana);
         _bandeja.AtencionSolicitada += () =>
-            Dispatcher.Invoke(() =>
-            {
-                RestaurarVentana();
-                ListaPorAtender.Focus();
-            });
-        _bandeja.SalirSolicitado += () => Dispatcher.Invoke(SalirDeVerdad);
+            DespacharDesdeFondo(
+                "AtencionSolicitada",
+                () =>
+                {
+                    RestaurarVentana();
+                    ListaPorAtender.Focus();
+                }
+            );
+        _bandeja.SalirSolicitado += () => DespacharDesdeFondo("SalirSolicitado", SalirDeVerdad);
 
         CargarPendientes();
         CargarDecisionesPendientes();
@@ -186,6 +199,28 @@ public partial class MainWindow : Window
 
     private static int IndiceTema(string? preferencia) =>
         Enum.TryParse<ModoTema>(preferencia, out var modo) ? (int)modo : (int)ModoTema.Sistema;
+
+    private void DespacharDesdeFondo(string evento, Action accion)
+    {
+        try
+        {
+            Dispatcher.BeginInvoke(() =>
+            {
+                try
+                {
+                    accion();
+                }
+                catch (Exception ex)
+                {
+                    AuditoriaService.Registrar("ERROR_EVENTO_INTERFAZ", $"Evento={evento}; {ex}");
+                }
+            });
+        }
+        catch (Exception ex)
+        {
+            AuditoriaService.Registrar("ERROR_EVENTO_INTERFAZ", $"Evento={evento}; {ex}");
+        }
+    }
 
     private void ComboTema_SelectionChanged(
         object sender,
@@ -204,24 +239,32 @@ public partial class MainWindow : Window
 
     private void SuscribirEventosVigilancia()
     {
-        _vigilancia.ArchivoPendienteDetectado += _ => Dispatcher.Invoke(CargarPendientes);
-        _vigilancia.ArchivoPendienteEliminado += _ => Dispatcher.Invoke(CargarPendientes);
+        _vigilancia.ArchivoPendienteDetectado += _ =>
+            DespacharDesdeFondo("ArchivoPendienteDetectado", CargarPendientes);
+        _vigilancia.ArchivoPendienteEliminado += _ =>
+            DespacharDesdeFondo("ArchivoPendienteEliminado", CargarPendientes);
         _vigilancia.ArchivoRequiereAtencion += (ruta, detalle) =>
-            Dispatcher.Invoke(() =>
-            {
-                CargarPendientes();
-                System.Windows.MessageBox.Show(
-                    this,
-                    $"No se pudo completar el procesamiento de {Path.GetFileName(ruta)}.\n\n{detalle}",
-                    "Archivero",
-                    MessageBoxButton.OK,
-                    MessageBoxImage.Warning
-                );
-            });
+            DespacharDesdeFondo(
+                "ArchivoRequiereAtencion",
+                () =>
+                {
+                    CargarPendientes();
+                    System.Windows.MessageBox.Show(
+                        this,
+                        $"No se pudo completar el procesamiento de {Path.GetFileName(ruta)}.\n\n{detalle}",
+                        "Archivero",
+                        MessageBoxButton.OK,
+                        MessageBoxImage.Warning
+                    );
+                }
+            );
         _vigilancia.ArchivoGuardadoAutomaticamente += (_, rutaFinal) =>
-            Dispatcher.Invoke(() => AgregarAGuardadosRecientes(rutaFinal));
+            DespacharDesdeFondo(
+                "ArchivoGuardadoAutomaticamente",
+                () => AgregarAGuardadosRecientes(rutaFinal)
+            );
         _vigilancia.CarpetaObservadaNoDisponible += () =>
-            Dispatcher.Invoke(AvisarCarpetaNoDisponible);
+            DespacharDesdeFondo("CarpetaObservadaNoDisponible", AvisarCarpetaNoDisponible);
     }
 
     private void BtnCambiarCarpetaObservada_Click(object sender, RoutedEventArgs e)
@@ -776,6 +819,36 @@ public partial class MainWindow : Window
 
         try
         {
+            var destinoDuplicadoGuardado = _pendientes.ObtenerDestinoDuplicado(rutaArchivo);
+            if (destinoDuplicadoGuardado is not null)
+            {
+                if (!File.Exists(destinoDuplicadoGuardado))
+                {
+                    AuditoriaService.Registrar(
+                        "DESTINO_DUPLICADO_PENDIENTE_NO_ENCONTRADO",
+                        destinoDuplicadoGuardado
+                    );
+                    System.Windows.MessageBox.Show(
+                        this,
+                        "El archivo con el que entró en conflicto ya no está en esa ubicación. Actualiza la lista e inténtalo de nuevo.",
+                        "Archivero",
+                        MessageBoxButton.OK,
+                        MessageBoxImage.Warning
+                    );
+                    return;
+                }
+
+                var resolverGuardado = new ResolverDuplicadoWindow(
+                    rutaArchivo,
+                    destinoDuplicadoGuardado
+                )
+                {
+                    Owner = this,
+                };
+                resolverGuardado.ShowDialog();
+                return;
+            }
+
             // Se recalcula todo en el momento (coincidencia + campos extraidos) en vez de guardarlo
             // en la base: es el mismo documento y la misma configuracion, asi que da lo mismo, y
             // evita duplicar el estado en Pendientes.

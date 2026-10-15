@@ -1,5 +1,6 @@
 using Archivero.Datos;
 using Archivero.Servicios;
+using Archivero.Servicios.Pdf;
 
 namespace Archivero.Tests;
 
@@ -70,6 +71,112 @@ public class VigilanciaCarpetaServiceTests : IDisposable
         finally
         {
             Directory.Delete(carpeta, recursive: true);
+        }
+    }
+
+    [Fact]
+    public void Manejador_Deleted_registra_el_error_y_continua()
+    {
+        var fallo = new IOException("fallo simulado en Deleted");
+        VigilanciaCarpetaService.EjecutarManejadorProtegido(
+            "Deleted",
+            "archivo.pdf",
+            () => throw fallo
+        );
+
+        Assert.Contains("ERROR_MANEJADOR_VIGILANTE", File.ReadAllText(AuditoriaService.RutaLog));
+        Assert.Contains(fallo.Message, File.ReadAllText(AuditoriaService.RutaLog));
+    }
+
+    [Fact]
+    public void Duplicado_sin_texto_se_puede_comparar_y_guardar_ambos()
+    {
+        var (observada, destino) = CrearCarpetas();
+        var rutaNueva = CreadorPdfDePrueba.CrearSoloImagen(observada, "1190036 (1).pdf");
+        var rutaDestino = CreadorPdfDePrueba.CrearSoloImagen(destino, "1190036.pdf");
+        var pendientes = new PendienteRepository();
+        using var vigilancia = new VigilanciaCarpetaService(observada);
+
+        Assert.False(LectorPdf.TieneTextoExtraible(rutaNueva));
+        Assert.False(LectorPdf.TieneTextoExtraible(rutaDestino));
+        vigilancia.Iniciar();
+        Assert.Equal(
+            MotivoPendiente.SinTextoExtraible,
+            Assert.Single(pendientes.ObtenerTodos()).Motivo
+        );
+
+        Assert.Throws<ArchivoDuplicadoException>(() =>
+            ClasificadorService.Clasificar(
+                rutaNueva,
+                new ConfiguracionDocumento
+                {
+                    Emisor = "(sin texto)",
+                    Tipo = "(sin texto)",
+                    CarpetaDestino = destino,
+                    FormatoCarpeta = FormatoCarpeta.Directo,
+                    Renombrar = true,
+                    Patrones = [],
+                },
+                null,
+                "1190036"
+            )
+        );
+        pendientes.Agregar(rutaNueva, MotivoPendiente.Duplicado);
+        pendientes.GuardarDestinoDuplicado(rutaNueva, rutaDestino);
+        Assert.Equal(rutaDestino, pendientes.ObtenerDestinoDuplicado(rutaNueva));
+
+        Assert.NotEmpty(LectorPdf.RenderizarPagina(rutaNueva, 0).PixelesBgra);
+        Assert.NotEmpty(LectorPdf.RenderizarPagina(rutaDestino, 0).PixelesBgra);
+        var rutaAmbos = ClasificadorService.GuardarAmbos(rutaNueva, rutaDestino);
+
+        Assert.True(File.Exists(rutaDestino));
+        Assert.True(File.Exists(rutaAmbos));
+        Assert.False(File.Exists(rutaNueva));
+        pendientes.Quitar(rutaNueva);
+        Assert.Empty(pendientes.ObtenerTodos());
+        Assert.Null(pendientes.ObtenerDestinoDuplicado(rutaNueva));
+    }
+
+    [Fact]
+    public async Task Dos_archivos_casi_simultaneos_con_el_mismo_destino_quedan_como_duplicado()
+    {
+        var (observada, destino) = CrearCarpetas();
+        var primera = CreadorPdfDePrueba.CrearSoloImagen(observada, "1190036.pdf");
+        var segunda = CreadorPdfDePrueba.CrearSoloImagen(observada, "1190036 (1).pdf");
+        var configuracion = new ConfiguracionDocumento
+        {
+            Emisor = "(sin texto)",
+            Tipo = "(sin texto)",
+            CarpetaDestino = destino,
+            FormatoCarpeta = FormatoCarpeta.Directo,
+            Renombrar = true,
+            Patrones = [],
+        };
+
+        var resultados = await Task.WhenAll(
+            Task.Run(() => ClasificarConResultado(primera, configuracion)),
+            Task.Run(() => ClasificarConResultado(segunda, configuracion))
+        );
+
+        Assert.Single(resultados, resultado => resultado is null);
+        Assert.Single(resultados, resultado => resultado is ArchivoDuplicadoException);
+        Assert.True(File.Exists(Path.Combine(destino, "1190036.pdf")));
+        Assert.Single(Directory.GetFiles(observada, "*.pdf"));
+    }
+
+    private static Exception? ClasificarConResultado(
+        string ruta,
+        ConfiguracionDocumento configuracion
+    )
+    {
+        try
+        {
+            ClasificadorService.Clasificar(ruta, configuracion, null, "1190036");
+            return null;
+        }
+        catch (Exception ex)
+        {
+            return ex;
         }
     }
 
@@ -263,6 +370,17 @@ public class VigilanciaCarpetaServiceTests : IDisposable
     {
         AuditoriaService.RutaLog = _rutaLogOriginal;
         Microsoft.Data.Sqlite.SqliteConnection.ClearAllPools();
-        File.Delete(_rutaDbTemporal);
+        for (var intento = 0; intento < 10 && File.Exists(_rutaDbTemporal); intento++)
+        {
+            try
+            {
+                File.Delete(_rutaDbTemporal);
+            }
+            catch (IOException) when (intento < 9)
+            {
+                Thread.Sleep(100);
+                Microsoft.Data.Sqlite.SqliteConnection.ClearAllPools();
+            }
+        }
     }
 }

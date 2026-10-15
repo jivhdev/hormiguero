@@ -21,6 +21,7 @@ public partial class App : System.Windows.Application
     {
         DispatcherUnhandledException += App_DispatcherUnhandledException;
         TaskScheduler.UnobservedTaskException += TaskScheduler_UnobservedTaskException;
+        AppDomain.CurrentDomain.UnhandledException += AppDomain_UnhandledException;
         base.OnStartup(e);
 
         // Fase B-1 (D-66): diseño común de Hormiguero, claro u oscuro según Windows.
@@ -141,6 +142,15 @@ public partial class App : System.Windows.Application
                 MessageBoxButton.OK,
                 MessageBoxImage.Error
             )
+        );
+    }
+
+    private static void AppDomain_UnhandledException(object sender, UnhandledExceptionEventArgs e)
+    {
+        var error = e.ExceptionObject as Exception;
+        RegistrarErrorInesperado(
+            "ERROR_NO_CONTROLADO",
+            error ?? new Exception($"{e.ExceptionObject}; IsTerminating={e.IsTerminating}")
         );
     }
 
