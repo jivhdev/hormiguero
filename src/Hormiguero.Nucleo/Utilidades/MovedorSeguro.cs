@@ -42,7 +42,9 @@ public static class MovedorSeguro
             return new Traslado(ResultadoTraslado.OrigenEnUso, null, error.Message);
         }
 
-        string temporal = destino + Temporal;
+        // Temporal único por traslado: dos guardados simultáneos al mismo destino no comparten
+        // el archivo a medio copiar (uno queda Movido y el otro ve el destino ocupado).
+        string temporal = destino + "." + Guid.NewGuid().ToString("N")[..8] + Temporal;
         try
         {
             if (File.Exists(destino))

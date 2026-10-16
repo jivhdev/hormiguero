@@ -20,6 +20,9 @@ namespace Archivero.Vistas;
 /// </summary>
 public partial class IdentificarSinTextoWindow : Window
 {
+    /// <summary>Ruta donde quedó guardado el documento (null si no se guardó).</summary>
+    public string? RutaGuardada { get; private set; }
+
     private class FilaUbicacion(UbicacionSinTexto ubicacion)
     {
         public UbicacionSinTexto Ubicacion { get; } = ubicacion;
@@ -656,6 +659,7 @@ public partial class IdentificarSinTextoWindow : Window
                     );
                 }
             }
+            RutaGuardada = rutaFinal;
             AuditoriaService.Registrar(
                 "GUARDADO_MANUAL_SIN_TEXTO",
                 _atajoUsado is null

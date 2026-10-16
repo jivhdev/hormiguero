@@ -214,8 +214,6 @@ public partial class MainWindow : Window
 
         _vigilancia = vigilancia;
         SuscribirEventosVigilancia();
-        ClasificadorService.DocumentoGuardado += DocumentoGuardado;
-        Closed += (_, _) => ClasificadorService.DocumentoGuardado -= DocumentoGuardado;
 
         _bandeja.MostrarVentanaSolicitado += () =>
             DespacharDesdeFondo("MostrarVentanaSolicitado", RestaurarVentana);
@@ -300,12 +298,14 @@ public partial class MainWindow : Window
                     );
                 }
             );
+        _vigilancia.ArchivoGuardadoAutomaticamente += (_, rutaFinal) =>
+            DespacharDesdeFondo(
+                "ArchivoGuardadoAutomaticamente",
+                () => AgregarAGuardadosRecientes(rutaFinal)
+            );
         _vigilancia.CarpetaObservadaNoDisponible += () =>
             DespacharDesdeFondo("CarpetaObservadaNoDisponible", AvisarCarpetaNoDisponible);
     }
-
-    private void DocumentoGuardado(string rutaFinal) =>
-        DespacharDesdeFondo("DocumentoGuardado", () => AgregarAGuardadosRecientes(rutaFinal));
 
     private void BtnCambiarCarpetaObservada_Click(object sender, RoutedEventArgs e)
     {
@@ -926,6 +926,9 @@ public partial class MainWindow : Window
             Owner = this,
         };
         identificarSinTexto.ShowDialog();
+        // Las guías firmadas y demás PDF sin texto también suman en "Guardados" (R-5).
+        if (identificarSinTexto.RutaGuardada is string rutaGuardada)
+            AgregarAGuardadosRecientes(rutaGuardada);
 
         CargarPendientes();
     }
