@@ -1,6 +1,17 @@
 ﻿HORMIGUERO - NOVEDADES PARA PROBAR (la versión exacta está en VERSION.txt)
 ===============================================================================
 
+ARREGLADO (16-10) -- lo que no funcionó el 15-10
+- "Decisiones pendientes": los botones Retiro / Despacho RM / Despacho región no hacían nada.
+  Ya funcionan (probado pulsándolos): Despacho guarda el modo; Retiro pide la fecha y "Confirmar
+  Retiro" la guarda.
+- "Crear la cadena igual": ya crea la cadena con ese documento, quita el dudoso y suma lo que
+  calce (ej. la FCC de esa guía).
+- El documento que se esperaba completa la cadena también cuando lo guardas con Archivero (no
+  solo cuando llega por carpeta observada).
+- Las guías firmadas guardadas por "Pendientes de distribuir" ahora suman en "Guardados".
+- Dos guardados al mismo tiempo con el mismo nombre ya no se pisan.
+
 LO MÁS NUEVO (15-10)  -- PARTE SIEMPRE CON LOS DATOS EN BLANCO (Reiniciar)
 == TUS CADENAS YA VIENEN CARGADAS: HOFFENS Y COBELCAR ==
 Al abrir con datos en blanco, Buscadero → "Cadenas documentales" → "Esquemas…" ya muestra
