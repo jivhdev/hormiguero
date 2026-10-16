@@ -476,6 +476,7 @@ public sealed class MotorCadenasDiccionario(
         q.ExecuteNonQuery();
         RegistrarDecisionModo(versionId, esquema, lugar, cadena);
         CompletarCadena(cadena, esquema);
+        ResolverSinInicioMencionados(versionId);
         return new("cadena_creada", cadena);
     }
 

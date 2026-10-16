@@ -3,6 +3,7 @@ using System.IO;
 using System.Text.Json;
 using System.Windows;
 using System.Windows.Input;
+using System.Windows.Media;
 using Archivero.Datos;
 using Archivero.Servicios;
 using Archivero.Vistas;
@@ -213,6 +214,8 @@ public partial class MainWindow : Window
 
         _vigilancia = vigilancia;
         SuscribirEventosVigilancia();
+        ClasificadorService.DocumentoGuardado += DocumentoGuardado;
+        Closed += (_, _) => ClasificadorService.DocumentoGuardado -= DocumentoGuardado;
 
         _bandeja.MostrarVentanaSolicitado += () =>
             DespacharDesdeFondo("MostrarVentanaSolicitado", RestaurarVentana);
@@ -297,14 +300,12 @@ public partial class MainWindow : Window
                     );
                 }
             );
-        _vigilancia.ArchivoGuardadoAutomaticamente += (_, rutaFinal) =>
-            DespacharDesdeFondo(
-                "ArchivoGuardadoAutomaticamente",
-                () => AgregarAGuardadosRecientes(rutaFinal)
-            );
         _vigilancia.CarpetaObservadaNoDisponible += () =>
             DespacharDesdeFondo("CarpetaObservadaNoDisponible", AvisarCarpetaNoDisponible);
     }
+
+    private void DocumentoGuardado(string rutaFinal) =>
+        DespacharDesdeFondo("DocumentoGuardado", () => AgregarAGuardadosRecientes(rutaFinal));
 
     private void BtnCambiarCarpetaObservada_Click(object sender, RoutedEventArgs e)
     {
@@ -386,8 +387,34 @@ public partial class MainWindow : Window
             decisiones.Count > 0 ? Visibility.Visible : Visibility.Collapsed;
     }
 
-    private static DecisionPendienteFila? FilaDecision(object sender) =>
-        (sender as FrameworkElement)?.DataContext as DecisionPendienteFila;
+    private DecisionPendienteFila? FilaDecision(object sender)
+    {
+        DependencyObject? actual = sender as DependencyObject;
+        while (actual is not null)
+        {
+            if (
+                actual is FrameworkElement elemento
+                && elemento.DataContext is DecisionPendienteFila fila
+            )
+                return fila;
+            actual = VisualTreeHelper.GetParent(actual);
+        }
+
+        const string mensaje =
+            "No se encontró la fila de la decisión. Vuelva a cargar las decisiones pendientes e inténtelo otra vez.";
+        AuditoriaService.Registrar(
+            "FILA_DECISION_NO_ENCONTRADA",
+            $"Control={sender.GetType().Name}"
+        );
+        System.Windows.MessageBox.Show(
+            this,
+            mensaje,
+            "Decisiones pendientes",
+            MessageBoxButton.OK,
+            MessageBoxImage.Warning
+        );
+        return null;
+    }
 
     private void BtnFijarModo_Click(object sender, RoutedEventArgs e)
     {
@@ -629,7 +656,10 @@ public partial class MainWindow : Window
             consulta.Parameters.AddWithValue("$v", fila.VersionId);
             var resultado =
                 Convert.ToInt64(consulta.ExecuteScalar()) != 0
-                    ? new MotorCadenasDiccionario(conexion).CrearCadenaManual(fila.VersionId)
+                    ? new MotorCadenasDiccionario(
+                        conexion,
+                        new BuscadorDocumentosEnCarpetaService()
+                    ).CrearCadenaManual(fila.VersionId)
                     : new MotorCadenas(conexion).CrearCadenaIgual(fila.VersionId);
             if (resultado.Estado != "cadena_creada")
                 throw new InvalidOperationException(

@@ -157,6 +157,38 @@ public sealed class CadenasJcvIntegracionTests : IDisposable
     }
 
     [Fact]
+    public void CrearCadenaManual_ResuelveSinInicioYCompletaDocumentosQueCalzan()
+    {
+        var motor = new MotorCadenas(_conexion);
+        long grc = Documento(
+            "GRC",
+            "GRC 313091",
+            "313091",
+            new(2025, 3, 3),
+            ("guia_proveedor", "313091"),
+            ("oc_propia", "20527")
+        );
+        Assert.Equal("sin_inicio", motor.ProcesarVersion(grc).Estado);
+        long fcc = Documento(
+            "FCC",
+            "FCC 2419619",
+            "2419619",
+            new(2025, 3, 4),
+            ("factura_proveedor", "2419619"),
+            ("guia_proveedor", "313091"),
+            ("rut_proveedor", "78.615.580-0")
+        );
+        Assert.Equal("sin_inicio", motor.ProcesarVersion(fcc).Estado);
+
+        var creado = new MotorCadenasDiccionario(_conexion).CrearCadenaManual(grc);
+
+        Assert.Equal("cadena_creada", creado.Estado);
+        Assert.Equal("resuelta", EstadoDecision(grc));
+        Assert.Equal("resuelta", EstadoDecision(fcc));
+        Assert.Equal(creado.CadenaId, UbicacionActiva(fcc));
+    }
+
+    [Fact]
     public void Hoffens_completa_el_ciclo_de_despacho_guia_firmada_y_facturacion()
     {
         DateOnly lunes = new(2025, 3, 3);
@@ -676,7 +708,9 @@ public sealed class CadenasJcvIntegracionTests : IDisposable
                 "$g",
                 valores.First(v => v.Dato == "guia_proveedor").Valor
             );
-            proveedor = Convert.ToString(proveedorGuia.ExecuteScalar()) ?? proveedor;
+            string proveedorRegistrado = Convert.ToString(proveedorGuia.ExecuteScalar()) ?? "";
+            if (!string.IsNullOrWhiteSpace(proveedorRegistrado))
+                proveedor = proveedorRegistrado;
         }
         string emisor = tipo is "OCC" or "NVV" or "OCL" or "FCV" or "NCV" or "COV"
             ? "Empresa"
@@ -793,6 +827,15 @@ public sealed class CadenasJcvIntegracionTests : IDisposable
     {
         using var q = _conexion.CreateCommand();
         q.CommandText = "SELECT linea_id FROM ubicaciones_cadena_diccionario WHERE version_id=$v;";
+        q.Parameters.AddWithValue("$v", version);
+        return Convert.ToInt64(q.ExecuteScalar());
+    }
+
+    private long UbicacionActiva(long version)
+    {
+        using var q = _conexion.CreateCommand();
+        q.CommandText =
+            "SELECT cadena_id FROM ubicaciones_diccionario_todas WHERE version_id=$v AND estado='activo';";
         q.Parameters.AddWithValue("$v", version);
         return Convert.ToInt64(q.ExecuteScalar());
     }
