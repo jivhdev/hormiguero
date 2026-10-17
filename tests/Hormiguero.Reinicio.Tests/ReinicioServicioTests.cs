@@ -10,7 +10,6 @@ public sealed class ReinicioServicioTests : IDisposable
         "HormigueroReinicioTests",
         Guid.NewGuid().ToString("N")
     );
-
     private string Carpeta => Path.Combine(raiz, "Hormiguero");
     private static readonly DateTime Ahora = new(2026, 10, 6, 12, 34, 56);
 
@@ -18,121 +17,115 @@ public sealed class ReinicioServicioTests : IDisposable
     {
         SqliteConnection.ClearAllPools();
         if (Directory.Exists(raiz))
-        {
             Directory.Delete(raiz, recursive: true);
-        }
     }
 
     [Fact]
-    public void Conserva_clientes_y_respalda_todos_los_datos()
+    public void Respalda_completo_y_limpia_datos_de_trabajo_sin_tocar_mensajero()
     {
         CrearDatos();
-        string otroArchivo = Path.Combine(Carpeta, "configuracion-extra.txt");
-        File.WriteAllText(otroArchivo, "conservar íntegro");
+        File.WriteAllText(Path.Combine(Carpeta, "preferencias.json"), "preferencias");
+        File.WriteAllText(Path.Combine(Carpeta, "archivero-auditoria.log"), "registro");
 
         ResultadoReinicio resultado = new ReinicioServicio().Ejecutar(Carpeta, Ahora);
 
         Assert.True(resultado.Exitoso, resultado.Mensaje);
-        Assert.Equal(2, resultado.ClientesConservados);
         Assert.Equal(Carpeta + "-respaldo-reinicio-20261006-123456", resultado.RutaRespaldo);
         Assert.Equal(
-            "conservar íntegro",
-            File.ReadAllText(Path.Combine(resultado.RutaRespaldo, "configuracion-extra.txt"))
+            "preferencias",
+            File.ReadAllText(Path.Combine(resultado.RutaRespaldo, "preferencias.json"))
         );
         Assert.Equal(
-            new[]
-            {
-                "11111111-1|Compañía Ñandú|uno@ejemplo.cl; dos@ejemplo.cl|1|2020-01-02 03:04:05|2024-05-06 07:08:09",
-                "22222222-2|Cliente inactivo|inactivo@ejemplo.cl|0|2019-10-11 12:13:14|2025-09-08 07:06:05",
-            },
-            LeerClientes(Path.Combine(Carpeta, "mensajero.db"))
+            "registro",
+            File.ReadAllText(Path.Combine(resultado.RutaRespaldo, "archivero-auditoria.log"))
         );
         Assert.True(File.Exists(Path.Combine(Carpeta, "reiniciado.txt")));
+        Assert.Equal(1L, Contar(Path.Combine(Carpeta, "hormiguero.db"), "diccionario_datos"));
+        Assert.Equal(1L, Contar(Path.Combine(Carpeta, "hormiguero.db"), "identificaciones"));
+        Assert.Equal(1L, Contar(Path.Combine(Carpeta, "hormiguero.db"), "esquemas_diccionario"));
+        Assert.Equal(0L, Contar(Path.Combine(Carpeta, "hormiguero.db"), "documentos"));
+        Assert.Equal(1L, Contar(Path.Combine(Carpeta, "archivero.db"), "Configuraciones"));
+        Assert.Equal(0L, Contar(Path.Combine(Carpeta, "archivero.db"), "Pendientes"));
+        Assert.Equal(1L, Contar(Path.Combine(Carpeta, "buscadero.db"), "Carpetas"));
+        Assert.Equal(0L, Contar(Path.Combine(Carpeta, "buscadero.db"), "ArchivosIndexados"));
+        Assert.Equal(1L, Contar(Path.Combine(Carpeta, "mensajero.db"), "clientes_factura"));
+        Assert.Equal(1L, Contar(Path.Combine(Carpeta, "mensajero.db"), "estados_envio_factura"));
+        Assert.Equal(
+            1L,
+            Contar(Path.Combine(resultado.RutaRespaldo, "hormiguero.db"), "documentos")
+        );
     }
 
     [Fact]
-    public void Si_no_puede_renombrar_no_modifica_la_carpeta()
+    public void Opcion_de_inicio_cero_vacia_clasificaciones_y_conserva_esquemas_y_mensajero()
     {
         CrearDatos();
-        string rutaBloqueada = Path.Combine(Carpeta, "bloqueado.txt");
-        File.WriteAllText(rutaBloqueada, "no mover");
-        byte[] contenido = File.ReadAllBytes(rutaBloqueada);
-        using var bloqueador = new FileStream(
-            rutaBloqueada,
-            FileMode.Open,
-            FileAccess.Read,
-            FileShare.Read
+
+        ResultadoReinicio resultado = new ReinicioServicio().Ejecutar(
+            Carpeta,
+            Ahora,
+            borrarClasificaciones: true
         );
+
+        Assert.True(resultado.Exitoso, resultado.Mensaje);
+        Assert.Equal(0L, Contar(Path.Combine(Carpeta, "hormiguero.db"), "identificaciones"));
+        Assert.Equal(1L, Contar(Path.Combine(Carpeta, "hormiguero.db"), "esquemas_diccionario"));
+        Assert.Equal(0L, Contar(Path.Combine(Carpeta, "archivero.db"), "EntidadesConocidas"));
+        Assert.Equal(1L, Contar(Path.Combine(Carpeta, "mensajero.db"), "clientes_factura"));
+    }
+
+    [Fact]
+    public void Si_ya_existe_el_respaldo_no_modifica_las_bases()
+    {
+        CrearDatos();
+        string respaldo = ReinicioServicio.RutaRespaldo(Carpeta, Ahora);
+        Directory.CreateDirectory(respaldo);
+
         ResultadoReinicio resultado = new ReinicioServicio().Ejecutar(Carpeta, Ahora);
 
         Assert.False(resultado.Exitoso);
-        Assert.True(Directory.Exists(Carpeta));
-        Assert.False(Directory.Exists(resultado.RutaRespaldo));
+        Assert.Equal(1L, Contar(Path.Combine(Carpeta, "hormiguero.db"), "documentos"));
         Assert.False(File.Exists(Path.Combine(Carpeta, "reiniciado.txt")));
-        var contenidoFinal = new byte[checked((int)bloqueador.Length)];
-        bloqueador.Position = 0;
-        bloqueador.ReadExactly(contenidoFinal);
-        Assert.Equal(contenido, contenidoFinal);
-        Assert.Equal(2, LeerClientes(Path.Combine(Carpeta, "mensajero.db")).Length);
-    }
-
-    [Fact]
-    public void Si_falla_la_importacion_devuelve_la_carpeta_original()
-    {
-        CrearDatos();
-        string archivo = Path.Combine(Carpeta, "anterior.txt");
-        File.WriteAllText(archivo, "anterior");
-        var servicio = new ReinicioServicio(
-            (_, _) => throw new InvalidOperationException("fallo inducido")
-        );
-
-        ResultadoReinicio resultado = servicio.Ejecutar(Carpeta, Ahora);
-
-        Assert.False(resultado.Exitoso);
-        Assert.Contains("fallo inducido", resultado.Mensaje);
-        Assert.Equal("anterior", File.ReadAllText(archivo));
-        Assert.Equal(2, LeerClientes(Path.Combine(Carpeta, "mensajero.db")).Length);
-        Assert.False(File.Exists(Path.Combine(Carpeta, "reiniciado.txt")));
-        Assert.True(Directory.Exists(resultado.RutaRespaldo + "-fallido"));
     }
 
     private void CrearDatos()
     {
         Directory.CreateDirectory(Carpeta);
+        CrearBase(
+            "hormiguero.db",
+            "CREATE TABLE diccionario_datos(id TEXT PRIMARY KEY); INSERT INTO diccionario_datos VALUES('x'); CREATE TABLE migraciones(version INTEGER PRIMARY KEY); INSERT INTO migraciones VALUES(1); CREATE TABLE calendarios_feriados(id INTEGER); INSERT INTO calendarios_feriados VALUES(1); CREATE TABLE feriados(id INTEGER); INSERT INTO feriados VALUES(1); CREATE TABLE identificaciones(id INTEGER); INSERT INTO identificaciones VALUES(1); CREATE TABLE campos_documento(id INTEGER); INSERT INTO campos_documento VALUES(1); CREATE TABLE tipos_documento_datos(id INTEGER); INSERT INTO tipos_documento_datos VALUES(1); CREATE TABLE tipos_documento_informativos(id INTEGER); INSERT INTO tipos_documento_informativos VALUES(1); CREATE TABLE esquemas_diccionario(id INTEGER); INSERT INTO esquemas_diccionario VALUES(1); CREATE TABLE lugares_esquema_diccionario(id INTEGER); INSERT INTO lugares_esquema_diccionario VALUES(1); CREATE TABLE reglas_propuesta_modo_esquema_diccionario(id INTEGER); INSERT INTO reglas_propuesta_modo_esquema_diccionario VALUES(1); CREATE TABLE documentos(id INTEGER); INSERT INTO documentos VALUES(1);"
+        );
+        CrearBase(
+            "archivero.db",
+            "CREATE TABLE Configuraciones(id INTEGER); INSERT INTO Configuraciones VALUES(1); CREATE TABLE PatronesReconocimiento(id INTEGER); INSERT INTO PatronesReconocimiento VALUES(1); CREATE TABLE EntidadesConocidas(id INTEGER); INSERT INTO EntidadesConocidas VALUES(1); CREATE TABLE Pendientes(id INTEGER); INSERT INTO Pendientes VALUES(1); CREATE TABLE Borradores(id INTEGER); INSERT INTO Borradores VALUES(1); CREATE TABLE GuardadosRecientes(id INTEGER); INSERT INTO GuardadosRecientes VALUES(1); CREATE TABLE PendientesDuplicados(id INTEGER); INSERT INTO PendientesDuplicados VALUES(1);"
+        );
+        CrearBase(
+            "buscadero.db",
+            "CREATE TABLE Carpetas(id INTEGER); INSERT INTO Carpetas VALUES(1); CREATE TABLE CarpetasIndexadas(id INTEGER); INSERT INTO CarpetasIndexadas VALUES(1); CREATE TABLE ArchivosIndexados(id INTEGER); INSERT INTO ArchivosIndexados VALUES(1); CREATE TABLE FrecuenciaCarpetas(id INTEGER); INSERT INTO FrecuenciaCarpetas VALUES(1); CREATE TABLE ImportacionGuardados(id INTEGER); INSERT INTO ImportacionGuardados VALUES(1);"
+        );
+        CrearBase(
+            "mensajero.db",
+            "CREATE TABLE clientes_factura(rut TEXT); INSERT INTO clientes_factura VALUES('76000000-1'); CREATE TABLE estados_envio_factura(rut TEXT); INSERT INTO estados_envio_factura VALUES('76000000-1'); CREATE TABLE clientes_nvv(linea TEXT); INSERT INTO clientes_nvv VALUES('cliente');"
+        );
+    }
+
+    private void CrearBase(string nombre, string sql)
+    {
         using var conexion = new SqliteConnection(
-            new SqliteConnectionStringBuilder
-            {
-                DataSource = Path.Combine(Carpeta, "mensajero.db"),
-                Pooling = false,
-            }.ToString()
+            $"Data Source={Path.Combine(Carpeta, nombre)};Pooling=False"
         );
         conexion.Open();
         using var comando = conexion.CreateCommand();
-        comando.CommandText =
-            "CREATE TABLE clientes_factura(rut TEXT PRIMARY KEY, razon_social TEXT NOT NULL, correo TEXT NOT NULL, "
-            + "activo INTEGER NOT NULL, creado TEXT NOT NULL, actualizado TEXT NOT NULL); "
-            + "INSERT INTO clientes_factura VALUES "
-            + "('11111111-1', 'Compañía Ñandú', 'uno@ejemplo.cl; dos@ejemplo.cl', 1, '2020-01-02 03:04:05', '2024-05-06 07:08:09'), "
-            + "('22222222-2', 'Cliente inactivo', 'inactivo@ejemplo.cl', 0, '2019-10-11 12:13:14', '2025-09-08 07:06:05');";
+        comando.CommandText = sql;
         comando.ExecuteNonQuery();
     }
 
-    private static string[] LeerClientes(string ruta)
+    private static long Contar(string ruta, string tabla)
     {
-        using var conexion = new SqliteConnection(
-            new SqliteConnectionStringBuilder { DataSource = ruta, Pooling = false }.ToString()
-        );
+        using var conexion = new SqliteConnection($"Data Source={ruta};Pooling=False");
         conexion.Open();
         using var comando = conexion.CreateCommand();
-        comando.CommandText =
-            "SELECT rut || '|' || razon_social || '|' || correo || '|' || activo || '|' || creado || '|' || actualizado "
-            + "FROM clientes_factura ORDER BY rut;";
-        using var lector = comando.ExecuteReader();
-        var clientes = new List<string>();
-        while (lector.Read())
-        {
-            clientes.Add(lector.GetString(0));
-        }
-        return clientes.ToArray();
+        comando.CommandText = $"SELECT COUNT(*) FROM \"{tabla}\";";
+        return (long)comando.ExecuteScalar()!;
     }
 }

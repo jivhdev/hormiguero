@@ -1,4 +1,6 @@
 using System.Globalization;
+using System.Text.Json;
+using System.Text.Json.Serialization;
 using Hormiguero.Nucleo.Datos;
 using Microsoft.Data.Sqlite;
 
@@ -177,6 +179,117 @@ public sealed class AlmacenMensajero : IDisposable
             .ToArray();
         GuardarClientesNvv(lineas);
         return lineas.Length;
+    }
+
+    /// <summary>Agrega desde el archivo privado únicamente clientes y líneas que aún no existen.</summary>
+    public int ImportarClientesPrecargados(string ruta)
+    {
+        if (!File.Exists(ruta))
+            return 0;
+        PrecargaClientes? datos = JsonSerializer.Deserialize<PrecargaClientes>(
+            File.ReadAllText(ruta),
+            new JsonSerializerOptions { PropertyNameCaseInsensitive = true }
+        );
+        if (datos?.Version != 1)
+            return 0;
+
+        int agregados = 0;
+        using var transaccion = conexion.BeginTransaction();
+        var ruts = new HashSet<string>(StringComparer.Ordinal);
+        using (var existentes = conexion.CreateCommand())
+        {
+            existentes.Transaction = transaccion;
+            existentes.CommandText = "SELECT rut FROM clientes_factura;";
+            using var lector = existentes.ExecuteReader();
+            while (lector.Read())
+                ruts.Add(ClickFactura.RutFactura.NormalizarSeguro(lector.GetString(0)));
+        }
+        foreach (ClientePrecargado cliente in datos.ClientesFactura ?? [])
+        {
+            string rut = ClickFactura.RutFactura.NormalizarSeguro(cliente.Rut);
+            if (rut.Length == 0 || !ruts.Add(rut))
+                continue;
+            using var insertar = conexion.CreateCommand();
+            insertar.Transaction = transaccion;
+            insertar.CommandText =
+                "INSERT INTO clientes_factura(rut, razon_social, correo, activo, creado, actualizado) VALUES ($rut,$razon,$correo,$activo,$creado,$actualizado);";
+            insertar.Parameters.AddWithValue("$rut", rut);
+            insertar.Parameters.AddWithValue("$razon", cliente.RazonSocial ?? "");
+            insertar.Parameters.AddWithValue("$correo", cliente.Correo ?? "");
+            insertar.Parameters.AddWithValue("$activo", cliente.Activo ? 1 : 0);
+            insertar.Parameters.AddWithValue("$creado", cliente.Creado ?? "");
+            insertar.Parameters.AddWithValue("$actualizado", cliente.Actualizado ?? "");
+            insertar.ExecuteNonQuery();
+            agregados++;
+        }
+
+        var lineas = new HashSet<string>(StringComparer.Ordinal);
+        int orden = 0;
+        using (var existentes = conexion.CreateCommand())
+        {
+            existentes.Transaction = transaccion;
+            existentes.CommandText = "SELECT linea FROM clientes_nvv ORDER BY orden;";
+            using var lector = existentes.ExecuteReader();
+            while (lector.Read())
+            {
+                lineas.Add(lector.GetString(0).Trim());
+                orden++;
+            }
+        }
+        using (var siguiente = conexion.CreateCommand())
+        {
+            siguiente.Transaction = transaccion;
+            siguiente.CommandText = "SELECT COALESCE(MAX(orden) + 1, 0) FROM clientes_nvv;";
+            orden = Convert.ToInt32(siguiente.ExecuteScalar(), CultureInfo.InvariantCulture);
+        }
+        foreach (string lineaOriginal in datos.ClientesNvv ?? [])
+        {
+            string linea = lineaOriginal.Trim();
+            if (linea.Length == 0 || !lineas.Add(linea))
+                continue;
+            using var insertar = conexion.CreateCommand();
+            insertar.Transaction = transaccion;
+            insertar.CommandText = "INSERT INTO clientes_nvv(orden, linea) VALUES ($orden,$linea);";
+            insertar.Parameters.AddWithValue("$orden", orden++);
+            insertar.Parameters.AddWithValue("$linea", linea);
+            insertar.ExecuteNonQuery();
+            agregados++;
+        }
+        transaccion.Commit();
+        return agregados;
+    }
+
+    private sealed class PrecargaClientes
+    {
+        [JsonPropertyName("version")]
+        public int Version { get; init; }
+
+        [JsonPropertyName("clientes_factura")]
+        public List<ClientePrecargado>? ClientesFactura { get; init; }
+
+        [JsonPropertyName("clientes_nvv")]
+        public List<string>? ClientesNvv { get; init; }
+    }
+
+    private sealed class ClientePrecargado
+    {
+        [JsonPropertyName("rut")]
+        public string Rut { get; init; } = "";
+
+        [JsonPropertyName("razon_social")]
+        public string? RazonSocial { get; init; }
+
+        [JsonPropertyName("correo")]
+        public string? Correo { get; init; }
+
+        [JsonPropertyName("activo")]
+        public bool Activo { get; init; } = true;
+
+        [JsonPropertyName("creado")]
+        public string? Creado { get; init; }
+
+        [JsonPropertyName("actualizado")]
+        public string? Actualizado { get; init; }
     }
 
     /// <summary>Clientes activos de ClickFactura ordenados por razón social (como el original).</summary>

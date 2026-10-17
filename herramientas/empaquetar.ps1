@@ -1,6 +1,9 @@
 ﻿# Arma el paquete portable de Hormiguero para copiar a otro PC (no necesita instalar .NET).
 # Uso: powershell -ExecutionPolicy Bypass -File herramientas\empaquetar.ps1 [-Destino E:\Hormiguero-portable]
-param([string]$Destino = 'E:\Hormiguero-portable')
+param(
+    [string]$Destino = 'E:\Hormiguero-portable',
+    [string]$Privado = 'E:\Hormiguero-taller\privado'
+)
 $ErrorActionPreference = 'Stop'
 $repo = Split-Path $PSScriptRoot -Parent
 if (Test-Path $Destino) { Remove-Item $Destino -Recurse -Force }
@@ -20,8 +23,13 @@ Copy-Item (Join-Path $PSScriptRoot 'LEEME-portable.txt') (Join-Path $Destino 'LE
 Copy-Item (Join-Path $PSScriptRoot 'NOVEDADES-portable.txt') (Join-Path $Destino 'NOVEDADES.txt')
 New-Item -ItemType Directory -Force (Join-Path $Destino 'Archivero\Configuracion') | Out-Null
 New-Item -ItemType Directory -Force (Join-Path $Destino 'Buscadero\Configuracion') | Out-Null
+New-Item -ItemType Directory -Force (Join-Path $Destino 'Mensajero\Configuracion') | Out-Null
 Copy-Item (Join-Path $repo 'configuracion\cadenas-jcv.json') (Join-Path $Destino 'Archivero\Configuracion\cadenas-jcv.json')
 Copy-Item (Join-Path $repo 'configuracion\cadenas-jcv.json') (Join-Path $Destino 'Buscadero\Configuracion\cadenas-jcv.json')
+$clientesPrivados = Join-Path $Privado 'clientes-jcv.json'
+if (Test-Path -LiteralPath $clientesPrivados -PathType Leaf) {
+    Copy-Item -LiteralPath $clientesPrivados -Destination (Join-Path $Destino 'Mensajero\Configuracion\clientes-jcv.json')
+}
 $version = (git -C $repo log -1 --format='%h %cd' --date=format:'%Y-%m-%d %H:%M')
 Set-Content -Path (Join-Path $Destino 'VERSION.txt') -Value "Hormiguero $version" -Encoding utf8
 Write-Host "Listo: $Destino"

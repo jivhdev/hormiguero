@@ -194,13 +194,10 @@ public partial class App : System.Windows.Application
         base.OnExit(e);
     }
 
-    // Fase B-3 (D-66): los datos viven en la carpeta común de Hormiguero. La primera vez
-    // se copian solos desde %LocalAppData%\Archivero, que queda intacto como respaldo.
+    // Los datos de Archivero viven junto a las demás bases del ecosistema.
     private static void UsarCarpetaComunDeHormiguero()
     {
         string baseAnterior = BaseDeDatos.RutaArchivo;
-        string logAnterior = AuditoriaService.RutaLog;
-
         BaseDeDatos.RutaArchivo = Hormiguero.Nucleo.Datos.DatosDeApp.Preparar(
             "archivero",
             baseAnterior
@@ -210,10 +207,6 @@ public partial class App : System.Windows.Application
             Hormiguero.Nucleo.Datos.DatosDeApp.Carpeta,
             "archivero-auditoria.log"
         );
-        if (!System.IO.File.Exists(logNuevo) && System.IO.File.Exists(logAnterior))
-        {
-            System.IO.File.Copy(logAnterior, logNuevo);
-        }
         AuditoriaService.RutaLog = logNuevo;
     }
 

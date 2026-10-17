@@ -21,27 +21,24 @@ public partial class App : Application
             return;
         }
 
-        string carpeta = DatosDeApp.Carpeta;
-        DateTime fecha = DateTime.Now;
-        string respaldo = ReinicioServicio.RutaRespaldo(carpeta, fecha);
-        MessageBoxResult respuesta = MessageBox.Show(
-            $"Esto deja Archivero, Buscadero y Mensajero como recién instalados. Se conservan solo los clientes de ClickFactura (RUT, razón social y correos). Todo lo demás queda guardado como respaldo en: {respaldo}\n\n¿Continuar?",
-            "Reiniciar Hormiguero",
-            MessageBoxButton.YesNo,
-            MessageBoxImage.Warning,
-            MessageBoxResult.No
-        );
-        if (respuesta != MessageBoxResult.Yes)
+        var ventana = new VentanaReinicio();
+        if (ventana.ShowDialog() != true)
         {
             Shutdown();
             return;
         }
 
-        ResultadoReinicio resultado = new ReinicioServicio().Ejecutar(carpeta, fecha);
+        string carpeta = DatosDeApp.Carpeta;
+        DateTime fecha = DateTime.Now;
+        ResultadoReinicio resultado = new ReinicioServicio().Ejecutar(
+            carpeta,
+            fecha,
+            ventana.BorrarClasificaciones
+        );
         if (resultado.Exitoso)
         {
             MessageBox.Show(
-                $"Listo. Se conservaron {resultado.ClientesConservados} clientes de ClickFactura. Respaldo en: {resultado.RutaRespaldo}",
+                $"Listo. Se conservaron las configuraciones indicadas y toda la base de Mensajero. Respaldo en: {resultado.RutaRespaldo}",
                 "Reiniciar Hormiguero",
                 MessageBoxButton.OK,
                 MessageBoxImage.Information
