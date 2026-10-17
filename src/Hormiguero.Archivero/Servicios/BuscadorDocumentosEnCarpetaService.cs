@@ -60,12 +60,11 @@ public sealed class BuscadorDocumentosEnCarpetaService : IBuscadorDocumentosCade
                     )
                     .FirstOrDefault();
                 if (coincidencia is null)
-                    PublicadorDatosDocumentoService.PublicarDocumentoDeCadena(
+                    RegistrarSinClasificacion(
                         ruta,
                         tipoDiccionario,
                         esquema.Proveedor,
-                        numeroClave,
-                        revisarEnlaces: false
+                        numeroClave
                     );
                 else
                 {
@@ -76,12 +75,11 @@ public sealed class BuscadorDocumentosEnCarpetaService : IBuscadorDocumentosCade
                             && ClaveNumero(v.ValorOriginal) == numeroClave
                         )
                     )
-                        PublicadorDatosDocumentoService.PublicarDocumentoDeCadena(
+                        RegistrarSinClasificacion(
                             ruta,
                             tipoDiccionario,
                             esquema.Proveedor,
-                            numeroClave,
-                            revisarEnlaces: false
+                            numeroClave
                         );
                     else
                         PublicadorDatosDocumentoService.Publicar(
@@ -189,6 +187,22 @@ public sealed class BuscadorDocumentosEnCarpetaService : IBuscadorDocumentosCade
     {
         using var conexion = BaseComun.Abrir(DocumentosGuardados.RutaBaseComun);
         return new RepositorioEsquemasDiccionario(conexion).ListarReconocimientos(esquemaId);
+    }
+
+    private static void RegistrarSinClasificacion(
+        string ruta,
+        string tipo,
+        string proveedor,
+        string numero
+    )
+    {
+        using var conexion = BaseComun.Abrir(DocumentosGuardados.RutaBaseComun);
+        new RegistroDocumentoEnCadena(conexion).RegistrarSinClasificacion(
+            ruta,
+            tipo,
+            proveedor,
+            numero
+        );
     }
 
     private static IEnumerable<string> ArchivosPorPeriodo(string carpeta)

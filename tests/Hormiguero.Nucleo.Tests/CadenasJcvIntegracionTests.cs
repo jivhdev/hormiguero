@@ -41,6 +41,118 @@ public sealed class CadenasJcvIntegracionTests : IDisposable
 
     public void Dispose() => _conexion.Dispose();
 
+    [Fact]
+    public void RegistroDesdeArchivo_publica_y_ubica_el_documento_en_la_cadena_elegida()
+    {
+        var occ = Documento(
+            "OCC",
+            "OCC 77101",
+            "77101",
+            new(2025, 3, 3),
+            ("rut_proveedor", "96.548.020-K"),
+            ("oc_propia", "77101")
+        );
+        long cadena = new MotorCadenas(_conexion).ProcesarVersion(occ).CadenaId!.Value;
+        var esquema = new RepositorioEsquemasDiccionario(_conexion).ObtenerPorProveedor("HOFFENS")!;
+        var lugar = esquema.Lugares.Single(l => l.DatoTipoId == "guia_proveedor");
+        string carpeta = Path.Combine(Path.GetTempPath(), Guid.NewGuid().ToString("N"));
+        Directory.CreateDirectory(carpeta);
+        string ruta = Path.Combine(carpeta, "GRC manual 77501.pdf");
+        File.WriteAllText(ruta, "PDF de prueba");
+        try
+        {
+            long version = new RegistroDocumentoEnCadena(_conexion).RegistrarDesdeArchivo(
+                ruta,
+                lugar.Id,
+                esquema,
+                cadena
+            );
+            using var q = _conexion.CreateCommand();
+            q.CommandText =
+                "SELECT estado FROM ubicaciones_cadena_diccionario WHERE version_id=$v AND cadena_id=$c AND lugar_id=$l;";
+            q.Parameters.AddWithValue("$v", version);
+            q.Parameters.AddWithValue("$c", cadena);
+            q.Parameters.AddWithValue("$l", lugar.Id);
+            Assert.Equal("activo", q.ExecuteScalar());
+            q.CommandText =
+                "SELECT valor_original FROM valores_documento WHERE version_id=$v AND dato_diccionario_id='guia_proveedor' AND estado='vigente';";
+            Assert.Equal("77501", q.ExecuteScalar());
+        }
+        finally
+        {
+            Directory.Delete(carpeta, true);
+        }
+    }
+
+    [Fact]
+    public void Fusiona_dos_cadenas_iguales_en_la_cadena_de_la_OCC()
+    {
+        var motor = new MotorCadenas(_conexion);
+        long nvvPrimera = Documento(
+            "NVV",
+            "NVV 700",
+            "700",
+            new(2025, 3, 2),
+            ("nota_venta_propia", "700")
+        );
+        long nvvSegunda = Documento(
+            "NVV",
+            "NVV 701",
+            "701",
+            new(2025, 3, 2),
+            ("nota_venta_propia", "701")
+        );
+        motor.ProcesarVersion(nvvPrimera);
+        motor.ProcesarVersion(nvvSegunda);
+        long primera = Documento(
+            "OCC",
+            "OCC 88001",
+            "88001",
+            new(2025, 3, 3),
+            ("rut_proveedor", "96.548.020-K"),
+            ("oc_propia", "88001"),
+            ("nota_venta_propia", "700")
+        );
+        long cadenaPrimera = motor.ProcesarVersion(primera).CadenaId!.Value;
+        long segunda = Documento(
+            "OCC",
+            "OCC 88002",
+            "88002",
+            new(2025, 3, 4),
+            ("rut_proveedor", "96.548.020-K"),
+            ("oc_propia", "88002"),
+            ("nota_venta_propia", "701")
+        );
+        long cadenaSegunda = motor.ProcesarVersion(segunda).CadenaId!.Value;
+        Assert.NotEqual(cadenaPrimera, cadenaSegunda);
+
+        long nueva = Documento(
+            "OCC",
+            "OCC 88003",
+            "88003",
+            new(2025, 3, 5),
+            ("rut_proveedor", "96.548.020-K"),
+            ("oc_propia", "88003"),
+            ("nota_venta_propia", "700"),
+            ("nota_venta_propia", "701")
+        );
+        var resultado = motor.ProcesarVersion(nueva);
+
+        Assert.Equal("ubicado", resultado.Estado);
+        Assert.Contains("fusionaron", resultado.Motivo, StringComparison.OrdinalIgnoreCase);
+        Assert.Equal(cadenaPrimera, resultado.CadenaId);
+        using var q = _conexion.CreateCommand();
+        q.CommandText = "SELECT estado FROM cadenas_diccionario WHERE id=$c;";
+        q.Parameters.AddWithValue("$c", cadenaSegunda);
+        Assert.Equal("anulada", q.ExecuteScalar());
+        q.CommandText =
+            "SELECT COUNT(DISTINCT cadena_id) FROM ubicaciones_diccionario_todas WHERE version_id IN ($a,$b,$n) AND estado='activo';";
+        q.Parameters.AddWithValue("$a", primera);
+        q.Parameters.AddWithValue("$b", segunda);
+        q.Parameters.AddWithValue("$n", nueva);
+        Assert.Equal(1L, Convert.ToInt64(q.ExecuteScalar()));
+    }
+
     [Theory]
     [InlineData("HOFFENS")]
     [InlineData("COBELCAR")]
