@@ -1,9 +1,11 @@
 using System.Diagnostics;
+using System.IO;
 using System.Text.Json;
 using System.Windows;
 using System.Windows.Controls;
 using Buscadero.Core.Lineas;
 using Hormiguero.Nucleo.Datos;
+using Microsoft.Win32;
 
 namespace Buscadero.App;
 
@@ -479,22 +481,108 @@ public partial class DialogoVistaCadenas : Window
     {
         var boton = new Button
         {
-            Content = documento.Falta ? "Falta" : documento.Texto,
+            Content = documento.Falta ? "Buscar…" : documento.Texto,
             HorizontalContentAlignment = HorizontalAlignment.Left,
             Padding = new Thickness(10, 7, 10, 7),
             Margin = new Thickness(16, 2, 0, 2),
-            IsEnabled = !documento.Falta,
             Tag = documento,
         };
         boton.Click += (s, e) =>
         {
             var elegido = (DocumentoArbolCadena)((Button)s!).Tag;
+            if (elegido.Falta)
+            {
+                BuscarEslabon(lugar);
+                return;
+            }
             _versionSeleccionada = elegido.VersionId;
             AbrirEnBuscadero(elegido);
         };
         boton.MouseDoubleClick += (s, e) =>
             AbrirPredeterminado((DocumentoArbolCadena)((Button)s!).Tag);
         return boton;
+    }
+
+    private void BuscarEslabon(string nombreLugar)
+    {
+        if (Cadenas.SelectedItem is not CadenaFila fila)
+            return;
+        try
+        {
+            var esquema = _esquemasDiccionario.ObtenerPorProveedor(fila.Cadena.Proveedor);
+            var lugar = esquema?.Lugares.FirstOrDefault(l => l.Nombre == nombreLugar);
+            if (esquema is null || lugar is null)
+                throw new InvalidOperationException("No se encontró el lugar del esquema.");
+            string carpeta = lugar.CarpetaBusqueda ?? "";
+            var buscador = new Buscadero.Core.Lineas.ServicioBuscarEslabon();
+            string? ruta = buscador.BuscarOCargar(
+                carpeta,
+                NumeroEsperado(esquema, lugar.Id, fila.Cadena.Id),
+                encontrado =>
+                    MessageBox.Show(
+                        this,
+                        $"Se encontró {Path.GetFileName(encontrado)}. ¿Agregarlo a la cadena?",
+                        "Buscar documento",
+                        MessageBoxButton.YesNo,
+                        MessageBoxImage.Question
+                    ) == MessageBoxResult.Yes,
+                carpetaInicial =>
+                {
+                    var selector = new OpenFileDialog
+                    {
+                        Title = "Seleccionar documento",
+                        Filter = "Documentos PDF (*.pdf)|*.pdf|Todos los archivos (*.*)|*.*",
+                        InitialDirectory = Directory.Exists(carpetaInicial) ? carpetaInicial : "",
+                    };
+                    return selector.ShowDialog(this) == true ? selector.FileName : null;
+                }
+            );
+            if (ruta is null)
+                return;
+            string digitos = string.Concat(
+                    Path.GetFileNameWithoutExtension(ruta).Where(char.IsAsciiDigit)
+                )
+                .TrimStart('0');
+            string? numero =
+                digitos.Length > 0
+                    ? null
+                    : DialogoTexto.Pedir(
+                        this,
+                        "Número del documento",
+                        "Escriba el número del documento:"
+                    );
+            if (digitos.Length == 0 && string.IsNullOrWhiteSpace(numero))
+                return;
+            new RegistroDocumentoEnCadena(_conexion).RegistrarDesdeArchivo(
+                ruta,
+                lugar.Id,
+                esquema,
+                fila.Cadena.Id,
+                numero
+            );
+            CargarCadenas(fila.Cadena.Id);
+        }
+        catch (Exception ex)
+        {
+            Estado.Text = $"No se pudo agregar el documento: {ex.Message}";
+        }
+    }
+
+    private string? NumeroEsperado(EsquemaDiccionario esquema, long lugarId, long cadenaId)
+    {
+        var enlace = esquema.Enlaces.FirstOrDefault(e =>
+            e.LugarA == lugarId || e.LugarB == lugarId
+        );
+        if (enlace is null)
+            return null;
+        long otroLugar = enlace.LugarA == lugarId ? enlace.LugarB : enlace.LugarA;
+        using var q = _conexion.CreateCommand();
+        q.CommandText =
+            "SELECT x.valor_original FROM ubicaciones_diccionario_todas u JOIN valores_documento x ON x.version_id=u.version_id AND x.dato_diccionario_id=$d AND x.estado='vigente' WHERE u.cadena_id=$c AND u.lugar_id=$l AND u.estado='activo' ORDER BY u.id LIMIT 1;";
+        q.Parameters.AddWithValue("$d", enlace.DatoDiccionarioId);
+        q.Parameters.AddWithValue("$c", cadenaId);
+        q.Parameters.AddWithValue("$l", otroLugar);
+        return Convert.ToString(q.ExecuteScalar());
     }
 
     private void AbrirEnBuscadero(DocumentoArbolCadena documento)

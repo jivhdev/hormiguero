@@ -21,3 +21,9 @@ Pruebas: servicio del Núcleo registra y ubica; "Buscar…" encuentra por carpet
 `dotnet build` sin advertencias; `dotnet test` todo pasa; `dotnet csharpier check .` sin errores en tus archivos. Español neutro. Reporte al final; si algo queda pendiente, dilo explícitamente.
 
 ## Reporte del agente
+
+- **Implementado:** el núcleo comparte `RegistroDocumentoEnCadena`; registra el tipo, el número del nombre (o el número indicado) y el proveedor del esquema. El servicio de búsqueda de Archivero lo usa cuando no hay clasificación; Buscadero lo usa para incorporar y ubicar el archivo en la cadena seleccionada. Las colisiones de cardinalidad uno a uno quedan dudosas.
+- **Implementado:** los eslabones vacíos muestran **Buscar…**. Buscadero busca primero en la carpeta configurada, recorre subcarpetas por período descendente, filtra por el número esperado antes de aceptar y, si no hay coincidencia o se rechaza, abre el selector con esa carpeta inicial. La selección se simula mediante delegado en las pruebas.
+- **Pruebas agregadas:** registro y ubicación en cadena, búsqueda por carpeta, selector simulado y fusión de dos cadenas enlazadas al procesar una OCC.
+- **Verificación:** `dotnet build` correcto, 0 advertencias y 0 errores; `dotnet test` correcto, 856 pruebas; `dotnet csharpier check .` correcto (351 archivos).
+- **Pendiente:** ninguno dentro del alcance del bloque.
