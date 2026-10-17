@@ -8,7 +8,16 @@ public sealed record LugarDiccionario(
     int Orden,
     string DatoTipoId,
     bool IniciaCadena,
-    string Nombre
+    string Nombre,
+    string DatosRequeridosJson = "[]",
+    string? CarpetaBusqueda = null
+);
+
+public sealed record DatoIngresadoEsquemaDiccionario(
+    long Id,
+    long EsquemaId,
+    string Nombre,
+    int Orden
 );
 
 public sealed record EnlaceDeclarado(
@@ -316,7 +325,7 @@ public sealed class RepositorioEsquemasDiccionario(SqliteConnection conexion)
     {
         using var comando = conexion.CreateCommand();
         comando.CommandText =
-            "SELECT id,esquema_id,orden,dato_tipo_id,inicia_cadena,nombre FROM lugares_esquema_diccionario WHERE esquema_id=$e AND activo=1 ORDER BY orden;";
+            "SELECT id,esquema_id,orden,dato_tipo_id,inicia_cadena,nombre,datos_requeridos_json,carpeta_busqueda FROM lugares_esquema_diccionario WHERE esquema_id=$e AND activo=1 ORDER BY orden;";
         comando.Parameters.AddWithValue("$e", id);
         using var lector = comando.ExecuteReader();
         var filas = new List<LugarDiccionario>();
@@ -328,7 +337,9 @@ public sealed class RepositorioEsquemasDiccionario(SqliteConnection conexion)
                     lector.GetInt32(2),
                     lector.GetString(3),
                     lector.GetInt64(4) != 0,
-                    lector.GetString(5)
+                    lector.GetString(5),
+                    lector.GetString(6),
+                    lector.IsDBNull(7) ? null : lector.GetString(7)
                 )
             );
         return filas;
@@ -379,6 +390,75 @@ public sealed class RepositorioEsquemasDiccionario(SqliteConnection conexion)
                     lector.GetString(4)
                 )
             );
+        return filas;
+    }
+
+    public void GuardarDatosYLugares(
+        long esquemaId,
+        IReadOnlyDictionary<string, IReadOnlyList<string>> datosRequeridos,
+        IReadOnlyDictionary<string, string?> carpetasBusqueda,
+        IReadOnlyList<string> datosIngresados
+    )
+    {
+        using var tx = conexion.BeginTransaction();
+        foreach (var lugar in datosRequeridos.Keys.Union(carpetasBusqueda.Keys))
+        {
+            var ids = datosRequeridos.TryGetValue(lugar, out var datos) ? datos : [];
+            string json = System.Text.Json.JsonSerializer.Serialize(
+                ids.Distinct(StringComparer.Ordinal)
+            );
+            using var q = conexion.CreateCommand();
+            q.Transaction = tx;
+            q.CommandText =
+                "UPDATE lugares_esquema_diccionario SET datos_requeridos_json=$d,carpeta_busqueda=$c WHERE esquema_id=$e AND dato_tipo_id=$l;";
+            q.Parameters.AddWithValue("$d", json);
+            q.Parameters.AddWithValue(
+                "$c",
+                carpetasBusqueda.TryGetValue(lugar, out var carpeta)
+                && !string.IsNullOrWhiteSpace(carpeta)
+                    ? carpeta.Trim()
+                    : DBNull.Value
+            );
+            q.Parameters.AddWithValue("$e", esquemaId);
+            q.Parameters.AddWithValue("$l", lugar);
+            q.ExecuteNonQuery();
+        }
+        using (var borrar = conexion.CreateCommand())
+        {
+            borrar.Transaction = tx;
+            borrar.CommandText =
+                "DELETE FROM datos_ingresados_esquema_diccionario WHERE esquema_id=$e;";
+            borrar.Parameters.AddWithValue("$e", esquemaId);
+            borrar.ExecuteNonQuery();
+        }
+        foreach (
+            var (nombre, orden) in datosIngresados
+                .Where(n => !string.IsNullOrWhiteSpace(n))
+                .Select((n, i) => (n.Trim(), i))
+        )
+        {
+            using var q = conexion.CreateCommand();
+            q.Transaction = tx;
+            q.CommandText =
+                "INSERT INTO datos_ingresados_esquema_diccionario(esquema_id,nombre,orden) VALUES($e,$n,$o);";
+            q.Parameters.AddWithValue("$e", esquemaId);
+            q.Parameters.AddWithValue("$n", nombre);
+            q.Parameters.AddWithValue("$o", orden);
+            q.ExecuteNonQuery();
+        }
+        tx.Commit();
+    }
+
+    public IReadOnlyList<DatoIngresadoEsquemaDiccionario> ListarDatosIngresados(long esquemaId)
+    {
+        using var q = conexion.CreateCommand();
+        q.CommandText =
+            "SELECT id,esquema_id,nombre,orden FROM datos_ingresados_esquema_diccionario WHERE esquema_id=$e ORDER BY orden,id;";
+        q.Parameters.AddWithValue("$e", esquemaId);
+        using var r = q.ExecuteReader();
+        var filas = new List<DatoIngresadoEsquemaDiccionario>();
+        while (r.Read())
+            filas.Add(new(r.GetInt64(0), r.GetInt64(1), r.GetString(2), r.GetInt32(3)));
         return filas;
     }
 }

@@ -330,6 +330,10 @@ public partial class DialogoVistaCadenas : Window
         var guardados = new RepositorioDatosCadenaDiccionario(_conexion)
             .Listar(cadenaId)
             .ToDictionary(d => d.Nombre, d => d.Valor, StringComparer.OrdinalIgnoreCase);
+        var datosIngresados = new RepositorioEsquemasDiccionario(_conexion)
+            .ListarDatosIngresados(esquema.Id)
+            .Select(d => d.Nombre)
+            .ToArray();
         DatosCadena.Children.Clear();
         foreach (string nombre in nombres.Distinct(StringComparer.OrdinalIgnoreCase))
         {
@@ -381,7 +385,71 @@ public partial class DialogoVistaCadenas : Window
             fila.Children.Add(guardar);
             DatosCadena.Children.Add(fila);
         }
-        DatosCadena.Visibility = nombres.Count == 0 ? Visibility.Collapsed : Visibility.Visible;
+        if (datosIngresados.Length > 0)
+        {
+            DatosCadena.Children.Add(
+                new TextBlock
+                {
+                    Text = "Datos que escribo yo",
+                    FontWeight = FontWeights.Bold,
+                    Margin = new Thickness(0, 8, 0, 4),
+                }
+            );
+            foreach (string nombre in datosIngresados)
+            {
+                var fila = new StackPanel
+                {
+                    Orientation = Orientation.Horizontal,
+                    Margin = new Thickness(0, 2, 0, 2),
+                };
+                fila.Children.Add(
+                    new TextBlock
+                    {
+                        Text = nombre,
+                        Width = 190,
+                        VerticalAlignment = VerticalAlignment.Center,
+                    }
+                );
+                var valor = new TextBox
+                {
+                    Text = guardados.GetValueOrDefault(nombre) ?? "",
+                    Width = 180,
+                    Tag = nombre,
+                    Padding = new Thickness(5),
+                };
+                fila.Children.Add(valor);
+                var guardar = new Button
+                {
+                    Content = "Guardar",
+                    Tag = valor,
+                    Margin = new Thickness(6, 0, 0, 0),
+                    Padding = new Thickness(8, 3, 8, 3),
+                };
+                guardar.Click += (_, _) =>
+                {
+                    try
+                    {
+                        var campo = (TextBox)guardar.Tag;
+                        new RepositorioDatosCadenaDiccionario(_conexion).Guardar(
+                            cadenaId,
+                            (string)campo.Tag,
+                            campo.Text
+                        );
+                        Estado.Text = "Dato de la cadena guardado; los avisos se actualizaron.";
+                    }
+                    catch (Exception error)
+                    {
+                        Estado.Text = $"No se pudo guardar el dato: {error.Message}";
+                    }
+                };
+                fila.Children.Add(guardar);
+                DatosCadena.Children.Add(fila);
+            }
+        }
+        DatosCadena.Visibility =
+            nombres.Count == 0 && datosIngresados.Length == 0
+                ? Visibility.Collapsed
+                : Visibility.Visible;
     }
 
     private void CambiarModo_Click(object sender, RoutedEventArgs e)

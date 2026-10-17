@@ -1,3 +1,4 @@
+using System.IO;
 using System.Text.Json;
 using System.Windows;
 using System.Windows.Controls;
@@ -14,6 +15,7 @@ public partial class DialogoEsquemaDiccionario : Window
     private readonly List<EnlaceVm> _enlaces = [];
     private readonly List<AvisoVm> _reglasAviso = [];
     private readonly List<string> _modos = [];
+    private readonly List<string> _datosIngresados = [];
     private readonly List<ReglaPropuestaModo> _reglasPropuesta = [];
     private int _paso = 1;
     private string _nombreAutogenerado = "";
@@ -117,9 +119,14 @@ public partial class DialogoEsquemaDiccionario : Window
                         l.DatoTipoId,
                         tipo.Grupo,
                         tipo.NombreDocumento,
-                        l.IniciaCadena
+                        l.IniciaCadena,
+                        l.DatosRequeridosJson,
+                        l.CarpetaBusqueda
                     );
                 })
+            );
+            _datosIngresados.AddRange(
+                _repositorio.ListarDatosIngresados(esquema.Id).Select(d => d.Nombre)
             );
             _enlaces.AddRange(
                 esquema.Enlaces.Select(e => new EnlaceVm(
@@ -158,6 +165,7 @@ public partial class DialogoEsquemaDiccionario : Window
                     + (_reglasAviso[i].ModoNombre is string m ? $" (modo {m})" : ""),
             };
         ModosLista.ItemsSource = _modos;
+        DatosIngresadosLista.ItemsSource = _datosIngresados;
         ModoPropuestaNuevo.ItemsSource = _modos;
         ActualizarModos();
         ActualizarReglasPropuesta();
@@ -192,14 +200,14 @@ public partial class DialogoEsquemaDiccionario : Window
             Estado.Text = "Marque al menos un documento como inicio de cadena.";
             return;
         }
-        _paso = Math.Min(7, _paso + 1);
+        _paso = Math.Min(8, _paso + 1);
         Estado.Text = "";
         ActualizarPaso();
     }
 
     private void ActualizarPaso()
     {
-        NumeroPaso.Text = $"Paso {_paso} de 7";
+        NumeroPaso.Text = $"Paso {_paso} de 8";
         (TituloPaso.Text, AyudaPaso.Text) = _paso switch
         {
             1 => ("Proveedor", "Indique el proveedor y el nombre editable del proceso."),
@@ -210,7 +218,8 @@ public partial class DialogoEsquemaDiccionario : Window
             3 => ("Inicios de cadena", "Marque qué documentos pueden iniciar una cadena."),
             4 => ("Enlaces", "Relacione documentos por los datos que comparten."),
             5 => ("Modos", "Agregue modos opcionales e indique qué documento determina cada modo."),
-            6 => ("Avisos", "Configure avisos para los documentos y plazos del proceso."),
+            6 => ("Datos que escribo yo", "Agregue los datos propios de cada cadena."),
+            7 => ("Avisos", "Configure avisos para los documentos y plazos del proceso."),
             _ => ("Resumen", "Revise el esquema antes de guardarlo."),
         };
         PanelProveedor.Visibility = _paso == 1 ? Visibility.Visible : Visibility.Collapsed;
@@ -218,13 +227,14 @@ public partial class DialogoEsquemaDiccionario : Window
         PanelLugares.Visibility = _paso == 3 ? Visibility.Visible : Visibility.Collapsed;
         PanelEnlaces.Visibility = _paso == 4 ? Visibility.Visible : Visibility.Collapsed;
         PanelModos.Visibility = _paso == 5 ? Visibility.Visible : Visibility.Collapsed;
-        PanelAvisos.Visibility = _paso == 6 ? Visibility.Visible : Visibility.Collapsed;
-        PanelResumen.Visibility = _paso == 7 ? Visibility.Visible : Visibility.Collapsed;
+        PanelDatosIngresados.Visibility = _paso == 6 ? Visibility.Visible : Visibility.Collapsed;
+        PanelAvisos.Visibility = _paso == 7 ? Visibility.Visible : Visibility.Collapsed;
+        PanelResumen.Visibility = _paso == 8 ? Visibility.Visible : Visibility.Collapsed;
         PanelResumen.Text =
-            $"Proveedor: {Proveedor.Text}\nEsquema: {Nombre.Text}\nDocumentos: {string.Join(", ", _lugares.Select(l => l.Nombre))}\nEnlaces:\n{string.Join("\n", _enlaces.Select(e => "• " + e.Texto))}\nModos: {string.Join(", ", _modos)}{(LugarDecideModo.SelectedItem is LugarVm decide ? $" (decide: {decide.Nombre})" : "")}\nAvisos:\n{string.Join("\n", _reglasAviso.Select(a => "• " + a.Frase))}";
+            $"Proveedor: {Proveedor.Text}\nEsquema: {Nombre.Text}\nDocumentos:\n{string.Join("\n", _lugares.Select(l => $"{l.Nombre}: {string.Join(", ", l.DatosMarcables.Where(d => d.Marcado).Select(d => d.Nombre))}; {l.CarpetaBusqueda}"))}\nDatos que escribo yo: {string.Join(", ", _datosIngresados)}\nEnlaces:\n{string.Join("\n", _enlaces.Select(e => "? " + e.Texto))}\nModos: {string.Join(", ", _modos)}{(LugarDecideModo.SelectedItem is LugarVm decide ? $" (decide: {decide.Nombre})" : "")}\nAvisos:\n{string.Join("\n", _reglasAviso.Select(a => "? " + a.Frase))}";
         Anterior.IsEnabled = _paso > 1;
-        Siguiente.Visibility = _paso < 7 ? Visibility.Visible : Visibility.Collapsed;
-        Guardar.Visibility = _paso == 7 ? Visibility.Visible : Visibility.Collapsed;
+        Siguiente.Visibility = _paso < 8 ? Visibility.Visible : Visibility.Collapsed;
+        Guardar.Visibility = _paso == 8 ? Visibility.Visible : Visibility.Collapsed;
         if (_paso == 2)
             ActualizarTiposSeleccionados();
     }
@@ -251,7 +261,9 @@ public partial class DialogoEsquemaDiccionario : Window
             tipo.Id,
             tipo.Grupo,
             tipo.NombreDocumento,
-            _lugares.Count == 0
+            _lugares.Count == 0,
+            "[]",
+            null
         );
         _lugares.Add(lugar);
         foreach (var otro in _lugares.Where(l => l != lugar))
@@ -271,6 +283,65 @@ public partial class DialogoEsquemaDiccionario : Window
         object sender,
         System.Windows.Input.MouseButtonEventArgs e
     ) => QuitarTipoSeleccionado();
+
+    private void LugarProceso_SelectionChanged(object sender, SelectionChangedEventArgs e)
+    {
+        if (LugaresProceso.SelectedItem is not LugarVm lugar)
+        {
+            DatosMarcables.ItemsSource = null;
+            CarpetaBusqueda.Text = "";
+            return;
+        }
+        DatosMarcables.ItemsSource = lugar.DatosMarcables;
+        CarpetaBusqueda.Text = lugar.CarpetaBusqueda ?? "";
+    }
+
+    private void ElegirCarpeta_Click(object sender, RoutedEventArgs e)
+    {
+        if (LugaresProceso.SelectedItem is not LugarVm lugar)
+            return;
+        var dialogo = new Microsoft.Win32.OpenFolderDialog { Title = "Carpeta donde buscarlo" };
+        if (
+            !string.IsNullOrWhiteSpace(CarpetaBusqueda.Text)
+            && Directory.Exists(CarpetaBusqueda.Text)
+        )
+            dialogo.InitialDirectory = CarpetaBusqueda.Text;
+        if (dialogo.ShowDialog(this) == true)
+        {
+            lugar.CarpetaBusqueda = dialogo.FolderName;
+            CarpetaBusqueda.Text = lugar.CarpetaBusqueda;
+        }
+    }
+
+    private void CarpetaBusqueda_TextChanged(object sender, TextChangedEventArgs e)
+    {
+        if (LugaresProceso?.SelectedItem is LugarVm lugar)
+            lugar.CarpetaBusqueda = string.IsNullOrWhiteSpace(CarpetaBusqueda.Text)
+                ? null
+                : CarpetaBusqueda.Text.Trim();
+    }
+
+    private void AgregarDatoIngresado_Click(object sender, RoutedEventArgs e)
+    {
+        string nombre = DatoIngresadoNuevo.Text.Trim();
+        if (
+            nombre.Length == 0
+            || _datosIngresados.Contains(nombre, StringComparer.OrdinalIgnoreCase)
+        )
+            return;
+        _datosIngresados.Add(nombre);
+        DatosIngresadosLista.Items.Refresh();
+        DatoIngresadoNuevo.Clear();
+    }
+
+    private void QuitarDatoIngresado_Click(object sender, RoutedEventArgs e)
+    {
+        if (DatosIngresadosLista.SelectedItem is string nombre)
+        {
+            _datosIngresados.Remove(nombre);
+            DatosIngresadosLista.Items.Refresh();
+        }
+    }
 
     private void QuitarTipoSeleccionado()
     {
@@ -609,6 +680,17 @@ public partial class DialogoEsquemaDiccionario : Window
                     .Select(l => new DefinicionEnlace(l.OrdenA, l.OrdenB, l.Dato, l.Cardinalidad))
                     .ToArray()
             );
+            _repositorio.GuardarDatosYLugares(
+                esquemaId,
+                _lugares.ToDictionary(
+                    l => l.Id,
+                    l =>
+                        (IReadOnlyList<string>)
+                            l.DatosMarcables.Where(d => d.Marcado).Select(d => d.Id).ToArray()
+                ),
+                _lugares.ToDictionary(l => l.Id, l => (string?)l.CarpetaBusqueda),
+                _datosIngresados
+            );
             _repositorio.GuardarReconocimientos(
                 esquemaId,
                 Reconocimientos
@@ -857,13 +939,55 @@ public partial class DialogoEsquemaDiccionario : Window
         public string Texto => $"{(Sugerido ? "✓ " : "")}{Grupo} · {Nombre}";
     }
 
-    private sealed class LugarVm(int orden, string id, string grupo, string nombre, bool inicia)
+    private sealed class LugarVm(
+        int orden,
+        string id,
+        string grupo,
+        string nombre,
+        bool inicia,
+        string datosJson = "[]",
+        string? carpeta = null
+    )
     {
         public int Orden { get; set; } = orden;
         public string Id { get; } = id;
         public string Grupo { get; } = grupo;
         public string Nombre { get; } = nombre;
         public bool Inicia { get; set; } = inicia;
+        public string? CarpetaBusqueda { get; set; } = carpeta;
+        public List<DatoMarcableVm> DatosMarcables { get; } = CrearDatos(datosJson);
+
+        private static List<DatoMarcableVm> CrearDatos(string json)
+        {
+            HashSet<string> seleccionados;
+            try
+            {
+                seleccionados = JsonSerializer.Deserialize<HashSet<string>>(json) ?? [];
+            }
+            catch (JsonException)
+            {
+                seleccionados = [];
+            }
+            var datos = DiccionarioDatosEnlazantes
+                .Todos.Select(d => new DatoMarcableVm(d.Id, d.Nombre, seleccionados.Contains(d.Id)))
+                .ToList();
+            datos.Add(
+                new(
+                    "fecha_documento",
+                    "Fecha del documento",
+                    seleccionados.Contains("fecha_documento")
+                )
+            );
+            datos.Add(new("encargado", "Encargado", seleccionados.Contains("encargado")));
+            return datos;
+        }
+    }
+
+    private sealed class DatoMarcableVm(string id, string nombre, bool marcado)
+    {
+        public string Id { get; } = id;
+        public string Nombre { get; } = nombre;
+        public bool Marcado { get; set; } = marcado;
     }
 
     private sealed record EnlaceVm(

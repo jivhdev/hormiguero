@@ -38,6 +38,18 @@ public sealed class MotorCadenasDiccionario(
 
     private ResultadoMotorCadena ProcesarVersionInterno(long versionId)
     {
+        using (var ruta = conexion.CreateCommand())
+        {
+            ruta.CommandText =
+                "SELECT d.nombre FROM documentos d JOIN versiones_documento v ON v.documento_id=d.id WHERE v.id=$v;";
+            ruta.Parameters.AddWithValue("$v", versionId);
+            if (
+                Convert
+                    .ToString(ruta.ExecuteScalar())
+                    ?.Contains("CEDIBLE", StringComparison.OrdinalIgnoreCase) == true
+            )
+                return new("cedible_ignorado");
+        }
         bool yaProcesado;
         using (var ya = conexion.CreateCommand())
         {
@@ -108,6 +120,17 @@ public sealed class MotorCadenasDiccionario(
             ResolverSinInicioMencionados(versionId);
             return new("ubicado", cadenas[0]);
         }
+        if (lugar.IniciaCadena && cadenas.Length > 1 && exactas.Length == elegidas.Length)
+        {
+            long destino = cadenas.Min();
+            FusionarCadenas(destino, cadenas.Where(c => c != destino));
+            Coincidencia coincidencia = elegidas.First(c => c.Cadena == destino);
+            GuardarUbicacion(versionId, lugar, destino, coincidencia, "activo", null);
+            RegistrarDecisionModo(versionId, esquema, lugar, destino);
+            CompletarCadena(destino, esquema);
+            ResolverSinInicioMencionados(versionId);
+            return new("ubicado", destino, "Se fusionaron las cadenas enlazadas.");
+        }
         if (elegidas.Any(c => !exactas.Contains(c)) || cadenas.Length > 1)
         {
             long destino = cadenas.Min();
@@ -173,6 +196,38 @@ public sealed class MotorCadenasDiccionario(
         CompletarCadena(cadena, esquema);
         ResolverSinInicioMencionados(versionId);
         return new("cadena_creada", cadena);
+    }
+
+    private void FusionarCadenas(long destino, IEnumerable<long> origenes)
+    {
+        using var tx = conexion.BeginTransaction();
+        foreach (long origen in origenes.Distinct())
+        {
+            using (var ubicaciones = conexion.CreateCommand())
+            {
+                ubicaciones.Transaction = tx;
+                ubicaciones.CommandText =
+                    "UPDATE ubicaciones_cadena_diccionario SET cadena_id=$d WHERE cadena_id=$o; INSERT OR IGNORE INTO ubicaciones_extra_cadena_diccionario(version_id,cadena_id,lugar_id,linea_id,creada_en) SELECT version_id,$d,lugar_id,linea_id,creada_en FROM ubicaciones_extra_cadena_diccionario WHERE cadena_id=$o; DELETE FROM ubicaciones_extra_cadena_diccionario WHERE cadena_id=$o;";
+                ubicaciones.Parameters.AddWithValue("$d", destino);
+                ubicaciones.Parameters.AddWithValue("$o", origen);
+                ubicaciones.ExecuteNonQuery();
+            }
+            using (var datos = conexion.CreateCommand())
+            {
+                datos.Transaction = tx;
+                datos.CommandText =
+                    "INSERT OR IGNORE INTO datos_cadena_diccionario(cadena_id,nombre,valor,actualizado_en) SELECT $d,nombre,valor,actualizado_en FROM datos_cadena_diccionario WHERE cadena_id=$o;";
+                datos.Parameters.AddWithValue("$d", destino);
+                datos.Parameters.AddWithValue("$o", origen);
+                datos.ExecuteNonQuery();
+            }
+            using var anular = conexion.CreateCommand();
+            anular.Transaction = tx;
+            anular.CommandText = "UPDATE cadenas_diccionario SET estado='anulada' WHERE id=$o;";
+            anular.Parameters.AddWithValue("$o", origen);
+            anular.ExecuteNonQuery();
+        }
+        tx.Commit();
     }
 
     private ResultadoMotorCadena? ProcesarPrevioEnTodosLosEsquemas(long versionId, string tipo)
@@ -386,8 +441,28 @@ public sealed class MotorCadenasDiccionario(
             e.LugarA == lugar.Id || e.LugarB == lugar.Id
         );
         string dato = enlace?.DatoDiccionarioId ?? inicio.DatoTipoId;
-        string numero =
-            valores.FirstOrDefault(v => Equivalente(v.Dato, dato))?.Original ?? "desconocido";
+        var valorEnlace = valores.FirstOrDefault(v => Equivalente(v.Dato, dato));
+        if (enlace is not null && valorEnlace is null)
+        {
+            string nombreDocumento = lugar.DatoTipoId switch
+            {
+                "guia_proveedor" => "guía",
+                "factura_proveedor" => "factura",
+                "nota_credito_proveedor" => "nota de crédito",
+                "factura_propia" => "factura propia",
+                "nota_credito_propia" => "nota de crédito propia",
+                _ => lugar.Nombre.ToLowerInvariant(),
+            };
+            string nombreDato =
+                DiccionarioDatosEnlazantes
+                    .Todos.FirstOrDefault(d => d.Id == enlace.DatoDiccionarioId)
+                    ?.Nombre
+                ?? enlace.DatoDiccionarioId;
+            string numeroDocumento =
+                valores.FirstOrDefault(v => v.Dato == lugar.DatoTipoId)?.Original ?? "";
+            return $"El documento {nombreDocumento.ToLowerInvariant()} {numeroDocumento} no tiene marcado el {nombreDato.Replace("N° ", "N° de ", StringComparison.Ordinal)}. Complete su clasificación en Archivero.";
+        }
+        string numero = valorEnlace?.Original ?? "";
         string tipoFaltante = inicio.Nombre;
         if (enlace is not null)
         {

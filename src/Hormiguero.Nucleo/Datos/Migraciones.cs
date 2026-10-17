@@ -348,6 +348,12 @@ public static class Migraciones
                 + "CREATE TRIGGER trg_diccionario_datos_no_insertar BEFORE INSERT ON diccionario_datos BEGIN SELECT RAISE(ABORT,'El diccionario de datos es fijo.'); END; "
                 + "CREATE TABLE reglas_propuesta_modo_esquema_diccionario(id INTEGER PRIMARY KEY,esquema_id INTEGER NOT NULL REFERENCES esquemas_diccionario(id) ON DELETE CASCADE,orden INTEGER NOT NULL,contiene TEXT NOT NULL,modo TEXT NOT NULL,UNIQUE(esquema_id,orden));"
         ),
+        (
+            24,
+            "ALTER TABLE lugares_esquema_diccionario ADD COLUMN datos_requeridos_json TEXT NOT NULL DEFAULT '[]'; "
+                + "ALTER TABLE lugares_esquema_diccionario ADD COLUMN carpeta_busqueda TEXT NULL; "
+                + "CREATE TABLE datos_ingresados_esquema_diccionario(id INTEGER PRIMARY KEY,esquema_id INTEGER NOT NULL REFERENCES esquemas_diccionario(id) ON DELETE CASCADE,nombre TEXT NOT NULL,orden INTEGER NOT NULL,UNIQUE(esquema_id,nombre));"
+        ),
     ];
 
     public static void Aplicar(

@@ -1,4 +1,5 @@
 using System.IO;
+using System.Text.RegularExpressions;
 using Archivero.Datos;
 using Hormiguero.Nucleo.Datos;
 
@@ -37,6 +38,64 @@ public sealed class BuscadorDocumentosEnCarpetaService : IBuscadorDocumentosCade
         if (numeroClave.Length == 0)
             return [];
 
+        var lugarEsquema = esquema.Lugares.FirstOrDefault(l => l.DatoTipoId == tipoDiccionario);
+        if (
+            !string.IsNullOrWhiteSpace(lugarEsquema?.CarpetaBusqueda)
+            && Directory.Exists(lugarEsquema.CarpetaBusqueda)
+        )
+        {
+            foreach (string ruta in ArchivosPorPeriodo(lugarEsquema.CarpetaBusqueda))
+            {
+                if (!NombreContieneNumero(ruta, numeroClave))
+                    continue;
+                var coincidencia = configuraciones()
+                    .Where(c => c.Patrones.Count > 0 && EsTipo(c, tipoDiccionario))
+                    .Where(c =>
+                        !EsTipoProveedor(tipoDiccionario)
+                        || EsEmisorReconocido(
+                            c.Emisor,
+                            esquema.Proveedor,
+                            Reconocimientos(esquema.Id)
+                        )
+                    )
+                    .FirstOrDefault();
+                if (coincidencia is null)
+                    PublicadorDatosDocumentoService.PublicarDocumentoDeCadena(
+                        ruta,
+                        tipoDiccionario,
+                        esquema.Proveedor,
+                        numeroClave,
+                        revisarEnlaces: false
+                    );
+                else
+                {
+                    var valores = extraerValores(ruta, coincidencia);
+                    if (
+                        !valores.Any(v =>
+                            v.DatoDiccionarioId == tipoDiccionario
+                            && ClaveNumero(v.ValorOriginal) == numeroClave
+                        )
+                    )
+                        PublicadorDatosDocumentoService.PublicarDocumentoDeCadena(
+                            ruta,
+                            tipoDiccionario,
+                            esquema.Proveedor,
+                            numeroClave,
+                            revisarEnlaces: false
+                        );
+                    else
+                        PublicadorDatosDocumentoService.Publicar(
+                            ruta,
+                            coincidencia,
+                            valores,
+                            "busqueda_carpeta",
+                            revisarEnlaces: false
+                        );
+                }
+                return [LeerVersion(ruta)];
+            }
+        }
+
         var versiones = new List<long>();
         if (tipoDiccionario == "guia_firmada_proveedor")
         {
@@ -72,7 +131,7 @@ public sealed class BuscadorDocumentosEnCarpetaService : IBuscadorDocumentosCade
                         proveedor,
                         revisarEnlaces: false
                     );
-                    versiones.Add(LeerVersion(ruta));
+                    return [LeerVersion(ruta)];
                 }
             }
         }
@@ -120,10 +179,67 @@ public sealed class BuscadorDocumentosEnCarpetaService : IBuscadorDocumentosCade
                     "busqueda_carpeta",
                     revisarEnlaces: false
                 );
-                versiones.Add(LeerVersion(ruta));
+                return [LeerVersion(ruta)];
             }
         }
-        return versiones.Distinct().ToArray();
+        return versiones.Distinct().Take(1).ToArray();
+    }
+
+    private IReadOnlyList<ReconocimientoProveedor> Reconocimientos(long esquemaId)
+    {
+        using var conexion = BaseComun.Abrir(DocumentosGuardados.RutaBaseComun);
+        return new RepositorioEsquemasDiccionario(conexion).ListarReconocimientos(esquemaId);
+    }
+
+    private static IEnumerable<string> ArchivosPorPeriodo(string carpeta)
+    {
+        var directorios = new[] { carpeta }.Concat(
+            Directory.EnumerateDirectories(carpeta, "*", SearchOption.AllDirectories)
+        );
+        var ordenados = directorios
+            .Select(d => new DirectoryInfo(d))
+            .OrderByDescending(d => Periodo(d.Name))
+            .ThenByDescending(d => d.LastWriteTimeUtc)
+            .ToArray();
+        foreach (var directorio in ordenados)
+        {
+            IEnumerable<string> archivos;
+            try
+            {
+                archivos = Directory
+                    .EnumerateFiles(directorio.FullName, "*.pdf", SearchOption.TopDirectoryOnly)
+                    .ToArray();
+            }
+            catch (IOException)
+            {
+                continue;
+            }
+            foreach (
+                string archivo in archivos.OrderBy(
+                    Path.GetFileName,
+                    StringComparer.OrdinalIgnoreCase
+                )
+            )
+                yield return archivo;
+        }
+    }
+
+    private static long Periodo(string nombre)
+    {
+        string digitos = string.Concat(nombre.Where(char.IsAsciiDigit));
+        return
+            Regex.IsMatch(digitos, @"^20\d{2}(0[1-9]|1[0-2])?$")
+            && long.TryParse(digitos, out long periodo)
+            ? periodo
+            : 0;
+    }
+
+    private static bool NombreContieneNumero(string ruta, string numeroClave)
+    {
+        string digitos = string.Concat(
+            Path.GetFileNameWithoutExtension(ruta).Where(char.IsAsciiDigit)
+        );
+        return digitos.TrimStart('0').Contains(numeroClave, StringComparison.Ordinal);
     }
 
     private static bool EsTipo(ConfiguracionDocumento configuracion, string tipo) =>
