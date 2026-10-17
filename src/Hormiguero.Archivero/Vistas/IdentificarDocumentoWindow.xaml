@@ -192,6 +192,31 @@
             Margin="0,12,0,0"
             IsExpanded="False"
           >
+            <Expander.Template>
+              <ControlTemplate TargetType="Expander">
+                <StackPanel>
+                  <ToggleButton
+                    x:Name="HeaderSite"
+                    Content="{TemplateBinding Header}"
+                    FontWeight="Bold"
+                    IsChecked="{Binding IsExpanded, RelativeSource={RelativeSource TemplatedParent}, Mode=TwoWay}"
+                  />
+                  <ContentPresenter
+                    x:Name="ExpandSite"
+                    ContentSource="Content"
+                    Visibility="Collapsed"
+                  />
+                </StackPanel>
+                <ControlTemplate.Triggers>
+                  <Trigger Property="IsExpanded" Value="True">
+                    <Setter TargetName="ExpandSite" Property="Visibility" Value="Visible" />
+                  </Trigger>
+                  <Trigger Property="Tag" Value="True">
+                    <Setter TargetName="HeaderSite" Property="Visibility" Value="Collapsed" />
+                  </Trigger>
+                </ControlTemplate.Triggers>
+              </ControlTemplate>
+            </Expander.Template>
             <StackPanel Margin="0,6,0,0">
               <Border
                 Name="PanelProveedorObligatorio"
@@ -237,12 +262,14 @@
                   </ItemsControl>
                 </StackPanel>
               </Border>
-              <TextBlock Text="Filtrar por categoría" FontWeight="Bold" Margin="0,0,0,3" />
-              <ComboBox
-                Name="CmbCategoriaOtrosDatos"
-                Margin="0,0,0,8"
-                SelectionChanged="CmbCategoriaOtrosDatos_SelectionChanged"
-              />
+              <StackPanel Name="PanelFiltroDatos">
+                <TextBlock Text="Filtrar por categoría" FontWeight="Bold" Margin="0,0,0,3" />
+                <ComboBox
+                  Name="CmbCategoriaOtrosDatos"
+                  Margin="0,0,0,8"
+                  SelectionChanged="CmbCategoriaOtrosDatos_SelectionChanged"
+                />
+              </StackPanel>
               <TextBlock
                 Text="Selecciona los datos del diccionario y marca su zona en el PDF."
                 Foreground="{DynamicResource Hormiguero.TextoSecundario}"
@@ -271,12 +298,14 @@
                         <CheckBox
                           Content="{Binding Nombre}"
                           IsChecked="{Binding Incluido, UpdateSourceTrigger=PropertyChanged}"
+                          IsEnabled="{Binding PuedeEditarInclusion}"
                           Checked="DatoIncluido_Changed"
                           Unchecked="DatoIncluido_Changed"
                         />
                         <CheckBox
                           Content="Se puede enlazar"
                           IsChecked="{Binding Enlazable, UpdateSourceTrigger=PropertyChanged}"
+                          IsEnabled="{Binding PuedeEditarEnlazable}"
                           Checked="DatoEnlazable_Enlazable_Changed"
                           Unchecked="DatoEnlazable_Enlazable_Changed"
                           Margin="18,0,0,4"
@@ -326,6 +355,7 @@
                           <CheckBox
                             Content="{Binding Nombre}"
                             IsChecked="{Binding Marcado, UpdateSourceTrigger=PropertyChanged}"
+                            IsEnabled="{Binding PuedeEditarMarcado}"
                             Checked="DatoInformativo_Changed"
                             Unchecked="DatoInformativo_Changed"
                           />

@@ -21,3 +21,18 @@ Prueba en vivo de Claude (OCC sintética, "Sí, de todas las cadenas"): la pregu
 `dotnet build` sin advertencias; `dotnet test` todo pasa; `dotnet csharpier check .` sin errores en tus archivos. Español neutro. Reporte al final; si algo queda pendiente, dilo explícitamente.
 
 ## Reporte del agente
+
+Implementé el modo cadena como obligatorio en el asistente:
+
+- El paso 4 muestra el título y la ayuda de datos obligatorios, presenta la lista directamente y oculta el filtro y el encabezado expansible. Los datos requeridos quedan incluidos y sus controles de inclusión y enlace bloqueados. El estado indica los faltantes o «Todo marcado ✓» y controla el botón «Siguiente».
+- En el paso 3 se oculta «Este documento no trae número» y se bloquea «Se puede enlazar» para el número obligatorio.
+- El resumen muestra el alcance de la cadena.
+- Agregué cobertura STA con la precarga JCV para OCC, GRC de Hoffens, el diccionario sin cadena y un tipo sin esquema.
+
+Verificación:
+
+- `dotnet build`: correcto, 0 advertencias y 0 errores.
+- `dotnet test`: correcto, 859 pruebas en total.
+- `dotnet csharpier check .`: correcto, 354 archivos revisados.
+
+Pendiente: no automatizé el clic en «Completar» de Administrar clasificaciones, porque abre un diálogo nativo para elegir el PDF. El flujo existente pasa `comenzarEnDatos: true` al asistente; no quedó cubierto por la prueba STA.

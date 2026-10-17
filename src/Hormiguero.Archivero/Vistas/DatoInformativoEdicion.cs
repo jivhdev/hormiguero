@@ -7,6 +7,7 @@ namespace Archivero.Vistas;
 public sealed class DatoInformativoEdicion : INotifyPropertyChanged
 {
     private bool _marcado;
+    private bool _requeridoCadena;
     private string _estado = "No aparece en este diseño.";
 
     public DatoInformativoEdicion(string id, string nombre, ZonaInformativa? zona = null)
@@ -37,6 +38,18 @@ public sealed class DatoInformativoEdicion : INotifyPropertyChanged
             AvisarCambio();
         }
     }
+    public bool RequeridoCadena
+    {
+        get => _requeridoCadena;
+        set
+        {
+            _requeridoCadena = value;
+            if (value)
+                Marcado = true;
+            AvisarCambio();
+        }
+    }
+    public bool PuedeEditarMarcado => !RequeridoCadena;
     public string Estado
     {
         get => _estado;

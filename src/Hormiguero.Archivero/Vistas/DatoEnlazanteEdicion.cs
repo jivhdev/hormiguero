@@ -12,6 +12,7 @@ public sealed class DatoEnlazanteEdicion : INotifyPropertyChanged
     private bool _marcado;
     private bool _enlazable = true;
     private bool _defineTipo;
+    private bool _requeridoCadena;
     private string _estado = "No aparece en este diseño.";
     public string ValorLeido { get; set; } = string.Empty;
     public int OrdenCadena { get; set; } = int.MaxValue;
@@ -67,6 +68,19 @@ public sealed class DatoEnlazanteEdicion : INotifyPropertyChanged
             AvisarCambio();
         }
     }
+    public bool RequeridoCadena
+    {
+        get => _requeridoCadena;
+        set
+        {
+            _requeridoCadena = value;
+            if (value)
+                Incluido = true;
+            AvisarCambio();
+        }
+    }
+    public bool PuedeEditarInclusion => !RequeridoCadena;
+    public bool PuedeEditarEnlazable => !RequeridoCadena;
     public bool DefineTipo
     {
         get => _defineTipo;

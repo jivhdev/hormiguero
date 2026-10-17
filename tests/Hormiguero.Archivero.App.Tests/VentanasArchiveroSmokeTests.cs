@@ -84,6 +84,7 @@ public sealed class VentanasArchiveroSmokeTests
         var raiz = Path.Combine(Path.GetTempPath(), $"Archivero-ventanas-{Guid.NewGuid():N}");
         Directory.CreateDirectory(raiz);
         var rutaAnterior = BaseDeDatos.RutaArchivo;
+        var datosAnterior = Environment.GetEnvironmentVariable("HORMIGUERO_DATOS");
         var rutaPdf = CreadorPdfDePrueba.Crear(raiz, "EMISOR", "TIPO");
         var rutaPdfOscuro = CreadorPdfDePrueba.Crear(raiz, "EMISOR", "TIPO OSCURO");
         Exception? error = null;
@@ -401,6 +402,22 @@ public sealed class VentanasArchiveroSmokeTests
                             $"No se mostró correctamente el paso {indice + 1}."
                         );
                 }
+                Environment.SetEnvironmentVariable("HORMIGUERO_DATOS", Path.Combine(raiz, "datos"));
+                using (
+                    var conexion = Hormiguero.Nucleo.Datos.BaseComun.Abrir(
+                        Hormiguero.Nucleo.Datos.DocumentosGuardados.RutaBaseComun
+                    )
+                )
+                    if (
+                        !Hormiguero.Nucleo.Datos.PrecargaCadenasJcv.IntentarImportar(
+                            conexion,
+                            Path.GetFullPath(Path.Combine("configuracion", "cadenas-jcv.json")),
+                            "Archivero"
+                        )
+                    )
+                        throw new InvalidOperationException("No se pudo cargar la precarga JCV.");
+                ProbarModoCadena(identificar);
+                Environment.SetEnvironmentVariable("HORMIGUERO_DATOS", datosAnterior);
                 identificar.Close();
 
                 var rutaPdfSubcarpetas = CreadorPdfDePrueba.CrearConLineas(
@@ -630,6 +647,7 @@ public sealed class VentanasArchiveroSmokeTests
         finally
         {
             BaseDeDatos.RutaArchivo = rutaAnterior;
+            Environment.SetEnvironmentVariable("HORMIGUERO_DATOS", datosAnterior);
             SqliteConnection.ClearAllPools();
             for (var intento = 0; ; intento++)
             {
@@ -655,5 +673,158 @@ public sealed class VentanasArchiveroSmokeTests
                 bloqueoVentanas.ReleaseMutex();
             }
         }
+    }
+
+    private static void ProbarModoCadena(IdentificarDocumentoWindow ventana)
+    {
+        var tipoPaso = typeof(IdentificarDocumentoWindow).GetNestedType(
+            "Paso",
+            System.Reflection.BindingFlags.NonPublic
+        )!;
+        var mostrarPaso = typeof(IdentificarDocumentoWindow).GetMethod(
+            "MostrarPaso",
+            System.Reflection.BindingFlags.Instance | System.Reflection.BindingFlags.NonPublic
+        )!;
+        var resumen = typeof(IdentificarDocumentoWindow).GetMethod(
+            "MostrarResumen",
+            System.Reflection.BindingFlags.Instance | System.Reflection.BindingFlags.NonPublic
+        )!;
+        void Ir(string paso) => mostrarPaso.Invoke(ventana, [Enum.Parse(tipoPaso, paso)]);
+        Ir("QueDocumento");
+        var categoria = (System.Windows.Controls.ComboBox)
+            ventana.FindName("CmbCategoriaDocumento")!;
+        var documentos = (System.Windows.Controls.ListBox)ventana.FindName("ListaDocumentos")!;
+        var pregunta = (System.Windows.Controls.StackPanel)ventana.FindName("PanelPreguntaCadena")!;
+        categoria.SelectedItem = "Compras propias";
+        documentos.SelectedItem = AsistenteClasificacionService
+            .DocumentosDeCategoria("Compras propias")
+            .Single(dato => dato.Id == "oc_propia");
+        ventana.UpdateLayout();
+        if (pregunta.Visibility != Visibility.Visible)
+            throw new InvalidOperationException("OCC no mostró la pregunta de cadena.");
+        ((System.Windows.Controls.RadioButton)ventana.FindName("RbCadenaTodas")!).IsChecked = true;
+        Ir("Numero");
+        ventana.UpdateLayout();
+        if (
+            ((System.Windows.Controls.CheckBox)ventana.FindName("ChkSinNumero")!).Visibility
+                != Visibility.Collapsed
+            || ((System.Windows.Controls.CheckBox)ventana.FindName("ChkNumeroEnlazable")!).IsEnabled
+        )
+            throw new InvalidOperationException(
+                "OCC permitió omitir o cambiar el enlace del número."
+            );
+        Ir("OtrosDatos");
+        ventana.UpdateLayout();
+        var datos = (System.Collections.ObjectModel.ObservableCollection<DatoEnlazanteEdicion>)
+            typeof(IdentificarDocumentoWindow)
+                .GetField(
+                    "_datosEnlazantes",
+                    System.Reflection.BindingFlags.Instance
+                        | System.Reflection.BindingFlags.NonPublic
+                )!
+                .GetValue(ventana)!;
+        var informativos =
+            (System.Collections.ObjectModel.ObservableCollection<DatoInformativoEdicion>)
+                typeof(IdentificarDocumentoWindow)
+                    .GetField(
+                        "_datosInformativos",
+                        System.Reflection.BindingFlags.Instance
+                            | System.Reflection.BindingFlags.NonPublic
+                    )!
+                    .GetValue(ventana)!;
+        var titulo = (System.Windows.Controls.TextBlock)ventana.FindName("TxtTituloPaso")!;
+        var lista = (System.Windows.Controls.ItemsControl)ventana.FindName("ListaDatosEnlazantes")!;
+        var siguiente = (System.Windows.Controls.Button)ventana.FindName("BtnSiguiente")!;
+        var faltan = (System.Windows.Controls.TextBlock)ventana.FindName("TxtFaltanDatosCadena")!;
+        if (
+            !titulo.Text.Contains("Datos de la cadena (obligatorios)", StringComparison.Ordinal)
+            || datos.Count(dato => dato.RequeridoCadena)
+                + informativos.Count(dato => dato.RequeridoCadena)
+                != 8
+            || lista.Items.Count != datos.Count(dato => dato.RequeridoCadena)
+            || datos.Where(dato => dato.RequeridoCadena).Any(dato => !dato.Incluido)
+            || datos
+                .Where(dato => dato.RequeridoCadena)
+                .Any(dato => dato.PuedeEditarInclusion || dato.PuedeEditarEnlazable)
+            || (
+                (System.Windows.Controls.StackPanel)ventana.FindName("PanelFiltroDatos")!
+            ).Visibility != Visibility.Collapsed
+            || siguiente.IsEnabled
+        )
+            throw new InvalidOperationException("OCC no mostró sus ocho datos obligatorios.");
+        foreach (var dato in datos.Where(dato => dato.RequeridoCadena))
+            dato.Marcado = true;
+        foreach (var dato in informativos.Where(dato => dato.RequeridoCadena))
+        {
+            dato.Marcado = true;
+            dato.Estado = "Zona marcada en la página 1.";
+        }
+        typeof(IdentificarDocumentoWindow)
+            .GetMethod(
+                "ActualizarBotonDatosCadena",
+                System.Reflection.BindingFlags.Instance | System.Reflection.BindingFlags.NonPublic
+            )!
+            .Invoke(ventana, null);
+        ventana.UpdateLayout();
+        if (!siguiente.IsEnabled || faltan.Text != "Todo marcado ✓")
+            throw new InvalidOperationException(
+                "OCC no habilitó el avance al marcar sus ocho datos."
+            );
+        resumen.Invoke(ventana, null);
+        if (
+            !((System.Windows.Controls.TextBlock)ventana.FindName("TxtResumen")!).Text.Contains(
+                "Cadena: todas las que usan OC propia",
+                StringComparison.Ordinal
+            )
+        )
+            throw new InvalidOperationException("El resumen no identificó la cadena OCC.");
+
+        Ir("QueDocumento");
+        categoria.SelectedItem = "Del proveedor";
+        documentos.SelectedItem = AsistenteClasificacionService
+            .DocumentosDeCategoria("Del proveedor")
+            .Single(dato => dato.Id == "guia_proveedor");
+        ((System.Windows.Controls.ComboBox)ventana.FindName("CmbProveedorCadena")!).SelectedItem =
+            "HOFFENS";
+        ((System.Windows.Controls.RadioButton)ventana.FindName("RbCadenaProveedor")!).IsChecked =
+            true;
+        Ir("OtrosDatos");
+        ventana.UpdateLayout();
+        if (
+            datos.Count(dato => dato.RequeridoCadena)
+                + informativos.Count(dato => dato.RequeridoCadena)
+            != 4
+        )
+            throw new InvalidOperationException("GRC Hoffens no mostró sus cuatro datos.");
+        resumen.Invoke(ventana, null);
+        if (
+            !((System.Windows.Controls.TextBlock)ventana.FindName("TxtResumen")!).Text.Contains(
+                "Cadena: Hoffens",
+                StringComparison.Ordinal
+            )
+        )
+            throw new InvalidOperationException("El resumen no identificó la cadena Hoffens.");
+        ((System.Windows.Controls.RadioButton)ventana.FindName("RbCadenaNo")!).IsChecked = true;
+        Ir("OtrosDatos");
+        ventana.UpdateLayout();
+        if (
+            datos.Any(dato => dato.RequeridoCadena)
+            || (
+                (System.Windows.Controls.StackPanel)ventana.FindName("PanelFiltroDatos")!
+            ).Visibility != Visibility.Visible
+            || lista.Items.Count <= 3
+        )
+            throw new InvalidOperationException("La opción No no mostró el diccionario completo.");
+
+        Ir("QueDocumento");
+        var tipoSinEsquema = Hormiguero.Nucleo.Datos.DiccionarioDatosEnlazantes.Todos.First(dato =>
+            Archivero.Servicios.OpcionesCadenaService.ParaTipo(dato.Id).Count == 0
+        );
+        categoria.SelectedItem = tipoSinEsquema.Grupo;
+        documentos.SelectedValue = tipoSinEsquema.Id;
+        if (pregunta.Visibility != Visibility.Collapsed)
+            throw new InvalidOperationException(
+                "Un tipo sin esquema mostró la pregunta de cadena."
+            );
     }
 }

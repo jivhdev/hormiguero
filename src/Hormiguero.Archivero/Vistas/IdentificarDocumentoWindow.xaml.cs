@@ -437,7 +437,9 @@ public partial class IdentificarDocumentoWindow : Window
             nuevoPaso == Paso.OtrosDatos ? Visibility.Visible : Visibility.Collapsed;
         PanelNumeroDato.Visibility =
             nuevoPaso == Paso.Numero ? Visibility.Visible : Visibility.Collapsed;
-        PanelDatosDiccionario.IsExpanded = nuevoPaso == Paso.OtrosDatos;
+        PanelFiltroDatos.Visibility = CadenaEstricta ? Visibility.Collapsed : Visibility.Visible;
+        PanelDatosDiccionario.Tag = CadenaEstricta;
+        PanelDatosDiccionario.IsExpanded = CadenaEstricta && nuevoPaso == Paso.OtrosDatos;
         PanelProveedorObligatorio.Visibility =
             nuevoPaso == Paso.OtrosDatos
             && !CadenaEstricta
@@ -461,7 +463,7 @@ public partial class IdentificarDocumentoWindow : Window
                 ? Visibility.Visible
                 : Visibility.Collapsed;
         ChkSinNumero.Visibility =
-            nuevoPaso == Paso.Numero ? Visibility.Visible : Visibility.Collapsed;
+            nuevoPaso == Paso.Numero && !CadenaEstricta ? Visibility.Visible : Visibility.Collapsed;
         if (nuevoPaso == Paso.Numero)
             ActualizarVistaNumero();
         if (nuevoPaso == Paso.OtrosDatos)
@@ -518,14 +520,24 @@ public partial class IdentificarDocumentoWindow : Window
                 "Paso 2 de 6 — ¿Quién lo emite?",
                 "Escribe o elige el emisor y marca su ubicación en el PDF."
             ),
-            Paso.Numero => (
-                "Paso 3 de 6 — Marca el número del documento",
-                "Marca el número que identifica el documento. Si no tiene número, indícalo aquí."
-            ),
-            Paso.OtrosDatos => (
-                "Paso 4 de 6 — Otros datos (opcional)",
-                "Marca solo los datos que te serviría buscar después. Puedes saltar este paso."
-            ),
+            Paso.Numero => CadenaEstricta
+                ? (
+                    "Paso 3 de 6 — Marca el número del documento",
+                    "Marca el número obligatorio que identifica el documento."
+                )
+                : (
+                    "Paso 3 de 6 — Marca el número del documento",
+                    "Marca el número que identifica el documento. Si no tiene número, indícalo aquí."
+                ),
+            Paso.OtrosDatos => CadenaEstricta
+                ? (
+                    "Paso 4 de 6 — Datos de la cadena (obligatorios)",
+                    "Marca la zona de cada dato. No puedes seguir hasta marcarlos todos."
+                )
+                : (
+                    "Paso 4 de 6 — Otros datos (opcional)",
+                    "Marca solo los datos que te serviría buscar después. Puedes saltar este paso."
+                ),
             Paso.Guardar => (
                 "Paso 5 de 6 — ¿Dónde se guarda?",
                 vinculando
@@ -992,6 +1004,10 @@ public partial class IdentificarDocumentoWindow : Window
             );
         _datosRequeridosCadenaOrdenados = ordenados;
         _datosRequeridosCadena = ordenados.ToHashSet(StringComparer.Ordinal);
+        foreach (var dato in _datosEnlazantes)
+            dato.RequeridoCadena = _datosRequeridosCadena.Contains(dato.Id);
+        foreach (var dato in _datosInformativos)
+            dato.RequeridoCadena = _datosRequeridosCadena.Contains(dato.Id);
         for (int indice = 0; indice < _datosEnlazantes.Count; indice++)
         {
             int orden = _datosRequeridosCadenaOrdenados.IndexOf(_datosEnlazantes[indice].Id);
@@ -1091,7 +1107,7 @@ public partial class IdentificarDocumentoWindow : Window
             )
             .ToArray();
         TxtFaltanDatosCadena.Text =
-            faltan.Length == 0 ? string.Empty : "Faltan: " + string.Join(", ", faltan);
+            faltan.Length == 0 ? "Todo marcado ✓" : "Faltan: " + string.Join(", ", faltan);
     }
 
     private DatoEnlazanteEdicion? DatoNumero => _datosEnlazantes.FirstOrDefault(d => d.DefineTipo);
@@ -1103,6 +1119,7 @@ public partial class IdentificarDocumentoWindow : Window
         TxtNombreDatoNumero.Text = dato.NombreDocumento;
         TxtEstadoNumero.Text = dato.Estado;
         ChkNumeroEnlazable.IsChecked = dato.Enlazable;
+        ChkNumeroEnlazable.IsEnabled = dato.PuedeEditarEnlazable;
     }
 
     private void BtnMarcarNumero_Click(object sender, RoutedEventArgs e)
@@ -1974,6 +1991,7 @@ public partial class IdentificarDocumentoWindow : Window
         TxtResumen.Text =
             encabezado
             + $"Categoría: {CmbCategoriaDocumento.SelectedItem}\n"
+            + (CadenaEstricta ? $"Cadena: {TextoCadena()}\n" : string.Empty)
             + $"Emisor: {_emisor}\n"
             + $"Tipo: {_tipo}\n"
             + $"Grupo: {(RbEmitido.IsChecked == true ? "Emitido" : "Recibido")}\n"
@@ -1983,6 +2001,12 @@ public partial class IdentificarDocumentoWindow : Window
             + $"Nombre de archivo: {nombreTexto}\n"
             + $"Al guardar: {(_abrirDespuesDeGuardar ? "se abre el documento" : "no se abre el documento")} y {TextoModoImpresion()}";
     }
+
+    private string TextoCadena() =>
+        RbCadenaTodas.IsChecked == true ? "todas las que usan OC propia"
+        : _proveedorCadena is { Length: > 0 } proveedor
+            ? char.ToUpperInvariant(proveedor[0]) + proveedor[1..].ToLowerInvariant()
+        : string.Empty;
 
     private string TextoModoImpresion()
     {
