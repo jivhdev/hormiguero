@@ -30,13 +30,13 @@ public static class PlantillasMensajero
 
     public const string RetiroHoffens =
         "RETIRO HOFFENS\n"
-        + "Retirar con: NVV Hoffens {NVV_HOFFENS} · OC JCV {OCC}\n"
-        + "Decir: \"Retiro JCV\"\n\n"
+        + "Decir en bodega: \"Retiro JCV: solicito el armado del pedido de la NVV {NVV_HOFFENS_DICTADA}\"\n"
+        + "NVV Hoffens {NVV_HOFFENS} · OC JCV {OCC}\n\n"
         + "Día: {DIA} · Bloque: {BLOQUE}\n"
-        + "Camino Lonquen 10707, Maipú\n"
+        + "Llegue a primera hora para evitar largas esperas.\n"
+        + "Camino Lonquén 10707, Maipú\n"
         + "https://maps.app.goo.gl/smWJQSwCrq2vfCcx7\n\n"
-        + "Ref.: OC cliente {OCL}\n"
-        + "Si no se retira ese día, queda 3 días hábiles más, mismo horario.";
+        + "Ref.: OC cliente {OCL}{OBRA_REF}";
 
     public const string RetiroSensus =
         "RETIRO SENSUS (Bodega E1 INVAC)\n"
@@ -86,6 +86,9 @@ public static class PlantillasMensajero
                     "{DIA} = día del retiro",
                     "{BLOQUE} = horario del retiro",
                     "{NVV_HOFFENS} = nota de venta de Hoffens para retirar",
+                    "{NVV_HOFFENS_DICTADA} = NVV de Hoffens separada después de tres cifras",
+                    "{OBRA_REF} = referencia opcional a la obra ingresada",
+                    "{OBRA} = nombre de la obra ingresado para el retiro",
                 ]
             ),
             new(
@@ -139,8 +142,11 @@ public static class PlantillasMensajero
                 ["OCC"] = "104523",
                 ["OCL"] = "4500012345",
                 ["DIA"] = "martes 15",
-                ["BLOQUE"] = "09:00 a 12:00",
+                ["BLOQUE"] = "09:00 a 14:00",
                 ["NVV_HOFFENS"] = "1066086",
+                ["NVV_HOFFENS_DICTADA"] = "106 6086",
+                ["OBRA_REF"] = " · Obra Avanza Park Vespucio 500",
+                ["OBRA"] = "Avanza Park Vespucio 500",
             },
             ClaveGuiaHoffens => new() { ["FECHA_GUIA"] = "hoy", ["OBRA"] = "Obra Ejemplo, Maipú" },
             ClaveCuerpoFactura => new()
@@ -167,8 +173,9 @@ public static class PlantillasMensajero
         string ocl,
         string? dia = null,
         string? bloque = null,
-        string? nvvHoffens = null
-    ) => GenerarRetiro(almacen, proveedor, [(occ, ocl)], dia, bloque, nvvHoffens);
+        string? nvvHoffens = null,
+        string? obra = null
+    ) => GenerarRetiro(almacen, proveedor, [(occ, ocl)], dia, bloque, nvvHoffens, obra);
 
     public static string GenerarRetiro(
         AlmacenMensajero almacen,
@@ -176,18 +183,19 @@ public static class PlantillasMensajero
         IReadOnlyList<(string Occ, string Ocl)> ordenes,
         string? dia = null,
         string? bloque = null,
-        string? nvvHoffens = null
+        string? nvvHoffens = null,
+        string? obra = null
     )
     {
-        string occ = string.Join(" · ", ordenes.Select(orden => orden.Occ));
-        string ocl = string.Join(" · ", ordenes.Select(orden => orden.Ocl));
-        string nvv = string.Join(
-            " · ",
-            (nvvHoffens ?? string.Empty).Split(
-                [',', ' ', '\t', '\r', '\n'],
-                StringSplitOptions.RemoveEmptyEntries
-            )
+        string occ = string.Join(" - ", ordenes.Select(orden => orden.Occ));
+        string ocl = string.Join(" - ", ordenes.Select(orden => orden.Ocl));
+        string[] nvvs = (nvvHoffens ?? string.Empty).Split(
+            [',', ' ', '\t', '\r', '\n'],
+            StringSplitOptions.RemoveEmptyEntries
         );
+        string nvv = string.Join(" - ", nvvs);
+        string nvvDictada = string.Join(" - ", nvvs.Select(FormatearNvvDictada));
+        string obraLimpia = obra?.Trim() ?? string.Empty;
         (string clave, string predeterminada) = proveedor switch
         {
             "COBELCAR" => (ClaveCobelcar, RetiroCobelcar),
@@ -207,12 +215,17 @@ public static class PlantillasMensajero
             {
                 ["OCC"] = occ,
                 ["OCL"] = ocl,
-                ["DIA"] = string.IsNullOrWhiteSpace(dia) ? "_______________" : dia,
+                ["DIA"] = string.IsNullOrWhiteSpace(dia)
+                    ? "_______________"
+                    : dia.Trim().ToLowerInvariant(),
                 ["BLOQUE"] =
                     string.IsNullOrWhiteSpace(bloque) || bloque == "Manual"
-                        ? "_______________"
+                        ? "09:00 a 14:00"
                         : bloque,
                 ["NVV_HOFFENS"] = nvv.Length == 0 ? "_______________" : nvv,
+                ["NVV_HOFFENS_DICTADA"] = nvvDictada.Length == 0 ? "_______________" : nvvDictada,
+                ["OBRA_REF"] = obraLimpia.Length == 0 ? string.Empty : $" · Obra {obraLimpia}",
+                ["OBRA"] = obraLimpia,
             }
         );
     }
@@ -288,6 +301,9 @@ public static class PlantillasMensajero
             plantilla = plantilla.Replace("{" + marcador + "}", valor, StringComparison.Ordinal);
         return plantilla;
     }
+
+    private static string FormatearNvvDictada(string nvv) =>
+        nvv.Length > 3 ? $"{nvv[..3]} {nvv[3..]}" : nvv;
 }
 
 public sealed record PlantillaMensaje(

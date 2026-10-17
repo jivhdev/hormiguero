@@ -59,7 +59,7 @@ public static class EnvioConjuntoOcc
         IEnumerable<string> datos = valores.Where(valor => !string.IsNullOrWhiteSpace(valor));
         if (quitarDuplicados)
             datos = datos.Distinct(StringComparer.Ordinal);
-        string numeros = string.Join(" ", datos);
+        string numeros = string.Join(" - ", datos);
         if (numeros.Length > 0)
             partes.Add($"{etiqueta} {numeros}");
     }

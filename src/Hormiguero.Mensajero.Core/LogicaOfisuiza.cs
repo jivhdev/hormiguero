@@ -256,7 +256,7 @@ public static class MensajesRetiro
 {
     public static readonly IReadOnlyList<string> BloquesHoffens =
     [
-        "09:00 - 11:00",
+        "09:00 a 14:00",
         "11:00 - 13:00",
         "Manual",
     ];

@@ -14,7 +14,10 @@ public sealed class EnvioConjuntoOccTests
             Crear("3", "13", "21"),
         ];
 
-        Assert.Equal("OCC 1 2 3 NVV 11 12 13 OCL 21", EnvioConjuntoOcc.FormatearAsunto(ordenes));
+        Assert.Equal(
+            "OCC 1 - 2 - 3 NVV 11 - 12 - 13 OCL 21",
+            EnvioConjuntoOcc.FormatearAsunto(ordenes)
+        );
     }
 
     [Fact]
@@ -27,7 +30,22 @@ public sealed class EnvioConjuntoOccTests
             Crear("3", "12", ""),
         ];
 
-        Assert.Equal("OCC 1 2 3 NVV 12 OCL 21 22", EnvioConjuntoOcc.FormatearAsunto(ordenes));
+        Assert.Equal("OCC 1 - 2 - 3 NVV 12 OCL 21 - 22", EnvioConjuntoOcc.FormatearAsunto(ordenes));
+    }
+
+    [Fact]
+    public void Asunto_con_dos_occ_dos_nvv_y_una_ocl_separa_grupos_con_guion()
+    {
+        OccEnvioConjunto[] ordenes =
+        [
+            Crear("20525", "20195", "39885"),
+            Crear("20526", "20196", "39885"),
+        ];
+
+        Assert.Equal(
+            "OCC 20525 - 20526 NVV 20195 - 20196 OCL 39885",
+            EnvioConjuntoOcc.FormatearAsunto(ordenes)
+        );
     }
 
     [Fact]

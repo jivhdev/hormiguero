@@ -34,14 +34,14 @@ public sealed class PlantillasMensajeroTests : IDisposable
             PlantillasMensajero.GenerarRetiro(almacen, "COBELCAR", "104523", "4500012345")
         );
         Assert.Equal(
-            "RETIRO HOFFENS\nRetirar con: NVV Hoffens _______________ · OC JCV 104523\nDecir: \"Retiro JCV\"\n\nDía: _______________ · Bloque: _______________\nCamino Lonquen 10707, Maipú\nhttps://maps.app.goo.gl/smWJQSwCrq2vfCcx7\n\nRef.: OC cliente 4500012345\nSi no se retira ese día, queda 3 días hábiles más, mismo horario.",
+            "RETIRO HOFFENS\nDecir en bodega: \"Retiro JCV: solicito el armado del pedido de la NVV _______________\"\nNVV Hoffens _______________ · OC JCV 104523\n\nDía: _______________ · Bloque: 09:00 a 14:00\nLlegue a primera hora para evitar largas esperas.\nCamino Lonquén 10707, Maipú\nhttps://maps.app.goo.gl/smWJQSwCrq2vfCcx7\n\nRef.: OC cliente 4500012345",
             PlantillasMensajero.GenerarRetiro(
                 almacen,
                 "HOFFENS",
                 "104523",
                 "4500012345",
                 "",
-                "Manual",
+                "",
                 ""
             )
         );
@@ -59,7 +59,7 @@ public sealed class PlantillasMensajeroTests : IDisposable
     public void Retiro_hoffens_incluye_nvv_cuando_se_ingresa()
     {
         Assert.Contains(
-            "Retirar con: NVV Hoffens 1066086 · OC JCV 104523",
+            "NVV Hoffens 1066086 · OC JCV 104523",
             PlantillasMensajero.GenerarRetiro(
                 almacen,
                 "HOFFENS",
@@ -84,10 +84,59 @@ public sealed class PlantillasMensajeroTests : IDisposable
         );
     }
 
+    [Fact]
+    public void Retiro_hoffens_genera_el_texto_aprobado_con_obra_y_nvv_dictada()
+    {
+        Assert.Equal(
+            "RETIRO HOFFENS\nDecir en bodega: \"Retiro JCV: solicito el armado del pedido de la NVV 107 0558\"\nNVV Hoffens 1070558 · OC JCV 20604\n\nDía: lunes 19 de octubre · Bloque: 09:00 a 14:00\nLlegue a primera hora para evitar largas esperas.\nCamino Lonquén 10707, Maipú\nhttps://maps.app.goo.gl/smWJQSwCrq2vfCcx7\n\nRef.: OC cliente 74411 · Obra Avanza Park Vespucio 500",
+            PlantillasMensajero.GenerarRetiro(
+                almacen,
+                "HOFFENS",
+                "20604",
+                "74411",
+                "Lunes 19 de octubre",
+                "09:00 a 14:00",
+                "1070558",
+                " Avanza Park Vespucio 500 "
+            )
+        );
+    }
+
+    [Theory]
+    [InlineData("1234567", "123 4567")]
+    [InlineData("123456", "123 456")]
+    public void Retiro_hoffens_formatea_nvv_para_dictarla(string nvv, string dictada)
+    {
+        string mensaje = PlantillasMensajero.GenerarRetiro(
+            almacen,
+            "HOFFENS",
+            "20604",
+            "74411",
+            nvvHoffens: nvv
+        );
+
+        Assert.Contains($"pedido de la NVV {dictada}", mensaje);
+    }
+
+    [Fact]
+    public void Retiro_hoffens_sin_obra_no_deja_la_referencia_opcional()
+    {
+        string mensaje = PlantillasMensajero.GenerarRetiro(
+            almacen,
+            "HOFFENS",
+            "20604",
+            "74411",
+            nvvHoffens: "1070558"
+        );
+
+        Assert.DoesNotContain(" · Obra", mensaje);
+        Assert.EndsWith("Ref.: OC cliente 74411", mensaje);
+    }
+
     [Theory]
     [InlineData(1, "104523", "4500012345")]
-    [InlineData(2, "104523 · 104524", "4500012345 · 4500012346")]
-    [InlineData(3, "104523 · 104524 · 104525", "4500012345 · 4500012346 · 4500012347")]
+    [InlineData(2, "104523 - 104524", "4500012345 - 4500012346")]
+    [InlineData(3, "104523 - 104524 - 104525", "4500012345 - 4500012346 - 4500012347")]
     public void Retiro_junta_occ_y_ocl_en_el_orden_agregado(int cantidad, string occ, string ocl)
     {
         (string Occ, string Ocl)[] ordenes = Enumerable
@@ -111,7 +160,7 @@ public sealed class PlantillasMensajeroTests : IDisposable
             nvvHoffens: "1066086, 1066087 1066088"
         );
 
-        Assert.Contains("NVV Hoffens 1066086 · 1066087 · 1066088", mensaje);
+        Assert.Contains("NVV Hoffens 1066086 - 1066087 - 1066088", mensaje);
     }
 
     [Fact]
