@@ -1,6 +1,45 @@
 ﻿HORMIGUERO - NOVEDADES PARA PROBAR (la versión exacta está en VERSION.txt)
 ===============================================================================
 
+LO MÁS NUEVO (17-10) -- EL LUNES, PARA PARTIR LIMPIO:
+ 1) Abre "Reiniciar Hormiguero" y MARCA "Borrar también mis clasificaciones (empezar de cero)"
+    (solo esta vez: borra las clasificaciones viejas de septiembre que se habían colado).
+ 2) Desde ahí, Reiniciar SIN marcar esa casilla: borra lo del día y conserva tus esquemas,
+    tus clasificaciones, las carpetas de Buscadero y TODO Mensajero.
+== REINICIAR ==
+- Se conservan: esquemas de cadena (Hoffens, Cobelcar), clasificaciones de Archivero, carpetas de
+  Buscadero, Mensajero completo (clientes de Facturas con correos y lista NVV de Ofisuiza) y
+  preferencias. Se borran: documentos, cadenas, decisiones, avisos, pendientes y recientes.
+- Ya no se copian datos de versiones antiguas (eso trajo de vuelta clasificaciones de septiembre).
+- Mensajero suma solo los clientes que faltaban (30 de Facturas, 35 líneas NVV juntadas de todos
+  los respaldos); nunca borra ni pisa lo que ya tienes.
+== ARCHIVERO: IDENTIFICAR UNA VEZ, PARA SIEMPRE ==
+Paso 1: eliges el documento (ej. Compras propias → OC propia) y aparece "¿Es parte de una cadena?":
+  No · Sí, de todas las cadenas que lo usan (OCC, NVV, FCV…) · Sí, solo de la cadena de [Hoffens].
+Con "Sí", el paso 4 se llama "Datos de la cadena (obligatorios)" y muestra SOLO lo que hay que
+marcar (el resto desaparece); "Siguiente" no se habilita hasta marcar todo ("Faltan: …").
+Qué pide cada documento (Hoffens):
+  OCC: N° OC propia, RUT y nombre del proveedor, N° NVV, N° OCL, Tipo de entrega, Fecha, Encargado
+  GRC: N° guía, N° OC propia, N° NVV Hoffens, Fecha     FCC: N° factura, N° guía, N° OC propia, Fecha
+  NCC: N° NCC, N° FCC, Fecha     FCV: N° factura, N° guía, N° OCL, RUT y nombre del cliente, Fecha
+  NCV: N° NCV, N° FCV, Fecha     NVV: N° NVV, RUT y nombre del cliente     OCL: N° OCL, nombre del
+  cliente     COV: N° cotización, RUT y nombre del cliente     GRCF: nada (el número sale del nombre)
+"Administrar clasificaciones" marca las incompletas para la cadena con un botón "Completar".
+== CADENAS ==
+- Si falta un eslabón (ej. llega la guía y no está su OCC), lo busca en su carpeta por el NOMBRE
+  del archivo, de lo más nuevo a lo más antiguo, y recién ahí lo lee. Carpetas cargadas: OCC,
+  NVV, COV, OCL, GRC/GRCF/FCC/NCC de Hoffens, FCV/NCV de DOC_FACEL. Se ven y cambian en
+  Buscadero → Esquemas… → Editar → paso 2 ("Carpeta donde buscarlo").
+- Buscadero, en la cadena: cada eslabón vacío tiene "Buscar…" (busca en su carpeta o te deja
+  elegir el archivo a mano).
+- Las cedibles se ignoran. Una cadena creada "igual" se junta sola con la de su OCC cuando llega.
+- Los dudosos dicen qué completar (ej. "La guía 1195630 no tiene marcado el N° de OC propia").
+- Datos que escribes tú por cadena: Fecha de retiro, NVV Hoffens, Obra.
+== MENSAJERO ==
+- Retiro Hoffens nuevo (NVV dictada "107 0558", día escrito, bloque 09:00 a 14:00, obra que
+  escribes tú). Si habías editado esa plantilla, usa "Volver al texto predeterminado".
+- Conjuntos: "OCC 20525 - 20526 NVV 20195 - 20196 OCL 39885".
+
 ARREGLADO (16-10) -- lo que no funcionó el 15-10
 - "Decisiones pendientes": los botones Retiro / Despacho RM / Despacho región no hacían nada.
   Ya funcionan (probado pulsándolos): Despacho guarda el modo; Retiro pide la fecha y "Confirmar
