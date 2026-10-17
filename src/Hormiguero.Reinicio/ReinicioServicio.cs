@@ -33,6 +33,7 @@ public sealed class ReinicioServicio
             "reglas_alerta_esquema_diccionario",
             "reconocimientos_esquema_diccionario",
             "reglas_propuesta_modo_esquema_diccionario",
+            "datos_ingresados_esquema_diccionario",
         ],
         StringComparer.OrdinalIgnoreCase
     );
