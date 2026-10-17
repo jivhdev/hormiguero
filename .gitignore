@@ -21,6 +21,8 @@ desktop.ini
 # Secretos
 .env
 *.env
+privado/
+configuracion/clientes-*.json
 
 # .NET
 TestResults/

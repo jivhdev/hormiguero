@@ -4,10 +4,8 @@ using Microsoft.Data.Sqlite;
 namespace Hormiguero.Nucleo.Datos;
 
 /// <summary>
-/// Fase B-3 (D-66): los datos propios de cada app viven en la carpeta común de Hormiguero
-/// (%LocalAppData%\Hormiguero\&lt;app&gt;.db), junto a la base común. La primera vez se copian
-/// solos los datos que la app tenía en su ubicación anterior; ese archivo queda intacto
-/// como respaldo. Cada día se respalda el archivo de la app, igual que la base común.
+/// Los datos propios de cada app viven en la carpeta común de Hormiguero
+/// (%LocalAppData%\Hormiguero\&lt;app&gt;.db), junto a la base común.
 /// </summary>
 public static class DatosDeApp
 {
@@ -88,16 +86,6 @@ public static class DatosDeApp
         Directory.CreateDirectory(carpeta);
         string destino = Path.Combine(carpeta, $"{nombreApp}.db");
 
-        if (
-            !File.Exists(destino)
-            && !File.Exists(Path.Combine(carpeta, ArchivoMarcaReinicio))
-            && rutaAnterior is not null
-            && File.Exists(rutaAnterior)
-        )
-        {
-            Copiar(rutaAnterior, destino);
-        }
-
         if (File.Exists(destino))
         {
             try
@@ -127,31 +115,6 @@ public static class DatosDeApp
             Path.Combine(carpeta, ArchivoMarcaReinicio),
             fecha.ToString("yyyy-MM-dd HH:mm:ss", System.Globalization.CultureInfo.InvariantCulture)
         );
-    }
-
-    // Copia con la API de respaldo de SQLite: si la base anterior estaba en modo WAL,
-    // copiar el archivo a mano dejaría fuera lo que aún no se había volcado.
-    private static void Copiar(string origen, string destino)
-    {
-        string temporal = destino + ".copiando";
-        try
-        {
-            using (var desde = Abrir(origen, SqliteOpenMode.ReadOnly))
-            using (var hacia = Abrir(temporal, SqliteOpenMode.ReadWriteCreate))
-            {
-                desde.BackupDatabase(hacia);
-            }
-            SqliteConnection.ClearAllPools();
-            File.Move(temporal, destino);
-        }
-        finally
-        {
-            SqliteConnection.ClearAllPools();
-            if (File.Exists(temporal))
-            {
-                File.Delete(temporal);
-            }
-        }
     }
 
     private static SqliteConnection Abrir(string ruta, SqliteOpenMode modo)

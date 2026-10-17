@@ -305,6 +305,35 @@ public sealed class AlmacenMensajeroTests : IDisposable
     }
 
     [Fact]
+    public void Precarga_clientes_y_lineas_sin_duplicar_ni_pisar_datos()
+    {
+        string ruta = Path.Combine(raiz, "clientes-jcv.json");
+        File.WriteAllText(
+            ruta,
+            """
+            {"version":1,"clientes_factura":[
+              {"rut":"76.000.000-1","razon_social":"Nombre privado","correo":"privado@ejemplo.cl","activo":false,"creado":"2020-01-02","actualizado":"2024-05-06"},
+              {"rut":"77000000-2","razon_social":"Nuevo","correo":"nuevo@ejemplo.cl","activo":true,"creado":"2021-01-02","actualizado":"2024-05-06"}
+            ],"clientes_nvv":["YA EXISTE","NUEVO CLIENTE"]}
+            """
+        );
+        using var almacen = new AlmacenMensajero(RutaBase);
+        almacen.GuardarClienteFactura(
+            "76000000-1",
+            "Nombre local",
+            "local@ejemplo.cl",
+            DateTime.Now
+        );
+        almacen.GuardarClientesNvv(["YA EXISTE"]);
+
+        Assert.Equal(2, almacen.ImportarClientesPrecargados(ruta));
+        Assert.Equal("Nombre local", almacen.BuscarClienteFactura("76000000-1")!.RazonSocial);
+        Assert.Equal("Nuevo", almacen.BuscarClienteFactura("77000000-2")!.RazonSocial);
+        Assert.Equal(["YA EXISTE", "NUEVO CLIENTE"], almacen.LeerClientesNvv());
+        Assert.Equal(0, almacen.ImportarClientesPrecargados(ruta));
+    }
+
+    [Fact]
     public void Gestion_de_clientes_guarda_DV_incorrecto_y_cambia_la_clave_normalizada()
     {
         using (var almacen = new AlmacenMensajero(RutaBase))

@@ -1,5 +1,6 @@
 using System.Windows;
 using Hormiguero.Diseno;
+using Hormiguero.Mensajero.Core;
 
 namespace Hormiguero.Mensajero.App;
 
@@ -17,6 +18,21 @@ public partial class App : Application
                 ? modoTema
                 : ModoTema.Sistema
         );
+        try
+        {
+            using var almacen = AlmacenMensajero.AbrirComun();
+            almacen.ImportarClientesPrecargados(
+                System.IO.Path.Combine(
+                    AppContext.BaseDirectory,
+                    "Configuracion",
+                    "clientes-jcv.json"
+                )
+            );
+        }
+        catch
+        {
+            // Un archivo privado ausente o inválido no impide abrir Mensajero.
+        }
         MainWindow = new VentanaPrincipal();
         MainWindow.Show();
     }

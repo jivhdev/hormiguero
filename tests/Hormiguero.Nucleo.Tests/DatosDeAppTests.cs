@@ -48,7 +48,7 @@ public sealed class DatosDeAppTests : IDisposable
     }
 
     [Fact]
-    public void La_primera_vez_copia_los_datos_anteriores_y_no_los_toca()
+    public void Nunca_copia_datos_de_la_ubicacion_anterior()
     {
         string anterior = BaseAnterior(@"C:\Entrada");
         DateTime antes = File.GetLastWriteTimeUtc(anterior);
@@ -56,21 +56,23 @@ public sealed class DatosDeAppTests : IDisposable
         string destino = DatosDeApp.Preparar(Comun, "archivero", anterior, Ahora);
 
         Assert.Equal(Path.Combine(Comun, "archivero.db"), destino);
-        Assert.Equal(@"C:\Entrada", Leer(destino));
+        Assert.False(File.Exists(destino));
         Assert.True(File.Exists(anterior));
         Assert.Equal(antes, File.GetLastWriteTimeUtc(anterior));
     }
 
     [Fact]
-    public void Si_ya_se_copio_no_vuelve_a_copiar_encima()
+    public void No_reemplaza_la_base_comun_existente_con_una_ubicacion_anterior()
     {
         string anterior = BaseAnterior(@"C:\Entrada");
         string destino = DatosDeApp.Preparar(Comun, "archivero", anterior, Ahora);
+        Assert.False(File.Exists(destino));
         using (var conexion = new SqliteConnection($"Data Source={destino};Pooling=False"))
         {
             conexion.Open();
             using var comando = conexion.CreateCommand();
-            comando.CommandText = "UPDATE Configuracion SET Valor = 'C:\\Nueva';";
+            comando.CommandText =
+                "CREATE TABLE Configuracion(Clave TEXT, Valor TEXT); INSERT INTO Configuracion VALUES('x','C:\\Nueva');";
             comando.ExecuteNonQuery();
         }
 
@@ -94,20 +96,29 @@ public sealed class DatosDeAppTests : IDisposable
     }
 
     [Fact]
-    public void Respalda_con_el_nombre_de_la_app()
+    public void Respalda_la_base_existente_con_el_nombre_de_la_app()
     {
-        string anterior = BaseAnterior(@"C:\Entrada");
+        string destino = Path.Combine(Comun, "archivero.db");
+        Directory.CreateDirectory(Comun);
+        using (var conexion = new SqliteConnection($"Data Source={destino};Pooling=False"))
+        {
+            conexion.Open();
+            using var crear = conexion.CreateCommand();
+            crear.CommandText =
+                "CREATE TABLE Configuracion(Clave TEXT, Valor TEXT); INSERT INTO Configuracion VALUES('x','dato');";
+            crear.ExecuteNonQuery();
+        }
 
-        DatosDeApp.Preparar(Comun, "archivero", anterior, Ahora);
+        DatosDeApp.Preparar(Comun, "archivero", rutaAnterior: null, Ahora);
 
         string respaldo = Assert.Single(
             Directory.GetFiles(Path.Combine(Comun, "respaldos"), "archivero-*.db")
         );
-        Assert.Equal(@"C:\Entrada", Leer(respaldo));
+        Assert.Equal("dato", Leer(respaldo));
     }
 
     [Fact]
-    public void La_marca_de_reinicio_impide_copiar_datos_anteriores()
+    public void La_marca_de_reinicio_no_habilita_ni_requiere_copiar_datos_anteriores()
     {
         string anterior = BaseAnterior(@"C:\Entrada");
         DatosDeApp.MarcarReinicio(Comun, Ahora);

@@ -1,0 +1,29 @@
+<Window
+  x:Class="Hormiguero.Reinicio.VentanaReinicio"
+  xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+  xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+  Title="Reiniciar Hormiguero"
+  SizeToContent="WidthAndHeight"
+  WindowStartupLocation="CenterScreen"
+  ResizeMode="NoResize"
+>
+  <StackPanel Margin="20" Width="520">
+    <TextBlock TextWrapping="Wrap" Margin="0,0,0,12">
+      Se crea una copia completa de respaldo. Se borran los datos de trabajo del Núcleo, Archivero y Buscadero. Se conservan los esquemas, las clasificaciones, las carpetas de búsqueda, las preferencias, los registros y toda la información de Mensajero.
+    </TextBlock>
+    <CheckBox
+      x:Name="BorrarClasificacionesCheck"
+      Content="Borrar también mis clasificaciones (empezar de cero)"
+      Margin="0,0,0,12"
+    />
+    <TextBlock
+      Text="Al marcarla, se vacían las clasificaciones de Archivero y del Núcleo. Los esquemas y Mensajero siempre se conservan."
+      TextWrapping="Wrap"
+      Margin="0,0,0,18"
+    />
+    <StackPanel Orientation="Horizontal" HorizontalAlignment="Right">
+      <Button Content="Cancelar" IsCancel="True" MinWidth="90" Margin="0,0,8,0" />
+      <Button Content="Reiniciar" IsDefault="True" MinWidth="90" Click="Reiniciar_Click" />
+    </StackPanel>
+  </StackPanel>
+</Window>
