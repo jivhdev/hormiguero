@@ -56,6 +56,11 @@
         <GridView>
           <GridViewColumn Header="Emisor" Width="150" DisplayMemberBinding="{Binding Emisor}" />
           <GridViewColumn
+            Header="Cadena"
+            Width="110"
+            DisplayMemberBinding="{Binding AlcanceCadenaTexto}"
+          />
+          <GridViewColumn
             Header="Nombre estándar"
             Width="220"
             DisplayMemberBinding="{Binding NombreEstandar}"
@@ -70,6 +75,22 @@
             Width="100"
             DisplayMemberBinding="{Binding DisponibleTexto}"
           />
+          <GridViewColumn Header="Estado de cadena" Width="280">
+            <GridViewColumn.CellTemplate>
+              <DataTemplate>
+                <StackPanel>
+                  <TextBlock Text="{Binding EstadoCadenaTexto}" TextWrapping="Wrap" />
+                  <Button
+                    Content="Completar"
+                    Visibility="{Binding CompletarVisibility}"
+                    Click="BtnCompletar_Click"
+                    HorizontalAlignment="Left"
+                    Padding="5,2"
+                  />
+                </StackPanel>
+              </DataTemplate>
+            </GridViewColumn.CellTemplate>
+          </GridViewColumn>
         </GridView>
       </ListView.View>
     </ListView>

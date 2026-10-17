@@ -5,10 +5,17 @@ using System.Windows.Controls;
 using System.Windows.Data;
 using System.Windows.Forms;
 using Archivero.Datos;
+using Archivero.Servicios;
+using Hormiguero.Nucleo.Datos;
 
 namespace Archivero.Vistas;
 
-public class FilaClasificacion(ConfiguracionDocumento configuracion, bool disponible)
+public class FilaClasificacion(
+    ConfiguracionDocumento configuracion,
+    bool disponible,
+    ConfiguracionCadena? cadena = null,
+    string? estadoCadena = null
+)
 {
     public ConfiguracionDocumento Configuracion { get; } = configuracion;
     public string Emisor => Configuracion.Emisor;
@@ -21,12 +28,21 @@ public class FilaClasificacion(ConfiguracionDocumento configuracion, bool dispon
             : Configuracion.NombreEstandar;
     public string CarpetaDestino => Configuracion.CarpetaDestino;
     public string DisponibleTexto => disponible ? "✅ Disponible" : "❌ No disponible";
+    public string AlcanceCadenaTexto =>
+        cadena is null ? ""
+        : cadena.Alcance == "todas" ? "Todas"
+        : $"Solo {cadena.Proveedor}";
+    public string EstadoCadenaTexto => estadoCadena ?? "";
+    public bool EsIncompleta => estadoCadena is not null;
+    public Visibility CompletarVisibility =>
+        EsIncompleta ? Visibility.Visible : Visibility.Collapsed;
 }
 
 public partial class AdministrarClasificacionesWindow : Window
 {
     private readonly ConfiguracionDocumentoRepository _configuraciones = new();
     private readonly EntidadRepository _entidades = new();
+    private readonly ConfiguracionCadenaRepository _configuracionesCadena = new();
     private List<FilaClasificacion> _todas = [];
 
     /// <summary>Caso-11, punto 3: si se editó alguna configuración, la ventana principal reprocesa los pendientes al cerrar.</summary>
@@ -42,12 +58,87 @@ public partial class AdministrarClasificacionesWindow : Window
     {
         _todas = _configuraciones
             .ObtenerTodas()
-            .Select(c => new FilaClasificacion(c, Directory.Exists(c.CarpetaDestino)))
+            .Select(c => CrearFila(c))
             .OrderBy(f => f.GrupoDocumento, StringComparer.CurrentCulture)
             .ThenBy(f => f.NombreEstandar, StringComparer.CurrentCulture)
             .ToList();
 
         AplicarFiltro();
+    }
+
+    private FilaClasificacion CrearFila(ConfiguracionDocumento configuracion)
+    {
+        var cadena = _configuracionesCadena.Obtener(configuracion.Id);
+        var conPatrones =
+            _configuraciones.BuscarPorEmisorYTipo(configuracion.Emisor, configuracion.Tipo)
+            ?? configuracion;
+        return new(
+            configuracion,
+            Directory.Exists(configuracion.CarpetaDestino),
+            cadena,
+            cadena is null ? null : CalcularFaltantes(conPatrones, cadena)
+        );
+    }
+
+    private static string? CalcularFaltantes(
+        ConfiguracionDocumento configuracion,
+        ConfiguracionCadena cadena
+    )
+    {
+        string? tipoId = DiccionarioDatosEnlazantes
+            .Todos.FirstOrDefault(d => d.EtiquetaTipo == configuracion.Tipo)
+            ?.Id;
+        if (tipoId is null)
+            return null;
+        var opciones = OpcionesCadenaService.ParaTipo(tipoId);
+        var esquemas =
+            cadena.Alcance == "todas"
+                ? opciones
+                : opciones.Where(o => o.Proveedor == cadena.Proveedor).ToArray();
+        var requeridos = esquemas.SelectMany(o => o.DatosRequeridos).Distinct().ToArray();
+        if (requeridos.Length == 0)
+            return null;
+        var patron = configuracion.Patrones.FirstOrDefault();
+        if (patron is null)
+            return $"Incompleta para la cadena: falta {requeridos[0]}";
+        var datosMarcados = DatosEnlazantesConfiguracionService
+            .Leer(configuracion.Emisor, configuracion.Tipo, patron.Id)
+            .Where(d => d.Marcado)
+            .Select(d => d.Id)
+            .ToHashSet(StringComparer.Ordinal);
+        HashSet<string> informativosMarcados = [];
+        using (var conexion = BaseComun.Abrir(DocumentosGuardados.RutaBaseComun))
+        {
+            var identificacion = new Identificaciones(conexion)
+                .Listar()
+                .FirstOrDefault(i =>
+                    i.Emisor == configuracion.Emisor && i.Tipo == configuracion.Tipo
+                );
+            if (identificacion is not null)
+                informativosMarcados = new RepositorioDatosInformativos(conexion)
+                    .LeerZonas(
+                        identificacion.Id,
+                        patron.Id.ToString(System.Globalization.CultureInfo.InvariantCulture)
+                    )
+                    .Select(z => z.Dato)
+                    .ToHashSet(StringComparer.Ordinal);
+        }
+        string? falta = requeridos.FirstOrDefault(id =>
+            id is "fecha_documento" or "encargado"
+                ? !informativosMarcados.Contains(id)
+                : !datosMarcados.Contains(id)
+        );
+        if (falta is null)
+            return null;
+        string etiqueta = falta switch
+        {
+            "fecha_documento" => "Fecha del documento",
+            "encargado" => "Encargado",
+            _ => DiccionarioDatosEnlazantes.Todos.FirstOrDefault(d => d.Id == falta)?.Nombre
+                ?? falta,
+        };
+        string nombreCadena = cadena.Alcance == "todas" ? "" : $" de {cadena.Proveedor}";
+        return $"Incompleta para la cadena{nombreCadena}: falta {etiqueta}";
     }
 
     private void AplicarFiltro()
@@ -95,9 +186,16 @@ public partial class AdministrarClasificacionesWindow : Window
 
     private void BtnEditar_Click(object sender, RoutedEventArgs e) => Editar();
 
-    private void Editar()
+    private void BtnCompletar_Click(object sender, RoutedEventArgs e)
     {
-        if (ListaClasificaciones.SelectedItem is not FilaClasificacion fila)
+        if (sender is System.Windows.Controls.Button { DataContext: FilaClasificacion fila })
+            Editar(fila, true);
+    }
+
+    private void Editar(FilaClasificacion? seleccion = null, bool completar = false)
+    {
+        var fila = seleccion ?? ListaClasificaciones.SelectedItem as FilaClasificacion;
+        if (fila is null)
         {
             System.Windows.MessageBox.Show(
                 this,
@@ -149,7 +247,8 @@ public partial class AdministrarClasificacionesWindow : Window
         var asistente = new IdentificarDocumentoWindow(
             dialogoArchivo.FileName,
             configuracion,
-            patron
+            patron,
+            comenzarEnDatos: completar
         )
         {
             Owner = this,

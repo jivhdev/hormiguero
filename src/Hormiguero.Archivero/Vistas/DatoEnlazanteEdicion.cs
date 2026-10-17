@@ -14,6 +14,7 @@ public sealed class DatoEnlazanteEdicion : INotifyPropertyChanged
     private bool _defineTipo;
     private string _estado = "No aparece en este diseño.";
     public string ValorLeido { get; set; } = string.Empty;
+    public int OrdenCadena { get; set; } = int.MaxValue;
 
     public DatoEnlazanteEdicion(DatoEnlazanteConfigurado dato)
     {

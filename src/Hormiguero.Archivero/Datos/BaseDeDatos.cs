@@ -51,6 +51,13 @@ public static class BaseDeDatos
                 UNIQUE (EmisorId, TipoId)
             );
 
+            CREATE TABLE IF NOT EXISTS ConfiguracionCadenas (
+                ConfiguracionId INTEGER PRIMARY KEY REFERENCES Configuraciones(Id) ON DELETE CASCADE,
+                Alcance TEXT NOT NULL CHECK (Alcance IN ('todas', 'esquema')),
+                Proveedor TEXT NULL,
+                CHECK ((Alcance = 'todas' AND Proveedor IS NULL) OR (Alcance = 'esquema' AND Proveedor IS NOT NULL))
+            );
+
             CREATE TABLE IF NOT EXISTS PatronesReconocimiento (
                 Id INTEGER PRIMARY KEY AUTOINCREMENT,
                 ConfiguracionId INTEGER NOT NULL REFERENCES Configuraciones (Id)

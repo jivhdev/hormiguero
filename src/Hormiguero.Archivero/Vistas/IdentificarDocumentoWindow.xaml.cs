@@ -2,12 +2,14 @@ using System.Collections.ObjectModel;
 using System.ComponentModel;
 using System.IO;
 using System.Runtime.CompilerServices;
+using System.Text.Json;
 using System.Windows;
 using System.Windows.Controls;
 using System.Windows.Data;
 using Archivero.Datos;
 using Archivero.Servicios;
 using Archivero.Servicios.Pdf;
+using Hormiguero.Nucleo.Datos;
 using Button = System.Windows.Controls.Button;
 using RadioButton = System.Windows.Controls.RadioButton;
 
@@ -96,6 +98,7 @@ public partial class IdentificarDocumentoWindow : Window
     private readonly string _rutaArchivo;
     private readonly EntidadRepository _entidades = new();
     private readonly ConfiguracionDocumentoRepository _configuraciones = new();
+    private readonly ConfiguracionCadenaRepository _configuracionesCadena = new();
     private readonly PendienteRepository _pendientes = new();
     private readonly BorradorRepository _borradores = new();
     private readonly Dictionary<CampoMarca, Marca> _marcas = new();
@@ -129,6 +132,10 @@ public partial class IdentificarDocumentoWindow : Window
     private string? _avisoImpresion;
     private readonly ConfiguracionImpresionRepository _configuracionImpresion = new();
     private ConfiguracionDocumento? _configuracionExistente;
+    private IReadOnlyList<OpcionCadena> _opcionesCadena = [];
+    private HashSet<string> _datosRequeridosCadena = new(StringComparer.Ordinal);
+    private List<string> _datosRequeridosCadenaOrdenados = [];
+    private string? _proveedorCadena;
     private readonly (ConfiguracionDocumento Configuracion, int PatronId)? _edicion;
     private readonly bool _modoObservador;
     private readonly string? _carpetaObservada;
@@ -148,6 +155,7 @@ public partial class IdentificarDocumentoWindow : Window
     )
     {
         InitializeComponent();
+        RbCadenaNo.IsChecked = true;
         InicializarOpcionesImpresion();
         TxtNombreEstandar.TextChanged += (_, _) =>
         {
@@ -219,10 +227,12 @@ public partial class IdentificarDocumentoWindow : Window
         string rutaArchivo,
         ConfiguracionDocumento configuracion,
         PatronReconocimiento patron,
-        bool comenzarEnPasoCarpeta = false
+        bool comenzarEnPasoCarpeta = false,
+        bool comenzarEnDatos = false
     )
     {
         InitializeComponent();
+        RbCadenaNo.IsChecked = true;
         TxtNombreEstandar.TextChanged += (_, _) =>
         {
             if (!_actualizandoNombreEstandar)
@@ -246,10 +256,14 @@ public partial class IdentificarDocumentoWindow : Window
         Visor.MarcaRealizada += Visor_MarcaRealizada;
 
         PrecargarParaEdicion(configuracion, patron);
+        RestaurarAlcanceCadena(configuracion.Id);
 
         ActualizarEstadosDeMarca();
         ActualizarMarcasEnVisor();
-        _pasoInicial = comenzarEnPasoCarpeta ? Paso.Guardar : Paso.QueDocumento;
+        _pasoInicial =
+            comenzarEnPasoCarpeta ? Paso.Guardar
+            : comenzarEnDatos ? Paso.OtrosDatos
+            : Paso.QueDocumento;
         MostrarPaso(_pasoInicial);
     }
 
@@ -425,11 +439,23 @@ public partial class IdentificarDocumentoWindow : Window
             nuevoPaso == Paso.Numero ? Visibility.Visible : Visibility.Collapsed;
         PanelDatosDiccionario.IsExpanded = nuevoPaso == Paso.OtrosDatos;
         PanelProveedorObligatorio.Visibility =
-            nuevoPaso == Paso.OtrosDatos && AsistenteClasificacionService.EsCompraPropia(_tipo)
+            nuevoPaso == Paso.OtrosDatos
+            && !CadenaEstricta
+            && AsistenteClasificacionService.EsCompraPropia(_tipo)
                 ? Visibility.Visible
                 : Visibility.Collapsed;
         PanelInformativos.Visibility =
             nuevoPaso == Paso.OtrosDatos ? Visibility.Visible : Visibility.Collapsed;
+        PanelCamposPropios.Visibility =
+            nuevoPaso == Paso.OtrosDatos && !CadenaEstricta
+                ? Visibility.Visible
+                : Visibility.Collapsed;
+        PanelDatosAnteriores.Visibility =
+            nuevoPaso == Paso.OtrosDatos
+            && !CadenaEstricta
+            && _camposPropios.Any(campo => campo.EsAnterior)
+                ? Visibility.Visible
+                : Visibility.Collapsed;
         PanelDatosAnteriores.Visibility =
             nuevoPaso == Paso.OtrosDatos && _camposPropios.Any(campo => campo.EsAnterior)
                 ? Visibility.Visible
@@ -439,7 +465,10 @@ public partial class IdentificarDocumentoWindow : Window
         if (nuevoPaso == Paso.Numero)
             ActualizarVistaNumero();
         if (nuevoPaso == Paso.OtrosDatos)
+        {
             CollectionViewSource.GetDefaultView(_datosEnlazantes)?.Refresh();
+            CollectionViewSource.GetDefaultView(_datosInformativos)?.Refresh();
+        }
         PanelCarpeta.Visibility =
             nuevoPaso == Paso.Guardar && !_modoObservador
                 ? Visibility.Visible
@@ -525,7 +554,10 @@ public partial class IdentificarDocumentoWindow : Window
             _ => "Siguiente",
         };
         if (nuevoPaso == Paso.OtrosDatos)
+        {
             ActualizarBotonOtrosDatos();
+            ActualizarBotonDatosCadena();
+        }
 
         // Se puede retroceder un paso, pero nunca saltar hacia adelante -- sigue siendo
         // estrictamente paso a paso.
@@ -634,6 +666,7 @@ public partial class IdentificarDocumentoWindow : Window
                 : $"Valor de ejemplo: {textoInformativo}";
             _datoInformativoActivoParaMarcar = null;
             ActualizarMarcasEnVisor();
+            ActualizarBotonDatosCadena();
             return;
         }
         if (_datoEnlazanteActivoParaMarcar is { } datoEnlazante)
@@ -664,6 +697,7 @@ public partial class IdentificarDocumentoWindow : Window
             ActualizarSugerencia(datoEnlazante);
             _datoEnlazanteActivoParaMarcar = null;
             ActualizarMarcasEnVisor();
+            ActualizarBotonDatosCadena();
             return;
         }
         if (_campoPropioActivoParaMarcar is { } campoPropio)
@@ -800,10 +834,22 @@ public partial class IdentificarDocumentoWindow : Window
     {
         var vista = CollectionViewSource.GetDefaultView(_datosEnlazantes);
         vista.GroupDescriptions.Clear();
+        vista.SortDescriptions.Clear();
+        if (CadenaEstricta)
+            vista.SortDescriptions.Add(
+                new SortDescription(
+                    nameof(DatoEnlazanteEdicion.OrdenCadena),
+                    ListSortDirection.Ascending
+                )
+            );
+        else
+            vista.SortDescriptions.Clear();
         vista.Filter = elemento =>
         {
             if (elemento is not DatoEnlazanteEdicion dato)
                 return false;
+            if (CadenaEstricta && _paso == Paso.OtrosDatos)
+                return _datosRequeridosCadena.Contains(dato.Id);
             return _paso switch
             {
                 Paso.Numero => dato.DefineTipo,
@@ -817,6 +863,11 @@ public partial class IdentificarDocumentoWindow : Window
             };
         };
         ListaDatosEnlazantes.ItemsSource = vista;
+        var vistaInformativos = CollectionViewSource.GetDefaultView(_datosInformativos);
+        vistaInformativos.Filter = elemento =>
+            !CadenaEstricta
+            || _paso != Paso.OtrosDatos
+            || elemento is DatoInformativoEdicion dato && _datosRequeridosCadena.Contains(dato.Id);
     }
 
     private void CmbCategoriaDocumento_SelectionChanged(object sender, SelectionChangedEventArgs e)
@@ -870,9 +921,177 @@ public partial class IdentificarDocumentoWindow : Window
                 ? "Para este documento, el emisor es tu proveedor."
                 : "Marca el título fijo que dice qué documento es (por ejemplo «FACTURA ELECTRÓNICA» o «GUÍA DE DESPACHO»). Con el emisor y el título, Archivero reconocerá solo los próximos documentos iguales.";
         _tipo = TipoDerivado();
+        CargarOpcionesCadena(documento.Id);
         ActualizarVistaNumero();
         ActualizarNombreEstandarSugerido();
         CollectionViewSource.GetDefaultView(_datosEnlazantes)?.Refresh();
+    }
+
+    private void CargarOpcionesCadena(string tipoId)
+    {
+        RbCadenaNo.IsChecked = true;
+        _opcionesCadena = OpcionesCadenaService.ParaTipo(tipoId);
+        PanelPreguntaCadena.Visibility =
+            _modoObservador || _opcionesCadena.Count == 0
+                ? Visibility.Collapsed
+                : Visibility.Visible;
+        CmbProveedorCadena.ItemsSource = _opcionesCadena
+            .Select(o => o.Proveedor)
+            .Distinct()
+            .ToArray();
+        if (_opcionesCadena.Count == 0)
+        {
+            RbCadenaNo.IsChecked = true;
+            _datosRequeridosCadena.Clear();
+            _proveedorCadena = null;
+        }
+        ActualizarAlcanceCadena();
+    }
+
+    private void RestaurarAlcanceCadena(int configuracionId)
+    {
+        var seleccion = _configuracionesCadena.Obtener(configuracionId);
+        if (seleccion is null)
+            return;
+        if (seleccion.Alcance == "todas")
+            RbCadenaTodas.IsChecked = true;
+        else if (
+            seleccion.Proveedor is not null
+            && CmbProveedorCadena.Items.Contains(seleccion.Proveedor)
+        )
+        {
+            CmbProveedorCadena.SelectedItem = seleccion.Proveedor;
+            RbCadenaProveedor.IsChecked = true;
+        }
+    }
+
+    private void AlcanceCadena_Changed(object sender, RoutedEventArgs e) =>
+        ActualizarAlcanceCadena();
+
+    private void CmbProveedorCadena_SelectionChanged(object sender, SelectionChangedEventArgs e) =>
+        ActualizarAlcanceCadena();
+
+    private void ActualizarAlcanceCadena()
+    {
+        if (PanelPreguntaCadena is null)
+            return;
+        bool soloProveedor = RbCadenaProveedor.IsChecked == true;
+        CmbProveedorCadena.IsEnabled = soloProveedor;
+        _proveedorCadena = soloProveedor ? CmbProveedorCadena.SelectedItem as string : null;
+        var ordenados = new List<string>();
+        if (RbCadenaTodas.IsChecked == true)
+            ordenados.AddRange(
+                _opcionesCadena.SelectMany(o => o.DatosRequeridos).Distinct(StringComparer.Ordinal)
+            );
+        else if (_proveedorCadena is not null)
+            ordenados.AddRange(
+                _opcionesCadena
+                    .Where(o => o.Proveedor == _proveedorCadena)
+                    .SelectMany(o => o.DatosRequeridos)
+                    .Distinct(StringComparer.Ordinal)
+            );
+        _datosRequeridosCadenaOrdenados = ordenados;
+        _datosRequeridosCadena = ordenados.ToHashSet(StringComparer.Ordinal);
+        for (int indice = 0; indice < _datosEnlazantes.Count; indice++)
+        {
+            int orden = _datosRequeridosCadenaOrdenados.IndexOf(_datosEnlazantes[indice].Id);
+            _datosEnlazantes[indice].OrdenCadena = orden >= 0 ? orden : int.MaxValue;
+        }
+
+        bool estricto = RbCadenaTodas.IsChecked == true || soloProveedor;
+        var vistaDatos = CollectionViewSource.GetDefaultView(_datosEnlazantes);
+        vistaDatos.SortDescriptions.Clear();
+        if (estricto)
+            vistaDatos.SortDescriptions.Add(
+                new SortDescription(
+                    nameof(DatoEnlazanteEdicion.OrdenCadena),
+                    ListSortDirection.Ascending
+                )
+            );
+        PanelCamposPropios.Visibility = estricto ? Visibility.Collapsed : Visibility.Visible;
+        PanelDatosAnteriores.Visibility = estricto ? Visibility.Collapsed : Visibility.Visible;
+        PanelProveedorObligatorio.Visibility = estricto ? Visibility.Collapsed : Visibility.Visible;
+        CollectionViewSource.GetDefaultView(_datosEnlazantes)?.Refresh();
+        CollectionViewSource.GetDefaultView(_datosInformativos)?.Refresh();
+        ActualizarBotonDatosCadena();
+    }
+
+    private bool CadenaEstricta =>
+        RbCadenaTodas.IsChecked == true || RbCadenaProveedor.IsChecked == true;
+
+    private void GuardarAlcanceCadena(int configuracionId)
+    {
+        if (!CadenaEstricta)
+        {
+            _configuracionesCadena.Eliminar(configuracionId);
+            return;
+        }
+        _configuracionesCadena.Guardar(
+            configuracionId,
+            RbCadenaTodas.IsChecked == true ? "todas" : "esquema",
+            _proveedorCadena
+        );
+    }
+
+    private IReadOnlyList<DatoEnlazanteConfigurado> DatosEnlazantesParaGuardar() =>
+        _datosEnlazantes
+            .Where(d => !CadenaEstricta || d.DefineTipo || _datosRequeridosCadena.Contains(d.Id))
+            .Select(d => d.AConfigurado())
+            .ToArray();
+
+    private IReadOnlyList<ZonaInformativa> DatosInformativosParaGuardar() =>
+        _datosInformativos
+            .Where(d => d.Marcado && (!CadenaEstricta || _datosRequeridosCadena.Contains(d.Id)))
+            .Select(d => d.ComoZona())
+            .ToArray();
+
+    private bool DatosDeCadenaCompletos() =>
+        _datosRequeridosCadena.All(id =>
+            id switch
+            {
+                "fecha_documento" or "encargado" => _datosInformativos.Any(d =>
+                    d.Id == id && d.Marcado && TieneZonaInformativa(d)
+                ),
+                _ => _datosEnlazantes.Any(d => d.Id == id && d.Marcado),
+            }
+        );
+
+    private static bool TieneZonaInformativa(DatoInformativoEdicion dato) =>
+        dato.Estado.Contains("Zona guardada", StringComparison.Ordinal)
+        || dato.Estado.Contains("Zona marcada", StringComparison.Ordinal)
+        || dato.Estado.StartsWith("Valor de ejemplo:", StringComparison.Ordinal);
+
+    private void ActualizarBotonDatosCadena()
+    {
+        if (_paso != Paso.OtrosDatos)
+            return;
+        BtnSiguiente.IsEnabled = !CadenaEstricta || DatosDeCadenaCompletos();
+        if (!CadenaEstricta)
+        {
+            TxtFaltanDatosCadena.Text = string.Empty;
+            return;
+        }
+        var faltan = _datosRequeridosCadenaOrdenados
+            .Where(id =>
+                id switch
+                {
+                    "fecha_documento" or "encargado" => !_datosInformativos.Any(d =>
+                        d.Id == id && d.Marcado && TieneZonaInformativa(d)
+                    ),
+                    _ => !_datosEnlazantes.Any(d => d.Id == id && d.Marcado),
+                }
+            )
+            .Select(id =>
+                id switch
+                {
+                    "fecha_documento" => "Fecha del documento",
+                    "encargado" => "Encargado",
+                    _ => _datosEnlazantes.FirstOrDefault(d => d.Id == id)?.Nombre ?? id,
+                }
+            )
+            .ToArray();
+        TxtFaltanDatosCadena.Text =
+            faltan.Length == 0 ? string.Empty : "Faltan: " + string.Join(", ", faltan);
     }
 
     private DatoEnlazanteEdicion? DatoNumero => _datosEnlazantes.FirstOrDefault(d => d.DefineTipo);
@@ -976,6 +1195,11 @@ public partial class IdentificarDocumentoWindow : Window
             }
         )
         {
+            if (dato.DefineTipo && CadenaEstricta)
+            {
+                dato.Incluido = true;
+                return;
+            }
             dato.Marcado = false;
             dato.Estado = "No aparece en este diseño.";
             dato.DefineTipo = false;
@@ -984,6 +1208,7 @@ public partial class IdentificarDocumentoWindow : Window
         }
         ActualizarMarcasEnVisor();
         ActualizarBotonOtrosDatos();
+        ActualizarBotonDatosCadena();
     }
 
     private bool TieneOtrosDatosMarcados() =>
@@ -1228,8 +1453,19 @@ public partial class IdentificarDocumentoWindow : Window
             dato.Marcado = false;
             dato.Estado = "No aparece en este diseño.";
         }
+        else if (
+            sender is System.Windows.Controls.CheckBox
+            {
+                DataContext: DatoInformativoEdicion seleccionado,
+                IsChecked: true
+            }
+        )
+        {
+            seleccionado.Estado = "Seleccionado; falta marcar la zona.";
+        }
         ActualizarMarcasEnVisor();
         ActualizarBotonOtrosDatos();
+        ActualizarBotonDatosCadena();
     }
 
     private void DatoEnlazable_Enlazable_Changed(object sender, RoutedEventArgs e)
@@ -1491,6 +1727,10 @@ public partial class IdentificarDocumentoWindow : Window
             : existente.NombreEstandar;
         CargarCamposPropios(existente.CamposPropios);
         CargarDatosEnlazantes(string.Empty, string.Empty, 0);
+        var tipoId = _datosEnlazantes.FirstOrDefault(d => d.DefineTipo)?.Id;
+        if (tipoId is not null)
+            CargarOpcionesCadena(tipoId);
+        RestaurarAlcanceCadena(existente.Id);
         ActualizarOpcionesMigracion();
         ActualizarMarcasEnVisor();
         _carpetaDestino = existente.CarpetaDestino;
@@ -1771,6 +2011,11 @@ public partial class IdentificarDocumentoWindow : Window
                     MostrarError("Elige un documento de la lista.");
                     return;
                 }
+                if (RbCadenaProveedor.IsChecked == true && CmbProveedorCadena.SelectedItem is null)
+                {
+                    MostrarError("Elige el proveedor de la cadena.");
+                    return;
+                }
                 ActualizarNombreEstandarSugerido();
                 IrA(Paso.Emisor);
                 break;
@@ -1907,12 +2152,19 @@ public partial class IdentificarDocumentoWindow : Window
                 break;
 
             case Paso.OtrosDatos:
-                foreach (var dato in _datosEnlazantes.Where(d => d.Incluido && !d.Marcado))
+                if (CadenaEstricta && !DatosDeCadenaCompletos())
                 {
-                    MostrarError($"Marca dónde aparece «{dato.Nombre}» o desmarca ese dato.");
+                    ActualizarBotonDatosCadena();
+                    MostrarError(TxtFaltanDatosCadena.Text);
                     return;
                 }
-                if (AsistenteClasificacionService.EsCompraPropia(_tipo))
+                if (!CadenaEstricta)
+                    foreach (var dato in _datosEnlazantes.Where(d => d.Incluido && !d.Marcado))
+                    {
+                        MostrarError($"Marca dónde aparece «{dato.Nombre}» o desmarca ese dato.");
+                        return;
+                    }
+                if (!CadenaEstricta && AsistenteClasificacionService.EsCompraPropia(_tipo))
                 {
                     var errorProveedor = AsistenteClasificacionService.ValidarProveedorCompraPropia(
                         _datosEnlazantes.Any(d =>
@@ -2054,7 +2306,7 @@ public partial class IdentificarDocumentoWindow : Window
         {
             AplicarVinculosDatosAnteriores();
             var marcas = _marcas.Values.ToList();
-            var camposPropios = LeerCamposPropiosValidados();
+            List<CampoPropio> camposPropios = CadenaEstricta ? [] : LeerCamposPropiosValidados();
             var grupoDocumento = RbEmitido.IsChecked == true ? "Emitido" : "Recibido";
             var nombreEstandar = string.IsNullOrWhiteSpace(TxtNombreEstandar.Text)
                 ? $"{_tipo.Trim()} · {_emisor.Trim()}"
@@ -2118,8 +2370,8 @@ public partial class IdentificarDocumentoWindow : Window
                     grupoDocumento,
                     nombreEstandar,
                     patronId,
-                    _datosEnlazantes.Select(d => d.AConfigurado()).ToList(),
-                    _datosInformativos.Where(d => d.Marcado).Select(d => d.ComoZona()).ToList()
+                    DatosEnlazantesParaGuardar(),
+                    DatosInformativosParaGuardar()
                 );
                 _configuraciones.MarcarSoloObservador(configuracionId);
                 ConfiguracionDocumentoId = configuracionId;
@@ -2202,8 +2454,8 @@ public partial class IdentificarDocumentoWindow : Window
                     grupoDocumento,
                     nombreEstandar,
                     edicion.PatronId,
-                    _datosEnlazantes.Select(d => d.AConfigurado()).ToList(),
-                    _datosInformativos.Where(d => d.Marcado).Select(d => d.ComoZona()).ToList(),
+                    DatosEnlazantesParaGuardar(),
+                    DatosInformativosParaGuardar(),
                     edicion.Configuracion.Tipo
                 );
                 DatosEnlazantesConfiguracionService.VincularCamposAnteriores(
@@ -2212,6 +2464,7 @@ public partial class IdentificarDocumentoWindow : Window
                     edicion.PatronId,
                     LeerVinculosDatosAnteriores()
                 );
+                GuardarAlcanceCadena(edicion.Configuracion.Id);
                 AuditoriaService.Registrar(
                     "CLASIFICACION_EDITADA",
                     $"Emisor={_emisor}; Tipo={_tipo}"
@@ -2276,6 +2529,7 @@ public partial class IdentificarDocumentoWindow : Window
             _proveedorManual = null;
             if (
                 !_modoObservador
+                && !CadenaEstricta
                 && AsistenteClasificacionService.EsCompraPropia(_tipo)
                 && !AsistenteClasificacionService.TieneProveedorLegible(
                     _datosEnlazantes
@@ -2300,6 +2554,11 @@ public partial class IdentificarDocumentoWindow : Window
                     return;
                 _proveedorManual = pedirProveedor.Proveedor;
             }
+            bool traeProveedorMarcado = _datosEnlazantes.Any(d =>
+                d.Marcado && AsistenteClasificacionService.EsDatoProveedor(d.Id)
+            );
+            if (RbCadenaProveedor.IsChecked == true && !traeProveedorMarcado)
+                _proveedorManual = _proveedorCadena;
 
             string rutaFinal;
             try
@@ -2340,7 +2599,7 @@ public partial class IdentificarDocumentoWindow : Window
 
     private void GuardarConfiguracionYCerrar(List<Marca> marcas, string rutaFinal)
     {
-        var camposPropios = LeerCamposPropiosValidados();
+        List<CampoPropio> camposPropios = CadenaEstricta ? [] : LeerCamposPropiosValidados();
         if (_configuracionExistente is not null)
         {
             _configuraciones.AgregarPatronAConfiguracionExistente(
@@ -2362,9 +2621,10 @@ public partial class IdentificarDocumentoWindow : Window
                 grupo,
                 nombre,
                 patronGuardado.Id,
-                _datosEnlazantes.Select(d => d.AConfigurado()).ToList(),
-                _datosInformativos.Where(d => d.Marcado).Select(d => d.ComoZona()).ToList()
+                DatosEnlazantesParaGuardar(),
+                DatosInformativosParaGuardar()
             );
+            GuardarAlcanceCadena(_configuracionExistente.Id);
             DatosEnlazantesConfiguracionService.VincularCamposAnteriores(
                 _emisor,
                 _tipo,
@@ -2413,9 +2673,10 @@ public partial class IdentificarDocumentoWindow : Window
                     ? $"{_tipo.Trim()} · {_emisor.Trim()}"
                     : TxtNombreEstandar.Text.Trim(),
                 patronGuardado.Id,
-                _datosEnlazantes.Select(d => d.AConfigurado()).ToList(),
-                _datosInformativos.Where(d => d.Marcado).Select(d => d.ComoZona()).ToList()
+                DatosEnlazantesParaGuardar(),
+                DatosInformativosParaGuardar()
             );
+            GuardarAlcanceCadena(configuracionId);
             DatosEnlazantesConfiguracionService.VincularCamposAnteriores(
                 _emisor,
                 _tipo,
@@ -2457,12 +2718,25 @@ public partial class IdentificarDocumentoWindow : Window
                 );
                 if (campos is null)
                     throw new InvalidOperationException(error);
-                PublicadorDatosDocumentoService.PublicarGuardado(
-                    rutaFinal,
-                    configuracion,
-                    campos,
-                    _proveedorManual
-                );
+                if (
+                    RbCadenaProveedor.IsChecked == true
+                    && !_datosEnlazantes.Any(d =>
+                        d.Marcado && AsistenteClasificacionService.EsDatoProveedor(d.Id)
+                    )
+                )
+                    PublicadorDatosDocumentoService.PublicarGuardadoCadena(
+                        rutaFinal,
+                        configuracion,
+                        campos,
+                        _proveedorCadena!
+                    );
+                else
+                    PublicadorDatosDocumentoService.PublicarGuardado(
+                        rutaFinal,
+                        configuracion,
+                        campos,
+                        _proveedorManual
+                    );
             }
             catch (Exception error)
             {
