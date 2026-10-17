@@ -138,6 +138,21 @@ public static class PublicadorDatosDocumentoService
         ConfiguracionDocumento configuracion,
         CamposExtraidos campos,
         string? proveedorManual = null
+    ) => PublicarGuardadoInterno(ruta, configuracion, campos, proveedorManual, "manual");
+
+    public static void PublicarGuardadoCadena(
+        string ruta,
+        ConfiguracionDocumento configuracion,
+        CamposExtraidos campos,
+        string proveedor
+    ) => PublicarGuardadoInterno(ruta, configuracion, campos, proveedor, "cadena");
+
+    private static void PublicarGuardadoInterno(
+        string ruta,
+        ConfiguracionDocumento configuracion,
+        CamposExtraidos campos,
+        string? proveedorManual,
+        string origenProveedor
     )
     {
         var valores = CrearValores(ruta, configuracion, campos).ToList();
@@ -148,7 +163,7 @@ public static class PublicadorDatosDocumentoService
                     "nombre_proveedor",
                     proveedorManual.Trim(),
                     DiccionarioDatosEnlazantes.ClaveDeEnlace("nombre_proveedor", proveedorManual),
-                    "manual",
+                    origenProveedor,
                     DatoDiccionarioId: "nombre_proveedor"
                 )
             );

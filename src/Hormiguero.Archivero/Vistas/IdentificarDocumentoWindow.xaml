@@ -55,6 +55,44 @@
               Margin="0,0,0,8"
             />
             <TextBlock Name="TxtDocumentoElegido" TextWrapping="Wrap" FontWeight="SemiBold" />
+            <StackPanel Name="PanelPreguntaCadena" Visibility="Collapsed" Margin="0,10,0,0">
+              <TextBlock Text="¿Es parte de una cadena?" FontWeight="Bold" Margin="0,0,0,5" />
+              <RadioButton
+                Name="RbCadenaNo"
+                Content="No"
+                GroupName="AlcanceCadena"
+                Checked="AlcanceCadena_Changed"
+                Margin="0,2"
+              />
+              <RadioButton
+                Name="RbCadenaTodas"
+                Content="Sí, de todas las cadenas que lo usan"
+                GroupName="AlcanceCadena"
+                Checked="AlcanceCadena_Changed"
+                Margin="0,2"
+              />
+              <StackPanel Orientation="Horizontal" Margin="0,2">
+                <RadioButton
+                  Name="RbCadenaProveedor"
+                  Content="Sí, solo de la cadena de"
+                  GroupName="AlcanceCadena"
+                  Checked="AlcanceCadena_Changed"
+                  VerticalAlignment="Center"
+                />
+                <ComboBox
+                  Name="CmbProveedorCadena"
+                  MinWidth="130"
+                  Margin="6,0,0,0"
+                  SelectionChanged="CmbProveedorCadena_SelectionChanged"
+                />
+              </StackPanel>
+            </StackPanel>
+            <TextBlock
+              Name="TxtFaltanDatosCadena"
+              TextWrapping="Wrap"
+              Foreground="DarkRed"
+              Margin="0,8,0,0"
+            />
           </StackPanel>
           <StackPanel Name="PanelEmisor">
             <StackPanel Name="PanelGrupo">

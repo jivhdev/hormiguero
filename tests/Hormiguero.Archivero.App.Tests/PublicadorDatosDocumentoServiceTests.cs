@@ -121,6 +121,56 @@ public sealed class PublicadorDatosDocumentoServiceTests
         }
     }
 
+    [Fact]
+    public async Task Publicar_guardado_de_cadena_registra_el_proveedor_con_origen_cadena()
+    {
+        string raiz = Path.Combine(
+            Path.GetTempPath(),
+            "ArchiveroTests",
+            Guid.NewGuid().ToString("N")
+        );
+        Directory.CreateDirectory(raiz);
+        string? carpetaAnterior = Environment.GetEnvironmentVariable("HORMIGUERO_DATOS");
+        Environment.SetEnvironmentVariable("HORMIGUERO_DATOS", Path.Combine(raiz, "datos"));
+        string archivo = Path.Combine(raiz, "factura.pdf");
+        File.WriteAllText(archivo, "PDF de prueba");
+        try
+        {
+            var configuracion = new ConfiguracionDocumento
+            {
+                Emisor = "Hoffens",
+                Tipo = "Guía",
+                CarpetaDestino = raiz,
+                FormatoCarpeta = FormatoCarpeta.Directo,
+                Renombrar = false,
+                Patrones = [],
+            };
+            PublicadorDatosDocumentoService.PublicarGuardadoCadena(
+                archivo,
+                configuracion,
+                new CamposExtraidos(null, null),
+                "Hoffens"
+            );
+            await (PublicadorDatosDocumentoService.UltimaRevisionEnlaces ?? Task.CompletedTask);
+
+            using var conexion = BaseComun.Abrir(DocumentosGuardados.RutaBaseComun);
+            using var comando = conexion.CreateCommand();
+            comando.CommandText =
+                "SELECT valor_original,origen FROM valores_documento WHERE dato_diccionario_id='nombre_proveedor';";
+            using var lector = comando.ExecuteReader();
+            Assert.True(lector.Read());
+            Assert.Equal("Hoffens", lector.GetString(0));
+            Assert.Equal("cadena", lector.GetString(1));
+        }
+        finally
+        {
+            Environment.SetEnvironmentVariable("HORMIGUERO_DATOS", carpetaAnterior);
+            SqliteConnection.ClearAllPools();
+            if (Directory.Exists(raiz))
+                Directory.Delete(raiz, recursive: true);
+        }
+    }
+
     private static object? Escalar(Microsoft.Data.Sqlite.SqliteConnection conexion, string sql)
     {
         using var comando = conexion.CreateCommand();
