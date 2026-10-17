@@ -134,10 +134,83 @@
               x:Name="LugaresProceso"
               DisplayMemberPath="Nombre"
               MouseDoubleClick="LugarProceso_DoubleClick"
+              SelectionChanged="LugarProceso_SelectionChanged"
               MinHeight="300"
             />
+            <Border
+              DockPanel.Dock="Bottom"
+              BorderThickness="0,1,0,0"
+              BorderBrush="Gray"
+              Padding="6"
+              Margin="0,6,0,0"
+            >
+              <Grid>
+                <Grid.RowDefinitions>
+                  <RowDefinition Height="Auto" />
+                  <RowDefinition Height="Auto" />
+                  <RowDefinition Height="100" />
+                </Grid.RowDefinitions>
+                <TextBlock Text="Datos a marcar" FontWeight="Bold" />
+                <DockPanel Grid.Row="1" Margin="0,4">
+                  <Button
+                    Content="Elegir…"
+                    Click="ElegirCarpeta_Click"
+                    DockPanel.Dock="Right"
+                    Padding="8,3"
+                  />
+                  <TextBlock
+                    Text="Carpeta donde buscarlo"
+                    VerticalAlignment="Center"
+                    Margin="0,0,6,0"
+                  />
+                  <TextBox
+                    x:Name="CarpetaBusqueda"
+                    ToolTip="Carpeta donde buscarlo"
+                    TextChanged="CarpetaBusqueda_TextChanged"
+                  />
+                </DockPanel>
+                <ScrollViewer Grid.Row="2" VerticalScrollBarVisibility="Auto">
+                  <ItemsControl x:Name="DatosMarcables">
+                    <ItemsControl.ItemsPanel>
+                      <ItemsPanelTemplate>
+                        <WrapPanel />
+                      </ItemsPanelTemplate>
+                    </ItemsControl.ItemsPanel>
+                    <ItemsControl.ItemTemplate>
+                      <DataTemplate>
+                        <CheckBox
+                          Content="{Binding Nombre}"
+                          IsChecked="{Binding Marcado, Mode=TwoWay}"
+                          Margin="3,1"
+                        />
+                      </DataTemplate>
+                    </ItemsControl.ItemTemplate>
+                  </ItemsControl>
+                </ScrollViewer>
+              </Grid>
+            </Border>
           </DockPanel>
         </Grid>
+        <StackPanel x:Name="PanelDatosIngresados" Visibility="Collapsed" Margin="0,4">
+          <TextBlock Text="Datos que escribo yo" FontWeight="Bold" Margin="0,0,0,6" />
+          <DockPanel Margin="0,0,0,6">
+            <Button
+              Content="Agregar dato"
+              Click="AgregarDatoIngresado_Click"
+              DockPanel.Dock="Right"
+              Padding="8,3"
+            />
+            <TextBox x:Name="DatoIngresadoNuevo" />
+          </DockPanel>
+          <ListBox x:Name="DatosIngresadosLista" MinHeight="220" />
+          <Button
+            Content="Quitar seleccionado"
+            Click="QuitarDatoIngresado_Click"
+            Width="150"
+            HorizontalAlignment="Left"
+            Margin="0,6,0,0"
+          />
+        </StackPanel>
         <DockPanel x:Name="PanelLugares" Visibility="Collapsed">
           <TextBlock
             DockPanel.Dock="Top"

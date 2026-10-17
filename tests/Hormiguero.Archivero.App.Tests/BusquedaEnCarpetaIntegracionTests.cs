@@ -7,6 +7,138 @@ namespace Archivero.Tests;
 public sealed class BusquedaEnCarpetaIntegracionTests
 {
     [Fact]
+    public void DatoDeEnlaceFaltante_indicaQueMarcarEnArchivero()
+    {
+        using var contexto = new ContextoTemporal();
+        CrearConfiguracion(
+            "COBELCAR",
+            DiccionarioDatosEnlazantes.Todos.Single(d => d.Id == "guia_proveedor").EtiquetaTipo,
+            Path.Combine(contexto.Raiz, "grc"),
+            "guia_proveedor",
+            ["nombre_proveedor"]
+        );
+        long guia = PublicarGuiaCobelcar(contexto.Raiz, incluirEnlace: false);
+        using var conexion = BaseComun.Abrir(DocumentosGuardados.RutaBaseComun);
+        var resultado = new MotorCadenasDiccionario(conexion).ProcesarVersion(guia);
+        Assert.Equal("sin_inicio", resultado.Estado);
+        Assert.Equal(
+            "El documento guía 3001 no tiene marcado el N° de OC propia. Complete su clasificación en Archivero.",
+            Convert.ToString(
+                Ejecutar(
+                    conexion,
+                    "SELECT motivo FROM decisiones_esquema_diccionario WHERE version_id=$v;",
+                    ("$v", guia)
+                )
+            )
+        );
+    }
+
+    [Fact]
+    public void Cedible_no_se_agrega_a_ninguna_cadena_ni_a_dudosos()
+    {
+        using var contexto = new ContextoTemporal();
+        long guia = PublicarDocumento(
+            contexto.Raiz,
+            "HOFFENS",
+            "guia_proveedor",
+            "guia_proveedor",
+            "1195630",
+            ("nombre_proveedor", "HOFFENS")
+        );
+        using var conexion = BaseComun.Abrir(DocumentosGuardados.RutaBaseComun);
+        using (var nombre = conexion.CreateCommand())
+        {
+            nombre.CommandText =
+                "UPDATE documentos SET nombre='GRC-CEDIBLE-1195630.pdf' WHERE id=(SELECT documento_id FROM versiones_documento WHERE id=$v);";
+            nombre.Parameters.AddWithValue("$v", guia);
+            nombre.ExecuteNonQuery();
+        }
+        var resultado = new MotorCadenasDiccionario(conexion).ProcesarVersion(guia);
+        Assert.Equal("cedible_ignorado", resultado.Estado);
+        Assert.Equal(
+            0L,
+            Convert.ToInt64(
+                Ejecutar(
+                    conexion,
+                    "SELECT COUNT(*) FROM ubicaciones_cadena_diccionario WHERE version_id=$v;",
+                    ("$v", guia)
+                )
+            )
+        );
+        Assert.Equal(
+            0L,
+            Convert.ToInt64(
+                Ejecutar(
+                    conexion,
+                    "SELECT COUNT(*) FROM decisiones_esquema_diccionario WHERE version_id=$v;",
+                    ("$v", guia)
+                )
+            )
+        );
+    }
+
+    [Fact]
+    public void BuscaPrimeroEnCarpetaDelEsquema_y_registraDocumentoSinClasificacion()
+    {
+        using var contexto = new ContextoTemporal();
+        string raiz = Path.Combine(contexto.Raiz, "occ-esquema");
+        string antigua = Path.Combine(raiz, "2026", "202608");
+        Directory.CreateDirectory(antigua);
+        foreach (int i in Enumerable.Range(0, 40))
+            CreadorPdfDePrueba.CrearConLineas(antigua, $"Documento {i}");
+        string temporal = CreadorPdfDePrueba.CrearConLineas(antigua, "OCC 12345");
+        string objetivo = Path.Combine(antigua, "OCC0000012345.pdf");
+        File.Move(temporal, objetivo);
+        Directory.CreateDirectory(Path.Combine(raiz, "2026", "202609"));
+        Directory.CreateDirectory(Path.Combine(raiz, "2026", "202610"));
+        using (var conexion = BaseComun.Abrir(DocumentosGuardados.RutaBaseComun))
+        {
+            var esquema = new RepositorioEsquemasDiccionario(conexion).ObtenerPorProveedor(
+                "HOFFENS"
+            )!;
+            new RepositorioEsquemasDiccionario(conexion).GuardarDatosYLugares(
+                esquema.Id,
+                new Dictionary<string, IReadOnlyList<string>> { ["oc_propia"] = ["oc_propia"] },
+                new Dictionary<string, string?> { ["oc_propia"] = raiz },
+                []
+            );
+        }
+        int lecturas = 0;
+        var buscador = new BuscadorDocumentosEnCarpetaService(
+            extraerValores: (_, _) =>
+            {
+                lecturas++;
+                return [];
+            }
+        );
+        var actualizado = ObtenerEsquema("HOFFENS");
+        var versiones = buscador.Buscar("oc_propia", "12345", actualizado);
+        Assert.Single(versiones);
+        Assert.Equal(0, lecturas);
+        using var conexionFinal = BaseComun.Abrir(DocumentosGuardados.RutaBaseComun);
+        Assert.Equal(
+            "12345",
+            Convert.ToString(
+                Ejecutar(
+                    conexionFinal,
+                    "SELECT x.valor_original FROM valores_documento x WHERE x.version_id=$v AND x.dato_diccionario_id='oc_propia';",
+                    ("$v", versiones[0])
+                )
+            )
+        );
+        Assert.Equal(
+            "HOFFENS",
+            Convert.ToString(
+                Ejecutar(
+                    conexionFinal,
+                    "SELECT x.valor_original FROM valores_documento x WHERE x.version_id=$v AND x.dato_diccionario_id='nombre_proveedor';",
+                    ("$v", versiones[0])
+                )
+            )
+        );
+    }
+
+    [Fact]
     public void Buscar_LeeUnaSolaVezElPdfConNumeroEnElNombre_YExploraSubcarpetasDePeriodo()
     {
         using var contexto = new ContextoTemporal();
@@ -372,7 +504,7 @@ public sealed class BusquedaEnCarpetaIntegracionTests
         );
     }
 
-    private static long PublicarGuiaCobelcar(string raiz)
+    private static long PublicarGuiaCobelcar(string raiz, bool incluirEnlace = true)
     {
         var documento = DiccionarioDatosEnlazantes.Todos.Single(d => d.Id == "guia_proveedor");
         string carpeta = Path.Combine(raiz, "entrada");
@@ -392,12 +524,10 @@ public sealed class BusquedaEnCarpetaIntegracionTests
             ),
             Patrones = [new(1, [])],
         };
-        var valores = new[]
-        {
-            CrearValor("guia_proveedor", "3001"),
-            CrearValor("oc_propia", "20527"),
-            CrearValor("nombre_proveedor", "COBELCAR"),
-        };
+        var valores = new[] { CrearValor("guia_proveedor", "3001") }
+            .Concat(incluirEnlace ? [CrearValor("oc_propia", "20527")] : [])
+            .Append(CrearValor("nombre_proveedor", "COBELCAR"))
+            .ToArray();
         PublicadorDatosDocumentoService.Publicar(
             ruta,
             configuracion,

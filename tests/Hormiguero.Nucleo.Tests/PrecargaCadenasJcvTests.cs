@@ -62,6 +62,61 @@ public sealed class PrecargaCadenasJcvTests
         }
     }
 
+    [Fact]
+    public void Version_dos_actualiza_solo_esquemas_existentes_del_proveedor()
+    {
+        using var conexion = new SqliteConnection("Data Source=:memory:");
+        conexion.Open();
+        Migraciones.Aplicar(conexion, Migraciones.Todas);
+        string rutaV1 = Path.Combine(Path.GetTempPath(), Guid.NewGuid() + ".json");
+        string rutaV2 = Path.Combine(Path.GetTempPath(), Guid.NewGuid() + ".json");
+        try
+        {
+            File.WriteAllText(
+                rutaV1,
+                """
+                {"version":1,"esquemas":[{"proveedor":"ACME","nombre":"Proceso","reconocimientos":[],"lugares":[{"tipo":"oc_propia","nombre":"OCC","orden":0,"inicia":true}],"enlaces":[],"modos":[],"avisos":[]}]}
+                """
+            );
+            Assert.True(PrecargaCadenasJcv.IntentarImportar(conexion, rutaV1, "Prueba"));
+            using (var insertar = conexion.CreateCommand())
+            {
+                insertar.CommandText =
+                    "INSERT INTO esquemas_diccionario(proveedor,nombre,creada_en,actualizada_en) VALUES('OTRO','No cambiar', '', '');";
+                insertar.ExecuteNonQuery();
+            }
+            File.WriteAllText(
+                rutaV2,
+                """
+                {"version":2,"esquemas":[{"proveedor":"ACME","lugares":[{"tipo":"oc_propia","datosRequeridos":["oc_propia","fecha_documento"],"carpetaBusqueda":"C:/ACME"}],"enlaces":[],"datosIngresados":["Obra"]}]}
+                """
+            );
+            Assert.True(PrecargaCadenasJcv.IntentarImportar(conexion, rutaV2, "Prueba"));
+            var esquema = new RepositorioEsquemasDiccionario(conexion).ObtenerPorProveedor("ACME")!;
+            Assert.Equal(
+                "[\"oc_propia\",\"fecha_documento\"]",
+                esquema.Lugares.Single().DatosRequeridosJson
+            );
+            Assert.Equal("C:/ACME", esquema.Lugares.Single().CarpetaBusqueda);
+            Assert.Equal(
+                "Obra",
+                new RepositorioEsquemasDiccionario(conexion)
+                    .ListarDatosIngresados(esquema.Id)
+                    .Single()
+                    .Nombre
+            );
+            using var consulta = conexion.CreateCommand();
+            consulta.CommandText =
+                "SELECT nombre FROM esquemas_diccionario WHERE proveedor='OTRO';";
+            Assert.Equal("No cambiar", consulta.ExecuteScalar());
+        }
+        finally
+        {
+            File.Delete(rutaV1);
+            File.Delete(rutaV2);
+        }
+    }
+
     [Theory]
     [InlineData("76838441-K EPAC RETIRA CLIENTE", "Retiro")]
     [InlineData("RETIRO EN BODEGA", "Retiro")]

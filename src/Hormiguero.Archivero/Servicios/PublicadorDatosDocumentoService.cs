@@ -26,6 +26,17 @@ public static class PublicadorDatosDocumentoService
             throw new InvalidOperationException(
                 "El nombre final del archivo debe incluir el número de la guía."
             );
+        PublicarDocumentoDeCadena(ruta, tipoId, proveedor, numero, revisarEnlaces);
+    }
+
+    public static void PublicarDocumentoDeCadena(
+        string ruta,
+        string tipoId,
+        string proveedor,
+        string numero,
+        bool revisarEnlaces = true
+    )
+    {
         using var conexion = BaseComun.Abrir(DocumentosGuardados.RutaBaseComun);
         var tipo = RepositorioEsquemasDiccionario
             .ListarTiposDocumento(conexion)
@@ -119,7 +130,7 @@ public static class PublicadorDatosDocumentoService
                 DatoDiccionarioId: "nombre_proveedor"
             ),
         };
-        Publicar(ruta, configuracion, valores, "manual", revisarEnlaces: revisarEnlaces);
+        Publicar(ruta, configuracion, valores, "busqueda_carpeta", revisarEnlaces: revisarEnlaces);
     }
 
     public static void PublicarGuardado(

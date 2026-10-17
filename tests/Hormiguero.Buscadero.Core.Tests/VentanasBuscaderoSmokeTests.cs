@@ -104,7 +104,7 @@ public sealed class VentanasBuscaderoSmokeTests
                                 );
                             }
                             Assert.Equal(
-                                "Paso 1 de 7",
+                                "Paso 1 de 8",
                                 Assert.IsType<TextBlock>(asistente.FindName("NumeroPaso")).Text
                             );
                             var proveedor = Assert.IsType<ComboBox>(
@@ -188,8 +188,9 @@ public sealed class VentanasBuscaderoSmokeTests
                             Pulsar(asistente, "Siguiente");
                             Pulsar(asistente, "Siguiente");
                             Pulsar(asistente, "Siguiente");
+                            Pulsar(asistente, "Siguiente");
                             Assert.Equal(
-                                "Paso 7 de 7",
+                                "Paso 8 de 8",
                                 Assert.IsType<TextBlock>(asistente.FindName("NumeroPaso")).Text
                             );
                             Assert.IsType<TextBlock>(asistente.FindName("PanelResumen"));
@@ -289,6 +290,7 @@ public sealed class VentanasBuscaderoSmokeTests
             .Items.Cast<object>()
             .Single(item => Propiedad<int>(item, "Orden") == 0);
         Pulsar(asistente, "Siguiente");
+        Pulsar(asistente, "Siguiente");
         foreach (var tema in new[] { ModoTema.Claro, ModoTema.Oscuro, ModoTema.Claro })
         {
             Tema.Aplicar(aplicacion, tema);
@@ -297,7 +299,7 @@ public sealed class VentanasBuscaderoSmokeTests
         Assert.Equal(3, Assert.IsType<ListBox>(asistente.FindName("ListaAvisos")).Items.Count);
         Pulsar(asistente, "Siguiente");
         Assert.Equal(
-            "Paso 7 de 7",
+            "Paso 8 de 8",
             Assert.IsType<TextBlock>(asistente.FindName("NumeroPaso")).Text
         );
         Pulsar(asistente, "Guardar");

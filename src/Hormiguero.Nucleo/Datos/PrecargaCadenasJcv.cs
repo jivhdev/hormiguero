@@ -5,6 +5,133 @@ namespace Hormiguero.Nucleo.Datos;
 
 public static class PrecargaCadenasJcv
 {
+    private static bool ActualizarVersionDos(
+        SqliteConnection conexion,
+        JsonElement raiz,
+        string app,
+        string ruta
+    )
+    {
+        try
+        {
+            using var tx = conexion.BeginTransaction();
+            foreach (var esquema in raiz.GetProperty("esquemas").EnumerateArray())
+            {
+                string proveedor = ProveedorDeDocumento.NormalizarProveedor(
+                    esquema.GetProperty("proveedor").GetString()!
+                );
+                using var buscar = conexion.CreateCommand();
+                buscar.Transaction = tx;
+                buscar.CommandText =
+                    "SELECT id FROM esquemas_diccionario WHERE proveedor=$p COLLATE NOCASE;";
+                buscar.Parameters.AddWithValue("$p", proveedor);
+                if (buscar.ExecuteScalar() is not object idObjeto)
+                    continue;
+                long esquemaId = Convert.ToInt64(idObjeto);
+                var lugares = new Dictionary<string, long>(StringComparer.Ordinal);
+                using (var l = conexion.CreateCommand())
+                {
+                    l.Transaction = tx;
+                    l.CommandText =
+                        "SELECT dato_tipo_id,id FROM lugares_esquema_diccionario WHERE esquema_id=$e;";
+                    l.Parameters.AddWithValue("$e", esquemaId);
+                    using var lector = l.ExecuteReader();
+                    while (lector.Read())
+                        lugares[lector.GetString(0)] = lector.GetInt64(1);
+                }
+                foreach (var lugar in esquema.GetProperty("lugares").EnumerateArray())
+                {
+                    string tipo = lugar.GetProperty("tipo").GetString()!;
+                    if (!lugares.TryGetValue(tipo, out long lugarId))
+                        continue;
+                    using var actualizar = conexion.CreateCommand();
+                    actualizar.Transaction = tx;
+                    actualizar.CommandText =
+                        "UPDATE lugares_esquema_diccionario SET datos_requeridos_json=$r,carpeta_busqueda=$c WHERE id=$l;";
+                    actualizar.Parameters.AddWithValue(
+                        "$r",
+                        lugar.TryGetProperty("datosRequeridos", out var datos)
+                            ? datos.GetRawText()
+                            : "[]"
+                    );
+                    actualizar.Parameters.AddWithValue(
+                        "$c",
+                        lugar.TryGetProperty("carpetaBusqueda", out var carpeta)
+                        && carpeta.ValueKind == JsonValueKind.String
+                            ? carpeta.GetString()!
+                            : DBNull.Value
+                    );
+                    actualizar.Parameters.AddWithValue("$l", lugarId);
+                    actualizar.ExecuteNonQuery();
+                }
+                foreach (var enlace in esquema.GetProperty("enlaces").EnumerateArray())
+                {
+                    string tipoA = enlace.GetProperty("a").GetString()!;
+                    string tipoB = enlace.GetProperty("b").GetString()!;
+                    if (
+                        !lugares.TryGetValue(tipoA, out long a)
+                        || !lugares.TryGetValue(tipoB, out long b)
+                    )
+                        continue;
+                    using var agregar = conexion.CreateCommand();
+                    agregar.Transaction = tx;
+                    agregar.CommandText =
+                        "INSERT INTO enlaces_esquema_diccionario(lugar_a,lugar_b,dato_diccionario_id,cardinalidad) SELECT $a,$b,$d,$c WHERE NOT EXISTS(SELECT 1 FROM enlaces_esquema_diccionario WHERE lugar_a=$a AND lugar_b=$b AND dato_diccionario_id=$d);";
+                    agregar.Parameters.AddWithValue("$a", a);
+                    agregar.Parameters.AddWithValue("$b", b);
+                    agregar.Parameters.AddWithValue("$d", enlace.GetProperty("dato").GetString()!);
+                    agregar.Parameters.AddWithValue(
+                        "$c",
+                        enlace.GetProperty("cardinalidad").GetString()!
+                    );
+                    agregar.ExecuteNonQuery();
+                }
+                if (esquema.TryGetProperty("datosIngresados", out var ingresados))
+                {
+                    using var borrar = conexion.CreateCommand();
+                    borrar.Transaction = tx;
+                    borrar.CommandText =
+                        "DELETE FROM datos_ingresados_esquema_diccionario WHERE esquema_id=$e;";
+                    borrar.Parameters.AddWithValue("$e", esquemaId);
+                    borrar.ExecuteNonQuery();
+                    int orden = 0;
+                    foreach (var dato in ingresados.EnumerateArray())
+                    {
+                        using var insertar = conexion.CreateCommand();
+                        insertar.Transaction = tx;
+                        insertar.CommandText =
+                            "INSERT INTO datos_ingresados_esquema_diccionario(esquema_id,nombre,orden) VALUES($e,$n,$o);";
+                        insertar.Parameters.AddWithValue("$e", esquemaId);
+                        insertar.Parameters.AddWithValue("$n", dato.GetString()!);
+                        insertar.Parameters.AddWithValue("$o", orden++);
+                        insertar.ExecuteNonQuery();
+                    }
+                }
+            }
+            using (var marcar = conexion.CreateCommand())
+            {
+                marcar.Transaction = tx;
+                marcar.CommandText =
+                    "INSERT INTO configuracion(clave,valor) VALUES('precarga_cadenas_jcv_version','2') ON CONFLICT(clave) DO UPDATE SET valor='2';";
+                marcar.ExecuteNonQuery();
+            }
+            tx.Commit();
+            return true;
+        }
+        catch (Exception error)
+        {
+            using var auditoria = conexion.CreateCommand();
+            auditoria.CommandText =
+                "INSERT INTO auditoria(fecha,app,accion,origen,destino,resultado) VALUES($f,$a,'precarga_cadenas_jcv',$o,$d,'fallida');";
+            auditoria.Parameters.AddWithValue("$f", DateTime.Now.ToString("o"));
+            auditoria.Parameters.AddWithValue("$a", app);
+            auditoria.Parameters.AddWithValue("$o", ruta);
+            auditoria.Parameters.AddWithValue("$d", error.Message);
+            auditoria.ExecuteNonQuery();
+            return false;
+        }
+    }
+
     public static IReadOnlyList<(string Id, string Nombre)> TiposActivos(string rutaBase)
     {
         using var conexion = BaseComun.Abrir(rutaBase);
@@ -37,7 +164,23 @@ public static class PrecargaCadenasJcv
         {
             q.CommandText = "SELECT COUNT(*) FROM esquemas_diccionario;";
             if (Convert.ToInt64(q.ExecuteScalar()) != 0)
-                return false;
+            {
+                if (!File.Exists(ruta))
+                    return false;
+                using var existente = JsonDocument.Parse(
+                    File.ReadAllText(ruta).TrimStart('\uFEFF')
+                );
+                if (existente.RootElement.GetProperty("version").GetInt32() < 2)
+                    return false;
+                using (var versionAplicada = conexion.CreateCommand())
+                {
+                    versionAplicada.CommandText =
+                        "SELECT valor FROM configuracion WHERE clave='precarga_cadenas_jcv_version';";
+                    if (Convert.ToInt32(versionAplicada.ExecuteScalar() ?? 0) >= 2)
+                        return false;
+                }
+                return ActualizarVersionDos(conexion, existente.RootElement, app, ruta);
+            }
         }
         if (!File.Exists(ruta))
             return false;
@@ -45,6 +188,9 @@ public static class PrecargaCadenasJcv
         {
             using var json = JsonDocument.Parse(File.ReadAllText(ruta).TrimStart('\uFEFF'));
             var raiz = json.RootElement;
+            int versionJson = raiz.TryGetProperty("version", out var versionElemento)
+                ? versionElemento.GetInt32()
+                : 1;
             using var tx = conexion.BeginTransaction();
             foreach (var esquema in raiz.GetProperty("esquemas").EnumerateArray())
             {
@@ -66,7 +212,7 @@ public static class PrecargaCadenasJcv
                     using var l = conexion.CreateCommand();
                     l.Transaction = tx;
                     l.CommandText =
-                        "INSERT INTO lugares_esquema_diccionario(esquema_id,orden,dato_tipo_id,inicia_cadena,nombre) VALUES($e,$o,$d,$i,$n) RETURNING id;";
+                        "INSERT INTO lugares_esquema_diccionario(esquema_id,orden,dato_tipo_id,inicia_cadena,nombre,datos_requeridos_json,carpeta_busqueda) VALUES($e,$o,$d,$i,$n,$r,$c) RETURNING id;";
                     l.Parameters.AddWithValue("$e", esquemaId);
                     l.Parameters.AddWithValue("$o", lugar.GetProperty("orden").GetInt32());
                     l.Parameters.AddWithValue("$d", lugar.GetProperty("tipo").GetString()!);
@@ -77,6 +223,19 @@ public static class PrecargaCadenasJcv
                             : 0
                     );
                     l.Parameters.AddWithValue("$n", lugar.GetProperty("nombre").GetString()!);
+                    l.Parameters.AddWithValue(
+                        "$r",
+                        lugar.TryGetProperty("datosRequeridos", out var requeridos)
+                            ? requeridos.GetRawText()
+                            : "[]"
+                    );
+                    l.Parameters.AddWithValue(
+                        "$c",
+                        lugar.TryGetProperty("carpetaBusqueda", out var carpeta)
+                        && carpeta.ValueKind == JsonValueKind.String
+                            ? carpeta.GetString()!
+                            : DBNull.Value
+                    );
                     lugares.Add(
                         lugar.GetProperty("tipo").GetString()!,
                         (Convert.ToInt64(l.ExecuteScalar()), lugar.GetProperty("orden").GetInt32())
@@ -121,6 +280,21 @@ public static class PrecargaCadenasJcv
                         enlace.GetProperty("cardinalidad").GetString()!
                     );
                     e.ExecuteNonQuery();
+                }
+                if (esquema.TryGetProperty("datosIngresados", out var datosIngresados))
+                {
+                    int ordenDato = 0;
+                    foreach (var dato in datosIngresados.EnumerateArray())
+                    {
+                        using var d = conexion.CreateCommand();
+                        d.Transaction = tx;
+                        d.CommandText =
+                            "INSERT INTO datos_ingresados_esquema_diccionario(esquema_id,nombre,orden) VALUES($e,$n,$o);";
+                        d.Parameters.AddWithValue("$e", esquemaId);
+                        d.Parameters.AddWithValue("$n", dato.GetString()!);
+                        d.Parameters.AddWithValue("$o", ordenDato++);
+                        d.ExecuteNonQuery();
+                    }
                 }
                 var modos = new Dictionary<string, long>();
                 foreach (
@@ -193,6 +367,14 @@ public static class PrecargaCadenasJcv
                     a.Parameters.AddWithValue("$j", parametros);
                     a.ExecuteNonQuery();
                 }
+            }
+            if (versionJson >= 2)
+            {
+                using var marcar = conexion.CreateCommand();
+                marcar.Transaction = tx;
+                marcar.CommandText =
+                    "INSERT INTO configuracion(clave,valor) VALUES('precarga_cadenas_jcv_version','2') ON CONFLICT(clave) DO UPDATE SET valor='2';";
+                marcar.ExecuteNonQuery();
             }
             tx.Commit();
             return true;
