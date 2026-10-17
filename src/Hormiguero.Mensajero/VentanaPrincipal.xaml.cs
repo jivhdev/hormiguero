@@ -717,7 +717,8 @@ public partial class VentanaPrincipal : Window
                 ordenesRetiro.Select(orden => (orden.Occ, orden.Ocl)).ToArray(),
                 dia,
                 bloque,
-                CampoNvvHoffens.Text
+                CampoNvvHoffens.Text,
+                CampoObraHoffens.Text
             );
             MostrarToast($"✅ Vista previa generada - {proveedor}", "success");
         }
